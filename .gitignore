@@ -1,0 +1,23 @@
+# Generated simulation reports
+/output/
+
+# Build and profiling artifacts
+/bin/
+/dist/
+/PROFILE
+*.exe
+*.test
+*.out
+*.prof
+coverage.*
+
+# Local editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local environment overrides
+.env
+.env.*
+!.env.example

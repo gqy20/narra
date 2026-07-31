@@ -1,0 +1,49 @@
+{
+  "id": "T04_false_date",
+  "title": "玩家协助强化错误成熟日期",
+  "player": {
+    "id": "P00",
+    "name": "玩家",
+    "location": "L01",
+    "resources": {"combat": 3, "spirit_stones": 100, "credit": 2},
+    "items": [],
+    "beliefs": [
+      {"fact_id":"F08","claim":"赵鹤鸣故意准备泄露错误成熟日期","confidence":3,"source":"截获的传讯","learned_on":0,"secrecy":2}
+    ]
+  },
+  "commands": [
+    {
+      "id":"T04-command-01","day":1,"action_id":"visit","target_id":"N09",
+      "description":"玩家前往青岚门驻地接触赵鹤鸣",
+      "conditions":[{"type":"location","value":"L01"},{"type":"belief","key":"F08","min_confidence":3}],
+      "effects":[{"type":"move","target_id":"P00","value":"L02"}]
+    },
+    {
+      "id":"T04-command-02","day":2,"action_id":"visit","target_id":"N09",
+      "description":"玩家与赵鹤鸣统一第24天成熟的假消息口径",
+      "conditions":[{"type":"location","value":"L02"},{"type":"belief","key":"F08","min_confidence":3}],
+      "effects":[{"type":"set_belief","target_id":"P00","fact_id":"F02","claim":"青髓芝将在第24天成熟","confidence":3}]
+    },
+    {
+      "id":"T04-command-03","day":3,"action_id":"spread","target_id":"*",
+      "description":"玩家用伪造的药庄旧志强化第24天成熟的说法",
+      "conditions":[{"type":"location","value":"L02"},{"type":"belief","key":"F02","min_confidence":3}],
+      "effects":[
+        {"type":"set_belief","target_id":"*","fact_id":"F02","claim":"青髓芝将在第24天成熟","confidence":3},
+        {"type":"set_flag","target_id":"world","key":"false_date_reinforced","value":"true"},
+        {"type":"set_flag","target_id":"world","key":"player_false_rumor_source","value":"true"}
+      ]
+    },
+    {
+      "id":"T04-command-04","day":22,"action_id":"flee","target_id":"P00",
+      "description":"真实成熟日曝光后，坊市追查到玩家使用的伪造旧志",
+      "conditions":[],
+      "effects":[
+        {"type":"adjust_resource","target_id":"P00","key":"credit","amount":-2},
+        {"type":"set_flag","target_id":"world","key":"false_rumor_exposed","value":"true"},
+        {"type":"adjust_relation","from_id":"N03","target_id":"P00","key":"suspicion","amount":3},
+        {"type":"adjust_relation","from_id":"N03","target_id":"P00","key":"trust","amount":-2}
+      ]
+    }
+  ]
+}

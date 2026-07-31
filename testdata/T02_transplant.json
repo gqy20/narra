@@ -1,0 +1,50 @@
+{
+  "id": "T02_transplant",
+  "title": "玩家协助苏晚照提前移植青髓芝",
+  "player": {
+    "id": "P00",
+    "name": "玩家",
+    "location": "L01",
+    "resources": {"combat": 3, "spirit_stones": 100},
+    "items": [],
+    "beliefs": []
+  },
+  "commands": [
+    {
+      "id":"T02-command-01","day":1,"action_id":"visit","target_id":"N06",
+      "description":"玩家前往青岚门驻地拜访苏晚照",
+      "conditions":[{"type":"location","value":"L01"}],
+      "effects":[{"type":"move","target_id":"P00","value":"L02"}]
+    },
+    {
+      "id":"T02-command-02","day":2,"action_id":"visit","target_id":"N06",
+      "description":"玩家取得苏晚照关于提前移植的药理判断",
+      "conditions":[{"type":"location","value":"L02"}],
+      "effects":[{"type":"set_belief","target_id":"P00","fact_id":"F07","confidence":3}]
+    },
+    {
+      "id":"T02-command-03","day":3,"action_id":"visit","target_id":"N02",
+      "description":"玩家前往陈氏药庄商谈借用玉髓匣",
+      "conditions":[{"type":"location","value":"L02"},{"type":"belief","key":"F07","min_confidence":3}],
+      "effects":[{"type":"move","target_id":"P00","value":"L03"}]
+    },
+    {
+      "id":"T02-command-04","day":4,"action_id":"borrow","target_id":"N02",
+      "description":"玩家以欠下陈氏人情为条件借得玉髓匣",
+      "conditions":[{"type":"location","value":"L03"},{"type":"belief","key":"F07","min_confidence":3}],
+      "effects":[{"type":"transfer_unique","from_id":"N02","target_id":"P00","key":"jade_box"},{"type":"set_flag","target_id":"P00","key":"owes_chen_favor","value":"true"},{"type":"adjust_relation","from_id":"P00","target_id":"N02","key":"debt","amount":1}]
+    },
+    {
+      "id":"T02-command-05","day":5,"action_id":"visit","target_id":"N06",
+      "description":"玩家携带玉髓匣返回青岚门驻地",
+      "conditions":[{"type":"location","value":"L03"},{"type":"has_item","key":"jade_box"}],
+      "effects":[{"type":"move","target_id":"P00","value":"L02"}]
+    },
+    {
+      "id":"T02-command-06","day":6,"action_id":"visit","target_id":"N06",
+      "description":"玩家把玉髓匣交给苏晚照并约定共享移植成果",
+      "conditions":[{"type":"location","value":"L02"},{"type":"has_item","key":"jade_box"},{"type":"belief","key":"F07","min_confidence":3}],
+      "effects":[{"type":"transfer_unique","from_id":"P00","target_id":"N06","key":"jade_box"},{"type":"set_flag","target_id":"world","key":"transplant_backed","value":"true"},{"type":"adjust_relation","from_id":"N06","target_id":"P00","key":"trust","amount":2}]
+    }
+  ]
+}

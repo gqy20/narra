@@ -1,0 +1,7 @@
+[
+  {"id":"L01","name":"白石坊市","safe":true,"routes":[{"to":"L02","duration":1,"danger":0},{"to":"L03","duration":1,"danger":0},{"to":"L04","duration":2,"required_item":"antidote","required_flag":"valley_open","danger":2}]},
+  {"id":"L02","name":"青岚门驻地","safe":true,"routes":[{"to":"L01","duration":1,"danger":0},{"to":"L03","duration":1,"danger":0},{"to":"L04","duration":1,"required_item":"antidote","required_flag":"valley_open","danger":2}]},
+  {"id":"L03","name":"陈氏药庄","safe":true,"routes":[{"to":"L01","duration":1,"danger":0},{"to":"L02","duration":1,"danger":0},{"to":"L04","duration":2,"required_item":"antidote","required_flag":"valley_open","danger":2}]},
+  {"id":"L04","name":"黑风谷外围","safe":false,"routes":[{"to":"L01","duration":2,"danger":1},{"to":"L02","duration":2,"danger":1},{"to":"L03","duration":2,"danger":1},{"to":"L05","duration":1,"required_item":"antidote","required_flag":"valley_open","danger":3}]},
+  {"id":"L05","name":"黑风谷内谷","safe":false,"routes":[{"to":"L04","duration":1,"danger":2}]}
+]

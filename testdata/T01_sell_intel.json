@@ -1,0 +1,45 @@
+{
+  "id": "T01_sell_intel",
+  "title": "玩家提前出售真实成熟日期",
+  "player": {
+    "id": "P00",
+    "name": "玩家",
+    "location": "L01",
+    "resources": {"combat": 3, "spirit_stones": 100},
+    "items": [],
+    "beliefs": [
+      {"fact_id":"F01","claim":"青髓芝将在第21天成熟","confidence":3,"source":"特殊渠道","learned_on":0,"secrecy":1}
+    ]
+  },
+  "commands": [
+    {
+      "id": "T01-command-01",
+      "day": 1,
+      "action_id": "visit",
+      "target_id": "N03",
+      "description": "玩家前往青岚门驻地拜访沈砚秋",
+      "conditions": [
+        {"type":"location","value":"L01"}
+      ],
+      "effects": [
+        {"type":"move","target_id":"P00","value":"L02"}
+      ]
+    },
+    {
+      "id": "T01-command-02",
+      "day": 2,
+      "action_id": "sell",
+      "target_id": "N03",
+      "description": "玩家将真实成熟日期出售给沈砚秋",
+      "conditions": [
+        {"type":"belief","key":"F01","min_confidence":3},
+        {"type":"location","value":"L02"}
+      ],
+      "effects": [
+        {"type":"set_belief","target_id":"N03","fact_id":"F01","confidence":3},
+        {"type":"adjust_resource","target_id":"P00","key":"spirit_stones","amount":30},
+        {"type":"adjust_relation","from_id":"N03","target_id":"P00","key":"trust","amount":1}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "id": "T07_failed_ambush",
+  "title": "玩家伏击失败后接受援助并继续行动",
+  "player": {
+    "id": "P00",
+    "name": "玩家",
+    "location": "L01",
+    "injury": 0,
+    "resources": {"combat": 3, "support": 0, "spirit_stones": 100, "credit": 1},
+    "items": ["healing_pill","antidote"],
+    "beliefs": []
+  },
+  "commands": [
+    {
+      "id":"T07-command-01","day":1,"action_id":"track","target_id":"N05",
+      "description":"玩家追踪王衡并前往黑风谷外围",
+      "conditions":[{"type":"location","value":"L01"}],
+      "effects":[{"type":"move","target_id":"P00","value":"L04","bypass_route_flag":true}]
+    },
+    {
+      "id":"T07-command-02","day":3,"action_id":"ambush","target_id":"N05",
+      "description":"玩家错误估计王衡实力，伏击失败并被夺走疗伤丹",
+      "conditions":[{"type":"location","value":"L04"},{"type":"has_item","key":"healing_pill"}],
+      "effects":[
+        {"type":"adjust_injury","target_id":"P00","amount":2},
+        {"type":"adjust_resource","target_id":"P00","key":"spirit_stones","amount":-20},
+        {"type":"remove_item","target_id":"P00","key":"healing_pill","amount":1},
+        {"type":"add_item","target_id":"N05","key":"healing_pill","amount":1},
+        {"type":"open_opportunity","key":"treat_injury","value":"前往青岚门或陈氏药庄治疗重伤"},
+        {"type":"open_opportunity","key":"seek_help","value":"请求青岚门庇护，并承担一笔人情债"},
+        {"type":"open_opportunity","key":"track_lost_pill","value":"伤势稳定后追踪王衡，夺回疗伤丹和损失"},
+        {"type":"set_flag","target_id":"world","key":"player_ambush_failed","value":"true"}
+      ]
+    },
+    {
+      "id":"T07-command-03","day":4,"action_id":"flee","target_id":"P00",
+      "description":"玩家带伤撤往青岚门驻地求援",
+      "conditions":[{"type":"location","value":"L04"},{"type":"injury_at_least","min_confidence":2},{"type":"opportunity","key":"seek_help"}],
+      "effects":[{"type":"move","target_id":"P00","value":"L02"}]
+    },
+    {
+      "id":"T07-command-04","day":6,"action_id":"heal","target_id":"P00",
+      "description":"青岚门为玩家治疗重伤，玩家因此欠下一笔人情",
+      "conditions":[{"type":"location","value":"L02"},{"type":"injury_at_least","min_confidence":2},{"type":"opportunity","key":"treat_injury"}],
+      "effects":[
+        {"type":"adjust_injury","target_id":"P00","amount":-2},
+        {"type":"close_opportunity","key":"treat_injury"},
+        {"type":"close_opportunity","key":"seek_help"},
+        {"type":"set_flag","target_id":"world","key":"owes_qinglan_favor","value":"true"},
+        {"type":"set_flag","target_id":"world","key":"player_recovered","value":"true"},
+        {"type":"adjust_relation","from_id":"P00","target_id":"N03","key":"debt","amount":1},
+        {"type":"adjust_relation","from_id":"N03","target_id":"P00","key":"trust","amount":1}
+      ]
+    }
+  ]
+}

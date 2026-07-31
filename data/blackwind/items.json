@@ -1,0 +1,9 @@
+[
+  {"id":"qingsuizhi","name":"三百年青髓芝","unique":true,"owner":"L05"},
+  {"id":"true_map","name":"黑风谷真地图","unique":true,"owner":"N08"},
+  {"id":"moon_incense","name":"月见香","unique":true,"owner":"N01"},
+  {"id":"jade_box","name":"玉髓匣","unique":true,"owner":"N02"},
+  {"id":"chen_letter","name":"陈玉衡密信","unique":true,"owner":"N07"},
+  {"id":"antidote","name":"解瘴丹","unique":false,"owner":""},
+  {"id":"healing_pill","name":"疗伤丹","unique":false,"owner":""}
+]

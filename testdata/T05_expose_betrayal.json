@@ -1,0 +1,52 @@
+{
+  "id": "T05_expose_betrayal",
+  "title": "玩家揭露陈玉衡密约并保护陈氏队伍",
+  "player": {
+    "id": "P00",
+    "name": "玩家",
+    "location": "L01",
+    "resources": {"combat": 3, "spirit_stones": 100, "credit": 1},
+    "items": [],
+    "beliefs": []
+  },
+  "commands": [
+    {
+      "id":"T05-command-01","day":1,"action_id":"visit","target_id":"N07",
+      "description":"玩家前往陈氏药庄调查陈玉衡",
+      "conditions":[{"type":"location","value":"L01"}],
+      "effects":[{"type":"move","target_id":"P00","value":"L03"}]
+    },
+    {
+      "id":"T05-command-02","day":2,"action_id":"track","target_id":"N07",
+      "description":"玩家跟踪陈玉衡并截获他写给王衡的密信",
+      "conditions":[{"type":"location","value":"L03"}],
+      "effects":[
+        {"type":"set_belief","target_id":"P00","fact_id":"F06","confidence":3},
+        {"type":"transfer_unique","from_id":"N07","target_id":"P00","key":"chen_letter"}
+      ]
+    },
+    {
+      "id":"T05-command-03","day":4,"action_id":"visit","target_id":"N02",
+      "description":"玩家向陈青山出示密信，揭露陈玉衡与王衡的交易",
+      "conditions":[{"type":"location","value":"L03"},{"type":"belief","key":"F06","min_confidence":3},{"type":"has_item","key":"chen_letter"}],
+      "effects":[
+        {"type":"set_belief","target_id":"N02","fact_id":"F06","confidence":3},
+        {"type":"set_flag","target_id":"world","key":"betrayal_exposed","value":"true"},
+        {"type":"adjust_relation","from_id":"N02","target_id":"P00","key":"trust","amount":1}
+      ]
+    },
+    {
+      "id":"T05-command-04","day":5,"action_id":"recruit","target_id":"N02",
+      "description":"玩家接受陈氏委托，参与保护改道后的入谷队伍",
+      "conditions":[{"type":"location","value":"L03"},{"type":"belief","key":"F06","min_confidence":3}],
+      "effects":[
+        {"type":"adjust_resource","target_id":"N02","key":"support","amount":1},
+        {"type":"adjust_resource","target_id":"P00","key":"credit","amount":1},
+        {"type":"set_flag","target_id":"world","key":"caravan_protected","value":"true"},
+        {"type":"set_flag","target_id":"world","key":"chen_owes_player","value":"true"},
+        {"type":"adjust_relation","from_id":"N02","target_id":"P00","key":"trust","amount":2},
+        {"type":"adjust_relation","from_id":"N02","target_id":"P00","key":"debt","amount":1}
+      ]
+    }
+  ]
+}

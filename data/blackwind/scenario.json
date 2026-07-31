@@ -1,0 +1,34 @@
+{
+  "id": "blackwind_t00",
+  "title": "黑风谷青髓芝争夺：无玩家基线",
+  "duration": 30,
+  "topics": ["qingsuizhi","blackwind","combat","chen_family","succession","qinglan","intrigue","intel","market","blackwater","ambush","debt","medicine","route"],
+  "markets": [{"id":"M01","location_id":"L01","stock":{"antidote":30},"base_prices":{"antidote":20},"price_step":5,"blockade_flag":"antidote_blockade"}],
+  "phases": [
+    {"id":"germination","name":"萌芽","from_day":1,"to_day":4},
+    {"id":"spread","name":"扩散","from_day":5,"to_day":9},
+    {"id":"preparation","name":"准备","from_day":10,"to_day":16},
+    {"id":"entry","name":"入谷","from_day":17,"to_day":20},
+    {"id":"eruption","name":"爆发","from_day":21,"to_day":21},
+    {"id":"aftermath","name":"余波","from_day":22,"to_day":30}
+  ],
+  "fixed_events": [
+    {"id":"EV05","day":5,"timing":"start","description":"坊市开始公开讨论青髓芝，解瘴丹价格上涨","effects":[{"type":"set_flag","target_id":"world","key":"rumor_public","value":"true"}]},
+    {"id":"EV08","day":8,"timing":"start","description":"陈氏家族限制解瘴丹外售","effects":[{"type":"set_flag","target_id":"world","key":"antidote_blockade","value":"true"}]},
+    {"id":"EV10","day":10,"timing":"start","description":"青岚门要求弟子申报黑风谷情报","effects":[{"type":"set_flag","target_id":"world","key":"qinglan_review","value":"true"}]},
+    {"id":"EV12","day":12,"timing":"start","description":"王衡开始物色伏击目标","effects":[{"type":"set_flag","target_id":"world","key":"ambush_open","value":"true"}]},
+    {"id":"EV17","day":17,"timing":"start","description":"第一批参与者开始向黑风谷移动","effects":[{"type":"set_flag","target_id":"world","key":"valley_open","value":"true"}]},
+    {"id":"EV19","day":19,"timing":"start","description":"青髓芝提前移植窗口开启","effects":[{"type":"set_flag","target_id":"world","key":"transplant_window","value":"true"}]},
+    {"id":"EV24","day":24,"timing":"start","description":"相信错误日期的迟到者抵达，争夺早已结束","effects":[]},
+    {"id":"EV27","day":27,"timing":"start","description":"青髓芝持有者开始安排炼丹、转移或交易","effects":[]},
+    {"id":"EV30","day":30,"timing":"end","description":"黑风谷局势进入阶段性总结","effects":[]}
+  ],
+  "contest": {
+    "day": 21,
+    "item_id": "qingsuizhi",
+    "location_id": "L05",
+    "required_item_id": "antidote",
+    "score_resources": ["combat","support"],
+    "preparation_flag": "prepared"
+  }
+}

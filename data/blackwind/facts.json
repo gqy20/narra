@@ -1,0 +1,12 @@
+[
+  {"id":"F01","truth":"青髓芝将在第21天子时成熟","discoverable":true,"topics":["qingsuizhi"]},
+  {"id":"F02","truth":"市面流传的第24天成熟日期是错误的","discoverable":true,"topics":["qingsuizhi","intel"],"investigation_leads":[{"fact_id":"F01","confidence":3},{"fact_id":"F08","confidence":2}]},
+  {"id":"F03","truth":"北侧地图标出的入口已经被山崩封死","discoverable":true,"topics":["blackwind","route"]},
+  {"id":"F04","truth":"南侧裂隙可进入内谷，但必须服用解瘴丹","discoverable":true,"topics":["blackwind","route"]},
+  {"id":"F05","truth":"陈青山旧伤复发，实际战力降低","discoverable":true,"topics":["chen_family","combat"]},
+  {"id":"F06","truth":"陈玉衡私下向王衡承诺交付陈氏商队路线","discoverable":true,"topics":["chen_family","succession","ambush"]},
+  {"id":"F07","truth":"青髓芝可在第19至20天使用玉髓匣提前移植","discoverable":true,"topics":["qingsuizhi","medicine"]},
+  {"id":"F08","truth":"赵鹤鸣故意向坊市泄露了错误日期","discoverable":true,"topics":["qinglan","intrigue"]},
+  {"id":"F09","truth":"魏无咎只想制造竞价，不打算亲自夺药","discoverable":true,"topics":["market","blackwater"]},
+  {"id":"F10","truth":"月见香可以短暂引走内谷守巢妖兽","discoverable":true,"topics":["blackwind","combat"]}
+]

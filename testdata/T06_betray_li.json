@@ -1,0 +1,72 @@
+{
+  "id": "T06_betray_li",
+  "title": "玩家与李玄合作后违反分配约定",
+  "player": {
+    "id": "P00",
+    "name": "玩家",
+    "location": "L01",
+    "resources": {"combat": 3, "support": 0, "spirit_stones": 100, "credit": 2},
+    "items": [],
+    "beliefs": []
+  },
+  "commands": [
+    {
+      "id":"T06-command-01","day":1,"action_id":"buy","target_id":"N10",
+      "description":"玩家购买进入黑风谷所需的解瘴丹",
+      "conditions":[{"type":"location","value":"L01"},{"type":"missing_item","key":"antidote"}],
+      "costs":{"spirit_stones":20},
+      "effects":[{"type":"add_item","target_id":"P00","key":"antidote","amount":1}]
+    },
+    {
+      "id":"T06-command-02","day":2,"action_id":"visit","target_id":"N01",
+      "description":"玩家与李玄约定共同入谷并平分青髓芝收益",
+      "conditions":[{"type":"location","value":"L01"},{"type":"has_item","key":"antidote"}],
+      "effects":[{"type":"adjust_resource","target_id":"P00","key":"support","amount":3},{"type":"set_flag","target_id":"world","key":"li_player_pact","value":"true"},{"type":"adjust_relation","from_id":"N01","target_id":"P00","key":"trust","amount":2},{"type":"adjust_relation","from_id":"N01","target_id":"P00","key":"dependence","amount":1}]
+    },
+    {
+      "id":"T06-command-03","day":5,"action_id":"visit","target_id":"N01",
+      "description":"李玄按约把南侧裂隙入口告知玩家",
+      "conditions":[{"type":"location","value":"L01"},{"type":"flag","key":"li_player_pact"}],
+      "effects":[{"type":"set_belief","target_id":"P00","fact_id":"F04","confidence":3}]
+    },
+    {
+      "id":"T06-command-04","day":10,"action_id":"explore","target_id":"P00",
+      "description":"玩家依据真入口和李玄的计划完成入谷准备",
+      "conditions":[{"type":"belief","key":"F04","min_confidence":3},{"type":"has_item","key":"antidote"}],
+      "effects":[{"type":"set_flag","target_id":"P00","key":"prepared","value":"true"}]
+    },
+    {
+      "id":"T06-command-05","day":17,"action_id":"explore","target_id":"P00",
+      "description":"玩家与李玄一同前往黑风谷外围",
+      "conditions":[{"type":"flag","key":"valley_open"},{"type":"location","value":"L01"},{"type":"has_item","key":"antidote"}],
+      "effects":[{"type":"move","target_id":"P00","value":"L04"}]
+    },
+    {
+      "id":"T06-command-06","day":19,"action_id":"explore","target_id":"P00",
+      "description":"玩家从南侧裂隙进入黑风谷内谷",
+      "conditions":[{"type":"location","value":"L04"},{"type":"belief","key":"F04","min_confidence":3},{"type":"has_item","key":"antidote"}],
+      "effects":[{"type":"move","target_id":"P00","value":"L05"}]
+    },
+    {
+      "id":"T06-command-07","day":22,"action_id":"sell","target_id":"P00",
+      "description":"玩家藏起青髓芝，拒绝履行与李玄的分配约定",
+      "conditions":[{"type":"has_item","key":"qingsuizhi"}],
+	  "on_failure":"fallback",
+	  "fallback":{
+		"id":"T06-command-07-fallback","action_id":"track","target_id":"qingsuizhi",
+		"description":"玩家未能取得青髓芝，转而追查灵药最终归属",
+		"conditions":[{"type":"missing_item","key":"qingsuizhi"}],
+		"effects":[{"type":"open_opportunity","key":"trace_qingsuizhi_owner","value":"追查青髓芝持有者并重新谈判或夺取"}]
+	  },
+      "effects":[
+        {"type":"adjust_resource","target_id":"P00","key":"credit","amount":-2},
+        {"type":"set_flag","target_id":"world","key":"li_betrayed","value":"true"},
+        {"type":"set_flag","target_id":"world","key":"li_player_pact","value":"false"},
+        {"type":"adjust_relation","from_id":"N01","target_id":"P00","key":"trust","amount":-4},
+        {"type":"adjust_relation","from_id":"N01","target_id":"P00","key":"suspicion","amount":3},
+        {"type":"adjust_relation","from_id":"N01","target_id":"P00","key":"hatred","amount":3},
+        {"type":"set_outcome","value":"玩家与李玄合作取得青髓芝后违背分配约定，并遭到李玄追偿"}
+      ]
+    }
+  ]
+}

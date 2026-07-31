@@ -1,0 +1,28 @@
+{
+  "id": "T03_reveal_injury",
+  "title": "玩家公开陈青山重伤",
+  "player": {
+    "id": "P00",
+    "name": "玩家",
+    "location": "L01",
+    "resources": {"combat": 3, "spirit_stones": 100},
+    "items": [],
+    "beliefs": [
+      {"fact_id":"F05","claim":"陈青山旧伤复发，实际战力显著降低","confidence":3,"source":"诊疗记录","learned_on":0,"secrecy":1}
+    ]
+  },
+  "commands": [
+    {
+      "id":"T03-command-01","day":1,"action_id":"spread","target_id":"*",
+      "description":"玩家在坊市公开陈青山旧伤复发的证据",
+      "conditions":[{"type":"belief","key":"F05","min_confidence":3},{"type":"location","value":"L01"}],
+      "effects":[
+        {"type":"set_belief","target_id":"*","fact_id":"F05","confidence":3},
+        {"type":"set_flag","target_id":"world","key":"injury_public","value":"true"},
+        {"type":"set_flag","target_id":"world","key":"chen_suspects_player","value":"true"},
+        {"type":"adjust_relation","from_id":"N02","target_id":"P00","key":"suspicion","amount":3},
+        {"type":"adjust_relation","from_id":"N02","target_id":"P00","key":"trust","amount":-2}
+      ]
+    }
+  ]
+}
