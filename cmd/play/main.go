@@ -142,8 +142,23 @@ func resolveAction(input string, actions []app.AvailableAction) (string, error) 
 
 func renderView(output io.Writer, view app.PlayerView) {
 	fmt.Fprintf(output, "\n=== 第 %d/%d 天 · %s ===\n", view.Day, view.Duration, view.Location.Name)
+	if view.LastTurn != nil {
+		fmt.Fprintf(output, "上回合：%s [%s]\n", view.LastTurn.Action, view.LastTurn.Status)
+		for _, message := range view.LastTurn.Messages {
+			fmt.Fprintf(output, "  - %s\n", message)
+		}
+	}
 	if view.Ended {
 		fmt.Fprintf(output, "局势结束：%s\n", view.Outcome)
+		if view.Ending != nil {
+			fmt.Fprintln(output, "你的历程：")
+			for _, highlight := range view.Ending.Highlights {
+				fmt.Fprintf(output, "  - %s\n", highlight)
+			}
+			for _, influence := range view.Ending.Influence {
+				fmt.Fprintf(output, "  - %s\n", influence)
+			}
+		}
 		return
 	}
 
@@ -181,10 +196,10 @@ func renderView(output io.Writer, view app.PlayerView) {
 		}
 		fmt.Fprintf(output, "同地人物：%s\n", strings.Join(names, "、"))
 	}
-	if len(view.RecentEvents) > 0 {
-		fmt.Fprintln(output, "最近可见事件：")
-		for _, event := range view.RecentEvents {
-			fmt.Fprintf(output, "  D%d %s\n", event.Day, event.Description)
+	if len(view.Guidance) > 0 {
+		fmt.Fprintln(output, "当前提示：")
+		for _, guidance := range view.Guidance {
+			fmt.Fprintf(output, "  - %s\n", guidance)
 		}
 	}
 	fmt.Fprintln(output, "可用行动：")

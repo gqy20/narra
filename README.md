@@ -21,6 +21,8 @@
 
 完整依赖边界和扩展约束见 [架构说明](docs/ARCHITECTURE.md)。产品与验证入口分别见 [PRD](docs/PRD.md)、[M0 验收结果](docs/M0_RESULTS.md) 和 [30 项验证清单](docs/VALIDATION_OPTIMIZATION_BACKLOG.md)。
 
+交互版本当前采用冻结范围开发，核心假设、明确不做的内容和完成门禁见 [交互 Demo 范围](docs/DEMO_SCOPE.md)。
+
 运行统一质量门禁：
 
 ```powershell

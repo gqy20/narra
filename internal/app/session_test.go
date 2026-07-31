@@ -70,6 +70,9 @@ func TestBuyAndInvestigationUseAuthoritativeEngine(t *testing.T) {
 	if view.Day != 1 || view.Player.Resources["spirit_stones"] != 80 || itemAmount(view.Player.Items, "antidote") != 1 {
 		t.Fatalf("view after purchase = %+v", view.Player)
 	}
+	if view.LastTurn == nil || view.LastTurn.Status != "completed" || !containsMessage(view.LastTurn.Messages, "spirit_stones -20") || !containsMessage(view.LastTurn.Messages, "解瘴丹 +1") {
+		t.Fatalf("purchase feedback = %+v", view.LastTurn)
+	}
 
 	view, err = session.Execute("verify:F02")
 	if err != nil {
@@ -78,12 +81,31 @@ func TestBuyAndInvestigationUseAuthoritativeEngine(t *testing.T) {
 	if !view.Player.Busy || len(view.AvailableActions) != 1 || view.AvailableActions[0].ID != "wait" {
 		t.Fatalf("multi-day action state = %+v / %+v", view.Player, view.AvailableActions)
 	}
+	if view.LastTurn == nil || view.LastTurn.Status != "started" {
+		t.Fatalf("investigation start feedback = %+v", view.LastTurn)
+	}
 	view, err = session.Execute("wait")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if view.Day != 3 || view.Player.Busy || beliefConfidence(view.KnownFacts, "F02") != 3 {
 		t.Fatalf("completed investigation view = %+v", view)
+	}
+	if view.LastTurn == nil || !containsMessage(view.LastTurn.Messages, "线索 F02 更新") {
+		t.Fatalf("investigation completion feedback = %+v", view.LastTurn)
+	}
+}
+
+func TestInitialGuidanceExplainsCoreDecisionWithoutLeakingTrueDate(t *testing.T) {
+	view := testSession(t).View()
+	joined := strings.Join(view.Guidance, " ")
+	for _, want := range []string{"只是传闻", "解瘴丹", "路线"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("guidance %q does not mention %q", joined, want)
+		}
+	}
+	if strings.Contains(joined, "第21天") {
+		t.Fatalf("guidance leaked the true maturity date: %s", joined)
 	}
 }
 
@@ -125,6 +147,74 @@ func TestSaveLoadsByDeterministicReplay(t *testing.T) {
 	}
 }
 
+func TestDemoObserverJourneyReachesExplainedEnding(t *testing.T) {
+	session := testSession(t)
+	executeMany(t, session, repeatAction("wait", 30))
+	view := session.View()
+	if !view.Ended || view.Ending == nil || !strings.Contains(view.Outcome, "李玄") {
+		t.Fatalf("observer ending = %+v", view.Ending)
+	}
+	if !containsMessage(view.Ending.Highlights, "等待 30 天") {
+		t.Fatalf("observer highlights = %v", view.Ending.Highlights)
+	}
+}
+
+func TestDemoInvestigatorJourneyChangesPlayerKnowledge(t *testing.T) {
+	session := testSession(t)
+	actions := append([]string{"verify:F02", "wait"}, repeatAction("wait", 28)...)
+	executeMany(t, session, actions)
+	view := session.View()
+	if !view.Ended || beliefConfidence(view.KnownFacts, "F02") != 3 {
+		t.Fatalf("investigator journey did not preserve verified knowledge: %+v", view.KnownFacts)
+	}
+	if view.Ending == nil || !containsMessage(view.Ending.Highlights, "核验情报 1 次") {
+		t.Fatalf("investigator highlights = %+v", view.Ending)
+	}
+}
+
+func TestDemoPreparedContenderCanWinCoreContest(t *testing.T) {
+	session := testSession(t)
+	actions := []string{
+		"buy:M01:antidote",
+		"cultivate", "wait", "wait",
+		"cultivate", "wait", "wait",
+		"cultivate", "wait", "wait",
+		"cultivate", "wait", "wait",
+		"cultivate", "wait", "wait",
+		"wait",
+		"move:L04", "wait",
+		"move:L05",
+	}
+	actions = append(actions, repeatAction("wait", 10)...)
+	executeMany(t, session, actions)
+	view := session.View()
+	if !view.Ended || !strings.Contains(view.Outcome, "测试玩家") {
+		t.Fatalf("prepared contender outcome = %q", view.Outcome)
+	}
+	if view.Player.Resources["combat"] != 7 || view.Location.ID != "L05" {
+		t.Fatalf("prepared contender state = %+v at %+v", view.Player, view.Location)
+	}
+}
+
+func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
+	session := testSession(t)
+	actions := []string{"verify:F02", "wait", "move:L02", "tell:N03:F02"}
+	for index, action := range actions {
+		view, err := session.Execute(action)
+		if err != nil {
+			t.Fatalf("turn %d execute %s: %v", index+1, action, err)
+		}
+		if action == "tell:N03:F02" && (view.LastTurn == nil || !containsMessage(view.LastTurn.Messages, "情报已经送达沈砚秋")) {
+			t.Fatalf("message delivery feedback = %+v", view.LastTurn)
+		}
+	}
+	executeMany(t, session, repeatAction("wait", 26))
+	view := session.View()
+	if view.Ending == nil || !containsMessage(view.Ending.Influence, "F02 告诉了沈砚秋") {
+		t.Fatalf("messenger influence = %+v", view.Ending)
+	}
+}
+
 func actionIDs(actions []AvailableAction) map[string]bool {
 	result := make(map[string]bool, len(actions))
 	for _, action := range actions {
@@ -149,4 +239,30 @@ func beliefConfidence(beliefs []VisibleBelief, id string) int {
 		}
 	}
 	return 0
+}
+
+func containsMessage(messages []string, fragment string) bool {
+	for _, message := range messages {
+		if strings.Contains(message, fragment) {
+			return true
+		}
+	}
+	return false
+}
+
+func repeatAction(action string, count int) []string {
+	result := make([]string, count)
+	for index := range result {
+		result[index] = action
+	}
+	return result
+}
+
+func executeMany(t *testing.T, session *Session, actions []string) {
+	t.Helper()
+	for index, action := range actions {
+		if _, err := session.Execute(action); err != nil {
+			t.Fatalf("turn %d execute %s: %v", index+1, action, err)
+		}
+	}
 }

@@ -9,11 +9,12 @@ import (
 )
 
 type Session struct {
-	bundle  domain.Bundle
-	initial domain.PlayerConfig
-	engine  *engine.Engine
-	history []string
-	nextID  int
+	bundle   domain.Bundle
+	initial  domain.PlayerConfig
+	engine   *engine.Engine
+	history  []string
+	nextID   int
+	lastTurn *TurnFeedback
 }
 
 func NewSession(bundle domain.Bundle, player domain.PlayerConfig) (*Session, error) {
@@ -60,9 +61,12 @@ func (s *Session) View() PlayerView {
 	}
 	if view.Ended {
 		view.Outcome = state.Outcome
+		view.Ending = s.endingSummary(state)
 	} else {
 		view.AvailableActions = s.actionCatalog(state)
+		view.Guidance = s.guidance(state, view.AvailableActions)
 	}
+	view.LastTurn = cloneTurnFeedback(s.lastTurn)
 	return view
 }
 
@@ -77,6 +81,7 @@ func (s *Session) Execute(actionID string) (PlayerView, error) {
 		return s.View(), fmt.Errorf("action %q is not currently available", actionID)
 	}
 	var err error
+	actionName := option.view.Name
 	if option.command == nil {
 		_, err = s.engine.Step(nil)
 	} else {
@@ -93,6 +98,7 @@ func (s *Session) Execute(actionID string) (PlayerView, error) {
 		return s.View(), err
 	}
 	s.history = append(s.history, actionID)
+	s.lastTurn = s.turnFeedback(actionID, actionName, state, s.engine.State())
 	return s.View(), nil
 }
 

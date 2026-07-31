@@ -14,6 +14,23 @@ type PlayerView struct {
 	KnownFacts       []VisibleBelief   `json:"known_facts"`
 	RecentEvents     []VisibleEvent    `json:"recent_events"`
 	AvailableActions []AvailableAction `json:"available_actions"`
+	Guidance         []string          `json:"guidance,omitempty"`
+	LastTurn         *TurnFeedback     `json:"last_turn,omitempty"`
+	Ending           *EndingSummary    `json:"ending,omitempty"`
+}
+
+type TurnFeedback struct {
+	Day      int      `json:"day"`
+	ActionID string   `json:"action_id"`
+	Action   string   `json:"action"`
+	Status   string   `json:"status"`
+	Messages []string `json:"messages"`
+}
+
+type EndingSummary struct {
+	Outcome    string   `json:"outcome"`
+	Highlights []string `json:"highlights"`
+	Influence  []string `json:"influence,omitempty"`
 }
 
 type VisiblePlayer struct {
