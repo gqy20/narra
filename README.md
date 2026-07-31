@@ -9,6 +9,7 @@
 | `cmd/sim` | 运行单个场景并输出 Markdown 或 JSON |
 | `cmd/batch` | 运行固定验收、参数扫描与健康指标统计 |
 | `cmd/play` | 运行玩家视角的交互式终端客户端 |
+| `cmd/server` | 向 Godot 暴露仅监听本机的 JSON API |
 | `internal/app` | Session、玩家可见视图、动态行动目录与存档回放 |
 | `internal/domain` | 场景、状态、事件和事务的领域协议 |
 | `internal/engine` | 确定性逐日推进与权威规则结算 |
@@ -59,6 +60,30 @@ go run ./cmd/play -debug
 交互流程会在青髓芝归属确定时立即生成结局。底层引擎仍保留完整 30 天模拟能力。
 
 存档只记录初始玩家和已选择的行动历史；读取时由确定性引擎重新回放。CLI 不读取事实真值、NPC 私有认知、策略评分或世界内部标记。
+
+## 运行本地游戏服务
+
+Godot 和其他图形客户端通过本地 HTTP 服务复用同一套 Session、可见性过滤与行动合法性：
+
+```powershell
+go run ./cmd/server
+```
+
+服务默认监听 `127.0.0.1:8787`，存档写入 `saves/`。它只接受固定存档槽名，不接受客户端文件路径。可用 `-addr`、`-data` 和 `-saves` 覆盖开发配置。
+
+当前稳定协议为 `/api/v1`：
+
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| `GET` | `/api/v1/health` | 就绪检查 |
+| `GET` | `/api/v1/game` | 获取当前玩家视图 |
+| `POST` | `/api/v1/game/new` | 新游戏，正文为 `{"player_name":"名字"}` |
+| `POST` | `/api/v1/game/action` | 执行动作，正文为 `{"action_id":"..."}` |
+| `POST` | `/api/v1/game/save` | 原子保存，正文为 `{"slot":"autosave"}` |
+| `POST` | `/api/v1/game/load` | 读取存档槽 |
+| `POST` | `/api/v1/game/quit` | 清除服务内的当前 Session |
+
+成功响应返回经过裁剪的 `view`；失败响应返回稳定的 `error.code` 和玩家可读的 `error.message`。动作同时包含 `kind`、目标与线索元数据，客户端无需解析动作 ID 或拼接人物×线索组合。
 
 ## 运行 T00
 

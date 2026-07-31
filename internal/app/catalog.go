@@ -33,7 +33,7 @@ func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOptio
 	options := make(map[string]actionOption)
 	if state.Player.Pending != nil {
 		options["wait:complete"] = actionOption{
-			view:        AvailableAction{ID: "wait:complete", Category: "time", Name: "继续到行动完成", Description: "逐日推进，遇到需要处理的变化会提前停下", Duration: maxInt(1, state.Player.Pending.CompleteDay-state.Day)},
+			view:        AvailableAction{ID: "wait:complete", Kind: "advance", Category: "time", Name: "继续到行动完成", Description: "逐日推进，遇到需要处理的变化会提前停下", Duration: maxInt(1, state.Player.Pending.CompleteDay-state.Day)},
 			advanceMode: "complete",
 		}
 		return options
@@ -44,7 +44,7 @@ func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOptio
 	s.addInformationActions(options, state)
 	s.addRecoveryActions(options, state)
 	options["wait:next"] = actionOption{
-		view:        AvailableAction{ID: "wait:next", Category: "time", Name: "推进到下一变化", Description: "跳过没有新决策的日期", Duration: 1},
+		view:        AvailableAction{ID: "wait:next", Kind: "advance", Category: "time", Name: "推进到下一变化", Description: "跳过没有新决策的日期", Duration: 1},
 		advanceMode: "next",
 	}
 	return options
@@ -72,7 +72,7 @@ func (s *Session) addInvestigationActions(options map[string]actionOption, state
 			})
 		}
 		options[id] = actionOption{
-			view: AvailableAction{ID: id, Category: "investigate", Name: "核验线索", Description: "核验：“" + belief.Claim + "”", Duration: action.Duration},
+			view: AvailableAction{ID: id, Kind: "verify", Category: "investigate", Name: "核验线索", Description: "核验：“" + belief.Claim + "”", Duration: action.Duration, FactID: factID, FactClaim: belief.Claim},
 			command: &domain.PlayerCommand{
 				ActionID: "verify", Description: "玩家核验线索：" + factID,
 				Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "belief_max", Key: factID, MaxConfidence: 2}},
@@ -116,7 +116,7 @@ func (s *Session) addMarketActions(options map[string]actionOption, state *domai
 			}
 			id := fmt.Sprintf("buy:%s:%s", marketID, itemID)
 			options[id] = actionOption{
-				view: AvailableAction{ID: id, Category: "trade", Name: "购买" + name, Description: fmt.Sprintf("库存 %d，当前价格 %d 灵石", market.Stock[itemID], price), Duration: action.Duration, Costs: map[string]int{"spirit_stones": price}},
+				view: AvailableAction{ID: id, Kind: "buy", Category: "trade", Name: "购买" + name, Description: fmt.Sprintf("库存 %d，当前价格 %d 灵石", market.Stock[itemID], price), Duration: action.Duration, Costs: map[string]int{"spirit_stones": price}, TargetID: itemID, TargetName: name},
 				command: &domain.PlayerCommand{
 					ActionID: "buy", Description: "玩家购买" + name,
 					Conditions: []domain.Condition{{Type: "location", Value: market.LocationID}, {Type: "resource_at_least", Key: "spirit_stones", MinConfidence: price}},
@@ -146,7 +146,7 @@ func (s *Session) addMovementActions(options map[string]actionOption, state *dom
 			conditions = append(conditions, domain.Condition{Type: "flag", Key: route.RequiredFlag})
 		}
 		options[id] = actionOption{
-			view:    AvailableAction{ID: id, Category: "move", Name: "前往" + destination.Name, Description: fmt.Sprintf("耗时 %d 天，危险度 %d", route.Duration, route.Danger), Duration: route.Duration},
+			view:    AvailableAction{ID: id, Kind: "move", Category: "move", Name: "前往" + destination.Name, Description: fmt.Sprintf("耗时 %d 天，危险度 %d", route.Duration, route.Danger), Duration: route.Duration, TargetID: route.To, TargetName: destination.Name},
 			command: &domain.PlayerCommand{ActionID: "explore", Duration: route.Duration, Description: "玩家前往" + destination.Name, Conditions: conditions, Effects: []domain.Effect{{Type: "move", Value: route.To}}},
 		}
 	}
@@ -169,7 +169,7 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 				claim = "玩家转述的线索"
 			}
 			options[id] = actionOption{
-				view: AvailableAction{ID: id, Category: "information", Name: "告知" + actor.Name + "一条线索", Description: "分享：“" + claim + "”", Duration: action.Duration},
+				view: AvailableAction{ID: id, Kind: "tell", Category: "information", Name: "告知" + actor.Name + "一条线索", Description: "分享：“" + claim + "”", Duration: action.Duration, TargetID: actor.ID, TargetName: actor.Name, FactID: factID, FactClaim: claim},
 				command: &domain.PlayerCommand{
 					ActionID: "spread", TargetID: actor.ID, Description: "玩家向" + actor.Name + "分享情报：" + factID,
 					Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "location", Value: state.Player.Location}},
@@ -183,20 +183,20 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 func (s *Session) addRecoveryActions(options map[string]actionOption, state *domain.WorldState) {
 	if action, ok := s.bundle.Actions["heal"]; ok && state.Player.Injury > 0 && fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
 		options["heal"] = actionOption{
-			view:    AvailableAction{ID: "heal", Category: "self", Name: "疗伤", Description: "专心处理伤势，降低一级伤势", Duration: action.Duration},
+			view:    AvailableAction{ID: "heal", Kind: "heal", Category: "self", Name: "疗伤", Description: "专心处理伤势，降低一级伤势", Duration: action.Duration},
 			command: &domain.PlayerCommand{ActionID: "heal", Description: "玩家专心疗伤", Conditions: []domain.Condition{{Type: "injury_at_least", MinConfidence: 1}}, Effects: []domain.Effect{{Type: "adjust_injury", Amount: -1}}},
 		}
 	}
 	if action, ok := s.bundle.Actions["cultivate"]; ok && state.Player.Injury == 0 && fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
 		options["cultivate"] = actionOption{
-			view:    AvailableAction{ID: "cultivate", Category: "self", Name: "修炼", Description: "闭关三日，战力提高一点", Duration: action.Duration},
+			view:    AvailableAction{ID: "cultivate", Kind: "cultivate", Category: "self", Name: "修炼", Description: "闭关三日，战力提高一点", Duration: action.Duration},
 			command: &domain.PlayerCommand{ActionID: "cultivate", Description: "玩家闭关修炼", Conditions: []domain.Condition{{Type: "injury_at_most", MaxConfidence: 0}}, Effects: []domain.Effect{{Type: "adjust_resource", Key: "combat", Amount: 1}}},
 		}
 	}
 }
 
 func waitOption(description string) actionOption {
-	return actionOption{view: AvailableAction{ID: "wait", Category: "time", Name: "等待一天", Description: description, Duration: 1}}
+	return actionOption{view: AvailableAction{ID: "wait", Kind: "advance", Category: "time", Name: "等待一天", Description: description, Duration: 1}}
 }
 
 func maxInt(left, right int) int {

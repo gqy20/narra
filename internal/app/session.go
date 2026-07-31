@@ -170,7 +170,14 @@ func (s *Session) visibleActors(state *domain.WorldState) []VisibleActor {
 	actors := make([]VisibleActor, 0)
 	for _, npc := range state.NPCs {
 		if npc.Location == state.Player.Location {
-			actors = append(actors, VisibleActor{ID: npc.ID, Name: npc.Name, Faction: npc.Faction})
+			profile := "公开资料尚未收集"
+			for _, config := range s.bundle.NPCs {
+				if config.ID == npc.ID && config.PublicProfile != "" {
+					profile = config.PublicProfile
+					break
+				}
+			}
+			actors = append(actors, VisibleActor{ID: npc.ID, Name: npc.Name, Faction: npc.Faction, PublicProfile: profile})
 		}
 	}
 	sort.Slice(actors, func(i, j int) bool { return actors[i].ID < actors[j].ID })

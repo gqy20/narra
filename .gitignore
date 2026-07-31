@@ -1,5 +1,6 @@
 # Generated simulation reports
 /output/
+/saves/
 
 # Build and profiling artifacts
 /bin/
@@ -10,6 +11,9 @@
 *.out
 *.prof
 coverage.*
+
+# Godot generated state
+/godot/.godot/
 
 # Local editor and operating-system files
 .idea/

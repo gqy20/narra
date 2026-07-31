@@ -9,8 +9,10 @@ cmd/                 可执行程序入口
   sim/               单场景运行与状态报告
   batch/             固定验收和参数扫描
   play/              玩家视角的交互式终端客户端
+  server/            Godot 使用的本机 HTTP 服务入口
 internal/
   app/               Session、玩家视图、行动目录和存档回放
+  server/            /api/v1 协议、存档槽与并发边界
   domain/            领域数据、状态和跨包协议
   engine/            逐日决策、行动与事务结算
   scenario/          JSON 加载与静态校验
@@ -29,6 +31,7 @@ output/              可重新生成的报告，不进入 Git
 
 ```text
 cmd ───────> app / scenario / engine / batch / report
+server ────> app / domain
 app ───────> engine / domain
 batch ─────> scenario / engine / domain
 report ────> domain
@@ -44,6 +47,7 @@ domain ────> 标准库
 - `scenario` 负责输入边界；无效引用、枚举、市场、路线和策略配置必须在这里失败。
 - `report` 与 `batch` 只读取引擎快照，不修改世界状态。
 - `app` 将完整世界状态裁剪成玩家可见视图，并把动态行动 ID 转译为玩家命令；它不直接修改 `WorldState`。
+- `server` 只管理单个 Session、请求校验和命名存档槽；它不解释动作 ID，也不暴露任意文件路径。
 - `cmd` 只做参数解析、依赖组装和错误输出，不放业务规则。
 
 ## 3. 引擎生命周期
@@ -78,7 +82,9 @@ M1 应用层位于 `internal/app`，负责 Session、玩家可见视图、动态
 
 交互式 CLI 已通过 `cmd/play` 接入应用层。存档采用“初始玩家 + 行动历史”的版本化格式，加载时通过权威引擎确定性回放，因此不会把内部状态结构固化成外部协议。
 
-未来 Godot 本地服务将作为 `cmd/server` 适配器接入同一应用层；它不得复制行动合法性、视图过滤或结算规则。
+Godot 本地服务由 `cmd/server` 和 `internal/server` 提供，协议固定在 `/api/v1`。服务仅监听回环地址，通过互斥锁串行修改单个 Session；Godot 只渲染 `PlayerView` 并提交服务端给出的动作 ID，不复制行动合法性、视图过滤或结算规则。
+
+存档写入同目录临时文件，完成刷盘与确定性回放校验后再替换目标文件。API 只接受受限槽名并映射到服务端 `saveDir`，避免 UI 传入路径。玩家可见动作附带稳定的语义字段（类型、目标、事实），用于图形界面分组而不依赖字符串解析。
 
 ## 6. 质量门禁
 

@@ -93,9 +93,10 @@ type VisibleLocation struct {
 }
 
 type VisibleActor struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Faction string `json:"faction"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Faction       string `json:"faction"`
+	PublicProfile string `json:"public_profile"`
 }
 
 type VisibleBelief struct {
@@ -122,9 +123,14 @@ type VisibleItem struct {
 
 type AvailableAction struct {
 	ID          string         `json:"id"`
+	Kind        string         `json:"kind"`
 	Category    string         `json:"category"`
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	Duration    int            `json:"duration"`
 	Costs       map[string]int `json:"costs,omitempty"`
+	TargetID    string         `json:"target_id,omitempty"`
+	TargetName  string         `json:"target_name,omitempty"`
+	FactID      string         `json:"fact_id,omitempty"`
+	FactClaim   string         `json:"fact_claim,omitempty"`
 }

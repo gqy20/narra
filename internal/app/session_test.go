@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -58,6 +59,55 @@ func TestInitialCatalogIsDynamicAndRouteAware(t *testing.T) {
 	}
 	if ids["move:L04"] {
 		t.Fatal("locked route to L04 should not be available")
+	}
+}
+
+func TestActionMetadataAndPublicProfilesArePlayerFacing(t *testing.T) {
+	view := testSession(t).View()
+	if len(view.KnownActors) == 0 {
+		t.Fatal("no visible actors")
+	}
+	for _, actor := range view.KnownActors {
+		if actor.PublicProfile == "" || strings.Contains(actor.PublicProfile, "取得青髓芝并为自己筑基") {
+			t.Fatalf("invalid public profile: %+v", actor)
+		}
+	}
+	for _, action := range view.AvailableActions {
+		if action.Kind == "" {
+			t.Fatalf("action missing kind: %+v", action)
+		}
+		if action.Kind == "tell" && (action.TargetID == "" || action.TargetName == "" || action.FactID == "" || action.FactClaim == "") {
+			t.Fatalf("tell action missing semantic metadata: %+v", action)
+		}
+	}
+}
+
+func TestAtomicSaveFileCanReplaceAndReload(t *testing.T) {
+	session := testSession(t)
+	path := filepath.Join(t.TempDir(), "slot.json")
+	if err := session.SaveFile(path); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := session.Execute("wait:next"); err != nil {
+		t.Fatal(err)
+	}
+	if err := session.SaveFile(path); err != nil {
+		t.Fatal(err)
+	}
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := LoadFile(bundle, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(session.View(), restored.View()) {
+		t.Fatalf("atomic save reload differs")
+	}
+	matches, err := filepath.Glob(filepath.Join(filepath.Dir(path), ".fantu-save-*.tmp"))
+	if err != nil || len(matches) != 0 {
+		t.Fatalf("temporary saves left behind: %v, %v", matches, err)
 	}
 }
 

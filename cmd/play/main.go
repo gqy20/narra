@@ -33,15 +33,7 @@ func main() {
 
 	var session *app.Session
 	if *loadPath != "" {
-		file, openErr := os.Open(*loadPath)
-		if openErr != nil {
-			fail(openErr)
-		}
-		session, err = app.LoadSession(bundle, file)
-		closeErr := file.Close()
-		if err == nil {
-			err = closeErr
-		}
+		session, err = app.LoadFile(bundle, *loadPath)
 	} else {
 		session, err = app.NewSession(bundle, defaultPlayer(*playerName))
 	}
@@ -55,15 +47,7 @@ func main() {
 }
 
 func defaultPlayer(name string) domain.PlayerConfig {
-	return domain.PlayerConfig{
-		ID: "P00", Name: name, Location: "L01",
-		Resources: map[string]int{"combat": 2, "support": 0, "spirit_stones": 100, "credit": 3},
-		Items:     []string{"healing_pill"},
-		Beliefs: []domain.Belief{{
-			FactID: "F02", Claim: "青髓芝将在第24天成熟", Confidence: 1,
-			Source: "坊市传言", LearnedOn: 0, Secrecy: 0,
-		}},
-	}
+	return app.DefaultBlackwindPlayer(name)
 }
 
 func run(input io.Reader, output io.Writer, session *app.Session, autosavePath string, debug bool) error {
@@ -343,20 +327,7 @@ func saveSession(path string, session *app.Session) error {
 	if strings.TrimSpace(path) == "" {
 		return errors.New("save path is empty")
 	}
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	saveErr := session.Save(file)
-	closeErr := file.Close()
-	if saveErr != nil {
-		return saveErr
-	}
-	return closeErr
+	return session.SaveFile(path)
 }
 
 func fail(err error) {
