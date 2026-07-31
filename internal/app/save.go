@@ -43,7 +43,7 @@ func LoadSession(bundle domain.Bundle, reader io.Reader) (*Session, error) {
 		return nil, err
 	}
 	for turn, actionID := range data.History {
-		if _, err := session.Execute(actionID); err != nil {
+		if _, err := session.execute(actionID, true); err != nil {
 			return nil, fmt.Errorf("replay turn %d action %s: %w", turn+1, actionID, err)
 		}
 	}

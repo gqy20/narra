@@ -50,6 +50,14 @@ go run ./cmd/play -load saves/blackwind.json
 go run ./cmd/play -autosave saves/autosave.json
 ```
 
+默认界面只显示玩家术语；需要复现测试或查看稳定事实、行动 ID 时使用：
+
+```powershell
+go run ./cmd/play -debug
+```
+
+交互流程会在青髓芝归属确定时立即生成结局。底层引擎仍保留完整 30 天模拟能力。
+
 存档只记录初始玩家和已选择的行动历史；读取时由确定性引擎重新回放。CLI 不读取事实真值、NPC 私有认知、策略评分或世界内部标记。
 
 ## 运行 T00

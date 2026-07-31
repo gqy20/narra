@@ -43,9 +43,10 @@ func (s *Session) turnFeedback(actionID, actionName string, before, after *domai
 	if before.Outcome != after.Outcome && after.Outcome != "" {
 		feedback.Messages = append(feedback.Messages, "核心争夺结果："+after.Outcome)
 	}
+	feedback.Influence = s.visibleInfluence(after, after.Decisions[len(before.Decisions):], false)
 	if len(feedback.Messages) == 0 {
 		if actionID == "wait" {
-			feedback.Messages = append(feedback.Messages, "一天过去，局势继续发展。")
+			feedback.Messages = append(feedback.Messages, quietWaitMessage)
 		} else {
 			feedback.Messages = append(feedback.Messages, actionName+"已经结算。")
 		}
@@ -65,7 +66,7 @@ func resourceChanges(before, after map[string]int) []string {
 	result := make([]string, 0, len(keys))
 	for _, key := range keys {
 		delta := after[key] - before[key]
-		result = append(result, fmt.Sprintf("资源 %s %+d，现有 %d。", key, delta, after[key]))
+		result = append(result, fmt.Sprintf("%s %+d，现有 %d。", resourceName(key), delta, after[key]))
 	}
 	return result
 }
@@ -107,7 +108,7 @@ func beliefChanges(before, after map[string]domain.Belief) []string {
 	result := make([]string, 0, len(keys))
 	for _, key := range keys {
 		belief := after[key]
-		result = append(result, fmt.Sprintf("线索 %s 更新为可信度 %d：%s", key, belief.Confidence, belief.Claim))
+		result = append(result, fmt.Sprintf("线索更新为可信度 %d：%s", belief.Confidence, belief.Claim))
 	}
 	return result
 }
@@ -167,34 +168,125 @@ func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 	}
 	ending.Highlights = append(ending.Highlights,
 		fmt.Sprintf("终局时你位于%s，战力 %d，伤势 %d。", s.visibleLocation(state.Player.Location).Name, state.Player.Resources["combat"], state.Player.Injury))
-	ending.Influence = s.visibleInfluence(state)
+	ending.Influence = s.visibleInfluence(state, state.Decisions, true)
 	return ending
 }
 
-func (s *Session) visibleInfluence(state *domain.WorldState) []string {
-	playerEvents := make(map[string]bool)
-	var result []string
+type visibleDelivery struct {
+	eventID   string
+	actorID   string
+	actorName string
+	factID    string
+	factClaim string
+	day       int
+}
+
+func (s *Session) visibleInfluence(state *domain.WorldState, decisions []domain.DecisionRecord, includeDeliveries bool) []VisibleInfluence {
+	deliveries := make(map[string]visibleDelivery)
+	orderedDeliveryIDs := make([]string, 0)
 	for _, event := range state.Events {
-		if event.ActorID == state.Player.ID {
-			playerEvents[event.ID] = true
-			if event.ActionID == "spread" {
-				for _, effect := range event.Effects {
-					if effect.Type == "set_belief" {
-						result = append(result, fmt.Sprintf("第 %d 天，你把 %s 告诉了%s；该情报已进入其认知。", event.Day, effect.FactID, s.actorName(state, event.TargetID)))
-					}
-				}
+		if event.ActorID != state.Player.ID || event.ActionID != "spread" {
+			continue
+		}
+		for _, effect := range event.Effects {
+			if effect.Type != "set_belief" {
+				continue
 			}
+			claim := effect.Claim
+			if belief, ok := state.Player.Beliefs[effect.FactID]; claim == "" && ok {
+				claim = belief.Claim
+			}
+			deliveries[event.ID] = visibleDelivery{
+				eventID: event.ID, actorID: event.TargetID, actorName: s.actorName(state, event.TargetID),
+				factID: effect.FactID, factClaim: claim, day: event.Day,
+			}
+			orderedDeliveryIDs = append(orderedDeliveryIDs, event.ID)
+			break
 		}
 	}
-	for _, decision := range state.Decisions {
+
+	result := make([]VisibleInfluence, 0)
+	indexes := make(map[string]int)
+	if includeDeliveries {
+		for _, eventID := range orderedDeliveryIDs {
+			delivery := deliveries[eventID]
+			indexes[eventID] = len(result)
+			result = append(result, VisibleInfluence{
+				ActorName: delivery.actorName, FactID: delivery.factID,
+				FactClaim: delivery.factClaim, DeliveredDay: delivery.day,
+			})
+		}
+	}
+	for _, decision := range decisions {
 		for _, counterfactual := range decision.Counterfactuals {
-			if counterfactual.Kind == "belief" && counterfactual.Changed && playerEvents[counterfactual.TriggerEventID] {
-				result = append(result, fmt.Sprintf("第 %d 天，你提供的情报改变了%s的首选行动。", decision.Day, decision.ActorName))
-				break
+			delivery, ok := deliveries[counterfactual.TriggerEventID]
+			if counterfactual.Kind != "belief" || !counterfactual.Changed || !ok {
+				continue
+			}
+			index, exists := indexes[counterfactual.TriggerEventID]
+			if !exists {
+				index = len(result)
+				indexes[counterfactual.TriggerEventID] = index
+				result = append(result, VisibleInfluence{
+					ActorName: delivery.actorName, FactID: delivery.factID,
+					FactClaim: delivery.factClaim, DeliveredDay: delivery.day,
+				})
+			}
+			change := VisibleDecisionChange{
+				Day:                decision.Day,
+				WithoutInformation: s.strategyDescription(decision.ActorID, counterfactual.AlternativeStrategyID, decision.Choices, "其他安排"),
+				WithInformation:    s.strategyDescription(decision.ActorID, counterfactual.OriginalStrategyID, decision.Choices, "新的安排"),
+			}
+			result[index].Changes = appendUniqueChange(result[index].Changes, change)
+		}
+	}
+	return result
+}
+
+func (s *Session) strategyDescription(actorID, strategyID string, choices []domain.RankedChoice, fallback string) string {
+	if strategyID == "" {
+		return "暂不采取相关行动"
+	}
+	for _, choice := range choices {
+		if choice.StrategyID == strategyID && choice.Description != "" {
+			return choice.Description
+		}
+	}
+	for _, npc := range s.bundle.NPCs {
+		if npc.ID != actorID {
+			continue
+		}
+		for _, strategy := range npc.Strategies {
+			if strategy.ID == strategyID && strategy.Description != "" {
+				return strategy.Description
 			}
 		}
 	}
-	return uniqueStrings(result)
+	return fallback
+}
+
+func appendUniqueChange(changes []VisibleDecisionChange, candidate VisibleDecisionChange) []VisibleDecisionChange {
+	for _, change := range changes {
+		if change == candidate {
+			return changes
+		}
+	}
+	return append(changes, candidate)
+}
+
+func resourceName(key string) string {
+	switch key {
+	case "combat":
+		return "战力"
+	case "support":
+		return "支援"
+	case "spirit_stones":
+		return "灵石"
+	case "credit":
+		return "信誉"
+	default:
+		return key
+	}
 }
 
 func (s *Session) actorName(state *domain.WorldState, actorID string) string {
@@ -213,7 +305,16 @@ func cloneTurnFeedback(source *TurnFeedback) *TurnFeedback {
 	}
 	clone := *source
 	clone.Messages = append([]string(nil), source.Messages...)
+	clone.Influence = cloneInfluences(source.Influence)
 	return &clone
+}
+
+func cloneInfluences(source []VisibleInfluence) []VisibleInfluence {
+	result := append([]VisibleInfluence(nil), source...)
+	for index := range result {
+		result[index].Changes = append([]VisibleDecisionChange(nil), source[index].Changes...)
+	}
+	return result
 }
 
 func uniqueStrings(values []string) []string {

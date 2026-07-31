@@ -9,21 +9,27 @@ import (
 )
 
 type Session struct {
-	bundle   domain.Bundle
-	initial  domain.PlayerConfig
-	engine   *engine.Engine
-	history  []string
-	nextID   int
-	lastTurn *TurnFeedback
+	bundle               domain.Bundle
+	initial              domain.PlayerConfig
+	engine               *engine.Engine
+	history              []string
+	nextID               int
+	lastTurn             *TurnFeedback
+	metrics              PlayMetrics
+	quietWaitStreak      int
+	lastActiveAction     string
+	repeatedActiveAction int
 }
 
 func NewSession(bundle domain.Bundle, player domain.PlayerConfig) (*Session, error) {
 	if err := validatePlayer(bundle, player); err != nil {
 		return nil, err
 	}
-	return &Session{
+	session := &Session{
 		bundle: bundle, initial: clonePlayerConfig(player), engine: engine.NewWithPlayer(bundle, player),
-	}, nil
+	}
+	session.metrics.MaxActionCatalog = len(session.actionCatalog(session.engine.State()))
+	return session, nil
 }
 
 func validatePlayer(bundle domain.Bundle, player domain.PlayerConfig) error {
@@ -54,12 +60,12 @@ func (s *Session) View() PlayerView {
 	view := PlayerView{
 		ScenarioID: s.bundle.Scenario.ID, Title: s.bundle.Scenario.Title,
 		Day: state.Day, Duration: s.bundle.Scenario.Duration, Phase: state.Phase,
-		Ended: state.Day >= s.bundle.Scenario.Duration, Player: s.visiblePlayer(state),
+		Ended: state.Day >= s.bundle.Scenario.Duration, Resolved: state.Outcome != "", Player: s.visiblePlayer(state),
 		Location:    s.visibleLocation(state.Player.Location),
 		KnownActors: s.visibleActors(state), KnownFacts: visibleBeliefs(state.Player.Beliefs),
 		RecentEvents: s.visibleEvents(state),
 	}
-	if view.Ended {
+	if view.Resolved || view.Ended {
 		view.Outcome = state.Outcome
 		view.Ending = s.endingSummary(state)
 	} else {
@@ -67,15 +73,24 @@ func (s *Session) View() PlayerView {
 		view.Guidance = s.guidance(state, view.AvailableActions)
 	}
 	view.LastTurn = cloneTurnFeedback(s.lastTurn)
+	view.Metrics = s.metricsView(state)
 	return view
 }
 
 func (s *Session) Execute(actionID string) (PlayerView, error) {
+	return s.execute(actionID, false)
+}
+
+func (s *Session) execute(actionID string, allowAfterResolution bool) (PlayerView, error) {
 	state := s.engine.State()
 	if state.Day >= s.bundle.Scenario.Duration {
 		return s.View(), fmt.Errorf("scenario already ended on day %d", state.Day)
 	}
+	if state.Outcome != "" && !allowAfterResolution {
+		return s.View(), fmt.Errorf("core situation already resolved on day %d", state.Day)
+	}
 	options := s.actionOptions(state)
+	s.recordCatalogSize(len(options))
 	option, ok := options[actionID]
 	if !ok {
 		return s.View(), fmt.Errorf("action %q is not currently available", actionID)
@@ -98,7 +113,9 @@ func (s *Session) Execute(actionID string) (PlayerView, error) {
 		return s.View(), err
 	}
 	s.history = append(s.history, actionID)
-	s.lastTurn = s.turnFeedback(actionID, actionName, state, s.engine.State())
+	after := s.engine.State()
+	s.lastTurn = s.turnFeedback(actionID, actionName, state, after)
+	s.recordMetrics(actionID, state, after, s.lastTurn)
 	return s.View(), nil
 }
 

@@ -23,6 +23,7 @@ func main() {
 	playerName := flag.String("name", "无名散修", "new-game player name")
 	loadPath := flag.String("load", "", "load an existing save file")
 	autosavePath := flag.String("autosave", "", "save automatically after every turn")
+	debug := flag.Bool("debug", false, "show stable IDs and internal metric details")
 	flag.Parse()
 
 	bundle, err := scenario.Load(*dataDir)
@@ -48,7 +49,7 @@ func main() {
 		fail(err)
 	}
 
-	if err := run(os.Stdin, os.Stdout, session, *autosavePath); err != nil {
+	if err := run(os.Stdin, os.Stdout, session, *autosavePath, *debug); err != nil {
 		fail(err)
 	}
 }
@@ -65,15 +66,15 @@ func defaultPlayer(name string) domain.PlayerConfig {
 	}
 }
 
-func run(input io.Reader, output io.Writer, session *app.Session, autosavePath string) error {
+func run(input io.Reader, output io.Writer, session *app.Session, autosavePath string, debug bool) error {
 	scanner := bufio.NewScanner(input)
 	fmt.Fprintln(output, "凡途 · 黑风谷局势")
 	fmt.Fprintln(output, "输入行动编号推进一天；输入 help 查看命令。")
 
 	for {
 		view := session.View()
-		renderView(output, view)
-		if view.Ended {
+		renderView(output, view, debug)
+		if view.Resolved || view.Ended {
 			return nil
 		}
 
@@ -140,24 +141,30 @@ func resolveAction(input string, actions []app.AvailableAction) (string, error) 
 	return "", fmt.Errorf("未知行动 %q", input)
 }
 
-func renderView(output io.Writer, view app.PlayerView) {
-	fmt.Fprintf(output, "\n=== 第 %d/%d 天 · %s ===\n", view.Day, view.Duration, view.Location.Name)
+func renderView(output io.Writer, view app.PlayerView, debug bool) {
+	fmt.Fprintf(output, "\n=== 第 %d/%d 天 · %s · %s ===\n", view.Day, view.Duration, phaseLabel(view.Phase), view.Location.Name)
 	if view.LastTurn != nil {
-		fmt.Fprintf(output, "上回合：%s [%s]\n", view.LastTurn.Action, view.LastTurn.Status)
+		fmt.Fprintf(output, "上回合：%s [%s]\n", view.LastTurn.Action, statusLabel(view.LastTurn.Status))
 		for _, message := range view.LastTurn.Messages {
 			fmt.Fprintf(output, "  - %s\n", message)
 		}
+		renderInfluences(output, view.LastTurn.Influence, debug, "情报回响")
 	}
-	if view.Ended {
+	if view.Resolved || view.Ended {
 		fmt.Fprintf(output, "局势结束：%s\n", view.Outcome)
 		if view.Ending != nil {
 			fmt.Fprintln(output, "你的历程：")
 			for _, highlight := range view.Ending.Highlights {
 				fmt.Fprintf(output, "  - %s\n", highlight)
 			}
-			for _, influence := range view.Ending.Influence {
-				fmt.Fprintf(output, "  - %s\n", influence)
-			}
+			renderInfluences(output, view.Ending.Influence, debug, "关键影响")
+		}
+		fmt.Fprintf(output, "试玩记录：%d 次决策输入，%d 次主动行动，%d 次等待；核心结果产生于第 %d 天。\n",
+			view.Metrics.DecisionInputs, view.Metrics.ActiveActions, view.Metrics.WaitActions, view.Metrics.CoreResultDay)
+		if debug {
+			fmt.Fprintf(output, "调试指标：最大行动目录=%d，最长空等待=%d，最大重复主动行动=%d，可见决策变化=%d，结果后输入=%d。\n",
+				view.Metrics.MaxActionCatalog, view.Metrics.LongestQuietWait, view.Metrics.MaxRepeatedActiveAction,
+				view.Metrics.VisibleDecisionChanges, view.Metrics.PostResultInputs)
 		}
 		return
 	}
@@ -169,7 +176,7 @@ func renderView(output io.Writer, view app.PlayerView) {
 	sort.Strings(resourceKeys)
 	resources := make([]string, 0, len(resourceKeys))
 	for _, key := range resourceKeys {
-		resources = append(resources, fmt.Sprintf("%s=%d", key, view.Player.Resources[key]))
+		resources = append(resources, fmt.Sprintf("%s=%d", resourceLabel(key), view.Player.Resources[key]))
 	}
 	fmt.Fprintf(output, "%s｜伤势 %d｜%s\n", view.Player.Name, view.Player.Injury, strings.Join(resources, "  "))
 
@@ -186,7 +193,11 @@ func renderView(output io.Writer, view app.PlayerView) {
 	if len(view.KnownFacts) > 0 {
 		fmt.Fprintln(output, "线索：")
 		for _, belief := range view.KnownFacts {
-			fmt.Fprintf(output, "  %s [%s] %s（来源：%s）\n", belief.FactID, confidenceLabel(belief.Confidence), belief.Claim, belief.Source)
+			id := ""
+			if debug {
+				id = belief.FactID + " "
+			}
+			fmt.Fprintf(output, "  %s[%s] %s（来源：%s）\n", id, confidenceLabel(belief.Confidence), belief.Claim, sourceLabel(belief.Source))
 		}
 	}
 	if len(view.KnownActors) > 0 {
@@ -208,13 +219,83 @@ func renderView(output io.Writer, view app.PlayerView) {
 		if len(action.Costs) > 0 {
 			parts := make([]string, 0, len(action.Costs))
 			for key, amount := range action.Costs {
-				parts = append(parts, fmt.Sprintf("%s %d", key, amount))
+				parts = append(parts, fmt.Sprintf("%s %d", resourceLabel(key), amount))
 			}
 			sort.Strings(parts)
 			cost = "；花费 " + strings.Join(parts, "、")
 		}
-		fmt.Fprintf(output, "  %d. %s [%s] — %s（%d 天%s）\n", index+1, action.Name, action.ID, action.Description, action.Duration, cost)
+		id := ""
+		if debug {
+			id = " [" + action.ID + "]"
+		}
+		fmt.Fprintf(output, "  %d. %s%s — %s（%d 天%s）\n", index+1, action.Name, id, action.Description, action.Duration, cost)
 	}
+}
+
+func renderInfluences(output io.Writer, influences []app.VisibleInfluence, debug bool, title string) {
+	if len(influences) == 0 {
+		return
+	}
+	fmt.Fprintln(output, title+"：")
+	for _, influence := range influences {
+		fact := "这条情报"
+		if influence.FactClaim != "" {
+			fact = "“" + influence.FactClaim + "”"
+		}
+		if debug {
+			fact += " [" + influence.FactID + "]"
+		}
+		fmt.Fprintf(output, "  - 第 %d 天，你把%s告诉了%s。\n", influence.DeliveredDay, fact, influence.ActorName)
+		for _, change := range influence.Changes {
+			fmt.Fprintf(output, "    第 %d 天：原本会“%s”，现在改为“%s”。\n", change.Day, change.WithoutInformation, change.WithInformation)
+		}
+	}
+}
+
+func resourceLabel(key string) string {
+	switch key {
+	case "combat":
+		return "战力"
+	case "support":
+		return "支援"
+	case "spirit_stones":
+		return "灵石"
+	case "credit":
+		return "信誉"
+	default:
+		return key
+	}
+}
+
+func statusLabel(status string) string {
+	switch status {
+	case "started":
+		return "已开始"
+	case "progressing":
+		return "进行中"
+	case "completed":
+		return "已完成"
+	default:
+		return status
+	}
+}
+
+func sourceLabel(source string) string {
+	switch source {
+	case "player-investigation":
+		return "亲自核验"
+	case "player-investigation-lead":
+		return "调查所得线索"
+	default:
+		return source
+	}
+}
+
+func phaseLabel(phase string) string {
+	if phase == "" {
+		return "序幕"
+	}
+	return phase
 }
 
 func confidenceLabel(value int) string {

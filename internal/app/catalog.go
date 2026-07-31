@@ -65,7 +65,7 @@ func (s *Session) addInvestigationActions(options map[string]actionOption, state
 			})
 		}
 		options[id] = actionOption{
-			view: AvailableAction{ID: id, Category: "investigate", Name: "核验 " + factID, Description: "核验当前掌握的低可信线索", Duration: action.Duration},
+			view: AvailableAction{ID: id, Category: "investigate", Name: "核验线索", Description: "核验：“" + belief.Claim + "”", Duration: action.Duration},
 			command: &domain.PlayerCommand{
 				ActionID: "verify", Description: "玩家核验线索：" + factID,
 				Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "belief_max", Key: factID, MaxConfidence: 2}},
@@ -162,7 +162,7 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 				claim = "玩家转述的线索"
 			}
 			options[id] = actionOption{
-				view: AvailableAction{ID: id, Category: "information", Name: "告知" + actor.Name + "：" + factID, Description: "免费分享自己当前相信的说法", Duration: action.Duration},
+				view: AvailableAction{ID: id, Category: "information", Name: "告知" + actor.Name + "一条线索", Description: "分享：“" + claim + "”", Duration: action.Duration},
 				command: &domain.PlayerCommand{
 					ActionID: "spread", TargetID: actor.ID, Description: "玩家向" + actor.Name + "分享情报：" + factID,
 					Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "location", Value: state.Player.Location}},
