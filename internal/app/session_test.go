@@ -164,7 +164,7 @@ func TestDemoInvestigatorJourneyChangesPlayerKnowledge(t *testing.T) {
 	actions := append([]string{"verify:F02", "wait"}, repeatAction("wait", 28)...)
 	executeMany(t, session, actions)
 	view := session.View()
-	if !view.Ended || beliefConfidence(view.KnownFacts, "F02") != 3 {
+	if !view.Ended || beliefConfidence(view.KnownFacts, "F02") != 3 || beliefConfidence(view.KnownFacts, "F01") != 3 || beliefConfidence(view.KnownFacts, "F08") != 2 {
 		t.Fatalf("investigator journey did not preserve verified knowledge: %+v", view.KnownFacts)
 	}
 	if view.Ending == nil || !containsMessage(view.Ending.Highlights, "核验情报 1 次") {
@@ -198,19 +198,19 @@ func TestDemoPreparedContenderCanWinCoreContest(t *testing.T) {
 
 func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	session := testSession(t)
-	actions := []string{"verify:F02", "wait", "move:L02", "tell:N03:F02"}
+	actions := []string{"verify:F02", "wait", "move:L02", "tell:N03:F01"}
 	for index, action := range actions {
 		view, err := session.Execute(action)
 		if err != nil {
 			t.Fatalf("turn %d execute %s: %v", index+1, action, err)
 		}
-		if action == "tell:N03:F02" && (view.LastTurn == nil || !containsMessage(view.LastTurn.Messages, "情报已经送达沈砚秋")) {
+		if action == "tell:N03:F01" && (view.LastTurn == nil || !containsMessage(view.LastTurn.Messages, "情报已经送达沈砚秋")) {
 			t.Fatalf("message delivery feedback = %+v", view.LastTurn)
 		}
 	}
 	executeMany(t, session, repeatAction("wait", 26))
 	view := session.View()
-	if view.Ending == nil || !containsMessage(view.Ending.Influence, "F02 告诉了沈砚秋") {
+	if view.Ending == nil || !strings.Contains(view.Outcome, "沈砚秋") || !containsMessage(view.Ending.Influence, "F01 告诉了沈砚秋") || !containsMessage(view.Ending.Influence, "改变了沈砚秋的首选行动") {
 		t.Fatalf("messenger influence = %+v", view.Ending)
 	}
 }

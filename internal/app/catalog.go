@@ -54,12 +54,22 @@ func (s *Session) addInvestigationActions(options map[string]actionOption, state
 			continue
 		}
 		id := "verify:" + factID
+		effects := []domain.Effect{{Type: "set_belief", FactID: factID, Confidence: 3, EvidenceStrength: 4, Source: "player-investigation"}}
+		for _, lead := range fact.Leads {
+			if lead.FactID == factID {
+				continue
+			}
+			effects = append(effects, domain.Effect{
+				Type: "set_belief", FactID: lead.FactID, Confidence: lead.Confidence,
+				EvidenceStrength: lead.Confidence, Source: "player-investigation-lead",
+			})
+		}
 		options[id] = actionOption{
 			view: AvailableAction{ID: id, Category: "investigate", Name: "核验 " + factID, Description: "核验当前掌握的低可信线索", Duration: action.Duration},
 			command: &domain.PlayerCommand{
 				ActionID: "verify", Description: "玩家核验线索：" + factID,
 				Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "belief_max", Key: factID, MaxConfidence: 2}},
-				Effects:    []domain.Effect{{Type: "set_belief", FactID: factID, Confidence: 3, EvidenceStrength: 4, Source: "player-investigation"}},
+				Effects:    effects,
 			},
 		}
 	}
