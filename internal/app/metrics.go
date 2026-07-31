@@ -20,15 +20,25 @@ func (s *Session) recordMetrics(actionID string, before, after *domain.WorldStat
 	if before.Outcome != "" {
 		s.metrics.PostResultInputs++
 	}
-	if actionID == "wait" {
+	if strings.HasPrefix(actionID, "wait") {
 		s.metrics.WaitActions++
-		if len(feedback.Messages) == 1 && feedback.Messages[0] == quietWaitMessage && len(feedback.Influence) == 0 {
-			s.quietWaitStreak++
+		if feedback.QuietDays > 0 {
+			s.quietWaitStreak += feedback.QuietDays
+		} else if len(feedback.Messages) == 1 && feedback.Messages[0] == quietWaitMessage && len(feedback.Influence) == 0 {
+			s.quietWaitStreak += maxInt(1, feedback.DaysAdvanced)
+		}
+		if s.quietWaitStreak > 0 {
 			if s.quietWaitStreak > s.metrics.LongestQuietWait {
 				s.metrics.LongestQuietWait = s.quietWaitStreak
 			}
+			if feedback.QuietDays < feedback.DaysAdvanced {
+				s.quietWaitStreak = 0
+			}
 		} else {
 			s.quietWaitStreak = 0
+		}
+		if actionID != "wait" {
+			s.metrics.AutoAdvancedDays += feedback.DaysAdvanced
 		}
 	} else {
 		s.metrics.ActiveActions++

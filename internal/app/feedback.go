@@ -9,7 +9,10 @@ import (
 )
 
 func (s *Session) turnFeedback(actionID, actionName string, before, after *domain.WorldState) *TurnFeedback {
-	feedback := &TurnFeedback{Day: after.Day, ActionID: actionID, Action: actionName, Status: "completed"}
+	feedback := &TurnFeedback{Day: after.Day, DaysAdvanced: after.Day - before.Day, ActionID: actionID, Action: actionName, Status: "completed"}
+	if before.Phase != after.Phase && after.Phase != "" {
+		feedback.Messages = append(feedback.Messages, "局势进入“"+after.Phase+"”阶段。")
+	}
 
 	if after.Player.Pending != nil {
 		feedback.Status = "started"
@@ -24,6 +27,9 @@ func (s *Session) turnFeedback(actionID, actionName string, before, after *domai
 
 	if before.Player.Location != after.Player.Location {
 		feedback.Messages = append(feedback.Messages, "抵达"+s.visibleLocation(after.Player.Location).Name+"。")
+	}
+	if before.Player.Location == after.Player.Location {
+		feedback.Messages = append(feedback.Messages, s.visibleActorChanges(before, after)...)
 	}
 	if before.Player.Injury != after.Player.Injury {
 		feedback.Messages = append(feedback.Messages,
@@ -132,9 +138,6 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 	if state.Player.Items["antidote"] == 0 && available["buy:M01:antidote"] {
 		result = append(result, "解瘴丹目前仍可购买；进入黑风谷需要它，市场供应可能随局势变化。")
 	}
-	if (state.Player.Location == "L01" || state.Player.Location == "L02" || state.Player.Location == "L03") && !available["move:L04"] {
-		result = append(result, "通往黑风谷的条件尚未齐备；路线开放与解瘴丹都会影响通行。")
-	}
 	if len(result) == 0 {
 		result = append(result, "没有必须执行的行动；根据已知线索决定调查、交涉、准备或等待。")
 	}
@@ -144,10 +147,8 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 	ending := &EndingSummary{Outcome: state.Outcome}
 	counts := make(map[string]int)
-	waits := 0
 	for _, actionID := range s.history {
-		if actionID == "wait" {
-			waits++
+		if strings.HasPrefix(actionID, "wait") {
 			continue
 		}
 		category := actionID
@@ -157,7 +158,7 @@ func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 		counts[category]++
 	}
 	ending.Highlights = append(ending.Highlights,
-		fmt.Sprintf("你推进了 %d 天，其中主动行动 %d 次、等待 %d 天。", len(s.history), len(s.history)-waits, waits))
+		fmt.Sprintf("局势推进到第 %d 天；你做出 %d 次决策，其中主动行动 %d 次、推进时间 %d 次。", state.Day, s.metrics.DecisionInputs, s.metrics.ActiveActions, s.metrics.WaitActions))
 	for _, entry := range []struct {
 		key  string
 		text string
@@ -297,6 +298,38 @@ func (s *Session) actorName(state *domain.WorldState, actorID string) string {
 		return npc.Name
 	}
 	return actorID
+}
+
+func (s *Session) visibleActorChanges(before, after *domain.WorldState) []string {
+	beforeVisible := make(map[string]VisibleActor)
+	for _, actor := range s.visibleActors(before) {
+		beforeVisible[actor.ID] = actor
+	}
+	afterVisible := make(map[string]VisibleActor)
+	for _, actor := range s.visibleActors(after) {
+		afterVisible[actor.ID] = actor
+	}
+	var arrived, left []string
+	for id, actor := range afterVisible {
+		if _, existed := beforeVisible[id]; !existed {
+			arrived = append(arrived, actor.Name)
+		}
+	}
+	for id, actor := range beforeVisible {
+		if _, remains := afterVisible[id]; !remains {
+			left = append(left, actor.Name)
+		}
+	}
+	sort.Strings(arrived)
+	sort.Strings(left)
+	var result []string
+	if len(arrived) > 0 {
+		result = append(result, strings.Join(arrived, "、")+"来到此地。")
+	}
+	if len(left) > 0 {
+		result = append(result, strings.Join(left, "、")+"离开此地。")
+	}
+	return result
 }
 
 func cloneTurnFeedback(source *TurnFeedback) *TurnFeedback {

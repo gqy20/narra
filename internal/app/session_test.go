@@ -51,7 +51,7 @@ func TestViewOnlyExposesPlayerKnowledge(t *testing.T) {
 func TestInitialCatalogIsDynamicAndRouteAware(t *testing.T) {
 	view := testSession(t).View()
 	ids := actionIDs(view.AvailableActions)
-	for _, want := range []string{"verify:F02", "buy:M01:antidote", "move:L02", "move:L03", "cultivate", "wait"} {
+	for _, want := range []string{"verify:F02", "buy:M01:antidote", "move:L02", "move:L03", "cultivate", "wait:next"} {
 		if !ids[want] {
 			t.Errorf("missing action %s in %#v", want, ids)
 		}
@@ -78,7 +78,7 @@ func TestBuyAndInvestigationUseAuthoritativeEngine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !view.Player.Busy || len(view.AvailableActions) != 1 || view.AvailableActions[0].ID != "wait" {
+	if !view.Player.Busy || len(view.AvailableActions) != 1 || view.AvailableActions[0].ID != "wait:complete" {
 		t.Fatalf("multi-day action state = %+v / %+v", view.Player, view.AvailableActions)
 	}
 	if view.LastTurn == nil || view.LastTurn.Status != "started" {
@@ -99,13 +99,48 @@ func TestBuyAndInvestigationUseAuthoritativeEngine(t *testing.T) {
 func TestInitialGuidanceExplainsCoreDecisionWithoutLeakingTrueDate(t *testing.T) {
 	view := testSession(t).View()
 	joined := strings.Join(view.Guidance, " ")
-	for _, want := range []string{"只是传闻", "解瘴丹", "路线"} {
+	for _, want := range []string{"只是传闻", "解瘴丹"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("guidance %q does not mention %q", joined, want)
 		}
 	}
 	if strings.Contains(joined, "第21天") {
 		t.Fatalf("guidance leaked the true maturity date: %s", joined)
+	}
+	if view.Travel == nil || view.Travel.TravelDays != 3 || view.Travel.Ready || !containsMessage(view.Travel.Blockers, "缺少解瘴丹") || !containsMessage(view.Travel.Blockers, "入口尚未开放") || !strings.Contains(view.Travel.Timing, "未经核实") {
+		t.Fatalf("initial travel guidance = %+v", view.Travel)
+	}
+}
+
+func TestWaitUntilCompleteSkipsBusyDays(t *testing.T) {
+	session := testSession(t)
+	if _, err := session.Execute("cultivate"); err != nil {
+		t.Fatal(err)
+	}
+	view, err := session.Execute("wait:complete")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Day != 3 || view.Player.Busy || view.LastTurn == nil || view.LastTurn.DaysAdvanced != 2 {
+		t.Fatalf("wait until complete view = %+v", view)
+	}
+	if view.Metrics.DecisionInputs != 2 || view.Metrics.AutoAdvancedDays != 2 {
+		t.Fatalf("wait until complete metrics = %+v", view.Metrics)
+	}
+}
+
+func TestTravelGuidanceSeparatesItemRouteAndKnownDeadline(t *testing.T) {
+	session := testSession(t)
+	executeMany(t, session, []string{"buy:M01:antidote", "verify:F02", "wait:complete"})
+	view := session.View()
+	if view.Travel == nil || containsMessage(view.Travel.Blockers, "缺少解瘴丹") || !containsMessage(view.Travel.Blockers, "入口尚未开放") || !strings.Contains(view.Travel.Timing, "已核实日期") {
+		t.Fatalf("prepared travel guidance = %+v", view.Travel)
+	}
+	for view.Day < 17 {
+		view, _ = session.Execute("wait")
+	}
+	if view.Travel == nil || !view.Travel.Ready || len(view.Travel.Blockers) != 0 {
+		t.Fatalf("day 17 travel guidance = %+v", view.Travel)
 	}
 }
 
@@ -172,6 +207,28 @@ func TestSaveReplayAcceptsVersionOneHistoryAfterCoreResolution(t *testing.T) {
 	}
 }
 
+func TestSaveReplayPreservesMacroAdvance(t *testing.T) {
+	session := testSession(t)
+	if _, err := session.Execute("wait:next"); err != nil {
+		t.Fatal(err)
+	}
+	var data bytes.Buffer
+	if err := session.Save(&data); err != nil {
+		t.Fatal(err)
+	}
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := LoadSession(bundle, &data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(session.View(), restored.View()) {
+		t.Fatalf("macro replay differs\nwant: %+v\ngot:  %+v", session.View(), restored.View())
+	}
+}
+
 func TestDemoObserverJourneyReachesExplainedEnding(t *testing.T) {
 	session := testSession(t)
 	executeUntilResolved(t, session)
@@ -179,7 +236,7 @@ func TestDemoObserverJourneyReachesExplainedEnding(t *testing.T) {
 	if !view.Resolved || view.Ended || view.Day != 21 || view.Ending == nil || !strings.Contains(view.Outcome, "李玄") {
 		t.Fatalf("observer ending = %+v", view.Ending)
 	}
-	if !containsMessage(view.Ending.Highlights, "等待 21 天") {
+	if !containsMessage(view.Ending.Highlights, "21 次决策") || !containsMessage(view.Ending.Highlights, "推进时间 21 次") {
 		t.Fatalf("observer highlights = %v", view.Ending.Highlights)
 	}
 	if view.Metrics.CoreResultDay != 21 || view.Metrics.PostResultInputs != 0 || view.Metrics.DecisionInputs != 21 {
@@ -187,6 +244,25 @@ func TestDemoObserverJourneyReachesExplainedEnding(t *testing.T) {
 	}
 	if _, err := session.Execute("wait"); err == nil {
 		t.Fatal("public session accepted input after core resolution")
+	}
+}
+
+func TestDemoObserverCanAdvanceOnlyAtDecisionPoints(t *testing.T) {
+	session := testSession(t)
+	var stops []int
+	for !session.View().Resolved {
+		view, err := session.Execute("wait:next")
+		if err != nil {
+			t.Fatal(err)
+		}
+		stops = append(stops, view.Day)
+	}
+	if len(stops) > 4 || stops[len(stops)-1] != 21 {
+		t.Fatalf("observer advance stops = %v", stops)
+	}
+	view := session.View()
+	if view.Metrics.DecisionInputs > 4 || view.Metrics.AutoAdvancedDays != 21 {
+		t.Fatalf("observer macro metrics = %+v", view.Metrics)
 	}
 }
 
@@ -229,7 +305,7 @@ func TestDemoPreparedContenderCanWinCoreContest(t *testing.T) {
 
 func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	session := testSession(t)
-	actions := []string{"verify:F02", "wait", "move:L02", "tell:N03:F01"}
+	actions := []string{"verify:F02", "wait:complete", "move:L02", "tell:N03:F01"}
 	for index, action := range actions {
 		view, err := session.Execute(action)
 		if err != nil {
@@ -239,19 +315,29 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 			t.Fatalf("message delivery feedback = %+v", view.LastTurn)
 		}
 	}
-	view, err := session.Execute("wait")
+	view, err := session.Execute("wait:next")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if view.LastTurn == nil || !hasDecisionChange(view.LastTurn.Influence, "沈砚秋", "F01", 5) {
 		t.Fatalf("day 5 immediate influence = %+v", view.LastTurn)
 	}
-	executeUntilResolved(t, session)
-	view = session.View()
+	for _, wantDay := range []int{17, 19, 21} {
+		view, err = session.Execute("wait:next")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if view.Day != wantDay {
+			t.Fatalf("advance stopped on day %d, want %d", view.Day, wantDay)
+		}
+		if wantDay == 17 && !containsMessage(view.LastTurn.Messages, "入口封锁出现松动迹象") {
+			t.Fatalf("day 17 feedback omitted route signal: %+v", view.LastTurn)
+		}
+	}
 	if view.Ending == nil || !strings.Contains(view.Outcome, "沈砚秋") || !hasDecisionChange(view.Ending.Influence, "沈砚秋", "F01", 5) {
 		t.Fatalf("messenger influence = %+v", view.Ending)
 	}
-	if view.Metrics.VisibleDecisionChanges < 1 || view.Metrics.CoreResultDay != 21 {
+	if view.Metrics.VisibleDecisionChanges < 1 || view.Metrics.CoreResultDay != 21 || view.Metrics.DecisionInputs != 8 || view.Metrics.AutoAdvancedDays != 18 {
 		t.Fatalf("messenger metrics = %+v", view.Metrics)
 	}
 }

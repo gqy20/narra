@@ -19,15 +19,18 @@ type PlayerView struct {
 	LastTurn         *TurnFeedback     `json:"last_turn,omitempty"`
 	Ending           *EndingSummary    `json:"ending,omitempty"`
 	Metrics          PlayMetrics       `json:"metrics"`
+	Travel           *TravelGuidance   `json:"travel,omitempty"`
 }
 
 type TurnFeedback struct {
-	Day       int                `json:"day"`
-	ActionID  string             `json:"action_id"`
-	Action    string             `json:"action"`
-	Status    string             `json:"status"`
-	Messages  []string           `json:"messages"`
-	Influence []VisibleInfluence `json:"influence,omitempty"`
+	Day          int                `json:"day"`
+	DaysAdvanced int                `json:"days_advanced"`
+	QuietDays    int                `json:"quiet_days,omitempty"`
+	ActionID     string             `json:"action_id"`
+	Action       string             `json:"action"`
+	Status       string             `json:"status"`
+	Messages     []string           `json:"messages"`
+	Influence    []VisibleInfluence `json:"influence,omitempty"`
 }
 
 type EndingSummary struct {
@@ -61,6 +64,15 @@ type PlayMetrics struct {
 	VisibleDecisionChanges  int `json:"visible_decision_changes"`
 	CoreResultDay           int `json:"core_result_day,omitempty"`
 	PostResultInputs        int `json:"post_result_inputs"`
+	AutoAdvancedDays        int `json:"auto_advanced_days"`
+}
+
+type TravelGuidance struct {
+	Destination string   `json:"destination"`
+	TravelDays  int      `json:"travel_days"`
+	Ready       bool     `json:"ready"`
+	Blockers    []string `json:"blockers,omitempty"`
+	Timing      string   `json:"timing,omitempty"`
 }
 
 type VisiblePlayer struct {

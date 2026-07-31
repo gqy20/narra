@@ -8,8 +8,9 @@ import (
 )
 
 type actionOption struct {
-	view    AvailableAction
-	command *domain.PlayerCommand
+	view        AvailableAction
+	command     *domain.PlayerCommand
+	advanceMode string
 }
 
 func (s *Session) actionCatalog(state *domain.WorldState) []AvailableAction {
@@ -31,7 +32,10 @@ func (s *Session) actionCatalog(state *domain.WorldState) []AvailableAction {
 func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOption {
 	options := make(map[string]actionOption)
 	if state.Player.Pending != nil {
-		options["wait"] = waitOption("等待当前行动完成")
+		options["wait:complete"] = actionOption{
+			view:        AvailableAction{ID: "wait:complete", Category: "time", Name: "继续到行动完成", Description: "逐日推进，遇到需要处理的变化会提前停下", Duration: maxInt(1, state.Player.Pending.CompleteDay-state.Day)},
+			advanceMode: "complete",
+		}
 		return options
 	}
 	s.addInvestigationActions(options, state)
@@ -39,7 +43,10 @@ func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOptio
 	s.addMovementActions(options, state)
 	s.addInformationActions(options, state)
 	s.addRecoveryActions(options, state)
-	options["wait"] = waitOption("观察局势并推进一天")
+	options["wait:next"] = actionOption{
+		view:        AvailableAction{ID: "wait:next", Category: "time", Name: "推进到下一变化", Description: "跳过没有新决策的日期", Duration: 1},
+		advanceMode: "next",
+	}
 	return options
 }
 
@@ -190,6 +197,13 @@ func (s *Session) addRecoveryActions(options map[string]actionOption, state *dom
 
 func waitOption(description string) actionOption {
 	return actionOption{view: AvailableAction{ID: "wait", Category: "time", Name: "等待一天", Description: description, Duration: 1}}
+}
+
+func maxInt(left, right int) int {
+	if left > right {
+		return left
+	}
+	return right
 }
 
 func fitsHorizon(currentDay, duration, horizon int) bool {

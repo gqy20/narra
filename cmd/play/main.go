@@ -69,7 +69,7 @@ func defaultPlayer(name string) domain.PlayerConfig {
 func run(input io.Reader, output io.Writer, session *app.Session, autosavePath string, debug bool) error {
 	scanner := bufio.NewScanner(input)
 	fmt.Fprintln(output, "凡途 · 黑风谷局势")
-	fmt.Fprintln(output, "输入行动编号推进一天；输入 help 查看命令。")
+	fmt.Fprintln(output, "输入行动编号推进局势；输入 help 查看命令。")
 
 	for {
 		view := session.View()
@@ -94,7 +94,7 @@ func run(input io.Reader, output io.Writer, session *app.Session, autosavePath s
 			fmt.Fprintln(output, "已退出。")
 			return nil
 		case line == "help" || line == "?":
-			renderHelp(output)
+			renderHelp(output, debug)
 			continue
 		case line == "save" || strings.HasPrefix(line, "save "):
 			path := strings.TrimSpace(strings.TrimPrefix(line, "save"))
@@ -145,6 +145,9 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 	fmt.Fprintf(output, "\n=== 第 %d/%d 天 · %s · %s ===\n", view.Day, view.Duration, phaseLabel(view.Phase), view.Location.Name)
 	if view.LastTurn != nil {
 		fmt.Fprintf(output, "上回合：%s [%s]\n", view.LastTurn.Action, statusLabel(view.LastTurn.Status))
+		if view.LastTurn.DaysAdvanced > 1 {
+			fmt.Fprintf(output, "  - 推进了 %d 天，其中 %d 天没有需要处理的变化。\n", view.LastTurn.DaysAdvanced, view.LastTurn.QuietDays)
+		}
 		for _, message := range view.LastTurn.Messages {
 			fmt.Fprintf(output, "  - %s\n", message)
 		}
@@ -159,8 +162,8 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 			}
 			renderInfluences(output, view.Ending.Influence, debug, "关键影响")
 		}
-		fmt.Fprintf(output, "试玩记录：%d 次决策输入，%d 次主动行动，%d 次等待；核心结果产生于第 %d 天。\n",
-			view.Metrics.DecisionInputs, view.Metrics.ActiveActions, view.Metrics.WaitActions, view.Metrics.CoreResultDay)
+		fmt.Fprintf(output, "试玩记录：%d 次决策输入，%d 次主动行动，%d 次推进；自动略过 %d 天，核心结果产生于第 %d 天。\n",
+			view.Metrics.DecisionInputs, view.Metrics.ActiveActions, view.Metrics.WaitActions, view.Metrics.AutoAdvancedDays, view.Metrics.CoreResultDay)
 		if debug {
 			fmt.Fprintf(output, "调试指标：最大行动目录=%d，最长空等待=%d，最大重复主动行动=%d，可见决策变化=%d，结果后输入=%d。\n",
 				view.Metrics.MaxActionCatalog, view.Metrics.LongestQuietWait, view.Metrics.MaxRepeatedActiveAction,
@@ -213,6 +216,17 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 			fmt.Fprintf(output, "  - %s\n", guidance)
 		}
 	}
+	if view.Travel != nil {
+		fmt.Fprintf(output, "行程判断：前往%s预计需要 %d 天。\n", view.Travel.Destination, view.Travel.TravelDays)
+		if view.Travel.Ready {
+			fmt.Fprintln(output, "  - 当前通行条件已满足。")
+		} else {
+			fmt.Fprintf(output, "  - 尚未满足：%s。\n", strings.Join(view.Travel.Blockers, "、"))
+		}
+		if view.Travel.Timing != "" {
+			fmt.Fprintln(output, "  - "+view.Travel.Timing)
+		}
+	}
 	fmt.Fprintln(output, "可用行动：")
 	for index, action := range view.AvailableActions {
 		cost := ""
@@ -228,7 +242,13 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 		if debug {
 			id = " [" + action.ID + "]"
 		}
-		fmt.Fprintf(output, "  %d. %s%s — %s（%d 天%s）\n", index+1, action.Name, id, action.Description, action.Duration, cost)
+		duration := fmt.Sprintf("%d 天", action.Duration)
+		if action.ID == "wait:next" {
+			duration = "到下一变化"
+		} else if action.ID == "wait:complete" {
+			duration = fmt.Sprintf("最多 %d 天", action.Duration)
+		}
+		fmt.Fprintf(output, "  %d. %s%s — %s（%s%s）\n", index+1, action.Name, id, action.Description, duration, cost)
 	}
 }
 
@@ -311,8 +331,12 @@ func confidenceLabel(value int) string {
 	}
 }
 
-func renderHelp(output io.Writer) {
-	fmt.Fprintln(output, "命令：<编号> 或 <行动ID> 执行动作；save [文件] 保存；quit 退出。")
+func renderHelp(output io.Writer, debug bool) {
+	if debug {
+		fmt.Fprintln(output, "命令：<编号> 或 <行动ID> 执行动作；wait 逐日推进；save [文件] 保存；quit 退出。")
+		return
+	}
+	fmt.Fprintln(output, "命令：输入行动编号；save [文件] 保存；quit 退出。")
 }
 
 func saveSession(path string, session *app.Session) error {

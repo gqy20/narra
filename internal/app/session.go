@@ -71,6 +71,7 @@ func (s *Session) View() PlayerView {
 	} else {
 		view.AvailableActions = s.actionCatalog(state)
 		view.Guidance = s.guidance(state, view.AvailableActions)
+		view.Travel = s.travelGuidance(state)
 	}
 	view.LastTurn = cloneTurnFeedback(s.lastTurn)
 	view.Metrics = s.metricsView(state)
@@ -92,19 +93,25 @@ func (s *Session) execute(actionID string, allowAfterResolution bool) (PlayerVie
 	options := s.actionOptions(state)
 	s.recordCatalogSize(len(options))
 	option, ok := options[actionID]
+	if actionID == "wait" {
+		option, ok = waitOption("观察局势并推进一天"), true
+	}
 	if !ok {
 		return s.View(), fmt.Errorf("action %q is not currently available", actionID)
 	}
 	var err error
 	actionName := option.view.Name
-	if option.command == nil {
-		_, err = s.engine.Step(nil)
+	var after *domain.WorldState
+	if option.advanceMode != "" {
+		after, s.lastTurn, err = s.advanceUntilDecision(state, actionID, actionName, option.advanceMode)
+	} else if option.command == nil {
+		after, err = s.engine.Step(nil)
 	} else {
 		s.nextID++
 		command := *option.command
 		command.ID = fmt.Sprintf("interactive-%02d-%03d", state.Day+1, s.nextID)
 		command.Day = state.Day + 1
-		_, err = s.engine.Step([]domain.PlayerCommand{command})
+		after, err = s.engine.Step([]domain.PlayerCommand{command})
 		if err != nil {
 			s.nextID--
 		}
@@ -113,8 +120,9 @@ func (s *Session) execute(actionID string, allowAfterResolution bool) (PlayerVie
 		return s.View(), err
 	}
 	s.history = append(s.history, actionID)
-	after := s.engine.State()
-	s.lastTurn = s.turnFeedback(actionID, actionName, state, after)
+	if option.advanceMode == "" {
+		s.lastTurn = s.turnFeedback(actionID, actionName, state, after)
+	}
 	s.recordMetrics(actionID, state, after, s.lastTurn)
 	return s.View(), nil
 }

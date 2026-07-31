@@ -17,6 +17,7 @@
     {"id":"EV08","day":8,"timing":"start","description":"陈氏家族限制解瘴丹外售","effects":[{"type":"set_flag","target_id":"world","key":"antidote_blockade","value":"true"}]},
     {"id":"EV10","day":10,"timing":"start","description":"青岚门要求弟子申报黑风谷情报","effects":[{"type":"set_flag","target_id":"world","key":"qinglan_review","value":"true"}]},
     {"id":"EV12","day":12,"timing":"start","description":"王衡开始物色伏击目标","effects":[{"type":"set_flag","target_id":"world","key":"ambush_open","value":"true"}]},
+    {"id":"EV15","day":15,"timing":"start","description":"前往黑风谷的修士开始在外围集结，入口封锁出现松动迹象","effects":[]},
     {"id":"EV17","day":17,"timing":"start","description":"第一批参与者开始向黑风谷移动","effects":[{"type":"set_flag","target_id":"world","key":"valley_open","value":"true"}]},
     {"id":"EV19","day":19,"timing":"start","description":"青髓芝提前移植窗口开启","effects":[{"type":"set_flag","target_id":"world","key":"transplant_window","value":"true"}]},
     {"id":"EV24","day":24,"timing":"start","description":"相信错误日期的迟到者抵达，争夺早已结束","effects":[]},
