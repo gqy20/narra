@@ -8,7 +8,9 @@
 cmd/                 可执行程序入口
   sim/               单场景运行与状态报告
   batch/             固定验收和参数扫描
+  play/              玩家视角的交互式终端客户端
 internal/
+  app/               Session、玩家视图、行动目录和存档回放
   domain/            领域数据、状态和跨包协议
   engine/            逐日决策、行动与事务结算
   scenario/          JSON 加载与静态校验
@@ -26,7 +28,8 @@ output/              可重新生成的报告，不进入 Git
 允许的主要依赖方向为：
 
 ```text
-cmd ───────> scenario / engine / batch / report
+cmd ───────> app / scenario / engine / batch / report
+app ───────> engine / domain
 batch ─────> scenario / engine / domain
 report ────> domain
 scenario ──> domain
@@ -40,6 +43,7 @@ domain ────> 标准库
 - `engine` 不读取文件、不解析命令行、不写报告，只处理已经校验的 `domain.Bundle` 和命令。
 - `scenario` 负责输入边界；无效引用、枚举、市场、路线和策略配置必须在这里失败。
 - `report` 与 `batch` 只读取引擎快照，不修改世界状态。
+- `app` 将完整世界状态裁剪成玩家可见视图，并把动态行动 ID 转译为玩家命令；它不直接修改 `WorldState`。
 - `cmd` 只做参数解析、依赖组装和错误输出，不放业务规则。
 
 ## 3. 引擎生命周期
@@ -68,11 +72,13 @@ domain ────> 标准库
 
 当前模型仍集中在一个文件中，以减少早期协议频繁变化时的跨文件跳转。进入稳定 API 阶段后，可在不改变 `domain` 包路径的前提下按上述三类机械拆分。
 
-## 5. 下一阶段扩展点
+## 5. 应用层与客户端边界
 
-M1 的应用层应新增在 `internal/app`，负责 Session、玩家可见视图、动态行动目录、存档和回放。它只能通过公开引擎 API 操作世界，不能直接修改 `WorldState`。
+M1 应用层位于 `internal/app`，负责 Session、玩家可见视图、动态行动目录、存档和回放。玩家视图明确排除事实真值、NPC 私有认知、策略评分、内部因果 ID 和世界标记。
 
-交互式 CLI 和未来 Godot 本地服务分别作为 `cmd/play`、`cmd/server` 适配器接入应用层；二者不得各自复制合法性或结算规则。
+交互式 CLI 已通过 `cmd/play` 接入应用层。存档采用“初始玩家 + 行动历史”的版本化格式，加载时通过权威引擎确定性回放，因此不会把内部状态结构固化成外部协议。
+
+未来 Godot 本地服务将作为 `cmd/server` 适配器接入同一应用层；它不得复制行动合法性、视图过滤或结算规则。
 
 ## 6. 质量门禁
 

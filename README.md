@@ -1,6 +1,6 @@
 # 凡途
 
-当前仓库实现《凡途》黑风谷局势的 M0 确定性模拟原型。
+当前仓库实现《凡途》黑风谷局势的确定性模拟内核，以及建立在同一权威规则之上的交互式 CLI。
 
 ## 项目结构
 
@@ -8,6 +8,8 @@
 | --- | --- |
 | `cmd/sim` | 运行单个场景并输出 Markdown 或 JSON |
 | `cmd/batch` | 运行固定验收、参数扫描与健康指标统计 |
+| `cmd/play` | 运行玩家视角的交互式终端客户端 |
+| `internal/app` | Session、玩家可见视图、动态行动目录与存档回放 |
 | `internal/domain` | 场景、状态、事件和事务的领域协议 |
 | `internal/engine` | 确定性逐日推进与权威规则结算 |
 | `internal/scenario` | JSON 数据加载和静态校验 |
@@ -24,6 +26,29 @@
 ```powershell
 ./tools/verify.ps1
 ```
+
+## 运行交互式 CLI
+
+```powershell
+go run ./cmd/play
+```
+
+CLI 每天根据当前地点、资源、物品、认知和忙碌状态生成可用行动。输入行动前的编号或方括号中的行动 ID 即可推进；输入 `save [文件]` 保存，输入 `quit` 退出。
+
+```text
+选择> 1
+选择> save saves/blackwind.json
+选择> quit
+```
+
+继续已有存档，或让每回合自动保存：
+
+```powershell
+go run ./cmd/play -load saves/blackwind.json
+go run ./cmd/play -autosave saves/autosave.json
+```
+
+存档只记录初始玩家和已选择的行动历史；读取时由确定性引擎重新回放。CLI 不读取事实真值、NPC 私有认知、策略评分或世界内部标记。
 
 ## 运行 T00
 
