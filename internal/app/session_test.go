@@ -79,6 +79,12 @@ func TestActionMetadataAndPublicProfilesArePlayerFacing(t *testing.T) {
 		if action.Kind == "tell" && (action.TargetID == "" || action.TargetName == "" || action.FactID == "" || action.FactClaim == "") {
 			t.Fatalf("tell action missing semantic metadata: %+v", action)
 		}
+		if action.Kind == "tell" && len(action.Warnings) == 0 {
+			t.Fatalf("unverified tell action missing warning: %+v", action)
+		}
+		if action.ID == "wait:next" && !containsMessage(action.Warnings, "解瘴丹") {
+			t.Fatalf("advance action missing expiring-opportunity warning: %+v", action)
+		}
 	}
 }
 
@@ -286,6 +292,9 @@ func TestDemoObserverJourneyReachesExplainedEnding(t *testing.T) {
 	if !view.Resolved || view.Ended || view.Day != 21 || view.Ending == nil || !strings.Contains(view.Outcome, "李玄") {
 		t.Fatalf("observer ending = %+v", view.Ending)
 	}
+	if view.AvailableActions == nil || len(view.AvailableActions) != 0 || strings.Contains(view.Outcome, "准备值") {
+		t.Fatalf("ending protocol/action state = %#v / %q", view.AvailableActions, view.Outcome)
+	}
 	if !containsMessage(view.Ending.Highlights, "21 次决策") || !containsMessage(view.Ending.Highlights, "推进时间 21 次") {
 		t.Fatalf("observer highlights = %v", view.Ending.Highlights)
 	}
@@ -327,6 +336,11 @@ func TestDemoInvestigatorJourneyChangesPlayerKnowledge(t *testing.T) {
 	if view.Ending == nil || !containsMessage(view.Ending.Highlights, "核验情报 1 次") {
 		t.Fatalf("investigator highlights = %+v", view.Ending)
 	}
+	for _, fact := range view.KnownFacts {
+		if strings.HasPrefix(fact.Source, "player-") {
+			t.Fatalf("player-facing source leaked internal code: %+v", fact)
+		}
+	}
 }
 
 func TestDemoPreparedContenderCanWinCoreContest(t *testing.T) {
@@ -364,6 +378,9 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 		if action == "tell:N03:F01" && (view.LastTurn == nil || !containsMessage(view.LastTurn.Messages, "情报已经送达沈砚秋")) {
 			t.Fatalf("message delivery feedback = %+v", view.LastTurn)
 		}
+		if action == "tell:N03:F01" && actionIDs(view.AvailableActions)[action] {
+			t.Fatalf("delivered fact remained available: %s", action)
+		}
 	}
 	view, err := session.Execute("wait:next")
 	if err != nil {
@@ -371,6 +388,9 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	}
 	if view.LastTurn == nil || !hasDecisionChange(view.LastTurn.Influence, "沈砚秋", "F01", 5) {
 		t.Fatalf("day 5 immediate influence = %+v", view.LastTurn)
+	}
+	if !containsMessage(view.Guidance, "返回坊市购买") {
+		t.Fatalf("day 5 guidance did not preserve the personal route choice: %v", view.Guidance)
 	}
 	for _, wantDay := range []int{17, 19, 21} {
 		view, err = session.Execute("wait:next")
@@ -383,9 +403,15 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 		if wantDay == 17 && !containsMessage(view.LastTurn.Messages, "入口封锁出现松动迹象") {
 			t.Fatalf("day 17 feedback omitted route signal: %+v", view.LastTurn)
 		}
+		if wantDay == 17 && !containsMessage(view.Guidance, "亲自入谷路线受阻") {
+			t.Fatalf("day 17 guidance did not explain the closed route: %v", view.Guidance)
+		}
 	}
 	if view.Ending == nil || !strings.Contains(view.Outcome, "沈砚秋") || !hasDecisionChange(view.Ending.Influence, "沈砚秋", "F01", 5) {
 		t.Fatalf("messenger influence = %+v", view.Ending)
+	}
+	if !containsMessage(view.Ending.Highlights, "改变了 3 个关键选择") {
+		t.Fatalf("messenger ending omitted causal summary: %+v", view.Ending.Highlights)
 	}
 	if view.Metrics.VisibleDecisionChanges < 1 || view.Metrics.CoreResultDay != 21 || view.Metrics.DecisionInputs != 8 || view.Metrics.AutoAdvancedDays != 18 {
 		t.Fatalf("messenger metrics = %+v", view.Metrics)

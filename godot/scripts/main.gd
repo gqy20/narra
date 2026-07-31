@@ -94,7 +94,7 @@ func _build_header() -> void:
 	row.add_child(_button("保存", _save_game, false))
 	row.add_child(_button("返回", _return_to_start, true))
 	objective_label = Label.new()
-	objective_label.text = "本局目标 · 在三十日内影响青髓芝的最终归属"
+	objective_label.text = "本局目标 · 通过调查、传播或亲自入谷影响青髓芝归属"
 	objective_label.add_theme_font_size_override("font_size", 14)
 	objective_label.add_theme_color_override("font_color", COLORS.muted)
 	stack.add_child(objective_label)
@@ -447,20 +447,20 @@ func _render_view() -> void:
 	var phase := str(current_view.get("phase", ""))
 	phase_label.text = "准备" if phase == "" else phase
 	var travel = current_view.get("travel", null)
-	if travel is Dictionary:
-		var travel_state := "路线已备" if bool(travel.get("ready", false)) else "仍需准备"
-		objective_label.text = "本局目标 · 进入%s · %s" % [travel.get("destination", "黑风谷内谷"), travel_state]
-	else:
-		objective_label.text = "本局目标 · 在三十日内影响青髓芝的最终归属"
+	objective_label.text = "本局目标 · 通过调查、传播或亲自入谷影响青髓芝归属"
 	footer_label.add_theme_color_override("font_color", COLORS.muted)
 	_render_player(player)
 	_render_clues(current_view.get("known_facts", []))
 	_render_scene(current_view.get("recent_events", []), current_view.get("guidance", []), travel)
 	_render_people(current_view.get("known_actors", []))
-	_render_actions(current_view.get("available_actions", []))
+	var available_actions = current_view.get("available_actions", [])
+	if not available_actions is Array:
+		available_actions = []
+	_render_actions(available_actions)
 	_render_feedback(current_view.get("last_turn", null))
-	if bool(current_view.get("ended", false)):
-		_render_ending(current_view.get("ending", {}))
+	var ending = current_view.get("ending", null)
+	if bool(current_view.get("resolved", false)) or bool(current_view.get("ended", false)) or ending is Dictionary:
+		_render_ending(ending if ending is Dictionary else {})
 
 
 func _render_player(player: Dictionary) -> void:
@@ -487,7 +487,10 @@ func _render_clues(clues: Array) -> void:
 		return
 	for clue in clues:
 		_text(clues_box, str(clue.get("claim", "未知传言")), false, 16)
-		var status := "存疑" if bool(clue.get("contested", false)) else "置信 %d" % int(clue.get("confidence", 0))
+		var confidence := int(clue.get("confidence", 0))
+		var status := "已核实" if confidence >= 3 else ("较可信" if confidence == 2 else "未经核实")
+		if bool(clue.get("contested", false)):
+			status += " · 与旧说法冲突"
 		_text(clues_box, "%s · 来源：%s" % [status, clue.get("source", "未知")], true, 13)
 
 
@@ -495,7 +498,8 @@ func _render_scene(events: Array, guidance: Array, travel) -> void:
 	_clear(scene_box)
 	if travel is Dictionary:
 		var readiness := "可以动身" if bool(travel.get("ready", false)) else "尚有阻碍"
-		_text(scene_box, "目标：%s · %s" % [travel.get("destination", "未知"), readiness], false, 16)
+		_text(scene_box, "个人入谷准备 · %s" % readiness, false, 16)
+		_text(scene_box, "目的地：%s" % travel.get("destination", "未知"), true, 13)
 		for blocker in travel.get("blockers", []):
 			_text(scene_box, "· %s" % blocker, true)
 	for tip in guidance:
@@ -503,7 +507,8 @@ func _render_scene(events: Array, guidance: Array, travel) -> void:
 	if events.is_empty():
 		_text(scene_box, "四下暂时没有新的公开动静。", true)
 		return
-	for event in events:
+	for index in range(events.size() - 1, -1, -1):
+		var event = events[index]
 		_text(scene_box, "第 %d 日 · %s" % [int(event.get("day", 0)), event.get("description", "局势变化")])
 
 
@@ -528,7 +533,7 @@ func _render_actions(actions: Array) -> void:
 		if not grouped.has(category):
 			grouped[category] = []
 		grouped[category].append(action)
-	var order := ["investigate", "information", "trade", "move", "self", "time", "other"]
+	var order := ["investigate", "trade", "move", "information", "self", "time", "other"]
 	var category_names := {
 		"investigate": "查证与探索",
 		"information": "交涉与消息",
@@ -601,7 +606,7 @@ func _on_tell_fact_selected(index: int, facts: Array) -> void:
 
 func _consider_action(action: Dictionary) -> void:
 	var kind := str(action.get("kind", ""))
-	var needs_confirmation: bool = int(action.get("duration", 1)) > 1 or not action.get("costs", {}).is_empty() or kind in ["advance", "move"]
+	var needs_confirmation: bool = int(action.get("duration", 1)) > 1 or not action.get("costs", {}).is_empty() or kind in ["advance", "move", "tell"]
 	if not needs_confirmation:
 		_execute_action(str(action.get("id", "")))
 		return
@@ -615,6 +620,11 @@ func _consider_action(action: Dictionary) -> void:
 	else:
 		_text(confirmation_box, str(action.get("description", "")), true, 15)
 		_text(confirmation_box, "预计占用 %d 日" % int(action.get("duration", 1)), true)
+	var warnings = action.get("warnings", [])
+	if warnings is Array:
+		for warning_text in warnings:
+			var warning_line := _text(confirmation_box, "注意 · %s" % warning_text, false, 14)
+			warning_line.add_theme_color_override("font_color", COLORS.accent)
 	var costs: Dictionary = action.get("costs", {})
 	if not costs.is_empty():
 		var cost_names := {"spirit_stones": "灵石", "credit": "信用", "combat": "战力", "support": "助力"}
@@ -654,18 +664,21 @@ func _render_feedback(feedback) -> void:
 	var quiet_days := int(feedback.get("quiet_days", 0))
 	if quiet_days > 0:
 		_text(feedback_box, "其中 %d 日没有出现需要你处理的变化" % quiet_days, true, 13)
+	var influences: Array = feedback.get("influence", [])
+	if not influences.is_empty():
+		var influence_heading := _text(feedback_box, "你的消息改变了人物判断", true, 13)
+		influence_heading.add_theme_color_override("font_color", COLORS.accent)
+	for influence in influences:
+		_text(feedback_box, "%s因“%s”改变了判断" % [influence.get("actor_name", "有人"), influence.get("fact_claim", "消息")], false, 14)
+		for change in influence.get("changes", []):
+			_text(feedback_box, "原本：%s" % change.get("without_information", "其他安排"), true, 13)
+			_text(feedback_box, "现在：%s" % change.get("with_information", "新的安排"), false, 13)
 	var messages: Array = feedback.get("messages", [])
 	if not messages.is_empty():
 		var result_heading := _text(feedback_box, "可见结果", true, 13)
 		result_heading.add_theme_color_override("font_color", COLORS.accent)
 	for message in messages:
 		_text(feedback_box, "· %s" % message)
-	var influences: Array = feedback.get("influence", [])
-	if not influences.is_empty():
-		var influence_heading := _text(feedback_box, "人物判断变化", true, 13)
-		influence_heading.add_theme_color_override("font_color", COLORS.accent)
-	for influence in influences:
-		_text(feedback_box, "%s因“%s”改变了判断" % [influence.get("actor_name", "有人"), influence.get("fact_claim", "消息")], false, 14)
 
 
 func _render_ending(ending: Dictionary) -> void:

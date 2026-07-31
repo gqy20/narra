@@ -44,10 +44,11 @@ func (s *Session) turnFeedback(actionID, actionName string, before, after *domai
 			feedback.Messages = append(feedback.Messages, event.Description)
 		} else if event.ActorID == after.Player.ID && event.ActionID == "spread" {
 			feedback.Messages = append(feedback.Messages, "情报已经送达"+s.actorName(after, event.TargetID)+"。")
+			feedback.Messages = append(feedback.Messages, "对方是否改变行动，会在后续局势变化时显现。")
 		}
 	}
 	if before.Outcome != after.Outcome && after.Outcome != "" {
-		feedback.Messages = append(feedback.Messages, "核心争夺结果："+after.Outcome)
+		feedback.Messages = append(feedback.Messages, "核心争夺结果："+visibleOutcome(after.Outcome))
 	}
 	feedback.Influence = s.visibleInfluence(after, after.Decisions[len(before.Decisions):], false)
 	if len(feedback.Messages) == 0 {
@@ -114,7 +115,7 @@ func beliefChanges(before, after map[string]domain.Belief) []string {
 	result := make([]string, 0, len(keys))
 	for _, key := range keys {
 		belief := after[key]
-		result = append(result, fmt.Sprintf("线索更新为可信度 %d：%s", belief.Confidence, belief.Claim))
+		result = append(result, fmt.Sprintf("线索更新为%s：%s", confidenceLabel(belief.Confidence), belief.Claim))
 	}
 	return result
 }
@@ -135,8 +136,25 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 	if belief, ok := state.Player.Beliefs["F02"]; ok && belief.Confidence < 3 && available["verify:F02"] {
 		result = append(result, "第24天成熟目前只是传闻，核验后再据此安排路线更稳妥。")
 	}
-	if state.Player.Items["antidote"] == 0 && available["buy:M01:antidote"] {
-		result = append(result, "解瘴丹目前仍可购买；进入黑风谷需要它，市场供应可能随局势变化。")
+	if state.Player.Items["antidote"] == 0 {
+		marketOpen := false
+		for _, market := range state.Markets {
+			if market.Stock["antidote"] > 0 && (market.BlockadeFlag == "" || !state.WorldFlag(market.BlockadeFlag)) {
+				marketOpen = true
+				break
+			}
+		}
+		switch {
+		case available["buy:M01:antidote"]:
+			result = append(result, "解瘴丹目前仍可购买；进入黑风谷需要它，市场供应可能随局势变化。")
+		case marketOpen:
+			result = append(result, "白石坊市仍有解瘴丹出售；若想亲自入谷，需要先返回坊市购买。")
+		default:
+			result = append(result, "坊市已经无法购买解瘴丹，亲自入谷路线受阻；你仍可通过调查和传播影响最终归属。")
+		}
+	}
+	if s.lastTurn != nil && strings.HasPrefix(s.lastTurn.ActionID, "tell:") {
+		result = append(result, "情报已经送达；等待局势变化可以观察它是否改变对方的选择。")
 	}
 	if len(result) == 0 {
 		result = append(result, "没有必须执行的行动；根据已知线索决定调查、交涉、准备或等待。")
@@ -145,7 +163,7 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 }
 
 func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
-	ending := &EndingSummary{Outcome: state.Outcome}
+	ending := &EndingSummary{Outcome: visibleOutcome(state.Outcome)}
 	counts := make(map[string]int)
 	for _, actionID := range s.history {
 		if strings.HasPrefix(actionID, "wait") {
@@ -170,7 +188,39 @@ func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 	ending.Highlights = append(ending.Highlights,
 		fmt.Sprintf("终局时你位于%s，战力 %d，伤势 %d。", s.visibleLocation(state.Player.Location).Name, state.Player.Resources["combat"], state.Player.Injury))
 	ending.Influence = s.visibleInfluence(state, state.Decisions, true)
+	changedDecisions := 0
+	for _, influence := range ending.Influence {
+		changedDecisions += len(influence.Changes)
+	}
+	if changedDecisions > 0 {
+		ending.Highlights = append([]string{fmt.Sprintf("你传递的消息改变了 %d 个关键选择，并影响了最终归属。", changedDecisions)}, ending.Highlights...)
+	}
 	return ending
+}
+
+func confidenceLabel(confidence int) string {
+	switch {
+	case confidence >= 3:
+		return "已核实"
+	case confidence == 2:
+		return "较可信"
+	default:
+		return "未经核实"
+	}
+}
+
+func visibleOutcome(outcome string) string {
+	marker := " 以准备值 "
+	start := strings.Index(outcome, marker)
+	if start < 0 {
+		return outcome
+	}
+	rest := outcome[start+len(marker):]
+	end := strings.Index(rest, " 取得")
+	if end < 0 {
+		return outcome
+	}
+	return outcome[:start] + " 最终取得" + rest[end+len(" 取得"):]
 }
 
 type visibleDelivery struct {

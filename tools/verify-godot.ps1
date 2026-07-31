@@ -19,6 +19,9 @@ try {
         Start-Sleep -Milliseconds 500
         & $godot.Source --headless --path $godotProject --script res://tests/integration.gd
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+        & $godot.Source --headless --path $godotProject --script res://tests/propagation.gd
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
     finally {
         if (-not $server.HasExited) {

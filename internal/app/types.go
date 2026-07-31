@@ -133,4 +133,5 @@ type AvailableAction struct {
 	TargetName  string         `json:"target_name,omitempty"`
 	FactID      string         `json:"fact_id,omitempty"`
 	FactClaim   string         `json:"fact_claim,omitempty"`
+	Warnings    []string       `json:"warnings,omitempty"`
 }

@@ -44,7 +44,7 @@ func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOptio
 	s.addInformationActions(options, state)
 	s.addRecoveryActions(options, state)
 	options["wait:next"] = actionOption{
-		view:        AvailableAction{ID: "wait:next", Kind: "advance", Category: "time", Name: "等待局势变化", Description: "逐日推演并在下一次值得关注的变化处停下，可能跨越多个平静日", Duration: 1},
+		view:        AvailableAction{ID: "wait:next", Kind: "advance", Category: "time", Name: "等待局势变化", Description: "逐日推演并在下一次值得关注的变化处停下，可能跨越多个平静日", Duration: 1, Warnings: s.advanceWarnings(state)},
 		advanceMode: "next",
 	}
 	return options
@@ -74,7 +74,7 @@ func (s *Session) addInvestigationActions(options map[string]actionOption, state
 		options[id] = actionOption{
 			view: AvailableAction{ID: id, Kind: "verify", Category: "investigate", Name: "核验线索", Description: "核验：“" + belief.Claim + "”", Duration: action.Duration, FactID: factID, FactClaim: belief.Claim},
 			command: &domain.PlayerCommand{
-				ActionID: "verify", Description: "玩家核验线索：" + factID,
+				ActionID: "verify", Description: "核验线索：“" + belief.Claim + "”",
 				Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "belief_max", Key: factID, MaxConfidence: 2}},
 				Effects:    effects,
 			},
@@ -163,13 +163,20 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 			if belief.Confidence <= 0 {
 				continue
 			}
+			if s.hasDeliveredFact(state, actor.ID, factID) {
+				continue
+			}
 			id := fmt.Sprintf("tell:%s:%s", actor.ID, factID)
 			claim := belief.Claim
 			if claim == "" {
 				claim = "玩家转述的线索"
 			}
+			warnings := make([]string, 0, 1)
+			if belief.Confidence < 3 {
+				warnings = append(warnings, "这条线索尚未核实；对方可能据此改变行动。")
+			}
 			options[id] = actionOption{
-				view: AvailableAction{ID: id, Kind: "tell", Category: "information", Name: "告知" + actor.Name + "一条线索", Description: "分享：“" + claim + "”", Duration: action.Duration, TargetID: actor.ID, TargetName: actor.Name, FactID: factID, FactClaim: claim},
+				view: AvailableAction{ID: id, Kind: "tell", Category: "information", Name: "告知" + actor.Name + "一条线索", Description: "分享：“" + claim + "”", Duration: action.Duration, TargetID: actor.ID, TargetName: actor.Name, FactID: factID, FactClaim: claim, Warnings: warnings},
 				command: &domain.PlayerCommand{
 					ActionID: "spread", TargetID: actor.ID, Description: "玩家向" + actor.Name + "分享情报：" + factID,
 					Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "location", Value: state.Player.Location}},
@@ -178,6 +185,36 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 			}
 		}
 	}
+}
+
+func (s *Session) advanceWarnings(state *domain.WorldState) []string {
+	warnings := make([]string, 0, 2)
+	if state.Player.Items["antidote"] <= 0 {
+		for _, market := range state.Markets {
+			if market.Stock["antidote"] > 0 && (market.BlockadeFlag == "" || !state.WorldFlag(market.BlockadeFlag)) {
+				warnings = append(warnings, "你尚未持有解瘴丹；继续等待可能错过坊市购买机会，关闭亲自入谷路线。")
+				break
+			}
+		}
+	}
+	if travel := s.travelGuidance(state); travel != nil && travel.Timing != "" {
+		warnings = append(warnings, travel.Timing)
+	}
+	return warnings
+}
+
+func (s *Session) hasDeliveredFact(state *domain.WorldState, targetID, factID string) bool {
+	for _, event := range state.Events {
+		if event.ActorID != state.Player.ID || event.TargetID != targetID || event.ActionID != "spread" {
+			continue
+		}
+		for _, effect := range event.Effects {
+			if effect.Type == "set_belief" && effect.FactID == factID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (s *Session) addRecoveryActions(options map[string]actionOption, state *domain.WorldState) {

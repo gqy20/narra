@@ -62,11 +62,11 @@ func (s *Session) View() PlayerView {
 		Day: state.Day, Duration: s.bundle.Scenario.Duration, Phase: state.Phase,
 		Ended: state.Day >= s.bundle.Scenario.Duration, Resolved: state.Outcome != "", Player: s.visiblePlayer(state),
 		Location:    s.visibleLocation(state.Player.Location),
-		KnownActors: s.visibleActors(state), KnownFacts: visibleBeliefs(state.Player.Beliefs),
-		RecentEvents: s.visibleEvents(state),
+		KnownActors: s.visibleActors(state), KnownFacts: s.visibleBeliefs(state),
+		RecentEvents: s.visibleEvents(state), AvailableActions: make([]AvailableAction, 0),
 	}
 	if view.Resolved || view.Ended {
-		view.Outcome = state.Outcome
+		view.Outcome = visibleOutcome(state.Outcome)
 		view.Ending = s.endingSummary(state)
 	} else {
 		view.AvailableActions = s.actionCatalog(state)
@@ -184,16 +184,34 @@ func (s *Session) visibleActors(state *domain.WorldState) []VisibleActor {
 	return actors
 }
 
-func visibleBeliefs(beliefs map[string]domain.Belief) []VisibleBelief {
-	result := make([]VisibleBelief, 0, len(beliefs))
-	for _, belief := range beliefs {
+func (s *Session) visibleBeliefs(state *domain.WorldState) []VisibleBelief {
+	result := make([]VisibleBelief, 0, len(state.Player.Beliefs))
+	for _, belief := range state.Player.Beliefs {
 		result = append(result, VisibleBelief{
 			FactID: belief.FactID, Claim: belief.Claim, Confidence: belief.Confidence,
-			Source: belief.Source, LearnedOn: belief.LearnedOn, Contested: belief.Contested,
+			Source: s.visibleSource(state, belief.Source), LearnedOn: belief.LearnedOn, Contested: belief.Contested,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].FactID < result[j].FactID })
 	return result
+}
+
+func (s *Session) visibleSource(state *domain.WorldState, source string) string {
+	switch source {
+	case "player-investigation":
+		return "亲自核验"
+	case "player-investigation-lead":
+		return "核验所得线索"
+	case state.Player.ID:
+		return "你"
+	}
+	if npc, ok := state.NPCs[source]; ok {
+		return npc.Name
+	}
+	if source == "" {
+		return "来源不明"
+	}
+	return source
 }
 
 func (s *Session) visibleEvents(state *domain.WorldState) []VisibleEvent {
