@@ -44,7 +44,7 @@ func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOptio
 	s.addInformationActions(options, state)
 	s.addRecoveryActions(options, state)
 	options["wait:next"] = actionOption{
-		view:        AvailableAction{ID: "wait:next", Kind: "advance", Category: "time", Name: "推进到下一变化", Description: "跳过没有新决策的日期", Duration: 1},
+		view:        AvailableAction{ID: "wait:next", Kind: "advance", Category: "time", Name: "等待局势变化", Description: "逐日推演并在下一次值得关注的变化处停下，可能跨越多个平静日", Duration: 1},
 		advanceMode: "next",
 	}
 	return options

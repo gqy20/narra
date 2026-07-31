@@ -23,8 +23,19 @@ func _run() -> void:
 	var actions: Array = app.current_view.get("available_actions", [])
 	if actions.is_empty():
 		return _fail("new game returned no actions")
+	if app.day_label.text != "第 1 / 30 日":
+		return _fail("initial day is not player-facing day one")
+	for action in actions:
+		if action.get("id", "") == "wait:next":
+			app._consider_action(action)
+			if not app.confirmation_layer.visible:
+				return _fail("multi-day advance has no confirmation")
+			app._cancel_confirmation()
+			break
 
-	app._execute_action(str(actions[0].get("id", "")))
+	app._consider_action(actions[0])
+	if app.confirmation_layer.visible:
+		app._confirm_selected_action()
 	if not await _wait_until_idle(12000):
 		return _fail("action or autosave request timed out")
 	if int(app.current_view.get("day", 0)) < 1:
