@@ -85,6 +85,22 @@ go run ./cmd/server
 
 成功响应返回经过裁剪的 `view`；失败响应返回稳定的 `error.code` 和玩家可读的 `error.message`。动作同时包含 `kind`、目标与线索元数据，客户端无需解析动作 ID 或拼接人物×线索组合。
 
+## 运行 Godot MVP
+
+已安装 Godot 4.7+ 时，在仓库根目录运行：
+
+```powershell
+./tools/run-godot.ps1
+```
+
+启动脚本会构建本地服务、以隐藏进程运行它并打开 `godot/` 项目；退出客户端时一并关闭该服务。界面按自身、线索、局势、本回合回响、同地人物、可行之事划分六区，每次行动成功后写入 `autosave` 存档槽。
+
+执行 Godot 与真实 Go 服务之间的无头集成烟测：
+
+```powershell
+./tools/verify-godot.ps1
+```
+
 ## 运行 T00
 
 ```powershell
