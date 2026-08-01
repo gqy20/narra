@@ -28,15 +28,33 @@ func (s *Session) advanceUntilDecision(before *domain.WorldState, actionID, acti
 		}
 		aggregate.Influence = mergeInfluences(aggregate.Influence, step.Influence)
 
-		stop := next.Outcome != "" || next.Day >= s.bundle.Scenario.Duration || len(step.Influence) > 0
-		if !stop && !reflect.DeepEqual(current.Player, next.Player) {
-			stop = true
+		stop := false
+		stopReason := ""
+		switch {
+		case next.Outcome != "":
+			stop, stopReason = true, "核心争夺已经产生结果"
+		case next.Day >= s.bundle.Scenario.Duration:
+			stop, stopReason = true, "局势已经推进到本章末日"
+		case len(step.Influence) > 0:
+			stop, stopReason = true, "你送出的消息改变了人物的公开行动"
+		case !reflect.DeepEqual(current.Player, next.Player):
+			stop, stopReason = true, "你的状态、行装或正在进行的行动发生了变化"
+		default:
+			beforeOptions := s.actionOptions(current)
+			afterOptions := s.actionOptions(next)
+			if decisionSignature(beforeOptions) != decisionSignature(afterOptions) {
+				stop = true
+				if actionName := newlyAvailableActionName(beforeOptions, afterOptions); actionName != "" {
+					stopReason = "新的选择出现：" + actionName
+				} else {
+					stopReason = "可执行的安排发生了变化"
+				}
+			} else if visibleActorSet(s.visibleActors(current)) != visibleActorSet(s.visibleActors(next)) {
+				stop, stopReason = true, "眼前人物发生了变化"
+			}
 		}
-		if !stop && decisionSignature(s.actionOptions(current)) != decisionSignature(s.actionOptions(next)) {
-			stop = true
-		}
-		if !stop && visibleActorSet(s.visibleActors(current)) != visibleActorSet(s.visibleActors(next)) {
-			stop = true
+		if stop && aggregate.StopReason == "" {
+			aggregate.StopReason = stopReason
 		}
 		if !stop {
 			aggregate.QuietDays += step.DaysAdvanced
@@ -57,6 +75,23 @@ func (s *Session) advanceUntilDecision(before *domain.WorldState, actionID, acti
 	aggregate.Messages = uniqueStrings(aggregate.Messages)
 	aggregate.Presentation = s.presentationCue(actionID, before, current)
 	return current, aggregate, nil
+}
+
+func newlyAvailableActionName(before, after map[string]actionOption) string {
+	ids := make([]string, 0)
+	for id := range after {
+		if strings.HasPrefix(id, "wait") {
+			continue
+		}
+		if _, existed := before[id]; !existed {
+			ids = append(ids, id)
+		}
+	}
+	sort.Strings(ids)
+	if len(ids) == 0 {
+		return ""
+	}
+	return after[ids[0]].view.Name
 }
 
 func isQuietStep(feedback *TurnFeedback) bool {

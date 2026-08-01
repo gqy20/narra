@@ -121,6 +121,9 @@ func TestActionMetadataAndPublicProfilesArePlayerFacing(t *testing.T) {
 		if action.Timing == "" || len(action.ExpectedOutcomes) == 0 {
 			t.Fatalf("action missing decision summary: %+v", action)
 		}
+		if len(action.KnownConditions) == 0 && len(action.Unknowns) == 0 {
+			t.Fatalf("action does not distinguish known conditions from uncertainty: %+v", action)
+		}
 		if action.ID == "wait:next" && action.CompletionDay != 0 {
 			t.Fatalf("open-ended advance has a misleading completion day: %+v", action)
 		}
@@ -287,6 +290,9 @@ func TestInitialGuidanceExplainsCoreDecisionWithoutLeakingTrueDate(t *testing.T)
 	if len(view.Travel.Route) < 2 || !containsMessage(view.Travel.Route, "黑风谷") || !travelCheckReady(view.Travel.Checks, "可用路线", true) || !travelCheckReady(view.Travel.Checks, "携带解瘴丹", false) || !travelCheckReady(view.Travel.Checks, "入口开放", false) {
 		t.Fatalf("initial travel route/checks = %+v", view.Travel)
 	}
+	if !preparationFactorReady(view.Preparation.ScoreSources, "combat", true) || !preparationFactorReady(view.Preparation.ScoreSources, "support", false) || !preparationFactorReady(view.Preparation.Conditions, "required_item", false) || !preparationFactorReady(view.Preparation.Conditions, "location", false) {
+		t.Fatalf("initial preparation summary = %+v", view.Preparation)
+	}
 }
 
 func TestWaitUntilCompleteSkipsBusyDays(t *testing.T) {
@@ -303,6 +309,53 @@ func TestWaitUntilCompleteSkipsBusyDays(t *testing.T) {
 	}
 	if view.Metrics.DecisionInputs != 2 || view.Metrics.AutoAdvancedDays != 2 {
 		t.Fatalf("wait until complete metrics = %+v", view.Metrics)
+	}
+}
+
+func TestRepeatedCultivationBecomesAnExplicitHighCostAlternative(t *testing.T) {
+	session := testSession(t)
+	executeMany(t, session, []string{"cultivate", "wait:complete", "cultivate", "wait:complete"})
+	third := actionWithID(session.View().AvailableActions, "cultivate")
+	if third == nil || third.Costs["spirit_stones"] != 10 || !containsMessage(third.Warnings, "高耗阶段") {
+		t.Fatalf("third cultivation does not expose escalating cost: %+v", third)
+	}
+	view, err := session.Execute("cultivate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Player.Resources["spirit_stones"] != 90 || view.LastTurn == nil || !containsMessage(view.LastTurn.Messages, "灵石 -10") {
+		t.Fatalf("third cultivation did not charge its visible cost: %+v / %+v", view.Player, view.LastTurn)
+	}
+	executeMany(t, session, []string{"wait:complete"})
+	fourth := actionWithID(session.View().AvailableActions, "cultivate")
+	if fourth == nil || fourth.Costs["spirit_stones"] != 20 {
+		t.Fatalf("fourth cultivation cost = %+v", fourth)
+	}
+}
+
+func TestMissedMarketCanRecoverPersonalRouteThroughInformationTrade(t *testing.T) {
+	session := testSession(t)
+	executeMany(t, session, []string{"verify:F02", "wait:complete", "move:L02", "wait", "wait", "wait", "wait", "wait"})
+	view := session.View()
+	recovery := actionWithID(view.AvailableActions, "recover:N06:antidote")
+	if view.Day != 8 || recovery == nil || !recovery.Irreversible || !containsMessage(recovery.Resolves, "坊市封锁") || len(recovery.Unknowns) == 0 {
+		t.Fatalf("day 8 recovery action = %+v at day %d", recovery, view.Day)
+	}
+	if !containsMessage(view.Guidance, "苏晚照") || !containsMessage(view.Guidance, "恢复路线") {
+		t.Fatalf("recovery guidance = %v", view.Guidance)
+	}
+	view, err := session.Execute(recovery.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if itemAmount(view.Player.Items, "antidote") != 1 || view.Travel == nil || containsMessage(view.Travel.Blockers, "缺少解瘴丹") {
+		t.Fatalf("recovery did not reopen travel: player=%+v travel=%+v", view.Player, view.Travel)
+	}
+	if !hasCausalStage(view.CausalThreads, "苏晚照", "F01", "delivered") {
+		t.Fatalf("recovery information trade is not traceable: %+v", view.CausalThreads)
+	}
+	if !preparationFactorReady(view.Preparation.Conditions, "required_item", true) {
+		t.Fatalf("recovered antidote did not update preparation summary: %+v", view.Preparation)
 	}
 }
 
@@ -489,7 +542,7 @@ func TestDemoPreparedContenderCanWinCoreContest(t *testing.T) {
 	if !view.Resolved || view.Day != 21 || !strings.Contains(view.Outcome, "测试玩家") {
 		t.Fatalf("prepared contender outcome = %q", view.Outcome)
 	}
-	if view.Player.Resources["combat"] != 7 || view.Location.ID != "L05" {
+	if view.Player.Resources["combat"] != 7 || view.Player.Resources["spirit_stones"] != 20 || view.Location.ID != "L05" {
 		t.Fatalf("prepared contender state = %+v at %+v", view.Player, view.Location)
 	}
 }
@@ -509,6 +562,9 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 			t.Fatalf("delivered fact remained available: %s", action)
 		}
 		if action == "tell:N03:F01" {
+			if !hasCausalStage(view.CausalThreads, "沈砚秋", "F01", "delivered") {
+				t.Fatalf("delivery has no persistent causal thread: %+v", view.CausalThreads)
+			}
 			for _, event := range view.RecentEvents {
 				if strings.Contains(event.Description, "F01") {
 					t.Fatalf("visible event leaked internal fact ID: %q", event.Description)
@@ -523,16 +579,28 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	if view.LastTurn == nil || !hasDecisionChange(view.LastTurn.Influence, "沈砚秋", "F01", 5) {
 		t.Fatalf("day 5 immediate influence = %+v", view.LastTurn)
 	}
+	if !hasCausalStage(view.CausalThreads, "沈砚秋", "F01", "changed") {
+		t.Fatalf("causal thread did not advance to changed: %+v", view.CausalThreads)
+	}
+	if !strings.Contains(view.LastTurn.StopReason, "消息改变") {
+		t.Fatalf("day 5 advance does not explain why it stopped: %+v", view.LastTurn)
+	}
 	if !containsMessage(view.Guidance, "返回坊市购买") {
 		t.Fatalf("day 5 guidance did not preserve the personal route choice: %v", view.Guidance)
 	}
-	for _, wantDay := range []int{17, 19, 21} {
+	for _, wantDay := range []int{8, 17, 19, 21} {
 		view, err = session.Execute("wait:next")
 		if err != nil {
 			t.Fatal(err)
 		}
 		if view.Day != wantDay {
 			t.Fatalf("advance stopped on day %d, want %d", view.Day, wantDay)
+		}
+		if wantDay == 8 && actionWithID(view.AvailableActions, "recover:N06:antidote") == nil {
+			t.Fatalf("day 8 did not surface the missed-market recovery choice: %+v", view.AvailableActions)
+		}
+		if wantDay == 8 && !strings.Contains(view.LastTurn.StopReason, "以情报换取解瘴丹") {
+			t.Fatalf("day 8 stop reason = %+v", view.LastTurn)
 		}
 		if wantDay == 17 && !containsMessage(view.LastTurn.Messages, "入口封锁出现松动迹象") {
 			t.Fatalf("day 17 feedback omitted route signal: %+v", view.LastTurn)
@@ -547,7 +615,7 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	if !containsMessage(view.Ending.Highlights, "改变了 3 个关键选择") {
 		t.Fatalf("messenger ending omitted causal summary: %+v", view.Ending.Highlights)
 	}
-	if view.Metrics.VisibleDecisionChanges < 1 || view.Metrics.CoreResultDay != 21 || view.Metrics.DecisionInputs != 8 || view.Metrics.AutoAdvancedDays != 18 {
+	if view.Metrics.VisibleDecisionChanges < 1 || view.Metrics.CoreResultDay != 21 || view.Metrics.DecisionInputs != 9 || view.Metrics.AutoAdvancedDays != 18 {
 		t.Fatalf("messenger metrics = %+v", view.Metrics)
 	}
 }
@@ -596,6 +664,15 @@ func travelCheckReady(checks []TravelCheck, fragment string, ready bool) bool {
 	return false
 }
 
+func preparationFactorReady(factors []PreparationFactor, key string, ready bool) bool {
+	for _, factor := range factors {
+		if factor.Key == key && factor.Ready == ready && factor.Label != "" && factor.Status != "" {
+			return true
+		}
+	}
+	return false
+}
+
 func executeMany(t *testing.T, session *Session, actions []string) {
 	t.Helper()
 	for index, action := range actions {
@@ -623,6 +700,15 @@ func hasDecisionChange(influences []VisibleInfluence, actorName, factID string, 
 			if change.Day == day && change.WithInformation != "" && change.WithoutInformation != "" {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func hasCausalStage(influences []VisibleInfluence, actorName, factID, stage string) bool {
+	for _, influence := range influences {
+		if influence.ActorName == actorName && influence.FactID == factID && influence.Stage == stage && influence.StageLabel != "" && influence.Summary != "" {
+			return true
 		}
 	}
 	return false

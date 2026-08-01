@@ -1,106 +1,312 @@
 extends Control
 
+const HOLD_SECONDS := 2.15
+const REDUCED_MOTION_HOLD_SECONDS := 2.8
+
 var card: PanelContainer
 var title_label: Label
 var message_label: Label
+var accent_line: ColorRect
+var wash: TextureRect
+var text_stack: VBoxContainer
 var generation := 0
 var motion_enabled := true
+var active_tween: Tween
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	z_index = 20
+
 	card = PanelContainer.new()
-	card.anchor_left = 0.5
-	card.anchor_right = 0.5
-	card.anchor_top = 1.0
-	card.anchor_bottom = 1.0
-	card.offset_left = -250
-	card.offset_right = 250
-	card.offset_top = -154
-	card.offset_bottom = -42
-	var panel := StyleBoxFlat.new()
-	panel.bg_color = Color("151c17f2")
-	panel.border_color = Color("866b38")
-	panel.set_border_width_all(1)
-	panel.corner_radius_top_left = 8
-	panel.corner_radius_top_right = 8
-	panel.corner_radius_bottom_left = 8
-	panel.corner_radius_bottom_right = 8
-	panel.content_margin_left = 20
-	panel.content_margin_right = 20
-	panel.content_margin_top = 15
-	panel.content_margin_bottom = 15
-	card.add_theme_stylebox_override("panel", panel)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.clip_contents = true
 	add_child(card)
-	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 6)
-	card.add_child(content)
+
+	var clear_panel := StyleBoxFlat.new()
+	clear_panel.bg_color = Color.TRANSPARENT
+	card.add_theme_stylebox_override("panel", clear_panel)
+
+	wash = TextureRect.new()
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.78, 1.0])
+	gradient.colors = PackedColorArray([
+		Color("09100bed"),
+		Color("09100bc7"),
+		Color("09100b00"),
+	])
+	var wash_texture := GradientTexture2D.new()
+	wash_texture.gradient = gradient
+	wash_texture.width = 384
+	wash_texture.height = 96
+	wash_texture.fill_from = Vector2(0.0, 0.5)
+	wash_texture.fill_to = Vector2(1.0, 0.5)
+	wash.texture = wash_texture
+	wash.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	wash.stretch_mode = TextureRect.STRETCH_SCALE
+	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(wash)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 0)
+	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	card.add_child(margin)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 15)
+	margin.add_child(row)
+
+	accent_line = ColorRect.new()
+	accent_line.color = Color("d6ae62dc")
+	accent_line.custom_minimum_size.x = 2
+	accent_line.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	accent_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(accent_line)
+
+	text_stack = VBoxContainer.new()
+	text_stack.add_theme_constant_override("separation", 3)
+	text_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_stack.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(text_stack)
+
 	title_label = Label.new()
+	title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title_label.add_theme_font_size_override("font_size", 13)
 	title_label.add_theme_color_override("font_color", Color("d6ae62"))
-	content.add_child(title_label)
+	title_label.add_theme_color_override("font_outline_color", Color("050806e8"))
+	title_label.add_theme_constant_override("outline_size", 3)
+	text_stack.add_child(title_label)
+
 	message_label = Label.new()
 	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	message_label.add_theme_font_size_override("font_size", 16)
+	message_label.max_lines_visible = 2
+	message_label.add_theme_font_size_override("font_size", 15)
 	message_label.add_theme_color_override("font_color", Color("f2ebdd"))
-	content.add_child(message_label)
+	message_label.add_theme_color_override("font_outline_color", Color("050806ed"))
+	message_label.add_theme_constant_override("outline_size", 3)
+	text_stack.add_child(message_label)
+
 	card.hide()
+
+
+func configure(display_font: Font, medium_font: Font) -> void:
+	if title_label:
+		title_label.add_theme_font_override("font", display_font)
+	if message_label:
+		message_label.add_theme_font_override("font", medium_font)
 
 
 func present(feedback: Dictionary, from_location: String, to_location: String) -> void:
 	if feedback.is_empty():
 		return
+	_stop_active_tween()
 	generation += 1
 	var token := generation
-	var entries: Array[String] = []
-	if from_location != "" and to_location != "" and from_location != to_location:
-		entries.append("%s → %s" % [from_location, to_location])
-	for message in feedback.get("messages", []):
-		entries.append(str(message))
-	if entries.is_empty():
-		entries.append(str(feedback.get("action", "局势已经推进")))
-	_play_entries(entries, feedback, token)
+	var echo := _compose_echo(feedback, from_location, to_location)
+	title_label.text = str(echo.get("title", "局势回响"))
+	message_label.text = str(echo.get("message", "局势已经推进"))
+	_configure_placement(str(echo.get("placement", "peripheral")))
+	_play_echo(token)
 
 
 func cancel() -> void:
+	_stop_active_tween()
 	generation += 1
-	card.hide()
+	if card:
+		card.hide()
 
 
-func _play_entries(entries: Array[String], feedback: Dictionary, token: int) -> void:
-	for entry in entries.slice(0, 4):
-		if token != generation:
-			return
-		title_label.text = "第 %d 日 · %s" % [int(feedback.get("day", 0)), feedback.get("action", "行动结果")]
-		message_label.text = entry
-		card.show()
-		if not motion_enabled:
-			card.modulate = Color.WHITE
-			card.offset_top = -154
-			card.offset_bottom = -42
-			await get_tree().create_timer(0.82).timeout
-			if token != generation:
-				return
+func _compose_echo(feedback: Dictionary, from_location: String, to_location: String) -> Dictionary:
+	var action_id := str(feedback.get("action_id", ""))
+	var action := str(feedback.get("action", "行动结果"))
+	var cue_value = feedback.get("presentation", {})
+	var cue: Dictionary = cue_value if cue_value is Dictionary else {}
+	var kind := str(cue.get("kind", "time"))
+	var messages := _feedback_messages(feedback)
+
+	if action.begins_with("余波继续"):
+		return {
+			"title": action,
+			"message": _first_meaningful_message(messages, "人物的选择仍在改变局势"),
+			"placement": "actor",
+		}
+
+	if kind == "actor_focus" or action_id.begins_with("tell:"):
+		var actor_name := _delivered_actor(messages)
+		return {
+			"title": actor_name if actor_name != "" else "消息已送达",
+			"message": "记下了这句话" if actor_name != "" else "这句话已经被听见",
+			"placement": "actor",
+		}
+
+	if kind == "focus":
+		if action_id.begins_with("verify:"):
+			return {"title": "开始查证", "message": "线索已交付核验", "placement": "peripheral"}
+		if action_id.begins_with("cultivate"):
+			return {"title": "静心吐纳", "message": _first_meaningful_message(messages, "这一日没有虚度"), "placement": "peripheral"}
+		return {"title": action, "message": _first_meaningful_message(messages, "行动已经开始"), "placement": "peripheral"}
+
+	if kind == "reveal":
+		return {
+			"title": "线索有了定论",
+			"message": _preferred_message(messages, ["线索更新", "确信", "可信"], "判断已经更新"),
+			"placement": "peripheral",
+		}
+
+	if kind == "acquire":
+		return {
+			"title": "收入行囊",
+			"message": _preferred_message(messages, ["物品 ", "灵石"], "所得已经收好"),
+			"placement": "peripheral",
+		}
+
+	if kind == "recovery":
+		return {
+			"title": "伤势缓和",
+			"message": _preferred_message(messages, ["伤势"], "气息渐渐平稳"),
+			"placement": "peripheral",
+		}
+
+	if kind == "danger":
+		return {
+			"title": "伤势加重",
+			"message": _preferred_message(messages, ["伤势"], "继续行动会更加危险"),
+			"placement": "peripheral",
+		}
+
+	if kind == "travel" and from_location != "" and to_location != "":
+		return {
+			"title": "抵达%s" % to_location,
+			"message": "%s → %s" % [from_location, to_location],
+			"placement": "peripheral",
+		}
+
+	var day := int(feedback.get("day", 0))
+	var title := "第 %d 日" % day if day > 0 else action
+	return {
+		"title": title,
+		"message": _first_meaningful_message(messages, action),
+		"placement": "peripheral",
+	}
+
+
+func _feedback_messages(feedback: Dictionary) -> Array[String]:
+	var result: Array[String] = []
+	var raw_messages = feedback.get("messages", [])
+	if not raw_messages is Array:
+		return result
+	for raw_message in raw_messages:
+		var message := str(raw_message).strip_edges()
+		if message != "":
+			result.append(message)
+	return result
+
+
+func _delivered_actor(messages: Array[String]) -> String:
+	const PREFIX := "情报已经送达"
+	for message in messages:
+		if message.begins_with(PREFIX):
+			return message.trim_prefix(PREFIX).trim_suffix("。").strip_edges()
+	return ""
+
+
+func _preferred_message(messages: Array[String], needles: Array[String], fallback: String) -> String:
+	for needle in needles:
+		for message in messages:
+			if message.contains(needle) and not _is_system_explanation(message):
+				return _clean_message(message)
+	return _first_meaningful_message(messages, fallback)
+
+
+func _first_meaningful_message(messages: Array[String], fallback: String) -> String:
+	for message in messages:
+		if not _is_system_explanation(message):
+			return _clean_message(message)
+	return fallback
+
+
+func _is_system_explanation(message: String) -> bool:
+	return (
+		message.contains("对方是否改变行动")
+		or message.contains("会在后续局势变化时显现")
+		or message.contains("已经结算")
+	)
+
+
+func _clean_message(message: String) -> String:
+	var result := message.strip_edges().trim_suffix("。")
+	if result.begins_with("物品 "):
+		result = result.trim_prefix("物品 ")
+	if result.length() > 42:
+		result = result.left(41) + "…"
+	return result
+
+
+func _configure_placement(placement: String) -> void:
+	wash.modulate.a = 0.44 if placement == "actor" else 0.66
+	card.anchor_left = 1.0 if placement == "actor" else 0.0
+	card.anchor_right = card.anchor_left
+	card.anchor_top = 1.0 if placement == "actor" else 0.0
+	card.anchor_bottom = card.anchor_top
+	if placement == "actor":
+		card.offset_left = -368
+		card.offset_right = -58
+		card.offset_top = -268
+		card.offset_bottom = -192
+	else:
+		card.offset_left = 48
+		card.offset_right = 378
+		card.offset_top = 145
+		card.offset_bottom = 223
+
+
+func _play_echo(token: int) -> void:
+	card.show()
+	card.modulate = Color.WHITE
+	text_stack.modulate = Color.WHITE
+	accent_line.modulate = Color.WHITE
+	accent_line.scale.y = 1.0
+	if not motion_enabled:
+		await get_tree().create_timer(REDUCED_MOTION_HOLD_SECONDS).timeout
+		if token == generation:
 			card.hide()
-			continue
-		card.modulate = Color(1, 1, 1, 0)
-		card.offset_top = -132
-		card.offset_bottom = -20
-		var enter := create_tween().set_parallel(true)
-		enter.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		enter.tween_property(card, "modulate:a", 1.0, 0.22)
-		enter.tween_property(card, "offset_top", -154.0, 0.28)
-		enter.tween_property(card, "offset_bottom", -42.0, 0.28)
-		await enter.finished
-		await get_tree().create_timer(0.82).timeout
-		if token != generation:
-			return
-		var leave := create_tween().set_parallel(true)
-		leave.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		leave.tween_property(card, "modulate:a", 0.0, 0.18)
-		leave.tween_property(card, "offset_top", -166.0, 0.18)
-		leave.tween_property(card, "offset_bottom", -54.0, 0.18)
-		await leave.finished
-	card.hide()
+		return
+
+	card.modulate.a = 0.0
+	text_stack.modulate.a = 0.0
+	accent_line.modulate.a = 0.0
+	accent_line.scale.y = 0.12
+	var resting_x := card.position.x
+	card.position.x = resting_x + 10.0
+	var enter := create_tween().set_parallel(true)
+	active_tween = enter
+	enter.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	enter.tween_property(card, "modulate:a", 1.0, 0.18)
+	enter.tween_property(card, "position:x", resting_x, 0.30)
+	enter.tween_property(accent_line, "modulate:a", 1.0, 0.16)
+	enter.tween_property(accent_line, "scale:y", 1.0, 0.16)
+	enter.tween_property(text_stack, "modulate:a", 1.0, 0.20).set_delay(0.12)
+	await get_tree().create_timer(0.32).timeout
+	if token != generation:
+		return
+	await get_tree().create_timer(HOLD_SECONDS).timeout
+	if token != generation:
+		return
+	var leave := create_tween().set_parallel(true)
+	active_tween = leave
+	leave.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	leave.tween_property(card, "modulate:a", 0.0, 0.24)
+	leave.tween_property(card, "position:x", resting_x + 6.0, 0.24)
+	await get_tree().create_timer(0.25).timeout
+	if token == generation:
+		card.position.x = resting_x
+		card.hide()
+
+
+func _stop_active_tween() -> void:
+	if active_tween and active_tween.is_valid():
+		active_tween.kill()
+	active_tween = null

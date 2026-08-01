@@ -1,26 +1,28 @@
 package app
 
 type PlayerView struct {
-	ScenarioID       string            `json:"scenario_id"`
-	Title            string            `json:"title"`
-	Day              int               `json:"day"`
-	Duration         int               `json:"duration"`
-	Phase            string            `json:"phase"`
-	Ended            bool              `json:"ended"`
-	Resolved         bool              `json:"resolved"`
-	Outcome          string            `json:"outcome,omitempty"`
-	Player           VisiblePlayer     `json:"player"`
-	Location         VisibleLocation   `json:"location"`
-	WorldMap         VisibleWorldMap   `json:"world_map"`
-	KnownActors      []VisibleActor    `json:"known_actors"`
-	KnownFacts       []VisibleBelief   `json:"known_facts"`
-	RecentEvents     []VisibleEvent    `json:"recent_events"`
-	AvailableActions []AvailableAction `json:"available_actions"`
-	Guidance         []string          `json:"guidance,omitempty"`
-	LastTurn         *TurnFeedback     `json:"last_turn,omitempty"`
-	Ending           *EndingSummary    `json:"ending,omitempty"`
-	Metrics          PlayMetrics       `json:"metrics"`
-	Travel           *TravelGuidance   `json:"travel,omitempty"`
+	ScenarioID       string             `json:"scenario_id"`
+	Title            string             `json:"title"`
+	Day              int                `json:"day"`
+	Duration         int                `json:"duration"`
+	Phase            string             `json:"phase"`
+	Ended            bool               `json:"ended"`
+	Resolved         bool               `json:"resolved"`
+	Outcome          string             `json:"outcome,omitempty"`
+	Player           VisiblePlayer      `json:"player"`
+	Location         VisibleLocation    `json:"location"`
+	WorldMap         VisibleWorldMap    `json:"world_map"`
+	KnownActors      []VisibleActor     `json:"known_actors"`
+	KnownFacts       []VisibleBelief    `json:"known_facts"`
+	RecentEvents     []VisibleEvent     `json:"recent_events"`
+	CausalThreads    []VisibleInfluence `json:"causal_threads,omitempty"`
+	AvailableActions []AvailableAction  `json:"available_actions"`
+	Guidance         []string           `json:"guidance,omitempty"`
+	LastTurn         *TurnFeedback      `json:"last_turn,omitempty"`
+	Ending           *EndingSummary     `json:"ending,omitempty"`
+	Metrics          PlayMetrics        `json:"metrics"`
+	Travel           *TravelGuidance    `json:"travel,omitempty"`
+	Preparation      PreparationSummary `json:"preparation"`
 }
 
 type TurnFeedback struct {
@@ -33,6 +35,20 @@ type TurnFeedback struct {
 	Messages     []string           `json:"messages"`
 	Influence    []VisibleInfluence `json:"influence,omitempty"`
 	Presentation *PresentationCue   `json:"presentation,omitempty"`
+	StopReason   string             `json:"stop_reason,omitempty"`
+}
+
+type PreparationSummary struct {
+	ScoreSources []PreparationFactor `json:"score_sources"`
+	Conditions   []PreparationFactor `json:"conditions"`
+}
+
+type PreparationFactor struct {
+	Key    string `json:"key"`
+	Label  string `json:"label"`
+	Value  int    `json:"value,omitempty"`
+	Status string `json:"status"`
+	Ready  bool   `json:"ready"`
 }
 
 type PresentationCue struct {
@@ -52,6 +68,9 @@ type VisibleInfluence struct {
 	FactID       string                  `json:"fact_id"`
 	FactClaim    string                  `json:"fact_claim"`
 	DeliveredDay int                     `json:"delivered_day"`
+	Stage        string                  `json:"stage"`
+	StageLabel   string                  `json:"stage_label"`
+	Summary      string                  `json:"summary"`
 	Changes      []VisibleDecisionChange `json:"changes,omitempty"`
 }
 
@@ -191,4 +210,7 @@ type AvailableAction struct {
 	Relevance        string         `json:"relevance,omitempty"`
 	Risk             string         `json:"risk,omitempty"`
 	Warnings         []string       `json:"warnings,omitempty"`
+	KnownConditions  []string       `json:"known_conditions,omitempty"`
+	Unknowns         []string       `json:"unknowns,omitempty"`
+	Irreversible     bool           `json:"irreversible,omitempty"`
 }

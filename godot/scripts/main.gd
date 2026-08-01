@@ -245,6 +245,7 @@ func _build_interface() -> void:
 	_build_ending_layer()
 	presentation_director = PresentationDirectorScript.new()
 	add_child(presentation_director)
+	presentation_director.configure(display_font, medium_font)
 
 
 func _build_header() -> void:
@@ -361,11 +362,11 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	heading.add_theme_color_override("font_color", COLORS.accent)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mode_row.add_child(heading)
-	map_mode_button = _mode_button("山川", _set_visual_mode.bind("map"))
-	map_mode_button.custom_minimum_size = Vector2(76, 36)
+	map_mode_button = _mode_button("地图", _set_visual_mode.bind("map"))
+	map_mode_button.custom_minimum_size = Vector2(82, 36)
 	mode_row.add_child(map_mode_button)
-	location_mode_button = _mode_button("眼前", _set_visual_mode.bind("location"))
-	location_mode_button.custom_minimum_size = Vector2(76, 36)
+	location_mode_button = _mode_button("当前地点", _set_visual_mode.bind("location"))
+	location_mode_button.custom_minimum_size = Vector2(104, 36)
 	mode_row.add_child(location_mode_button)
 
 	var stage_frame := PanelContainer.new()
@@ -531,7 +532,7 @@ func _build_start_layer() -> void:
 	name_input.add_theme_stylebox_override("focus", name_focus_style)
 	name_input.add_theme_constant_override("minimum_character_width", 8)
 	content.add_child(name_input)
-	var begin_button := _ornate_button("踏入黑风谷", _new_game)
+	var begin_button := _ornate_button("从白石坊市入局", _new_game)
 	begin_button.custom_minimum_size.y = 66
 	content.add_child(begin_button)
 	var continue_button := _utility_button("翻开旧卷", _load_game)
@@ -570,7 +571,7 @@ func _build_journal_layer() -> void:
 	dismiss_area.pressed.connect(_close_journal)
 	journal_layer.add_child(dismiss_area)
 	journal_panel = PanelContainer.new()
-	journal_panel.anchor_left = 0.64
+	journal_panel.anchor_left = 0.57
 	journal_panel.anchor_right = 0.992
 	journal_panel.anchor_top = 0.026
 	journal_panel.anchor_bottom = 0.974
@@ -1171,6 +1172,11 @@ func _clear(container: Container) -> void:
 func _set_buttons_disabled(node: Node, disabled: bool) -> void:
 	if node is BaseButton:
 		node.disabled = disabled
+		if disabled:
+			# 全局请求中的按钮只是暂时忙碌，不应看起来像永久不可用。
+			node.add_theme_color_override("font_disabled_color", Color(COLORS.ink, 0.76))
+		else:
+			node.remove_theme_color_override("font_disabled_color")
 	for child in node.get_children():
 		_set_buttons_disabled(child, disabled)
 
@@ -1178,7 +1184,7 @@ func _set_buttons_disabled(node: Node, disabled: bool) -> void:
 func _operation_label(operation: String) -> String:
 	var labels := {
 		"health": "正在连接规则服务",
-		"new": "正在进入黑风谷",
+		"new": "正在进入白石坊市",
 		"load": "正在读取旅程",
 		"save": "正在保存",
 		"autosave": "正在自动保存",
@@ -1193,8 +1199,11 @@ func _request(operation: String, method: HTTPClient.Method, path: String, payloa
 		return
 	pending_operation = operation
 	_set_buttons_disabled(self, true)
+	if action_dock and action_dock.visible:
+		action_dock_title.text = _operation_label(operation) + "…"
 	if footer_label:
 		footer_label.text = _operation_label(operation) + "…"
+		footer_label.add_theme_color_override("font_color", COLORS.accent)
 	if start_layer.visible and connection_label:
 		connection_label.text = "正在确认旅途入口…"
 	var headers := PackedStringArray(["Content-Type: application/json"])
@@ -1244,8 +1253,10 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 		_request("autosave", HTTPClient.METHOD_POST, "/game/save", {"slot": AUTOSAVE_SLOT})
 	elif operation == "autosave":
 		_show_footer_message("已自动保存")
+		_render_actions(available_actions_cache)
 	elif operation == "save":
 		_show_footer_message("存档已保存")
+		_render_actions(available_actions_cache)
 	else:
 		footer_label.text = ""
 
@@ -1291,8 +1302,7 @@ func _finish_travel_presentation(feedback: Dictionary, previous_location: Dictio
 	_set_visual_mode("location")
 	day_label.text = "第 %d / %d 日" % [maxi(1, int(current_view.get("day", 0))), int(current_view.get("duration", 0))]
 	place_label.text = str(next_location.get("name", "未知"))
-	var phase := str(current_view.get("phase", ""))
-	phase_label.text = "准备" if phase == "" else phase
+	phase_label.text = _phase_display(str(current_view.get("phase", "")))
 	location_stage.play_establish()
 	if _has_causal_change(feedback):
 		_present_causal_change(feedback, next_location)
@@ -1417,7 +1427,7 @@ func _new_game() -> void:
 	journal_travel_details_visible = false
 	active_action_category = ""
 	_reset_action_focus()
-	_set_visual_mode("map")
+	_set_visual_mode("location")
 	_request("new", HTTPClient.METHOD_POST, "/game/new", {"player_name": player_name})
 
 
@@ -1557,8 +1567,7 @@ func _render_view() -> void:
 	var day := int(current_view.get("day", 0))
 	day_label.text = "第 %d / %d 日" % [maxi(1, day), int(current_view.get("duration", 0))]
 	place_label.text = str(location.get("name", "未知"))
-	var phase := str(current_view.get("phase", ""))
-	phase_label.text = "准备" if phase == "" else phase
+	phase_label.text = _phase_display(str(current_view.get("phase", "")))
 	var travel = current_view.get("travel", null)
 	footer_label.add_theme_color_override("font_color", COLORS.muted)
 	var available_actions = current_view.get("available_actions", [])
@@ -1580,9 +1589,9 @@ func _render_view() -> void:
 	objective_label.text = str(guidance[0]) if not guidance.is_empty() else "风声未定，先看清眼前的人和路。"
 	_render_player(player)
 	_render_clues(known_facts, available_actions_cache)
-	_render_scene(current_view.get("recent_events", []), guidance.slice(1), travel, current_view.get("last_turn", null), str(player.get("name", "旅人")))
+	_render_scene(current_view.get("recent_events", []), guidance.slice(1), travel, current_view.get("last_turn", null), current_view.get("causal_threads", []), str(player.get("name", "旅人")))
 	_render_people(known_actors, available_actions_cache)
-	_render_travel_readiness(travel)
+	_render_travel_readiness(travel, current_view.get("preparation", {}))
 	_render_journal_tab_states(known_facts, known_actors, travel, current_view.get("last_turn", null), available_actions_cache)
 	_render_actions(available_actions_cache)
 	_render_world_map(current_view.get("world_map", {}), location, available_actions_cache)
@@ -1608,10 +1617,12 @@ func _set_visual_mode(mode: String) -> void:
 	if action_dock:
 		action_dock.visible = mode == "location"
 	if map_mode_button:
-		map_mode_button.text = "山川"
+		map_mode_button.text = "地图"
+		map_mode_button.tooltip_text = "查看公开地点、路线与行程"
 		_style_mode_state(map_mode_button, mode == "map")
 	if location_mode_button:
-		location_mode_button.text = "眼前"
+		location_mode_button.text = "当前地点"
+		location_mode_button.tooltip_text = "返回当前位置、人物与行动"
 		_style_mode_state(location_mode_button, mode == "location")
 	if mode == "location" and previous_mode != "location" and location_stage:
 		location_stage.play_establish.call_deferred()
@@ -1662,8 +1673,9 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 	if route_status == "available":
 		var action := _action_by_id(actions, str(route.get("action_id", "")))
 		if not action.is_empty():
-			var move_button := _button("动身 · %d 日 · 危险 %d" % [int(route.get("duration", 1)), int(route.get("danger", 0))], _consider_action.bind(action), false)
+			var move_button := _button("前往%s · %d 日" % [selected.get("name", "目的地"), int(route.get("duration", 1))], _consider_action.bind(action), false)
 			move_button.custom_minimum_size.y = 40
+			move_button.tooltip_text = "危险 %d · 途中局势会继续推进" % int(route.get("danger", 0))
 			map_detail_box.add_child(move_button)
 	elif route_status == "blocked":
 		var blockers := _joined_action_values(route.get("blockers", []))
@@ -1871,7 +1883,13 @@ func _render_player(player: Dictionary) -> void:
 		_add_status_chip(player_resources_box, "伤势 %d" % injury, COLORS.danger)
 	for index in range(mini(items.size(), 2)):
 		var item: Dictionary = items[index]
-		_add_status_chip(player_resources_box, "%s ×%d" % [item.get("name", "物品"), int(item.get("amount", 1))], COLORS.muted)
+		var item_name := str(item.get("name", "物品"))
+		match str(item.get("id", "")):
+			"healing_pill":
+				item_name += " · 治伤"
+			"antidote":
+				item_name += " · 入谷"
+		_add_status_chip(player_resources_box, "%s ×%d" % [item_name, int(item.get("amount", 1))], COLORS.muted)
 	if items.size() > 2:
 		_add_status_chip(player_resources_box, "行囊 %d 种" % items.size(), COLORS.muted)
 
@@ -1912,6 +1930,17 @@ func _known_timing(clues: Array) -> String:
 	var confidence := int(best.get("confidence", 0))
 	var status := "已核实" if confidence >= 3 else ("较可信" if confidence == 2 else "传闻")
 	return "%s · %s" % [timing, status]
+
+
+func _phase_display(phase: String) -> String:
+	match phase:
+		"准备":
+			return "筹备期"
+		"扩散":
+			return "消息扩散期"
+		"入谷":
+			return "入谷争夺期"
+	return "筹备期" if phase == "" else phase
 
 
 func _render_clues(clues: Array, actions: Array) -> void:
@@ -1969,7 +1998,7 @@ func _has_action_for_fact(actions: Array, fact_id: String) -> bool:
 	return not _action_for_fact(actions, fact_id).is_empty()
 
 
-func _render_scene(events: Array, guidance: Array, travel, feedback, player_name: String) -> void:
+func _render_scene(events: Array, guidance: Array, travel, feedback, causal_threads: Array, player_name: String) -> void:
 	_clear(scene_box)
 	if feedback is Dictionary:
 		var feedback_signature := _feedback_signature(feedback)
@@ -1980,6 +2009,7 @@ func _render_scene(events: Array, guidance: Array, travel, feedback, player_name
 		var separator := HSeparator.new()
 		separator.modulate = COLORS.line
 		scene_box.add_child(separator)
+	_render_causal_threads(scene_box, causal_threads)
 	if not guidance.is_empty():
 		var guidance_heading := _text(scene_box, "眼下", true, TYPE_SCALE.meta)
 		guidance_heading.add_theme_color_override("font_color", COLORS.accent)
@@ -1994,12 +2024,27 @@ func _render_scene(events: Array, guidance: Array, travel, feedback, player_name
 	var rendered_events := 0
 	for index in range(events.size() - 1, -1, -1):
 		var event = events[index]
-		if feedback is Dictionary and int(event.get("day", -1)) == int(feedback.get("day", -2)) and str(event.get("actor_name", "")) == player_name:
+		if str(event.get("actor_name", "")) == player_name:
 			continue
 		_text(scene_box, "第 %d 日 · %s" % [int(event.get("day", 0)), event.get("description", "局势变化")], true, 14)
 		rendered_events += 1
 		if rendered_events >= 3:
 			break
+
+
+func _render_causal_threads(parent: VBoxContainer, threads: Array) -> void:
+	if threads.is_empty():
+		return
+	var heading := _text(parent, "情报因果线", true, TYPE_SCALE.meta)
+	heading.add_theme_color_override("font_color", COLORS.accent)
+	var first := maxi(0, threads.size() - 2)
+	for index in range(threads.size() - 1, first - 1, -1):
+		var thread: Dictionary = threads[index]
+		var stage := str(thread.get("stage", "delivered"))
+		var stage_line := _text(parent, "%s · %s" % [thread.get("actor_name", "有人"), thread.get("stage_label", "已送达")], false, 14)
+		stage_line.add_theme_color_override("font_color", COLORS.success if stage == "changed" else COLORS.accent)
+		_text(parent, "“%s”" % thread.get("fact_claim", "一条消息"), true, 13)
+		_text(parent, str(thread.get("summary", "尚无公开回响")), true, 13)
 
 
 func _render_feedback_summary(parent: VBoxContainer, feedback: Dictionary) -> void:
@@ -2023,6 +2068,10 @@ func _render_feedback_summary(parent: VBoxContainer, feedback: Dictionary) -> vo
 	if cause != "":
 		_text(parent, cause, true, 14)
 	var messages: Array = feedback.get("messages", [])
+	var stop_reason := str(feedback.get("stop_reason", ""))
+	if stop_reason != "":
+		var stop_line := _text(parent, "为何停下 · %s" % stop_reason, false, 14)
+		stop_line.add_theme_color_override("font_color", COLORS.accent)
 	for index in range(mini(messages.size(), 2)):
 		_text(parent, "· %s" % messages[index], false, 14)
 	journal_feedback_details_button = _utility_button("收起推演过程" if journal_feedback_details_visible else "查看推演过程", _toggle_journal_feedback_details)
@@ -2049,7 +2098,7 @@ func _feedback_signature(feedback) -> String:
 	return "%s|%s|%s" % [feedback.get("day", ""), feedback.get("action_id", ""), feedback.get("status", "")]
 
 
-func _render_travel_readiness(travel) -> void:
+func _render_travel_readiness(travel, preparation = {}) -> void:
 	_clear(travel_box)
 	if not travel is Dictionary:
 		_text(travel_box, "还没有明确的远行目标。", true)
@@ -2071,8 +2120,26 @@ func _render_travel_readiness(travel) -> void:
 		var missing_title := _text(travel_box, "仍缺 %d 项才能成行" % missing.size(), false, 19)
 		missing_title.add_theme_color_override("font_color", COLORS.danger)
 		for check in missing:
-			var missing_line := _text(travel_box, _travel_blocker_text(str(check.get("label", "路线条件"))), false, 15)
+			var check_label := str(check.get("label", "路线条件"))
+			var missing_line := _text(travel_box, _travel_blocker_text(check_label), false, 15)
 			missing_line.add_theme_color_override("font_color", COLORS.danger)
+			if check_label.contains("解瘴丹"):
+				var resolution_action := _travel_resolution_action(available_actions_cache)
+				if not resolution_action.is_empty():
+					var resolution_button := _action_button(_travel_resolution_label(resolution_action), _consider_action_from_journal.bind(resolution_action))
+					resolution_button.custom_minimum_size.y = 38
+					travel_box.add_child(resolution_button)
+			elif check_label.contains("入口开放"):
+				_text(travel_box, "入口会随局势开放；眼下可以核验、交涉或继续准备。", true, 13)
+	if preparation is Dictionary:
+		var score_sources: Array = preparation.get("score_sources", [])
+		if not score_sources.is_empty():
+			var preparation_heading := _text(travel_box, "你的争夺准备", true, TYPE_SCALE.meta)
+			preparation_heading.add_theme_color_override("font_color", COLORS.accent)
+			for factor in score_sources:
+				var factor_line := _text(travel_box, "%s %d · %s" % [factor.get("label", "准备"), int(factor.get("value", 0)), factor.get("status", "")], false, 14)
+				factor_line.add_theme_color_override("font_color", COLORS.success if bool(factor.get("ready", false)) else COLORS.muted)
+			_text(travel_box, "这里只说明你自己的准备，不代表其他争夺者的实力。", true, 13)
 	var timing := str(travel.get("timing", ""))
 	if timing != "":
 		var timing_line := _text(travel_box, timing, true, 13)
@@ -2099,6 +2166,35 @@ func _toggle_journal_travel_details() -> void:
 		journal_travel_details_box.visible = journal_travel_details_visible
 	if journal_travel_details_button:
 		journal_travel_details_button.text = "收起完整行装" if journal_travel_details_visible else "查看已备与路线"
+
+
+func _travel_resolution_action(actions: Array) -> Dictionary:
+	for action in actions:
+		if str(action.get("kind", "")) == "recover" and str(action.get("target_id", "")) == "N06":
+			return action
+	for action in actions:
+		if str(action.get("kind", "")) == "buy" and str(action.get("target_id", "")) == "antidote":
+			return action
+	for action in actions:
+		if str(action.get("kind", "")) == "move" and str(action.get("target_id", "")) == "L01":
+			return action
+	return {}
+
+
+func _travel_resolution_label(action: Dictionary) -> String:
+	match str(action.get("kind", "")):
+		"recover":
+			return "找苏晚照 · 用情报交换解瘴丹"
+		"buy":
+			return "现在购买解瘴丹 · %d 灵石" % int(action.get("costs", {}).get("spirit_stones", 0))
+		"move":
+			return "返回白石坊市寻找解瘴丹"
+	return str(action.get("name", "处理缺项"))
+
+
+func _consider_action_from_journal(action: Dictionary) -> void:
+	_close_journal()
+	_consider_action(action)
 
 
 func _travel_missing_checks(travel: Dictionary) -> Array:
@@ -2175,16 +2271,27 @@ func _render_people(actors: Array, actions: Array) -> void:
 func _render_actions(actions: Array) -> void:
 	_clear(actions_box)
 	var focused_actions := _focused_information_actions(actions)
+	var has_action_focus := focused_actor_id != "" or focused_fact_id != ""
+	if location_detail_box:
+		location_detail_box.visible = not has_action_focus
+	if stage_people_box:
+		stage_people_box.visible = not has_action_focus
 	if focused_actor_id != "":
 		action_dock_title.text = "与%s说话" % focused_actor_name
-		_render_focused_actor_summary(focused_actions)
 		var back := _utility_button("回到眼前", _clear_action_focus)
 		back.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		actions_box.add_child(back)
 		if focused_actions.is_empty():
+			_render_focused_actor_summary(focused_actions)
 			_text(actions_box, "此刻没有新的话可说。已经送达的消息不会重复出现。", true)
 			return
+		var talk_heading := _text(actions_box, "眼下可说 · %d 条" % focused_actions.size(), true, TYPE_SCALE.meta)
+		talk_heading.add_theme_color_override("font_color", COLORS.accent)
 		_add_focused_information_actions(focused_actions)
+		var actor_rule := HSeparator.new()
+		actor_rule.modulate = Color(COLORS.line, 0.62)
+		actions_box.add_child(actor_rule)
+		_render_focused_actor_summary(focused_actions)
 		return
 	if focused_fact_id != "":
 		action_dock_title.text = "把消息交给谁"
@@ -2205,6 +2312,7 @@ func _render_actions(actions: Array) -> void:
 	if eligible.is_empty():
 		_text(actions_box, "想赶路就翻开地图；想传话就先选中一个人。", true, 14)
 		return
+	_render_first_day_route_compass(eligible)
 	var visible_count := eligible.size() if show_all_actions else mini(3, eligible.size())
 	for index in visible_count:
 		_add_contextual_choice(eligible[index])
@@ -2222,18 +2330,55 @@ func _location_context_actions(actions: Array) -> Array:
 	var result: Array = []
 	for action in actions:
 		var category := str(action.get("category", "other"))
-		if str(action.get("kind", "")) == "tell" or category in ["information", "move"]:
+		if str(action.get("kind", "")) == "tell" or category == "move":
 			continue
 		result.append(action)
 	return result
 
 
+func _render_first_day_route_compass(actions: Array) -> void:
+	if int(current_view.get("day", 0)) > 1:
+		return
+	var has_verify := not _action_by_id(actions, "verify:F02").is_empty()
+	var has_antidote := false
+	for action in actions:
+		if str(action.get("kind", "")) == "buy" and str(action.get("target_id", "")) == "antidote":
+			has_antidote = true
+			break
+	if not has_verify and not has_antidote:
+		return
+	var panel := PanelContainer.new()
+	var style := _panel_style(Color(COLORS.panel_alt, 0.34), 0, 2, Color.TRANSPARENT, 11, 6)
+	style.border_width_left = 2
+	style.border_color = Color(COLORS.accent, 0.64)
+	panel.add_theme_stylebox_override("panel", style)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 2)
+	panel.add_child(content)
+	var heading := _text(content, "起手任选 · 查日期 / 备丹药 / 找人传话", false, 14)
+	heading.add_theme_color_override("font_color", COLORS.accent)
+	var meanings: Array[String] = []
+	if has_verify:
+		meanings.append("情报更可靠")
+	if has_antidote:
+		meanings.append("保留亲自入谷")
+	meanings.append("影响人物安排")
+	_text(content, "分别用于：%s" % " · ".join(meanings), true, 12)
+	actions_box.add_child(panel)
+
+
 func _add_contextual_choice(action: Dictionary) -> void:
 	var label := str(action.get("name", "做一件事"))
+	if action.get("id", "") == "verify:F02":
+		label = "查明日期 · 核验成熟传闻"
+	elif action.get("kind", "") == "buy" and action.get("target_id", "") == "antidote":
+		label = "备好入谷药 · 购买解瘴丹"
+	elif action.get("kind", "") == "recover":
+		label = "交出已核实日期 → 获得解瘴丹"
 	if action.get("id", "") == "wait:next":
 		label = "静候下一阵风声"
 	elif int(action.get("completion_day", 0)) > 0:
-		label += "　·　第 %d 日" % int(action.get("completion_day", 0))
+		label += "　·　%d 日 · 第 %d 日完成" % [int(action.get("duration", 1)), int(action.get("completion_day", 0))]
 	var button := _action_button(label, _consider_action.bind(action))
 	button.custom_minimum_size.y = 44
 	button.tooltip_text = str(action.get("description", ""))
@@ -2292,7 +2437,7 @@ func _set_action_category(category: String) -> void:
 func _count_tell_actions(actions: Array, actor_id: String, fact_id: String) -> int:
 	var count := 0
 	for action in actions:
-		if action.get("kind", "") != "tell":
+		if action.get("kind", "") not in ["tell", "recover"]:
 			continue
 		if actor_id != "" and str(action.get("target_id", "")) != actor_id:
 			continue
@@ -2305,7 +2450,7 @@ func _count_tell_actions(actions: Array, actor_id: String, fact_id: String) -> i
 func _focused_information_actions(actions: Array) -> Array:
 	var result: Array = []
 	for action in actions:
-		if action.get("kind", "") != "tell":
+		if action.get("kind", "") not in ["tell", "recover"]:
 			continue
 		if focused_actor_id != "" and str(action.get("target_id", "")) != focused_actor_id:
 			continue
@@ -2319,12 +2464,24 @@ func _add_focused_information_actions(actions: Array) -> void:
 	for index in actions.size():
 		var action: Dictionary = actions[index]
 		if focused_actor_id != "":
-			_text(actions_box, str(action.get("fact_claim", "未知线索")), false, 16)
+			if action.get("kind", "") == "recover":
+				_text(actions_box, str(action.get("name", "以情报换取解瘴丹")), false, 16)
+				_text(actions_box, str(action.get("description", "交出情报并换取入谷所需物品")), true, 13)
+			else:
+				_text(actions_box, str(action.get("fact_claim", "未知线索")), false, 16)
 		else:
 			_text(actions_box, "%s · %s" % [action.get("target_name", "某人"), action.get("target_role", "可交谈人物")], false, 16)
 		var relevance := _text(actions_box, str(action.get("relevance", "尚不了解这条消息会在对方心里留下什么")), false, 13)
 		relevance.add_theme_color_override("font_color", COLORS.accent)
-		var button_label := "把这句话告诉他" if focused_actor_id != "" else "告诉%s" % action.get("target_name", "对方")
+		var button_label := ""
+		if action.get("kind", "") == "recover":
+			button_label = "交出已核实日期 → 获得解瘴丹"
+			var warning_line := _text(actions_box, "代价 · 消息送出后不可撤回", false, 13)
+			warning_line.add_theme_color_override("font_color", COLORS.danger)
+		else:
+			button_label = "把这句话告诉他" if focused_actor_id != "" else "告诉%s" % action.get("target_name", "对方")
+		if int(action.get("completion_day", 0)) > 0:
+			button_label += " · %d 日" % int(action.get("duration", 1))
 		var tell_button := _action_button(button_label, _consider_action.bind(action))
 		tell_button.tooltip_text = "%s\n%s" % [action.get("timing", ""), action.get("risk", "")]
 		actions_box.add_child(tell_button)
@@ -2345,6 +2502,15 @@ func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
 	_focus_portrait(actor_id)
 	_render_stage_people(current_view.get("known_actors", []), available_actions_cache)
 	_render_actions(available_actions_cache)
+
+
+func _action_has_visible_entry(action: Dictionary) -> bool:
+	var kind := str(action.get("kind", ""))
+	if kind == "move":
+		return str(action.get("target_id", "")) != ""
+	if kind in ["tell", "recover"]:
+		return str(action.get("target_id", "")) != ""
+	return kind != ""
 
 
 func _focus_actor_from_reference(actor_id: String, actor_name: String) -> void:
@@ -2435,6 +2601,9 @@ func _add_action_button(action: Dictionary) -> void:
 		label += "　· 第 %d 日完成" % int(action.get("completion_day", 0))
 	else:
 		label += "　· %d 日" % duration
+	var list_costs: Dictionary = action.get("costs", {})
+	if int(list_costs.get("spirit_stones", 0)) > 0:
+		label += "　· 灵石 %d" % int(list_costs.get("spirit_stones", 0))
 	var button := _action_button(label, _consider_action.bind(action))
 	button.tooltip_text = str(action.get("description", ""))
 	actions_box.add_child(button)
@@ -2451,6 +2620,14 @@ func _add_action_decision_context(parent: VBoxContainer, action: Dictionary, com
 	var resolves := _joined_action_values(action.get("resolves", []))
 	if resolves != "" and not compact:
 		_text(parent, "解决 · %s" % resolves, true, 14)
+	var known_conditions := _joined_action_values(action.get("known_conditions", []))
+	if known_conditions != "" and not compact:
+		var known_line := _text(parent, "已满足 · %s" % known_conditions, true, 14)
+		known_line.add_theme_color_override("font_color", COLORS.success)
+	var unknowns := _joined_action_values(action.get("unknowns", []))
+	if unknowns != "" and not compact:
+		var unknown_line := _text(parent, "仍未知 · %s" % unknowns, true, 14)
+		unknown_line.add_theme_color_override("font_color", COLORS.accent)
 	var timing := str(action.get("timing", ""))
 	if timing != "":
 		var timing_line := _text(parent, "时间 · %s" % timing, true, 14)
@@ -2476,8 +2653,8 @@ func _on_tell_fact_selected(index: int, facts: Array) -> void:
 
 func _consider_action(action: Dictionary) -> void:
 	var kind := str(action.get("kind", ""))
-	var needs_confirmation: bool = int(action.get("duration", 1)) > 1 or not action.get("costs", {}).is_empty() or kind in ["advance", "move", "tell"]
-	if not needs_confirmation:
+	var warnings = action.get("warnings", [])
+	if not _action_needs_confirmation(action):
 		_execute_action(str(action.get("id", "")))
 		return
 	selected_action = action
@@ -2499,11 +2676,13 @@ func _consider_action(action: Dictionary) -> void:
 		var timing_line := _text(confirmation_box, "时机 · %s" % timing, true, 14)
 		if timing.contains("挤压") or timing.contains("来不及") or timing.contains("无法预先保证"):
 			timing_line.add_theme_color_override("font_color", COLORS.danger)
-	var warnings = action.get("warnings", [])
 	if warnings is Array:
 		for warning_text in warnings:
 			var warning_line := _text(confirmation_box, "注意 · %s" % warning_text, false, 14)
 			warning_line.add_theme_color_override("font_color", COLORS.danger)
+	if bool(action.get("irreversible", false)):
+		var irreversible_line := _text(confirmation_box, "不可撤回 · 行动产生的公开信息与交换结果会保留", false, 14)
+		irreversible_line.add_theme_color_override("font_color", COLORS.danger)
 	var costs: Dictionary = action.get("costs", {})
 	if not costs.is_empty():
 		var cost_names := {"spirit_stones": "灵石", "credit": "信用", "combat": "战力", "support": "助力"}
@@ -2537,6 +2716,13 @@ func _consider_action(action: Dictionary) -> void:
 	if action_dock:
 		action_dock.hide()
 	confirmation_layer.show()
+
+
+func _action_needs_confirmation(action: Dictionary) -> bool:
+	var warnings = action.get("warnings", [])
+	var has_warnings: bool = warnings is Array and not warnings.is_empty()
+	var kind := str(action.get("kind", ""))
+	return not action.get("costs", {}).is_empty() or bool(action.get("irreversible", false)) or has_warnings or kind in ["move", "tell", "recover"] or action.get("id", "") == "wait:next"
 
 
 func _toggle_confirmation_details() -> void:

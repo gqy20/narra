@@ -42,8 +42,10 @@ func (s *Session) withDecisionContext(state *domain.WorldState, action Available
 	case "verify":
 		action.ExpectedOutcomes = []string{"把这条线索核验为可靠结论，并整理关联线索"}
 		action.Resolves = []string{"这条线索尚未核实"}
+		action.KnownConditions = []string{"你持有这条线索", "线索仍待核实"}
 	case "buy":
 		action.ExpectedOutcomes = []string{"获得 1 件" + action.TargetName}
+		action.KnownConditions = []string{"当前仍有库存", "灵石足够支付"}
 		if action.TargetID == "antidote" {
 			action.ExpectedOutcomes = []string{"获得 1 枚解瘴丹，保留亲自入谷路线"}
 			action.Resolves = []string{"缺少解瘴丹"}
@@ -51,19 +53,34 @@ func (s *Session) withDecisionContext(state *domain.WorldState, action Available
 	case "move":
 		action.ExpectedOutcomes = []string{"抵达" + action.TargetName}
 		action.Resolves = []string{"尚未抵达" + action.TargetName}
+		action.KnownConditions = []string{"路线的公开条件均已满足"}
+		action.Unknowns = []string{"途中局势仍会按日推进"}
 	case "tell":
 		action.ExpectedOutcomes = []string{"让" + action.TargetName + "获得这条线索", "可能改变对方的后续选择"}
+		action.KnownConditions = []string{"对方就在此地", "你持有这条线索"}
+		action.Unknowns = []string{"对方是否采用消息，只能从之后的公开行动判断"}
+		action.Irreversible = true
+	case "recover":
+		action.KnownConditions = []string{"坊市购买路线已经关闭", "已核实成熟日期", "苏晚照就在青岚门驻地"}
+		action.Unknowns = []string{"苏晚照如何使用这条消息，只能从之后的公开行动判断"}
 	case "heal":
 		action.ExpectedOutcomes = []string{"伤势降低 1 级"}
 		action.Resolves = []string{"当前伤势"}
+		action.KnownConditions = []string{"当前带伤", "疗伤条件允许"}
+		action.Unknowns = []string{"疗伤期间局势仍会按日推进"}
 	case "cultivate":
 		action.ExpectedOutcomes = []string{"战力提高 1 点"}
+		action.KnownConditions = []string{"当前没有伤势妨碍闭关"}
+		action.Unknowns = []string{"闭关期间局势仍会按日推进"}
 	case "advance":
 		if action.ID == "wait:complete" {
 			action.ExpectedOutcomes = []string{"完成当前行动，或在重要变化出现时提前停下"}
 			action.Resolves = []string{"当前行动尚未完成"}
+			action.KnownConditions = []string{"已有行动正在进行"}
+			action.Unknowns = []string{"若出现重要变化，会提前停下让你重新决策"}
 		} else {
 			action.ExpectedOutcomes = []string{"跳过平静日，在下一次重要变化处停下"}
+			action.Unknowns = []string{"停止日期取决于尚未发生的局势变化"}
 		}
 	}
 	return action
@@ -322,6 +339,7 @@ func (s *Session) hasDeliveredFact(state *domain.WorldState, targetID, factID st
 }
 
 func (s *Session) addRecoveryActions(options map[string]actionOption, state *domain.WorldState) {
+	s.addAntidoteRecoveryAction(options, state)
 	if action, ok := s.bundle.Actions["heal"]; ok && state.Player.Injury > 0 && fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
 		options["heal"] = actionOption{
 			view:    AvailableAction{ID: "heal", Kind: "heal", Category: "self", Name: "疗伤", Description: "专心处理伤势，降低一级伤势", Duration: action.Duration},
@@ -329,10 +347,79 @@ func (s *Session) addRecoveryActions(options map[string]actionOption, state *dom
 		}
 	}
 	if action, ok := s.bundle.Actions["cultivate"]; ok && state.Player.Injury == 0 && fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
-		options["cultivate"] = actionOption{
-			view:    AvailableAction{ID: "cultivate", Kind: "cultivate", Category: "self", Name: "修炼", Description: "闭关三日，战力提高一点", Duration: action.Duration},
-			command: &domain.PlayerCommand{ActionID: "cultivate", Description: "玩家闭关修炼", Conditions: []domain.Condition{{Type: "injury_at_most", MaxConfidence: 0}}, Effects: []domain.Effect{{Type: "adjust_resource", Key: "combat", Amount: 1}}},
+		completed := s.countHistoryAction("cultivate")
+		cost := cultivationCost(completed)
+		if state.Player.Resources["spirit_stones"] < cost {
+			return
 		}
+		costs := make(map[string]int)
+		warnings := make([]string, 0, 1)
+		description := "闭关三日，战力提高一点"
+		if cost > 0 {
+			costs["spirit_stones"] = cost
+			description = fmt.Sprintf("继续闭关三日，以 %d 灵石稳固气机，战力提高一点", cost)
+			warnings = append(warnings, "重复闭关已进入高耗阶段；仍可提升战力，但不再是无代价的稳定最优选择。")
+		}
+		options["cultivate"] = actionOption{
+			view:    AvailableAction{ID: "cultivate", Kind: "cultivate", Category: "self", Name: "修炼", Description: description, Duration: action.Duration, Costs: costs, Warnings: warnings},
+			command: &domain.PlayerCommand{ActionID: "cultivate", Description: "玩家闭关修炼", Conditions: []domain.Condition{{Type: "injury_at_most", MaxConfidence: 0}}, Costs: costs, Effects: []domain.Effect{{Type: "adjust_resource", Key: "combat", Amount: 1}}},
+		}
+	}
+}
+
+func (s *Session) addAntidoteRecoveryAction(options map[string]actionOption, state *domain.WorldState) {
+	action, ok := s.bundle.Actions["spread"]
+	belief, knowsDate := state.Player.Beliefs["F01"]
+	su, hasSu := state.NPCs["N06"]
+	if !ok || !knowsDate || belief.Confidence < 3 || state.Player.Items["antidote"] > 0 || !state.WorldFlag("antidote_blockade") || !hasSu || state.Player.Location != "L02" || su.Location != "L02" || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
+		return
+	}
+	claim := belief.Claim
+	if claim == "" {
+		claim = "已核实的成熟日期"
+	}
+	options["recover:N06:antidote"] = actionOption{
+		view: AvailableAction{
+			ID: "recover:N06:antidote", Kind: "recover", Category: "information", Name: "以情报换取解瘴丹",
+			Description: "把已核实的成熟日期交给苏晚照，换取一枚青岚门备用解瘴丹。", Duration: action.Duration,
+			TargetID: "N06", TargetName: "苏晚照", TargetRole: "青岚门药修",
+			FactID: "F01", FactClaim: claim, Relevance: "直接相关 · 苏晚照公开关注青髓芝药性与移植时机",
+			Risk:             "苏晚照会获得准确成熟日期，并可能据此调整青岚门的后续安排。",
+			ExpectedOutcomes: []string{"获得 1 枚解瘴丹，重新打开亲自入谷路线", "苏晚照获得已核实的成熟日期"},
+			Resolves:         []string{"坊市封锁后无法购得解瘴丹"},
+			Warnings:         []string{"这是不可撤回的情报交换；消息送出后不能收回。"}, Irreversible: true,
+		},
+		command: &domain.PlayerCommand{
+			ActionID: "spread", TargetID: "N06", Description: "玩家以成熟日期向苏晚照换取解瘴丹",
+			Conditions: []domain.Condition{{Type: "location", Value: "L02"}, {Type: "missing_item", Key: "antidote"}, {Type: "flag", Key: "antidote_blockade"}, {Type: "belief", Key: "F01", MinConfidence: 3}},
+			Effects: []domain.Effect{
+				{Type: "set_belief", TargetID: "N06", FactID: "F01", Claim: claim, Confidence: 3, EvidenceStrength: belief.EvidenceStrength, Source: state.Player.ID, Propagation: "private", Secrecy: belief.Secrecy},
+				{Type: "add_item", Key: "antidote", Amount: 1},
+			},
+		},
+	}
+}
+
+func (s *Session) countHistoryAction(actionID string) int {
+	count := 0
+	for _, entry := range s.history {
+		if entry == actionID {
+			count++
+		}
+	}
+	return count
+}
+
+func cultivationCost(completed int) int {
+	switch completed {
+	case 0, 1:
+		return 0
+	case 2:
+		return 10
+	case 3:
+		return 20
+	default:
+		return 30
 	}
 }
 

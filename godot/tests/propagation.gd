@@ -45,6 +45,13 @@ func _run() -> void:
 			found_verified_timing = true
 	if not found_verified_timing:
 		return _fail("action timing did not update after verification")
+	var threads: Array = app.current_view.get("causal_threads", [])
+	if threads.is_empty() or threads[0].get("stage", "") != "delivered":
+		return _fail("delivered information has no persistent causal thread")
+	app._open_journal()
+	if "情报因果线" not in _descendant_text(app.scene_box) or "等待公开回响" not in _descendant_text(app.scene_box):
+		return _fail("journal does not show the delivered causal stage")
+	app._close_journal()
 	app._focus_actor_actions("N03", "沈砚秋")
 	var dossier_text := _descendant_text(app.actions_box)
 	if "传播风险" not in dossier_text or "当前状态" not in dossier_text or "正在权衡" not in dossier_text:
@@ -60,6 +67,9 @@ func _run() -> void:
 		return
 	if app.actor_expression_by_id.get("N03", "") != "decisive" or app.actor_portrait.texture != shen_profile.decisive:
 		return _fail("visible decision change did not put Shen Yanqiu into the decisive state")
+	threads = app.current_view.get("causal_threads", [])
+	if threads.is_empty() or threads[0].get("stage", "") != "changed":
+		return _fail("causal thread did not advance after a public decision change")
 	if not app.causal_layer.visible or app.causal_background.texture == null or app.causal_portrait.texture != shen_profile.decisive:
 		return _fail("decision change did not enter the full-screen causal theatre")
 	var causal_text := _descendant_text(app.causal_layer)
@@ -76,6 +86,21 @@ func _run() -> void:
 	if app.causal_layer.visible or "余波继续" not in app.presentation_director.title_label.text:
 		return _fail("repeated causal change did not step down to the compact ripple presentation")
 	app.presentation_director.cancel()
+	if not await _execute("wait:next"):
+		return
+	if int(app.current_view.get("day", 0)) != 8:
+		return _fail("advance did not stop when the recovery route appeared")
+	var recovery := _find_action("recover:N06:antidote")
+	if recovery.is_empty() or not app._action_has_visible_entry(recovery):
+		return _fail("recovery action has no frontend entry")
+	if not app._action_needs_confirmation(recovery):
+		return _fail("irreversible recovery exchange lost its confirmation")
+	app._focus_actor_actions("N06", "苏晚照")
+	if "以情报换取解瘴丹" not in _descendant_text(app.actions_box):
+		return _fail("recovery action is not visible from Su Wanzhao's dialogue")
+	if "为何停下" not in _descendant_text(app.scene_box) or "以情报换取解瘴丹" not in _descendant_text(app.scene_box):
+		return _fail("recovery interruption does not explain why time stopped")
+	app._clear_action_focus()
 	for index in 3:
 		if not await _execute("wait:next"):
 			return

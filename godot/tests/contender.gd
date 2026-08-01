@@ -63,6 +63,8 @@ func _run() -> void:
 	var player: Dictionary = app.current_view.get("player", {})
 	if int(player.get("resources", {}).get("combat", 0)) < 7:
 		return _fail("cultivation did not reach contender strength")
+	if int(player.get("resources", {}).get("spirit_stones", 0)) != 20:
+		return _fail("repeat cultivation did not consume its escalating visible costs")
 	if str(app.current_view.get("location", {}).get("id", "")) != "L05":
 		return _fail("player did not reach the inner valley")
 	if "入谷烟测修士" not in str(app.current_view.get("outcome", "")):

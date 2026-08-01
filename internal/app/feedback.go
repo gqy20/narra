@@ -194,7 +194,13 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 		case marketOpen:
 			result = append(result, "白石坊市仍有解瘴丹出售；若想亲自入谷，需要先返回坊市购买。")
 		default:
-			result = append(result, "坊市已经无法购买解瘴丹，亲自入谷路线受阻；你仍可通过调查和传播影响最终归属。")
+			if available["recover:N06:antidote"] {
+				result = append(result, "坊市已经封锁，亲自入谷路线受阻；可把已核实的成熟日期交给苏晚照，换取一枚解瘴丹并恢复路线。")
+			} else if belief, ok := state.Player.Beliefs["F01"]; ok && belief.Confidence >= 3 {
+				result = append(result, "坊市已经封锁，亲自入谷路线受阻；带着已核实的成熟日期前往青岚门驻地，可向苏晚照换取一枚解瘴丹。")
+			} else {
+				result = append(result, "坊市已经封锁，亲自入谷路线受阻；核实成熟日期后前往青岚门驻地，可尝试以情报换取解瘴丹；也可继续通过传播影响最终归属。")
+			}
 		}
 	}
 	if s.lastTurn != nil && strings.HasPrefix(s.lastTurn.ActionID, "tell:") {
@@ -335,6 +341,19 @@ func (s *Session) visibleInfluence(state *domain.WorldState, decisions []domain.
 			result[index].Changes = appendUniqueChange(result[index].Changes, change)
 		}
 	}
+	for index := range result {
+		influence := &result[index]
+		if len(influence.Changes) > 0 {
+			latest := influence.Changes[len(influence.Changes)-1]
+			influence.Stage = "changed"
+			influence.StageLabel = "已改变公开行动"
+			influence.Summary = fmt.Sprintf("第 %d 日 · %s", latest.Day, latest.WithInformation)
+			continue
+		}
+		influence.Stage = "delivered"
+		influence.StageLabel = "已送达 · 等待公开回响"
+		influence.Summary = "尚未观察到由这条消息引起的公开行动变化"
+	}
 	return result
 }
 
@@ -374,7 +393,7 @@ func resourceName(key string) string {
 	case "combat":
 		return "战力"
 	case "support":
-		return "支援"
+		return "助力"
 	case "spirit_stones":
 		return "灵石"
 	case "credit":

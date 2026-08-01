@@ -63,7 +63,9 @@ func (s *Session) View() PlayerView {
 		Ended: state.Day >= s.bundle.Scenario.Duration, Resolved: state.Outcome != "", Player: s.visiblePlayer(state),
 		Location:    s.visibleLocation(state.Player.Location),
 		KnownActors: s.visibleActors(state), KnownFacts: s.visibleBeliefs(state),
-		RecentEvents: s.visibleEvents(state), AvailableActions: make([]AvailableAction, 0),
+		RecentEvents:     s.visibleEvents(state),
+		CausalThreads:    s.visibleInfluence(state, state.Decisions, true),
+		AvailableActions: make([]AvailableAction, 0),
 	}
 	if view.Resolved || view.Ended {
 		view.Outcome = visibleOutcome(state.Outcome)
@@ -76,6 +78,7 @@ func (s *Session) View() PlayerView {
 	view.WorldMap = s.visibleWorldMap(state, view.AvailableActions)
 	view.LastTurn = cloneTurnFeedback(s.lastTurn)
 	view.Metrics = s.metricsView(state)
+	view.Preparation = s.preparationSummary(state)
 	return view
 }
 
