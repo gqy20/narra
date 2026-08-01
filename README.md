@@ -30,6 +30,17 @@
 ./tools/verify.ps1
 ```
 
+日常开发、测试和打包推荐使用统一 Make 入口：
+
+```powershell
+make
+make doctor
+make verify
+make release-windows VERSION=0.1.0
+```
+
+完整命令说明见 [开发工作流](docs/DEVELOPMENT.md)。
+
 ## 运行交互式 CLI
 
 ```powershell
@@ -108,6 +119,16 @@ go run ./cmd/server
 ```
 
 脚本会依次展示开局、地点场景、日期核验、地图赶路、沈砚秋交涉、决策变化和结局，并将 H.264 MP4 写入 `artifacts/video/fantu-gameplay-demo.mp4`。
+
+## 构建 Windows 发行包
+
+安装与当前 Godot 版本匹配的 Windows 导出模板后运行：
+
+```powershell
+./tools/build-windows.ps1
+```
+
+构建结果使用英文文件名，输出到 `dist/fantu-windows-x86_64/`，并生成 `dist/fantu-windows-x86_64.zip`。完整说明见 [Windows 打包说明](docs/PACKAGING.md)。
 
 ## 运行 T00
 

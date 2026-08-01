@@ -11,6 +11,8 @@ const TimelineArrowTexture = preload("res://assets/ui/causal/timeline-arrow.png"
 const StartBackgroundTexture = preload("res://assets/locations/market/background.png")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
+const BUNDLED_SERVER_NAME := "fantu-server.exe"
+const BUNDLED_SERVER_STARTUP_DELAY := 0.4
 const TYPE_SCALE := {
 	"display": 60,
 	"brand": 28,
@@ -77,6 +79,7 @@ var journal_seen_feedback_signature := ""
 var journal_current_feedback_signature := ""
 var journal_tab_labels: Array[String] = ["回响", "线索", "人物", "行装"]
 var journal_tab_colors: Array[Color] = [COLORS.muted, COLORS.muted, COLORS.muted, COLORS.muted]
+var bundled_server_pid := -1
 
 var start_layer: Control
 var game_layer: Control
@@ -159,7 +162,37 @@ func _ready() -> void:
 	add_child(audio_director)
 	http.request_completed.connect(_on_request_completed)
 	_build_interface()
+	_start_bundled_server()
+	if bundled_server_pid > 0:
+		await get_tree().create_timer(BUNDLED_SERVER_STARTUP_DELAY).timeout
 	_request("health", HTTPClient.METHOD_GET, "/health")
+
+
+func _exit_tree() -> void:
+	if bundled_server_pid > 0:
+		OS.kill(bundled_server_pid)
+		bundled_server_pid = -1
+
+
+func _start_bundled_server() -> void:
+	if OS.has_feature("editor") or OS.get_name() != "Windows":
+		return
+	var install_dir := OS.get_executable_path().get_base_dir()
+	var server_path := install_dir.path_join(BUNDLED_SERVER_NAME)
+	if not FileAccess.file_exists(server_path):
+		push_error("Bundled game server is missing: %s" % server_path)
+		return
+	var data_dir := install_dir.path_join("data").path_join("blackwind")
+	var save_dir := OS.get_user_data_dir().path_join("saves")
+	var mkdir_error := DirAccess.make_dir_recursive_absolute(save_dir)
+	if mkdir_error != OK:
+		push_error("Could not create the save directory: %s" % save_dir)
+		return
+	bundled_server_pid = OS.create_process(
+		server_path,
+		PackedStringArray(["-data", data_dir, "-saves", save_dir]),
+		false
+	)
 
 
 func _configure_theme() -> void:
