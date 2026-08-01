@@ -139,15 +139,16 @@ func _draw() -> void:
 		var to_position := _location_position(to, bounds)
 		var status := str(route.get("status", "known"))
 		var color := LINE
-		var width := 2.0
+		var width := 1.5
 		if status == "available":
 			color = Color(ACCENT, 0.92)
-			width = 3.0
+			width = 2.5
 		elif status == "blocked":
 			color = Color(DANGER, 0.78)
-		draw_line(from_position, to_position, Color("050706d9"), width + 4.0, true)
-		draw_line(from_position, to_position, color, width, true)
-		_draw_route_mark(from_position.lerp(to_position, 0.5), route, color)
+		var curve := _route_curve(from_position, to_position)
+		draw_polyline(curve, Color("050706b8"), width + 4.0, true)
+		draw_polyline(curve, color, width, true)
+		_draw_route_mark(curve[int(curve.size() / 2)], route, color)
 
 	for location in locations:
 		_draw_location(location, bounds)
@@ -158,19 +159,19 @@ func _draw() -> void:
 func _draw_terrain() -> void:
 	var target := Rect2(Vector2.ZERO, size)
 	var source := _cover_source_rect(TERRAIN_TEXTURE.get_size(), size)
-	draw_texture_rect_region(TERRAIN_TEXTURE, target, source, Color(0.48, 0.55, 0.49, 0.34))
-	draw_rect(target, Color("07100bd6"), true)
-	draw_rect(Rect2(Vector2(18, 18), size - Vector2(36, 36)), Color(ACCENT, 0.12), false, 1.0, true)
+	draw_texture_rect_region(TERRAIN_TEXTURE, target, source, Color(0.72, 0.68, 0.58, 0.82))
+	draw_rect(target, Color("08100b94"), true)
+	draw_rect(Rect2(Vector2(18, 18), size - Vector2(36, 36)), Color(ACCENT, 0.16), false, 1.0, true)
+	draw_rect(Rect2(Vector2(27, 27), size - Vector2(54, 54)), Color("05080678"), false, 7.0, true)
 
 
 func _draw_route_mark(position: Vector2, route: Dictionary, color: Color) -> void:
 	var duration := int(route.get("duration", 1))
 	var font := get_theme_default_font()
 	var text := "%d日" % duration
-	var plate := Rect2(position - Vector2(22, 12), Vector2(44, 24))
-	draw_rect(plate, Color("0b110de8"), true)
-	draw_rect(plate, Color(color, 0.72), false, 1.0, true)
-	draw_string(font, position + Vector2(-18, 5), text, HORIZONTAL_ALIGNMENT_CENTER, 36, 12, color)
+	draw_circle(position, 3.0, color)
+	draw_string(font, position + Vector2(-15, -8), text, HORIZONTAL_ALIGNMENT_CENTER, 30, 12, Color("050706"))
+	draw_string(font, position + Vector2(-16, -9), text, HORIZONTAL_ALIGNMENT_CENTER, 30, 12, color)
 
 
 func _draw_location(location: Dictionary, bounds: Rect2) -> void:
@@ -181,41 +182,45 @@ func _draw_location(location: Dictionary, bounds: Rect2) -> void:
 	var hovered := location_id == hovered_id
 	var selected := location_id == selected_id
 	var state_color := SAFE if bool(location.get("safe", false)) else DANGER
-	var tile_size := Vector2(124, 74)
-	if selected or hovered:
-		tile_size += Vector2(8, 5)
-	var tile := Rect2(position - tile_size * 0.5, tile_size)
-	var texture: Texture2D = LOCATION_TEXTURES.get(str(location.get("scene_key", "")))
-	if texture:
-		var source := _cover_source_rect(texture.get_size(), tile_size)
-		draw_texture_rect_region(texture, tile, source, Color(0.78, 0.78, 0.72, 0.92))
-	else:
-		draw_rect(tile, Color("172019"), true)
-	draw_rect(tile, Color("04070663"), true)
 	var border_color := ACCENT if current or selected or hovered else Color(state_color, 0.82)
-	var border_width := 3.0 if current or selected else 1.0
-	draw_rect(tile, Color("050706"), false, border_width + 4.0, true)
-	draw_rect(tile, border_color, false, border_width, true)
+	var radius := 11.0 if selected or hovered else 8.0
+	draw_circle(position, radius + 6.0, Color("050706c8"))
+	draw_circle(position, radius + 2.0, Color(border_color, 0.34))
+	draw_circle(position, radius, Color("111812"))
+	draw_circle(position, radius, border_color, false, 2.0, true)
+	draw_circle(position, 3.0, border_color)
 	if current and not travel_active:
-		var halo := tile.grow(7.0 + (sin(pulse * 2.0) * 2.0 if motion_enabled else 0.0))
-		draw_rect(halo, Color(ACCENT, 0.42), false, 1.5, true)
+		var halo_radius := radius + 13.0 + (sin(pulse * 2.0) * 2.0 if motion_enabled else 0.0)
+		draw_circle(position, halo_radius, Color(ACCENT, 0.44), false, 1.5, true)
+	if contest:
+		draw_arc(position, radius + 18.0, -PI * 0.85, PI * 0.75, 28, Color(DANGER, 0.72), 2.0, true)
 
 	var font := get_theme_default_font()
 	var name := str(location.get("name", "未知地点"))
 	var label_color := ACCENT if current or selected else INK
-	draw_rect(Rect2(tile.position.x, tile.end.y - 24, tile.size.x, 24), Color("050706d9"), true)
-	draw_string(font, Vector2(tile.position.x + 6, tile.end.y - 7), name, HORIZONTAL_ALIGNMENT_CENTER, tile.size.x - 12, 14, label_color)
+	var label_width := 132.0
+	var label_position := position + Vector2(-label_width * 0.5, 34)
+	draw_string(font, label_position + Vector2(1, 1), name, HORIZONTAL_ALIGNMENT_CENTER, label_width, 15, Color("030504"))
+	draw_string(font, label_position, name, HORIZONTAL_ALIGNMENT_CENTER, label_width, 15, label_color)
 	if current and not travel_active:
-		var current_plate := Rect2(tile.position + Vector2(8, -14), Vector2(46, 22))
-		draw_rect(current_plate, Color("17130bdc"), true)
-		draw_string(font, current_plate.position + Vector2(4, 16), "此刻", HORIZONTAL_ALIGNMENT_CENTER, 38, 12, ACCENT)
+		draw_string(font, position + Vector2(-26, -25), "此刻", HORIZONTAL_ALIGNMENT_CENTER, 52, 12, ACCENT)
 	elif contest:
-		var contest_plate := Rect2(tile.position + Vector2(8, -14), Vector2(58, 22))
-		draw_rect(contest_plate, Color("1d0b08e6"), true)
-		draw_string(font, contest_plate.position + Vector2(4, 16), "争夺地", HORIZONTAL_ALIGNMENT_CENTER, 50, 12, Color("d87761"))
+		draw_string(font, position + Vector2(-30, -25), "争夺地", HORIZONTAL_ALIGNMENT_CENTER, 60, 12, Color("d87761"))
 	var actor_count := int(location.get("actor_count", 0))
 	if actor_count > 0 and not travel_active:
-		draw_string(font, tile.end + Vector2(-54, 19), "%d 人在场" % actor_count, HORIZONTAL_ALIGNMENT_CENTER, 54, 11, MUTED)
+		draw_string(font, position + Vector2(-36, 51), "%d 人在场" % actor_count, HORIZONTAL_ALIGNMENT_CENTER, 72, 11, MUTED)
+
+
+func _route_curve(from_position: Vector2, to_position: Vector2) -> PackedVector2Array:
+	var delta := to_position - from_position
+	var normal := Vector2(-delta.y, delta.x).normalized()
+	var direction := 1.0 if from_position.x <= to_position.x else -1.0
+	var control := from_position.lerp(to_position, 0.5) + normal * minf(34.0, delta.length() * 0.10) * direction
+	var points := PackedVector2Array()
+	for index in 17:
+		var t := float(index) / 16.0
+		points.append(from_position * pow(1.0 - t, 2.0) + control * 2.0 * (1.0 - t) * t + to_position * t * t)
+	return points
 
 
 func _draw_travel_marker(bounds: Rect2) -> void:
@@ -249,7 +254,7 @@ func _display_routes() -> Array:
 
 
 func _map_bounds() -> Rect2:
-	return Rect2(Vector2(84, 62), Vector2(maxf(1.0, size.x - 168), maxf(1.0, size.y - 150)))
+	return Rect2(Vector2(100, 72), Vector2(maxf(1.0, size.x - 200), maxf(1.0, size.y - 170)))
 
 
 func _location_position(location: Dictionary, bounds: Rect2) -> Vector2:
@@ -259,7 +264,7 @@ func _location_position(location: Dictionary, bounds: Rect2) -> Vector2:
 func _location_at(position: Vector2) -> String:
 	var bounds := _map_bounds()
 	for location in locations:
-		var tile := Rect2(_location_position(location, bounds) - Vector2(68, 48), Vector2(136, 96))
+		var tile := Rect2(_location_position(location, bounds) - Vector2(64, 38), Vector2(128, 88))
 		if tile.has_point(position):
 			return str(location.get("id", ""))
 	return ""

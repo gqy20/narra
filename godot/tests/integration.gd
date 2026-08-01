@@ -32,8 +32,9 @@ func _run() -> void:
 		return _fail("2D world map did not consume the player view")
 	if not app.world_map_view.has_formal_assets():
 		return _fail("world map does not use the registered scenic assets")
-	if app.active_action_category == "" or "当前" not in _descendant_text(app.actions_box):
-		return _fail("action rail did not establish one progressive-disclosure category")
+	var action_text := _descendant_text(app.actions_box)
+	if "核验" not in action_text or "查证与探索" in action_text or app.active_action_category != "":
+		return _fail("contextual action dock fell back to dashboard categories")
 	if str(app.location_stage.location.get("scene_key", "")) != "market":
 		return _fail("location stage did not render the current place")
 	if not app.location_stage.has_formal_asset():
@@ -73,9 +74,11 @@ func _run() -> void:
 	if app.selected_map_location_id != "L04" or app.map_detail_box.get_child_count() == 0:
 		return _fail("map location selection has no detail state")
 	app._set_visual_mode("location")
-	if not app.location_panel.visible or app.map_panel.visible:
+	if not app.location_panel.visible or app.map_panel.visible or not app.action_dock.visible:
 		return _fail("location scene mode did not replace the map")
 	app._set_visual_mode("map")
+	if app.action_dock.visible:
+		return _fail("map mode keeps the narrative action dock open")
 	if app.day_label.text != "第 1 / 30 日":
 		return _fail("initial day is not player-facing day one")
 	if app.timing_label.text != "第24天 · 传闻":
@@ -83,6 +86,21 @@ func _run() -> void:
 	app._open_journal()
 	if not app.journal_layer.visible or "烟测修士" not in _descendant_text(app.journal_panel):
 		return _fail("travel dossier does not expose the player summary")
+	if app.journal_tabs.get_tab_count() != 4 or app.journal_travel_button.text != "行装 !2":
+		return _fail("travel dossier does not expose four layered sections with blocking gear status")
+	var player_metrics := _descendant_text(app.player_resources_box)
+	if "战力 2" not in player_metrics or "灵石 100" not in player_metrics or "助力 0" in player_metrics or "伤势 0" in player_metrics:
+		return _fail("player summary did not hide zero-value secondary metrics")
+	app._select_journal_tab(3)
+	var travel_text := _descendant_text(app.travel_box)
+	if app.journal_tabs.current_tab != 3 or "仍缺 2 项才能成行" not in travel_text or "缺少 · 解瘴丹" not in travel_text or "入口尚未开放" not in travel_text:
+		return _fail("gear section does not prioritize blocking preparation")
+	if app.journal_travel_details_box.visible:
+		return _fail("gear section exposes completed checks before the player asks")
+	app._toggle_journal_travel_details()
+	if not app.journal_travel_details_box.visible or "路线已发现" not in travel_text:
+		return _fail("gear section cannot reveal completed checks on demand")
+	app._select_journal_tab(0)
 	app._close_journal()
 	if app.journal_layer.visible:
 		return _fail("travel dossier cannot be dismissed")
@@ -124,6 +142,17 @@ func _run() -> void:
 	var presentation: Dictionary = app.current_view.get("last_turn", {}).get("presentation", {})
 	if presentation.get("kind", "") != "focus":
 		return _fail("verification start has no semantic presentation cue")
+	if app.journal_echo_button.text != "回响 · 新" or app.journal_feedback_details_box.visible:
+		return _fail("new echo is not marked or reveals its evidence by default")
+	app._open_journal()
+	if "查看推演过程" not in _descendant_text(app.scene_box):
+		return _fail("echo summary does not offer progressive disclosure")
+	app._toggle_journal_feedback_details()
+	if not app.journal_feedback_details_box.visible:
+		return _fail("echo evidence cannot be expanded")
+	app._close_journal()
+	if app.journal_echo_button.text != "回响":
+		return _fail("echo unread marker is not cleared after reading")
 	print("Godot integration smoke test passed: day %d, %d actions" % [app.current_view.get("day", 0), app.current_view.get("available_actions", []).size()])
 	quit(0)
 
