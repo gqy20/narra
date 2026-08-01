@@ -32,6 +32,13 @@ type TurnFeedback struct {
 	Status       string             `json:"status"`
 	Messages     []string           `json:"messages"`
 	Influence    []VisibleInfluence `json:"influence,omitempty"`
+	Presentation *PresentationCue   `json:"presentation,omitempty"`
+}
+
+type PresentationCue struct {
+	Kind      string `json:"kind"`
+	Intensity int    `json:"intensity"`
+	SubjectID string `json:"subject_id,omitempty"`
 }
 
 type EndingSummary struct {

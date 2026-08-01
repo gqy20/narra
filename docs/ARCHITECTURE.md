@@ -100,6 +100,10 @@ Godot 地图/场景/行动视图 <── PlayerView <─────────
 - `location_stage.gd` 根据地点的 `scene_key` 绘制当前地点舞台，人物交互仍来自 `KnownActors`；
 - `presentation_director.gd` 顺序播放 `LastTurn` 中已经公开的结果，不读取或推演世界状态。
 
+正式表现资源通过 `LocationVisualProfile`、`ActorVisualProfile` 和 `presentation_registry.gd` 注册。已注册地点使用位图背景，未注册地点继续使用 `location_stage.gd` 的程序化 fallback。`audio_director.gd` 建立 Music、Ambient、Event、UI 总线，地点环境声按 `scene_key` 交叉淡入。
+
+应用层通过 `TurnFeedback.presentation` 返回公开表现提示（例如 `travel`、`reveal`、`actor_focus`、`acquire`）。提示只描述已经结算的表现类型、强度和公开主体，不包含概率、隐藏目标或未发生结果。地图移动动画结束前客户端暂时阻止提交下一行动，但不会延迟或重复执行后端结算。
+
 地图坐标、场景键、地点描述和氛围文本属于场景公开表现数据，保存在 `data/blackwind/locations.json`。远处 NPC 的实时位置、数量、目标和路线不进入 `PlayerView`；地图只在当前位置显示实际可见人物数量。路线按钮只提交应用层提供的 `move:*` 动作 ID，Godot 不复刻物品、开放时间或期限规则。
 
 存档写入同目录临时文件，完成刷盘与确定性回放校验后再替换目标文件。API 只接受受限槽名并映射到服务端 `saveDir`，避免 UI 传入路径。玩家可见动作附带稳定的语义字段（类型、目标、事实），用于图形界面分组而不依赖字符串解析。

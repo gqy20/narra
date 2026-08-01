@@ -241,6 +241,9 @@ func TestBuyAndInvestigationUseAuthoritativeEngine(t *testing.T) {
 	if view.LastTurn == nil || view.LastTurn.Status != "completed" || !containsMessage(view.LastTurn.Messages, "灵石 -20") || !containsMessage(view.LastTurn.Messages, "解瘴丹 +1") {
 		t.Fatalf("purchase feedback = %+v", view.LastTurn)
 	}
+	if view.LastTurn.Presentation == nil || view.LastTurn.Presentation.Kind != "acquire" {
+		t.Fatalf("purchase presentation cue = %+v", view.LastTurn.Presentation)
+	}
 
 	view, err = session.Execute("verify:F02")
 	if err != nil {
@@ -261,6 +264,9 @@ func TestBuyAndInvestigationUseAuthoritativeEngine(t *testing.T) {
 	}
 	if view.LastTurn == nil || !containsMessage(view.LastTurn.Messages, "线索更新") {
 		t.Fatalf("investigation completion feedback = %+v", view.LastTurn)
+	}
+	if view.LastTurn.Presentation == nil || view.LastTurn.Presentation.Kind != "reveal" || view.LastTurn.Presentation.SubjectID != "F01" {
+		t.Fatalf("investigation presentation cue = %+v", view.LastTurn.Presentation)
 	}
 }
 

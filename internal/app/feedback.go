@@ -59,7 +59,51 @@ func (s *Session) turnFeedback(actionID, actionName string, before, after *domai
 		}
 	}
 	feedback.Messages = uniqueStrings(feedback.Messages)
+	feedback.Presentation = s.presentationCue(actionID, before, after)
 	return feedback
+}
+
+func (s *Session) presentationCue(actionID string, before, after *domain.WorldState) *PresentationCue {
+	if before.Player.Location != after.Player.Location {
+		return &PresentationCue{Kind: "travel", Intensity: 2, SubjectID: after.Player.Location}
+	}
+	changedFacts := make([]string, 0)
+	for factID, belief := range after.Player.Beliefs {
+		previous, known := before.Player.Beliefs[factID]
+		if !known || previous.Confidence != belief.Confidence || previous.Claim != belief.Claim {
+			changedFacts = append(changedFacts, factID)
+		}
+	}
+	if len(changedFacts) > 0 {
+		sort.Strings(changedFacts)
+		return &PresentationCue{Kind: "reveal", Intensity: 2, SubjectID: changedFacts[0]}
+	}
+	if after.Player.Injury > before.Player.Injury {
+		return &PresentationCue{Kind: "danger", Intensity: 3, SubjectID: after.Player.ID}
+	}
+	parts := strings.Split(actionID, ":")
+	kind := parts[0]
+	subjectID := ""
+	if len(parts) > 1 {
+		subjectID = parts[1]
+	}
+	switch kind {
+	case "verify":
+		if after.Player.Pending != nil {
+			return &PresentationCue{Kind: "focus", Intensity: 1, SubjectID: subjectID}
+		}
+		return &PresentationCue{Kind: "reveal", Intensity: 2, SubjectID: subjectID}
+	case "tell":
+		return &PresentationCue{Kind: "actor_focus", Intensity: 1, SubjectID: subjectID}
+	case "buy":
+		return &PresentationCue{Kind: "acquire", Intensity: 1, SubjectID: subjectID}
+	case "heal":
+		return &PresentationCue{Kind: "recovery", Intensity: 1, SubjectID: after.Player.ID}
+	case "cultivate":
+		return &PresentationCue{Kind: "focus", Intensity: 1, SubjectID: after.Player.ID}
+	default:
+		return &PresentationCue{Kind: "time", Intensity: 1}
+	}
 }
 
 func resourceChanges(before, after map[string]int) []string {

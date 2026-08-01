@@ -1,6 +1,8 @@
 extends Control
 
 signal location_selected(location_id: String)
+signal travel_day_changed(day: int)
+signal travel_finished
 
 const INK := Color("e9e2d3")
 const MUTED := Color("879188")
@@ -15,6 +17,14 @@ var routes: Array = []
 var hovered_id := ""
 var selected_id := ""
 var pulse := 0.0
+var travel_active := false
+var travel_from_id := ""
+var travel_to_id := ""
+var travel_progress := 0.0
+var travel_start_day := 0
+var travel_end_day := 0
+var emitted_travel_day := -1
+var travel_tween: Tween
 
 
 func _ready() -> void:
@@ -42,8 +52,34 @@ func select_location(location_id: String) -> void:
 	queue_redraw()
 
 
+func animate_travel(from_id: String, to_id: String, start_day: int, end_day: int) -> void:
+	if travel_tween and travel_tween.is_valid():
+		travel_tween.kill()
+	if _location_by_id(from_id).is_empty() or _location_by_id(to_id).is_empty():
+		travel_finished.emit()
+		return
+	travel_active = true
+	travel_from_id = from_id
+	travel_to_id = to_id
+	travel_start_day = start_day
+	travel_end_day = maxi(start_day + 1, end_day)
+	travel_progress = 0.0
+	emitted_travel_day = start_day
+	travel_day_changed.emit(start_day)
+	var duration := minf(1.65, 0.82 + 0.20 * (travel_end_day - travel_start_day))
+	travel_tween = create_tween()
+	travel_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	travel_tween.tween_property(self, "travel_progress", 1.0, duration)
+	travel_tween.finished.connect(_finish_travel)
+
+
 func _process(delta: float) -> void:
 	pulse = fmod(pulse + delta, TAU)
+	if travel_active:
+		var day := mini(travel_end_day, travel_start_day + int(floor(travel_progress * (travel_end_day - travel_start_day + 0.999))))
+		if day != emitted_travel_day:
+			emitted_travel_day = day
+			travel_day_changed.emit(day)
 	if not locations.is_empty():
 		queue_redraw()
 
@@ -92,6 +128,8 @@ func _draw() -> void:
 
 	for location in locations:
 		_draw_location(location, bounds)
+	if travel_active:
+		_draw_travel_marker(bounds)
 
 
 func _draw_terrain(bounds: Rect2) -> void:
@@ -130,7 +168,7 @@ func _draw_location(location: Dictionary, bounds: Rect2) -> void:
 	var hovered := location_id == hovered_id
 	var selected := location_id == selected_id
 	var base_color := SAFE if bool(location.get("safe", false)) else DANGER
-	if current:
+	if current and not travel_active:
 		var radius := 25.0 + sin(pulse * 2.0) * 2.0
 		draw_circle(position, radius, Color(ACCENT, 0.12))
 		draw_circle(position, radius, Color(ACCENT, 0.65), false, 1.5, true)
@@ -147,11 +185,32 @@ func _draw_location(location: Dictionary, bounds: Rect2) -> void:
 	var name := str(location.get("name", "未知地点"))
 	var label_color := ACCENT if current or selected else INK
 	draw_string(font, position + Vector2(-54, 38), name, HORIZONTAL_ALIGNMENT_CENTER, 108, 14, label_color)
-	if current:
+	if current and not travel_active:
 		draw_string(font, position + Vector2(-42, -29), "你在这里", HORIZONTAL_ALIGNMENT_CENTER, 84, 12, ACCENT)
 	var actor_count := int(location.get("actor_count", 0))
-	if actor_count > 0:
+	if actor_count > 0 and not travel_active:
 		draw_string(font, position + Vector2(-38, 54), "%d 人可见" % actor_count, HORIZONTAL_ALIGNMENT_CENTER, 76, 11, MUTED)
+
+
+func _draw_travel_marker(bounds: Rect2) -> void:
+	var from := _location_by_id(travel_from_id)
+	var to := _location_by_id(travel_to_id)
+	if from.is_empty() or to.is_empty():
+		return
+	var position := _location_position(from, bounds).lerp(_location_position(to, bounds), travel_progress)
+	draw_circle(position, 18.0, Color(ACCENT, 0.14))
+	draw_circle(position, 10.0, ACCENT)
+	draw_circle(position, 4.0, Color("15110a"))
+	var font := get_theme_default_font()
+	draw_string(font, position + Vector2(-35, -20), "第 %d 日" % emitted_travel_day, HORIZONTAL_ALIGNMENT_CENTER, 70, 12, ACCENT)
+
+
+func _finish_travel() -> void:
+	travel_progress = 1.0
+	travel_day_changed.emit(travel_end_day)
+	travel_active = false
+	queue_redraw()
+	travel_finished.emit()
 
 
 func _display_routes() -> Array:

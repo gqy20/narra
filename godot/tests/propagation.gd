@@ -23,6 +23,12 @@ func _run() -> void:
 			return
 	if app.timing_label.text != "第21天子时 · 已核实":
 		return _fail("verified timing is not visible in the header")
+	if app.world_map_view.travel_end_day < 1 or app.world_map_view.travel_active or app.presentation_busy:
+		return _fail("map travel animation did not finish cleanly")
+	if app.audio_director.current_scene_key != "qinglan" or not app.location_stage.has_formal_asset():
+		return _fail("Qinglan presentation profile did not become active")
+	if not app.actor_portrait_frame.visible or app.actor_portrait.texture == null:
+		return _fail("Shen Yanqiu portrait is not visible at the location")
 	var found_verified_timing := false
 	for action in app.current_view.get("available_actions", []):
 		if action.get("id", "") == "tell:N03:F01":
@@ -86,9 +92,9 @@ func _wait_until_idle(timeout_ms := 10000) -> bool:
 	var deadline := Time.get_ticks_msec() + timeout_ms
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
-		if app.pending_operation == "":
+		if app.pending_operation == "" and not app.presentation_busy:
 			await process_frame
-			if app.pending_operation == "":
+			if app.pending_operation == "" and not app.presentation_busy:
 				return true
 	return false
 

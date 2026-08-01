@@ -3,6 +3,8 @@ extends Control
 const WorldMapViewScript = preload("res://scripts/world_map.gd")
 const LocationStageScript = preload("res://scripts/location_stage.gd")
 const PresentationDirectorScript = preload("res://scripts/presentation_director.gd")
+const PresentationRegistryScript = preload("res://scripts/presentation_registry.gd")
+const AudioDirectorScript = preload("res://scripts/audio_director.gd")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
 const TYPE_SCALE := {
@@ -50,6 +52,9 @@ var selected_map_location_id := ""
 var rendered_location_id := ""
 var visual_mode := "map"
 var view_before_action: Dictionary = {}
+var presentation_registry = PresentationRegistryScript.new()
+var sound_enabled := true
+var presentation_busy := false
 
 var start_layer: Control
 var game_layer: Control
@@ -82,6 +87,12 @@ var location_mode_button: Button
 var world_map_view: Control
 var location_stage: Control
 var presentation_director: Control
+var audio_director: Node
+var actor_portrait_frame: PanelContainer
+var actor_portrait: TextureRect
+var sound_button: Button
+var settings_layer: Control
+var settings_box: VBoxContainer
 var body_font: SystemFont
 var medium_font: SystemFont
 var display_font: SystemFont
@@ -89,6 +100,8 @@ var display_font: SystemFont
 
 func _ready() -> void:
 	_configure_theme()
+	audio_director = AudioDirectorScript.new()
+	add_child(audio_director)
 	http.request_completed.connect(_on_request_completed)
 	_build_interface()
 	_request("health", HTTPClient.METHOD_GET, "/health")
@@ -174,6 +187,7 @@ func _build_interface() -> void:
 
 	_build_start_layer()
 	_build_confirmation_layer()
+	_build_settings_layer()
 	_build_ending_layer()
 	presentation_director = PresentationDirectorScript.new()
 	add_child(presentation_director)
@@ -203,6 +217,8 @@ func _build_header() -> void:
 	place_label = _header_value(row, "所在")
 	phase_label = _header_value(row, "局势")
 	timing_label = _header_value(row, "已知时机")
+	sound_button = _button("声音", _open_audio_settings, true)
+	row.add_child(sound_button)
 	row.add_child(_button("存档", _save_game, true))
 	row.add_child(_button("返回", _return_to_start, true))
 	player_summary_label = Label.new()
@@ -279,6 +295,7 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	world_map_view = WorldMapViewScript.new()
 	world_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	world_map_view.location_selected.connect(_on_map_location_selected)
+	world_map_view.travel_day_changed.connect(_on_travel_day_changed)
 	map_panel.add_child(world_map_view)
 	map_detail_box = VBoxContainer.new()
 	map_detail_box.custom_minimum_size.y = 88
@@ -289,9 +306,28 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	location_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	location_panel.add_theme_constant_override("separation", 8)
 	visual_stack.add_child(location_panel)
+	var stage_canvas := Control.new()
+	stage_canvas.custom_minimum_size = Vector2(640, 320)
+	stage_canvas.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stage_canvas.clip_contents = true
+	location_panel.add_child(stage_canvas)
 	location_stage = LocationStageScript.new()
-	location_stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	location_panel.add_child(location_stage)
+	location_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stage_canvas.add_child(location_stage)
+	actor_portrait_frame = PanelContainer.new()
+	actor_portrait_frame.anchor_left = 0.70
+	actor_portrait_frame.anchor_right = 0.98
+	actor_portrait_frame.anchor_top = 0.035
+	actor_portrait_frame.anchor_bottom = 0.965
+	actor_portrait_frame.add_theme_stylebox_override("panel", _panel_style(Color("101612e8"), 1, 8, Color(COLORS.accent, 0.55), 4, 4))
+	actor_portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage_canvas.add_child(actor_portrait_frame)
+	actor_portrait = TextureRect.new()
+	actor_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	actor_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	actor_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	actor_portrait_frame.add_child(actor_portrait)
+	actor_portrait_frame.hide()
 	location_detail_box = VBoxContainer.new()
 	location_detail_box.add_theme_constant_override("separation", 3)
 	location_panel.add_child(location_detail_box)
@@ -392,6 +428,58 @@ func _build_confirmation_layer() -> void:
 	confirmation_box = VBoxContainer.new()
 	confirmation_box.add_theme_constant_override("separation", 14)
 	card.add_child(confirmation_box)
+
+
+func _build_settings_layer() -> void:
+	settings_layer = Control.new()
+	settings_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	settings_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	settings_layer.hide()
+	add_child(settings_layer)
+	var shade := ColorRect.new()
+	shade.color = Color("050706dc")
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	settings_layer.add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	settings_layer.add_child(center)
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(500, 420)
+	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 14, COLORS.accent_pressed, 28, 24))
+	center.add_child(card)
+	settings_box = VBoxContainer.new()
+	settings_box.add_theme_constant_override("separation", 13)
+	card.add_child(settings_box)
+	_text(settings_box, "声音设置", false, 25)
+	_text(settings_box, "环境声与事件提示不会改变模拟结果。", true, 14)
+	_audio_slider(settings_box, "主音量", "Master", 82.0)
+	_audio_slider(settings_box, "环境", "Ambient", 64.0)
+	_audio_slider(settings_box, "事件", "Event", 78.0)
+	_audio_slider(settings_box, "界面", "UI", 70.0)
+	settings_box.add_child(_button("全部静音", _toggle_sound, true))
+	settings_box.add_child(_button("返回游戏", _close_audio_settings, false))
+
+
+func _audio_slider(parent: VBoxContainer, label_text: String, bus_name: String, initial_value: float) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	parent.add_child(row)
+	var label := Label.new()
+	label.text = label_text
+	label.custom_minimum_size.x = 78
+	label.add_theme_font_override("font", medium_font)
+	label.add_theme_color_override("font_color", COLORS.ink)
+	row.add_child(label)
+	var slider := HSlider.new()
+	slider.min_value = 0.0
+	slider.max_value = 100.0
+	slider.step = 1.0
+	slider.value = initial_value
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.custom_minimum_size.y = 32
+	slider.value_changed.connect(_set_bus_volume.bind(bus_name))
+	row.add_child(slider)
+	_set_bus_volume(initial_value, bus_name)
 
 
 func _build_ending_layer() -> void:
@@ -607,7 +695,7 @@ func _operation_label(operation: String) -> String:
 
 
 func _request(operation: String, method: HTTPClient.Method, path: String, payload := {}) -> void:
-	if pending_operation != "":
+	if pending_operation != "" or operation == "action" and presentation_busy:
 		return
 	pending_operation = operation
 	_set_buttons_disabled(self, true)
@@ -627,7 +715,7 @@ func _request(operation: String, method: HTTPClient.Method, path: String, payloa
 func _on_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	var operation := pending_operation
 	pending_operation = ""
-	_set_buttons_disabled(self, false)
+	_set_buttons_disabled(self, presentation_busy)
 	var parsed = JSON.parse_string(body.get_string_from_utf8())
 	if response_code < 200 or response_code >= 300 or not parsed is Dictionary:
 		var message := "本地服务无响应，请先运行项目启动脚本。"
@@ -647,15 +735,13 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 	if operation == "quit":
 		_show_start()
 		return
-	if parsed.has("view"):
+	if parsed.has("view") and operation not in ["autosave", "save"]:
 		var previous_view := view_before_action if operation == "action" else current_view
 		current_view = parsed["view"]
 		_show_game()
 		_render_view()
-		if operation == "action" and presentation_director:
-			var previous_location := str(previous_view.get("location", {}).get("name", "")) if previous_view is Dictionary else ""
-			var next_location := str(current_view.get("location", {}).get("name", ""))
-			presentation_director.present(current_view.get("last_turn", {}), previous_location, next_location)
+		if operation == "action":
+			_play_action_presentation(previous_view, current_view)
 		view_before_action = {}
 	if operation == "action" and autosave_after_action:
 		autosave_after_action = false
@@ -672,6 +758,57 @@ func _show_footer_message(message: String) -> void:
 	footer_label.text = message
 	footer_label.add_theme_color_override("font_color", COLORS.muted)
 	_clear_footer_message_later(message)
+
+
+func _play_action_presentation(previous_view: Dictionary, next_view: Dictionary) -> void:
+	presentation_director.cancel()
+	var feedback: Dictionary = next_view.get("last_turn", {})
+	var cue: Dictionary = feedback.get("presentation", {})
+	var previous_location: Dictionary = previous_view.get("location", {})
+	var next_location: Dictionary = next_view.get("location", {})
+	var from_id := str(previous_location.get("id", ""))
+	var to_id := str(next_location.get("id", ""))
+	if from_id != "" and to_id != "" and from_id != to_id:
+		presentation_busy = true
+		_set_buttons_disabled(self, true)
+		_set_visual_mode("map")
+		place_label.text = "%s → %s" % [previous_location.get("name", ""), next_location.get("name", "")]
+		phase_label.text = "赶路中"
+		audio_director.play_cue("travel", int(cue.get("intensity", 2)))
+		var callback := _finish_travel_presentation.bind(feedback, previous_location, next_location)
+		world_map_view.travel_finished.connect(callback, CONNECT_ONE_SHOT)
+		world_map_view.animate_travel(from_id, to_id, int(previous_view.get("day", 0)), int(next_view.get("day", 0)))
+		return
+	_apply_presentation_cue(cue)
+	presentation_director.present(feedback, str(previous_location.get("name", "")), str(next_location.get("name", "")))
+
+
+func _finish_travel_presentation(feedback: Dictionary, previous_location: Dictionary, next_location: Dictionary) -> void:
+	presentation_busy = false
+	_set_buttons_disabled(self, pending_operation != "")
+	_set_visual_mode("location")
+	day_label.text = "第 %d / %d 日" % [maxi(1, int(current_view.get("day", 0))), int(current_view.get("duration", 0))]
+	place_label.text = str(next_location.get("name", "未知"))
+	var phase := str(current_view.get("phase", ""))
+	phase_label.text = "准备" if phase == "" else phase
+	location_stage.play_establish()
+	presentation_director.present(feedback, str(previous_location.get("name", "")), str(next_location.get("name", "")))
+
+
+func _apply_presentation_cue(cue: Dictionary) -> void:
+	if cue.is_empty():
+		return
+	var kind := str(cue.get("kind", "time"))
+	var intensity := int(cue.get("intensity", 1))
+	audio_director.play_cue(kind, intensity)
+	if kind in ["reveal", "danger", "focus", "acquire"]:
+		location_stage.play_reveal(intensity)
+	if kind == "actor_focus":
+		_focus_portrait(str(cue.get("subject_id", "")))
+
+
+func _on_travel_day_changed(day: int) -> void:
+	day_label.text = "第 %d / %d 日" % [maxi(1, day), int(current_view.get("duration", 0))]
 
 
 func _clear_footer_message_later(expected: String) -> void:
@@ -704,6 +841,31 @@ func _save_game() -> void:
 	_request("save", HTTPClient.METHOD_POST, "/game/save", {"slot": AUTOSAVE_SLOT})
 
 
+func _toggle_sound() -> void:
+	sound_enabled = not sound_enabled
+	sound_button.text = "声音" if sound_enabled else "声音 · 静音"
+	audio_director.set_enabled(sound_enabled)
+
+
+func _open_audio_settings() -> void:
+	audio_director.play_ui()
+	settings_layer.show()
+
+
+func _close_audio_settings() -> void:
+	audio_director.play_ui()
+	settings_layer.hide()
+
+
+func _set_bus_volume(value: float, bus_name: String) -> void:
+	var bus_index := AudioServer.get_bus_index(bus_name)
+	if bus_index < 0:
+		return
+	AudioServer.set_bus_mute(bus_index, value <= 0.0)
+	if value > 0.0:
+		AudioServer.set_bus_volume_db(bus_index, linear_to_db(value / 100.0))
+
+
 func _return_to_start() -> void:
 	_request("quit", HTTPClient.METHOD_POST, "/game/quit")
 
@@ -721,9 +883,11 @@ func _show_start() -> void:
 	selected_map_location_id = ""
 	rendered_location_id = ""
 	view_before_action = {}
+	presentation_busy = false
 	_reset_action_focus()
 	game_layer.hide()
 	confirmation_layer.hide()
+	settings_layer.hide()
 	ending_layer.hide()
 	if presentation_director:
 		presentation_director.cancel()
@@ -782,6 +946,7 @@ func _render_view() -> void:
 
 
 func _set_visual_mode(mode: String) -> void:
+	var previous_mode := visual_mode
 	visual_mode = mode
 	if mode == "map" and (focused_actor_id != "" or focused_fact_id != ""):
 		_reset_action_focus()
@@ -795,6 +960,8 @@ func _set_visual_mode(mode: String) -> void:
 		map_mode_button.text = "区域地图 · 当前" if mode == "map" else "区域地图"
 	if location_mode_button:
 		location_mode_button.text = "当前地点 · 当前" if mode == "location" else "当前地点"
+	if mode == "location" and previous_mode != "location" and location_stage:
+		location_stage.play_establish.call_deferred()
 
 
 func _render_world_map(world_map, current_location: Dictionary, actions: Array) -> void:
@@ -842,6 +1009,8 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 
 func _render_location_stage(location: Dictionary, actors: Array, actions: Array) -> void:
 	location_stage.set_location(location)
+	audio_director.set_scene(str(location.get("scene_key", "")))
+	_render_actor_portrait(actors)
 	_clear(location_detail_box)
 	_clear(stage_people_box)
 	var place_line := _text(location_detail_box, "%s · %s" % [location.get("name", "未知地点"), "安稳" if bool(location.get("safe", false)) else "险地"], false, 17)
@@ -860,8 +1029,39 @@ func _render_location_stage(location: Dictionary, actors: Array, actions: Array)
 		stage_people_box.add_child(button)
 
 
+func _render_actor_portrait(actors: Array) -> void:
+	actor_portrait_frame.hide()
+	actor_portrait.texture = null
+	for actor in actors:
+		var actor_id := str(actor.get("id", ""))
+		var profile: ActorVisualProfile = presentation_registry.actor_profile(actor_id)
+		if profile == null or profile.neutral == null:
+			continue
+		actor_portrait.texture = profile.portrait()
+		actor_portrait_frame.tooltip_text = "%s · %s" % [actor.get("name", "无名者"), actor.get("public_role", "可交谈人物")]
+		actor_portrait_frame.show()
+		break
+
+
+func _focus_portrait(actor_id: String) -> void:
+	var profile: ActorVisualProfile = presentation_registry.actor_profile(actor_id)
+	if profile == null or profile.neutral == null:
+		return
+	actor_portrait.texture = profile.portrait("alert")
+	actor_portrait_frame.show()
+	actor_portrait_frame.pivot_offset = actor_portrait_frame.size * 0.5
+	actor_portrait_frame.scale = Vector2(0.965, 0.965)
+	actor_portrait_frame.modulate = Color(1, 1, 1, 0.45)
+	var tween := create_tween().set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(actor_portrait_frame, "scale", Vector2.ONE, 0.28)
+	tween.tween_property(actor_portrait_frame, "modulate", Color.WHITE, 0.22)
+
+
 func _focus_actor_from_stage(actor_id: String, actor_name: String) -> void:
 	_set_visual_mode("location")
+	audio_director.play_ui()
+	_focus_portrait(actor_id)
 	_focus_actor_actions(actor_id, actor_name)
 
 

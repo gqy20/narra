@@ -55,6 +55,7 @@ func (s *Session) advanceUntilDecision(before *domain.WorldState, actionID, acti
 		aggregate.Messages = []string{fmt.Sprintf("已推进到第 %d 天，期间没有需要处理的变化。", current.Day)}
 	}
 	aggregate.Messages = uniqueStrings(aggregate.Messages)
+	aggregate.Presentation = s.presentationCue(actionID, before, current)
 	return current, aggregate, nil
 }
 

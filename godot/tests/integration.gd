@@ -30,6 +30,15 @@ func _run() -> void:
 		return _fail("2D world map did not consume the player view")
 	if str(app.location_stage.location.get("scene_key", "")) != "market":
 		return _fail("location stage did not render the current place")
+	if not app.location_stage.has_formal_asset():
+		return _fail("market did not load its registered production background")
+	for bus_name in ["Ambient", "Event", "UI"]:
+		if AudioServer.get_bus_index(bus_name) < 0:
+			return _fail("missing audio bus: " + bus_name)
+	app._open_audio_settings()
+	if not app.settings_layer.visible:
+		return _fail("audio settings entry did not open")
+	app._close_audio_settings()
 	app._on_map_location_selected("L04")
 	if app.selected_map_location_id != "L04" or app.map_detail_box.get_child_count() == 0:
 		return _fail("map location selection has no detail state")
@@ -71,6 +80,9 @@ func _run() -> void:
 		return _fail("action returned an invalid view")
 	if app.presentation_director.generation < 1:
 		return _fail("action result did not enter the presentation queue")
+	var presentation: Dictionary = app.current_view.get("last_turn", {}).get("presentation", {})
+	if presentation.get("kind", "") != "focus":
+		return _fail("verification start has no semantic presentation cue")
 	print("Godot integration smoke test passed: day %d, %d actions" % [app.current_view.get("day", 0), app.current_view.get("available_actions", []).size()])
 	quit(0)
 
@@ -79,10 +91,10 @@ func _wait_until_idle(timeout_ms := 8000) -> bool:
 	var deadline := Time.get_ticks_msec() + timeout_ms
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
-		if app.pending_operation == "":
+		if app.pending_operation == "" and not app.presentation_busy:
 			# The action callback can enqueue autosave in the same frame.
 			await process_frame
-			if app.pending_operation == "":
+			if app.pending_operation == "" and not app.presentation_busy:
 				return true
 	return false
 

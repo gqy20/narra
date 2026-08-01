@@ -1,11 +1,14 @@
 extends Control
 
+const PresentationRegistryScript = preload("res://scripts/presentation_registry.gd")
 const INK := Color("efe7d7")
 const ACCENT := Color("d6ae62")
 const MIST := Color("8fa69a")
 
 var location: Dictionary = {}
 var drift := 0.0
+var registry = PresentationRegistryScript.new()
+var visual_profile: LocationVisualProfile
 
 
 func _ready() -> void:
@@ -17,7 +20,31 @@ func _ready() -> void:
 
 func set_location(value: Dictionary) -> void:
 	location = value
+	visual_profile = registry.location_profile(str(value.get("scene_key", "")))
 	queue_redraw()
+
+
+func has_formal_asset() -> bool:
+	return visual_profile != null and visual_profile.background != null
+
+
+func play_establish() -> void:
+	pivot_offset = size * 0.5
+	scale = Vector2(1.035, 1.035)
+	modulate = Color(0.72, 0.76, 0.73, 0.25)
+	var tween := create_tween().set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "scale", Vector2.ONE, 0.72)
+	tween.tween_property(self, "modulate", Color.WHITE, 0.46)
+
+
+func play_reveal(intensity := 1) -> void:
+	pivot_offset = size * 0.5
+	var zoom := 1.012 + 0.008 * intensity
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(self, "scale", Vector2(zoom, zoom), 0.24)
+	tween.tween_property(self, "scale", Vector2.ONE, 0.42)
 
 
 func _process(delta: float) -> void:
@@ -33,6 +60,11 @@ func _notification(what: int) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("101814"), true)
 	var key := str(location.get("scene_key", "market"))
+	if has_formal_asset():
+		_draw_cover_texture(visual_profile.background)
+		_draw_mist(key)
+		_draw_vignette()
+		return
 	_draw_sky(key)
 	_draw_mountains(key)
 	match key:
@@ -50,6 +82,24 @@ func _draw() -> void:
 			_draw_market()
 	_draw_mist(key)
 	_draw_vignette()
+
+
+func _draw_cover_texture(texture: Texture2D) -> void:
+	var texture_size := texture.get_size()
+	if texture_size.x <= 0 or texture_size.y <= 0 or size.x <= 0 or size.y <= 0:
+		return
+	var target_ratio := size.x / size.y
+	var source_ratio := texture_size.x / texture_size.y
+	var source := Rect2(Vector2.ZERO, texture_size)
+	if source_ratio > target_ratio:
+		var cropped_width := texture_size.y * target_ratio
+		source.position.x = (texture_size.x - cropped_width) * 0.5
+		source.size.x = cropped_width
+	else:
+		var cropped_height := texture_size.x / target_ratio
+		source.position.y = (texture_size.y - cropped_height) * 0.5
+		source.size.y = cropped_height
+	draw_texture_rect_region(texture, Rect2(Vector2.ZERO, size), source)
 
 
 func _draw_sky(key: String) -> void:

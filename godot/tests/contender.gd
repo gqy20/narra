@@ -101,9 +101,9 @@ func _wait_until_idle(timeout_ms := 10000) -> bool:
 	var deadline := Time.get_ticks_msec() + timeout_ms
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
-		if app.pending_operation == "":
+		if app.pending_operation == "" and not app.presentation_busy:
 			await process_frame
-			if app.pending_operation == "":
+			if app.pending_operation == "" and not app.presentation_busy:
 				return true
 	return false
 
