@@ -23,9 +23,14 @@ func _run() -> void:
 			return
 	if app.timing_label.text != "第21天子时 · 已核实":
 		return _fail("verified timing is not visible in the header")
+	var found_verified_timing := false
 	for action in app.current_view.get("available_actions", []):
 		if action.get("id", "") == "tell:N03:F01":
 			return _fail("delivered clue is still available")
+		if "已核实" in str(action.get("timing", "")) and "传闻" not in str(action.get("timing", "")):
+			found_verified_timing = true
+	if not found_verified_timing:
+		return _fail("action timing did not update after verification")
 	app._focus_actor_actions("N03", "沈砚秋")
 	var shen_actions: Array = app._focused_information_actions(app.available_actions_cache)
 	for action in shen_actions:

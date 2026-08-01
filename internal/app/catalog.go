@@ -18,7 +18,7 @@ func (s *Session) actionCatalog(state *domain.WorldState) []AvailableAction {
 	options := s.actionOptions(state)
 	result := make([]AvailableAction, 0, len(options))
 	for _, option := range options {
-		result = append(result, option.view)
+		result = append(result, s.withDecisionContext(state, option.view))
 	}
 	sort.Slice(result, func(i, j int) bool {
 		left, right := categoryOrder(result[i].Category), categoryOrder(result[j].Category)
@@ -28,6 +28,76 @@ func (s *Session) actionCatalog(state *domain.WorldState) []AvailableAction {
 		return result[i].ID < result[j].ID
 	})
 	return result
+}
+
+func (s *Session) withDecisionContext(state *domain.WorldState, action AvailableAction) AvailableAction {
+	if action.ID == "wait:next" {
+		action.Timing = "停止日期取决于下一次值得关注的变化，无法预先保证剩余时间。"
+	} else {
+		action.CompletionDay = state.Day + maxInt(1, action.Duration)
+		action.Timing = s.actionTiming(state, action)
+	}
+
+	switch action.Kind {
+	case "verify":
+		action.ExpectedOutcomes = []string{"把这条线索核验为可靠结论，并整理关联线索"}
+		action.Resolves = []string{"这条线索尚未核实"}
+	case "buy":
+		action.ExpectedOutcomes = []string{"获得 1 件" + action.TargetName}
+		if action.TargetID == "antidote" {
+			action.ExpectedOutcomes = []string{"获得 1 枚解瘴丹，保留亲自入谷路线"}
+			action.Resolves = []string{"缺少解瘴丹"}
+		}
+	case "move":
+		action.ExpectedOutcomes = []string{"抵达" + action.TargetName}
+		action.Resolves = []string{"尚未抵达" + action.TargetName}
+	case "tell":
+		action.ExpectedOutcomes = []string{"让" + action.TargetName + "获得这条线索", "可能改变对方的后续选择"}
+	case "heal":
+		action.ExpectedOutcomes = []string{"伤势降低 1 级"}
+		action.Resolves = []string{"当前伤势"}
+	case "cultivate":
+		action.ExpectedOutcomes = []string{"战力提高 1 点"}
+	case "advance":
+		if action.ID == "wait:complete" {
+			action.ExpectedOutcomes = []string{"完成当前行动，或在重要变化出现时提前停下"}
+			action.Resolves = []string{"当前行动尚未完成"}
+		} else {
+			action.ExpectedOutcomes = []string{"跳过平静日，在下一次重要变化处停下"}
+		}
+	}
+	return action
+}
+
+func (s *Session) actionTiming(state *domain.WorldState, action AvailableAction) string {
+	knownDay, basis, known := playerKnownDate(state.Player.Beliefs)
+	if !known {
+		return "日期未知 · 无法判断是否挤压亲自抵达窗口"
+	}
+	timingBasis := "传闻口径"
+	if basis == "已核实日期" {
+		timingBasis = "已核实"
+	}
+
+	locationID := state.Player.Location
+	if action.Kind == "move" && action.TargetID != "" {
+		locationID = action.TargetID
+	}
+	_, travelDays, reachable := s.shortestPublicRoute(locationID, s.bundle.Scenario.Contest.LocationID)
+	if !reachable {
+		return fmt.Sprintf("%s · 完成后仍无可行抵达路线", timingBasis)
+	}
+
+	estimatedArrival := action.CompletionDay + travelDays
+	remaining := knownDay - estimatedArrival
+	switch {
+	case remaining > 0:
+		return fmt.Sprintf("%s · 行动后预留 %d 日抵达", timingBasis, remaining)
+	case remaining == 0:
+		return fmt.Sprintf("%s · 行动后必须立即赶路", timingBasis)
+	default:
+		return fmt.Sprintf("%s · 挤压抵达窗口，预计晚 %d 日", timingBasis, -remaining)
+	}
 }
 
 func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOption {

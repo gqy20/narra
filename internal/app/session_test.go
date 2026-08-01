@@ -86,6 +86,15 @@ func TestActionMetadataAndPublicProfilesArePlayerFacing(t *testing.T) {
 		if action.Kind == "" {
 			t.Fatalf("action missing kind: %+v", action)
 		}
+		if action.Timing == "" || len(action.ExpectedOutcomes) == 0 {
+			t.Fatalf("action missing decision summary: %+v", action)
+		}
+		if action.ID == "wait:next" && action.CompletionDay != 0 {
+			t.Fatalf("open-ended advance has a misleading completion day: %+v", action)
+		}
+		if action.ID != "wait:next" && action.CompletionDay <= view.Day {
+			t.Fatalf("action has invalid completion day: %+v", action)
+		}
 		if action.Kind == "tell" && (action.TargetID == "" || action.TargetName == "" || action.FactID == "" || action.FactClaim == "") {
 			t.Fatalf("tell action missing semantic metadata: %+v", action)
 		}
@@ -98,6 +107,27 @@ func TestActionMetadataAndPublicProfilesArePlayerFacing(t *testing.T) {
 		if action.ID == "wait:next" && !containsMessage(action.Warnings, "解瘴丹") {
 			t.Fatalf("advance action missing expiring-opportunity warning: %+v", action)
 		}
+	}
+	verify := actionWithID(view.AvailableActions, "verify:F02")
+	if verify == nil || verify.CompletionDay != 2 || !containsMessage(verify.Resolves, "尚未核实") || !strings.Contains(verify.Timing, "传闻口径") || !strings.Contains(verify.Timing, "预留 19 日") {
+		t.Fatalf("initial verification summary = %+v", verify)
+	}
+	antidote := actionWithID(view.AvailableActions, "buy:M01:antidote")
+	if antidote == nil || !containsMessage(antidote.Resolves, "缺少解瘴丹") || !containsMessage(antidote.ExpectedOutcomes, "亲自入谷路线") {
+		t.Fatalf("antidote purchase summary = %+v", antidote)
+	}
+	if strings.Contains(string(encoded), "按已核实日期") || strings.Contains(string(encoded), "青髓芝将在第21天成熟") {
+		t.Fatalf("initial action summaries leaked verified timing: %s", encoded)
+	}
+}
+
+func TestActionTimingUpdatesAfterPlayerVerifiesDate(t *testing.T) {
+	session := testSession(t)
+	executeMany(t, session, []string{"verify:F02", "wait:complete"})
+	view := session.View()
+	action := actionWithID(view.AvailableActions, "buy:M01:antidote")
+	if action == nil || action.CompletionDay != 3 || !strings.Contains(action.Timing, "已核实") || strings.Contains(action.Timing, "传闻") || !strings.Contains(action.Timing, "预留 15 日") {
+		t.Fatalf("verified action timing = %+v", action)
 	}
 }
 
@@ -118,6 +148,15 @@ func TestVerifiedClueExplainsWhyTargetMayCare(t *testing.T) {
 		return
 	}
 	t.Fatal("verified clue has no action targeting Shen")
+}
+
+func actionWithID(actions []AvailableAction, id string) *AvailableAction {
+	for index := range actions {
+		if actions[index].ID == id {
+			return &actions[index]
+		}
+	}
+	return nil
 }
 
 func TestAtomicSaveFileCanReplaceAndReload(t *testing.T) {

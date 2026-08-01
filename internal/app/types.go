@@ -125,19 +125,23 @@ type VisibleItem struct {
 }
 
 type AvailableAction struct {
-	ID          string         `json:"id"`
-	Kind        string         `json:"kind"`
-	Category    string         `json:"category"`
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Duration    int            `json:"duration"`
-	Costs       map[string]int `json:"costs,omitempty"`
-	TargetID    string         `json:"target_id,omitempty"`
-	TargetName  string         `json:"target_name,omitempty"`
-	FactID      string         `json:"fact_id,omitempty"`
-	FactClaim   string         `json:"fact_claim,omitempty"`
-	TargetRole  string         `json:"target_role,omitempty"`
-	Relevance   string         `json:"relevance,omitempty"`
-	Risk        string         `json:"risk,omitempty"`
-	Warnings    []string       `json:"warnings,omitempty"`
+	ID               string         `json:"id"`
+	Kind             string         `json:"kind"`
+	Category         string         `json:"category"`
+	Name             string         `json:"name"`
+	Description      string         `json:"description"`
+	Duration         int            `json:"duration"`
+	CompletionDay    int            `json:"completion_day,omitempty"`
+	Timing           string         `json:"timing,omitempty"`
+	ExpectedOutcomes []string       `json:"expected_outcomes,omitempty"`
+	Resolves         []string       `json:"resolves,omitempty"`
+	Costs            map[string]int `json:"costs,omitempty"`
+	TargetID         string         `json:"target_id,omitempty"`
+	TargetName       string         `json:"target_name,omitempty"`
+	FactID           string         `json:"fact_id,omitempty"`
+	FactClaim        string         `json:"fact_claim,omitempty"`
+	TargetRole       string         `json:"target_role,omitempty"`
+	Relevance        string         `json:"relevance,omitempty"`
+	Risk             string         `json:"risk,omitempty"`
+	Warnings         []string       `json:"warnings,omitempty"`
 }

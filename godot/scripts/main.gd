@@ -883,6 +883,7 @@ func _add_focused_information_actions(actions: Array) -> void:
 		for warning_text in action.get("warnings", []):
 			var warning := _text(actions_box, "注意 · %s" % warning_text, false, 14)
 			warning.add_theme_color_override("font_color", COLORS.accent)
+		_add_action_decision_context(actions_box, action, true)
 		var button_label := "传递这条线索" if focused_actor_id != "" else "告知%s" % action.get("target_name", "对方")
 		actions_box.add_child(_button(button_label, _consider_action.bind(action), true))
 		if index < actions.size() - 1:
@@ -958,6 +959,7 @@ func _add_information_actions(actions: Array) -> void:
 			button.tooltip_text = "%s\n%s\n%s" % [action.get("description", ""), action.get("relevance", ""), action.get("risk", "")]
 			actions_box.add_child(button)
 			_text(actions_box, "“%s”" % action.get("fact_claim", "未知线索"), true, 14)
+			_add_action_decision_context(actions_box, action, true)
 		else:
 			var menu := MenuButton.new()
 			menu.text = "向%s传递线索…（%d 条）" % [target, facts.size()]
@@ -971,18 +973,45 @@ func _add_information_actions(actions: Array) -> void:
 
 func _add_action_button(action: Dictionary) -> void:
 	var duration := int(action.get("duration", 1))
-	var kind := str(action.get("kind", ""))
 	var label := str(action.get("name", "行动"))
 	if action.get("id", "") == "wait:next":
 		label += "　· 直至新变化"
-	elif kind == "advance":
-		label += "　· 最多 %d 日" % duration
+	elif int(action.get("completion_day", 0)) > 0:
+		label += "　· 第 %d 日完成" % int(action.get("completion_day", 0))
 	else:
 		label += "　· %d 日" % duration
 	var button := _button(label, _consider_action.bind(action), true)
 	button.tooltip_text = str(action.get("description", ""))
 	actions_box.add_child(button)
-	_text(actions_box, str(action.get("description", "")), true, 14)
+	_add_action_decision_context(actions_box, action, true)
+
+
+func _add_action_decision_context(parent: VBoxContainer, action: Dictionary, compact: bool = false) -> void:
+	if not compact and int(action.get("completion_day", 0)) > 0:
+		_text(parent, "完成 · 第 %d 日结束时" % int(action.get("completion_day", 0)), false, 15)
+	var outcomes := _joined_action_values(action.get("expected_outcomes", []))
+	if outcomes != "":
+		var outcome_line := _text(parent, "预期 · %s" % outcomes, false, 14)
+		outcome_line.add_theme_color_override("font_color", COLORS.success)
+	var resolves := _joined_action_values(action.get("resolves", []))
+	if resolves != "":
+		_text(parent, "解决 · %s" % resolves, true, 14)
+	var timing := str(action.get("timing", ""))
+	if timing != "":
+		var timing_line := _text(parent, "时间 · %s" % timing, true, 14)
+		if timing.contains("挤压") or timing.contains("来不及") or timing.contains("无法预先保证"):
+			timing_line.add_theme_color_override("font_color", COLORS.danger)
+		else:
+			timing_line.add_theme_color_override("font_color", COLORS.accent)
+
+
+func _joined_action_values(values: Variant) -> String:
+	if not values is Array:
+		return ""
+	var parts: Array[String] = []
+	for value in values:
+		parts.append(str(value))
+	return "、".join(parts)
 
 
 func _on_tell_fact_selected(index: int, facts: Array) -> void:
@@ -1005,7 +1034,7 @@ func _consider_action(action: Dictionary) -> void:
 		warning.add_theme_color_override("font_color", COLORS.accent)
 	else:
 		_text(confirmation_box, str(action.get("description", "")), true, 15)
-		_text(confirmation_box, "预计占用 %d 日" % int(action.get("duration", 1)), true)
+	_add_action_decision_context(confirmation_box, action)
 	if kind == "tell":
 		_text(confirmation_box, "%s · %s" % [action.get("target_name", "某人"), action.get("target_role", "可交谈人物")], false, 15)
 		var relevance_line := _text(confirmation_box, str(action.get("relevance", "关联尚不明确")), false, 14)

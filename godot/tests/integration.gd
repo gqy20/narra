@@ -27,15 +27,26 @@ func _run() -> void:
 		return _fail("initial day is not player-facing day one")
 	if app.timing_label.text != "第24天 · 传闻":
 		return _fail("initial known timing is not visible")
+	var found_verification := false
 	for action in actions:
+		if action.get("timing", "") == "" or action.get("expected_outcomes", []).is_empty():
+			return _fail("action lacks timing or expected outcomes")
 		if action.get("kind", "") == "tell" and (action.get("target_role", "") == "" or action.get("relevance", "") == "" or action.get("risk", "") == ""):
 			return _fail("tell action lacks public decision context")
+		if action.get("id", "") == "verify:F02":
+			found_verification = true
+			if int(action.get("completion_day", 0)) != 2 or "传闻口径" not in str(action.get("timing", "")) or action.get("resolves", []).is_empty():
+				return _fail("verification action lacks a player-facing decision summary")
 		if action.get("id", "") == "wait:next":
+			if int(action.get("completion_day", 0)) != 0:
+				return _fail("open-ended advance exposes a misleading completion day")
 			app._consider_action(action)
 			if not app.confirmation_layer.visible:
 				return _fail("multi-day advance has no confirmation")
 			app._cancel_confirmation()
 			break
+	if not found_verification:
+		return _fail("initial verification action is missing")
 
 	app._consider_action(actions[0])
 	if app.confirmation_layer.visible:
