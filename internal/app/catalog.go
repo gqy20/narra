@@ -178,7 +178,7 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 			options[id] = actionOption{
 				view: AvailableAction{ID: id, Kind: "tell", Category: "information", Name: "告知" + actor.Name + "一条线索", Description: "分享：“" + claim + "”", Duration: action.Duration, TargetID: actor.ID, TargetName: actor.Name, FactID: factID, FactClaim: claim, Warnings: warnings},
 				command: &domain.PlayerCommand{
-					ActionID: "spread", TargetID: actor.ID, Description: "玩家向" + actor.Name + "分享情报：" + factID,
+					ActionID: "spread", TargetID: actor.ID, Description: "玩家向" + actor.Name + "分享消息：“" + claim + "”",
 					Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "location", Value: state.Player.Location}},
 					Effects:    []domain.Effect{{Type: "set_belief", TargetID: actor.ID, FactID: factID, Claim: claim, Confidence: belief.Confidence, EvidenceStrength: belief.EvidenceStrength, Source: state.Player.ID, Propagation: "private", Secrecy: belief.Secrecy}},
 				},

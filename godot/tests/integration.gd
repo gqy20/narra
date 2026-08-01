@@ -25,6 +25,8 @@ func _run() -> void:
 		return _fail("new game returned no actions")
 	if app.day_label.text != "第 1 / 30 日":
 		return _fail("initial day is not player-facing day one")
+	if app.timing_label.text != "第24天 · 传闻":
+		return _fail("initial known timing is not visible")
 	for action in actions:
 		if action.get("id", "") == "wait:next":
 			app._consider_action(action)

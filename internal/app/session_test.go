@@ -381,6 +381,13 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 		if action == "tell:N03:F01" && actionIDs(view.AvailableActions)[action] {
 			t.Fatalf("delivered fact remained available: %s", action)
 		}
+		if action == "tell:N03:F01" {
+			for _, event := range view.RecentEvents {
+				if strings.Contains(event.Description, "F01") {
+					t.Fatalf("visible event leaked internal fact ID: %q", event.Description)
+				}
+			}
+		}
 	}
 	view, err := session.Execute("wait:next")
 	if err != nil {

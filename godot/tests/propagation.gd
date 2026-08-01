@@ -21,6 +21,8 @@ func _run() -> void:
 	for action_id in ["verify:F02", "wait:complete", "move:L02", "tell:N03:F01"]:
 		if not await _execute(action_id):
 			return
+	if app.timing_label.text != "第21天子时 · 已核实":
+		return _fail("verified timing is not visible in the header")
 	for action in app.current_view.get("available_actions", []):
 		if action.get("id", "") == "tell:N03:F01":
 			return _fail("delivered clue is still available")
