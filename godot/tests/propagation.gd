@@ -114,12 +114,20 @@ func _run() -> void:
 		return _fail("ending overlay is not visible")
 	if not app.ending_portrait.visible or app.ending_portrait.texture != shen_profile.decisive:
 		return _fail("ending did not carry the decisive actor into the final narrative frame")
+	if app.ending_box.anchor_left <= app.ending_portrait.anchor_right:
+		return _fail("ending reading column overlaps the decisive portrait")
+	if app.ending_box.anchor_right - app.ending_box.anchor_left > 0.5:
+		return _fail("ending reading column is too wide for comfortable reading")
 	if "沈砚秋" not in str(app.current_view.get("outcome", "")):
 		return _fail("unexpected propagation outcome")
 	if "准备值" in str(app.current_view.get("outcome", "")):
 		return _fail("ending leaked an internal score")
 	if "余波记录" not in _descendant_text(app.ending_box):
 		return _fail("ending overlay does not expose the aftermath section")
+	app._toggle_ending_annex()
+	if not app.ending_annex_box.visible:
+		return _fail("ending aftermath section does not expand")
+	app._toggle_ending_annex()
 	print("Godot propagation journey passed: ending visible on day %d" % app.current_view.get("day", 0))
 	quit(0)
 

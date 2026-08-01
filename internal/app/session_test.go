@@ -316,7 +316,7 @@ func TestRepeatedCultivationBecomesAnExplicitHighCostAlternative(t *testing.T) {
 	session := testSession(t)
 	executeMany(t, session, []string{"cultivate", "wait:complete", "cultivate", "wait:complete"})
 	third := actionWithID(session.View().AvailableActions, "cultivate")
-	if third == nil || third.Costs["spirit_stones"] != 10 || !containsMessage(third.Warnings, "高耗阶段") {
+	if third == nil || third.Costs["spirit_stones"] != 10 || !containsMessage(third.Warnings, "高耗阶段") || !strings.Contains(third.Description, "第 3 阶段") || !strings.Contains(third.Description, "累计闭关耗费 10 灵石") {
 		t.Fatalf("third cultivation does not expose escalating cost: %+v", third)
 	}
 	view, err := session.Execute("cultivate")

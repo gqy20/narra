@@ -348,17 +348,22 @@ func (s *Session) addRecoveryActions(options map[string]actionOption, state *dom
 	}
 	if action, ok := s.bundle.Actions["cultivate"]; ok && state.Player.Injury == 0 && fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
 		completed := s.countHistoryAction("cultivate")
+		stage := completed + 1
 		cost := cultivationCost(completed)
 		if state.Player.Resources["spirit_stones"] < cost {
 			return
 		}
 		costs := make(map[string]int)
 		warnings := make([]string, 0, 1)
-		description := "闭关三日，战力提高一点"
+		description := fmt.Sprintf("第 %d 阶段闭关三日，战力提高一点", stage)
 		if cost > 0 {
 			costs["spirit_stones"] = cost
-			description = fmt.Sprintf("继续闭关三日，以 %d 灵石稳固气机，战力提高一点", cost)
-			warnings = append(warnings, "重复闭关已进入高耗阶段；仍可提升战力，但不再是无代价的稳定最优选择。")
+			cumulativeCost := 0
+			for index := 0; index <= completed; index++ {
+				cumulativeCost += cultivationCost(index)
+			}
+			description = fmt.Sprintf("第 %d 阶段闭关三日，以 %d 灵石稳固气机，战力提高一点；完成后累计闭关耗费 %d 灵石", stage, cost, cumulativeCost)
+			warnings = append(warnings, fmt.Sprintf("重复闭关已进入高耗阶段；本轮消耗 %d 灵石，完成后累计闭关耗费 %d 灵石。", cost, cumulativeCost))
 		}
 		options["cultivate"] = actionOption{
 			view:    AvailableAction{ID: "cultivate", Kind: "cultivate", Category: "self", Name: "修炼", Description: description, Duration: action.Duration, Costs: costs, Warnings: warnings},

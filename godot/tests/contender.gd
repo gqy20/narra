@@ -41,9 +41,7 @@ func _run() -> void:
 	if not await _execute("buy:M01:antidote"):
 		return
 	for _cycle in 5:
-		if not await _execute("cultivate"):
-			return
-		if not await _execute("wait:complete"):
+		if not await _execute_cultivation_stage():
 			return
 	if not await _execute("wait:next"):
 		return
@@ -71,8 +69,43 @@ func _run() -> void:
 		return _fail("prepared player did not win the contest")
 	if "准备值" in str(app.current_view.get("outcome", "")):
 		return _fail("ending leaked an internal score")
-	print("Godot contender journey passed: player won on day %d" % app.current_view.get("day", 0))
+	var resolved_day := int(app.current_view.get("day", 0))
+	var ending_text := _descendant_text(app.ending_box)
+	if "回看本局选择与余波" not in ending_text or "换一条路 · 重新入局" not in ending_text or "返回卷首" not in ending_text:
+		return _fail("ending does not offer review and replay exits")
+	app._restart_from_ending()
+	if not await _wait_until_idle(15000):
+		return _fail("restart from ending timed out")
+	if app.ending_layer.visible or int(app.current_view.get("day", -1)) != 0 or int(app.current_view.get("player", {}).get("resources", {}).get("combat", 0)) != 2:
+		return _fail("restart from ending did not create a fresh journey")
+	print("Godot contender journey passed: player won on day %d" % resolved_day)
 	quit(0)
+
+
+func _execute_cultivation_stage() -> bool:
+	var action := _find_action("cultivate")
+	if action.is_empty():
+		_fail("missing action: cultivate")
+		return false
+	var before_combat := int(app.current_view.get("player", {}).get("resources", {}).get("combat", 0))
+	var action_text := _descendant_text(app.actions_box)
+	if ("修炼至下一阶段 · 战力 %d → %d" % [before_combat, before_combat + 1]) not in action_text:
+		_fail("cultivation action does not explain the next visible stage")
+		return false
+	if before_combat == 4 and "累计闭关耗费 10 灵石" not in str(action.get("description", "")):
+		_fail("high-cost cultivation does not expose cumulative spending")
+		return false
+	app._consider_action(action, "wait:complete")
+	if app.confirmation_layer.visible:
+		app._confirm_selected_action()
+	if not await _wait_until_idle(15000):
+		_fail("cultivation stage timed out")
+		return false
+	var player: Dictionary = app.current_view.get("player", {})
+	if bool(player.get("busy", false)) or app.queued_followup_action_id != "" or int(player.get("resources", {}).get("combat", 0)) != before_combat + 1:
+		_fail("one-click cultivation did not finish the next stage")
+		return false
+	return true
 
 
 func _execute(action_id: String) -> bool:
@@ -108,6 +141,15 @@ func _wait_until_idle(timeout_ms := 10000) -> bool:
 			if app.pending_operation == "" and not app.presentation_busy:
 				return true
 	return false
+
+
+func _descendant_text(node: Node) -> String:
+	var result := ""
+	if node is Label or node is Button:
+		result += str(node.text) + "\n"
+	for child in node.get_children():
+		result += _descendant_text(child)
+	return result
 
 
 func _fail(message: String) -> void:

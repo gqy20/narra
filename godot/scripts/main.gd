@@ -47,6 +47,8 @@ var current_view: Dictionary = {}
 var pending_operation := ""
 var autosave_after_action := false
 var selected_action: Dictionary = {}
+var selected_followup_action_id := ""
+var queued_followup_action_id := ""
 var available_actions_cache: Array = []
 var focused_actor_id := ""
 var focused_actor_name := ""
@@ -111,6 +113,7 @@ var ending_layer: Control
 var ending_box: VBoxContainer
 var ending_background: TextureRect
 var ending_portrait: TextureRect
+var ending_seal: TextureRect
 var ending_annex_box: VBoxContainer
 var ending_annex_button: Button
 var causal_layer: Control
@@ -714,23 +717,23 @@ func _build_ending_layer() -> void:
 	ending_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	ending_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ending_layer.add_child(ending_portrait)
-	var seal := TextureRect.new()
-	seal.anchor_left = 0.70
-	seal.anchor_right = 0.92
-	seal.anchor_top = 0.05
-	seal.anchor_bottom = 0.39
-	seal.texture = CausalSealTexture
-	seal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	seal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	seal.modulate = Color(1, 1, 1, 0.24)
-	seal.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ending_layer.add_child(seal)
+	ending_seal = TextureRect.new()
+	ending_seal.anchor_left = 0.775
+	ending_seal.anchor_right = 0.925
+	ending_seal.anchor_top = 0.085
+	ending_seal.anchor_bottom = 0.31
+	ending_seal.texture = CausalSealTexture
+	ending_seal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ending_seal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ending_seal.modulate = Color(1, 1, 1, 0.17)
+	ending_seal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ending_layer.add_child(ending_seal)
 	ending_box = VBoxContainer.new()
-	ending_box.anchor_left = 0.38
-	ending_box.anchor_right = 0.93
+	ending_box.anchor_left = 0.445
+	ending_box.anchor_right = 0.925
 	ending_box.anchor_top = 0.13
-	ending_box.anchor_bottom = 0.94
-	ending_box.add_theme_constant_override("separation", 12)
+	ending_box.anchor_bottom = 0.91
+	ending_box.add_theme_constant_override("separation", 14)
 	ending_layer.add_child(ending_box)
 
 
@@ -1221,6 +1224,7 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 	_set_buttons_disabled(self, presentation_busy)
 	var parsed = JSON.parse_string(body.get_string_from_utf8())
 	if response_code < 200 or response_code >= 300 or not parsed is Dictionary:
+		queued_followup_action_id = ""
 		var message := "本地服务无响应，请先运行项目启动脚本。"
 		if parsed is Dictionary and parsed.get("error", {}) is Dictionary:
 			message = str(parsed.get("error", {}).get("message", message))
@@ -1252,6 +1256,8 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 		autosave_after_action = false
 		_request("autosave", HTTPClient.METHOD_POST, "/game/save", {"slot": AUTOSAVE_SLOT})
 	elif operation == "autosave":
+		if _continue_queued_followup():
+			return
 		_show_footer_message("已自动保存")
 		_render_actions(available_actions_cache)
 	elif operation == "save":
@@ -1426,7 +1432,10 @@ func _new_game() -> void:
 	journal_feedback_details_visible = false
 	journal_travel_details_visible = false
 	active_action_category = ""
+	selected_followup_action_id = ""
+	queued_followup_action_id = ""
 	_reset_action_focus()
+	ending_layer.hide()
 	_set_visual_mode("location")
 	_request("new", HTTPClient.METHOD_POST, "/game/new", {"player_name": player_name})
 
@@ -1516,15 +1525,37 @@ func _return_to_start() -> void:
 	_request("quit", HTTPClient.METHOD_POST, "/game/quit")
 
 
-func _execute_action(action_id: String) -> void:
+func _restart_from_ending() -> void:
+	_new_game()
+
+
+func _execute_action(action_id: String, followup_action_id := "") -> void:
 	view_before_action = current_view.duplicate(true)
 	autosave_after_action = true
+	queued_followup_action_id = followup_action_id
 	_request("action", HTTPClient.METHOD_POST, "/game/action", {"action_id": action_id})
+
+
+func _continue_queued_followup() -> bool:
+	if queued_followup_action_id == "":
+		return false
+	var followup_id := queued_followup_action_id
+	queued_followup_action_id = ""
+	if _action_by_id(available_actions_cache, followup_id).is_empty():
+		_show_footer_message("局势提前变化，已停下等待你的判断")
+		_render_actions(available_actions_cache)
+		return true
+	footer_label.text = "继续推进到这一阶段结束…"
+	footer_label.add_theme_color_override("font_color", COLORS.accent)
+	_execute_action(followup_id)
+	return true
 
 
 func _show_start() -> void:
 	current_view = {}
 	selected_action = {}
+	selected_followup_action_id = ""
+	queued_followup_action_id = ""
 	available_actions_cache = []
 	selected_map_location_id = ""
 	rendered_location_id = ""
@@ -2375,11 +2406,15 @@ func _add_contextual_choice(action: Dictionary) -> void:
 		label = "备好入谷药 · 购买解瘴丹"
 	elif action.get("kind", "") == "recover":
 		label = "交出已核实日期 → 获得解瘴丹"
+	elif action.get("kind", "") == "cultivate":
+		var combat := int(current_view.get("player", {}).get("resources", {}).get("combat", 0))
+		label = "修炼至下一阶段 · 战力 %d → %d" % [combat, combat + 1]
 	if action.get("id", "") == "wait:next":
 		label = "静候下一阵风声"
 	elif int(action.get("completion_day", 0)) > 0:
 		label += "　·　%d 日 · 第 %d 日完成" % [int(action.get("duration", 1)), int(action.get("completion_day", 0))]
-	var button := _action_button(label, _consider_action.bind(action))
+	var callback := _consider_action.bind(action, "wait:complete") if action.get("kind", "") == "cultivate" else _consider_action.bind(action)
+	var button := _action_button(label, callback)
 	button.custom_minimum_size.y = 44
 	button.tooltip_text = str(action.get("description", ""))
 	actions_box.add_child(button)
@@ -2651,13 +2686,14 @@ func _on_tell_fact_selected(index: int, facts: Array) -> void:
 		_consider_action(facts[index])
 
 
-func _consider_action(action: Dictionary) -> void:
+func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 	var kind := str(action.get("kind", ""))
 	var warnings = action.get("warnings", [])
 	if not _action_needs_confirmation(action):
-		_execute_action(str(action.get("id", "")))
+		_execute_action(str(action.get("id", "")), followup_action_id)
 		return
 	selected_action = action
+	selected_followup_action_id = followup_action_id
 	_clear(confirmation_box)
 	var eyebrow := _text(confirmation_box, "一念将定", true, 13)
 	eyebrow.add_theme_color_override("font_color", COLORS.accent)
@@ -2736,6 +2772,8 @@ func _commitment_label(action: Dictionary) -> String:
 	if action.get("id", "") == "wait:next":
 		return "静候其变"
 	match str(action.get("kind", "")):
+		"cultivate":
+			return "闭关至下一阶段"
 		"tell":
 			return "传出此话"
 		"move":
@@ -2747,13 +2785,16 @@ func _commitment_label(action: Dictionary) -> String:
 
 func _confirm_selected_action() -> void:
 	var action_id := str(selected_action.get("id", ""))
+	var followup_action_id := selected_followup_action_id
 	selected_action = {}
+	selected_followup_action_id = ""
 	confirmation_layer.hide()
-	_execute_action(action_id)
+	_execute_action(action_id, followup_action_id)
 
 
 func _cancel_confirmation() -> void:
 	selected_action = {}
+	selected_followup_action_id = ""
 	confirmation_layer.hide()
 	if action_dock:
 		action_dock.visible = visual_mode == "location"
@@ -2794,48 +2835,61 @@ func _render_ending(ending: Dictionary) -> void:
 	var actor_profile: ActorVisualProfile = presentation_registry.actor_profile(ending_actor_id)
 	ending_portrait.texture = actor_profile.portrait("decisive") if actor_profile else null
 	ending_portrait.visible = ending_portrait.texture != null
-	ending_box.anchor_left = 0.38 if ending_portrait.visible else 0.23
-	var eyebrow := _text(ending_box, "尘埃落定", true, 15)
+	ending_box.anchor_left = 0.445 if ending_portrait.visible else 0.225
+	var eyebrow := _text(ending_box, "尘埃落定", true, 16)
 	eyebrow.add_theme_color_override("font_color", COLORS.accent)
-	var title := _text(ending_box, outcome, false, 34)
+	var title := _text(ending_box, outcome, false, 40)
 	title.add_theme_color_override("font_color", Color("ead6a8"))
 	var rule := HSeparator.new()
 	rule.modulate = Color(COLORS.accent, 0.46)
 	ending_box.add_child(rule)
 	if not influences.is_empty():
-		var impact_heading := _text(ending_box, "你的介入留下了这些痕迹", true, 14)
+		var impact_heading := _text(ending_box, "你的介入留下了这些痕迹", true, 16)
 		impact_heading.add_theme_color_override("font_color", COLORS.accent)
 	for influence in influences:
-		_text(ending_box, "你将“%s”告诉了%s。" % [influence.get("fact_claim", "消息"), influence.get("actor_name", "某人")], false, 15)
+		_text(ending_box, "你将“%s”告诉了%s。" % [influence.get("fact_claim", "消息"), influence.get("actor_name", "某人")], false, 17)
+		var timeline_grid := GridContainer.new()
+		timeline_grid.columns = 2
+		timeline_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		timeline_grid.add_theme_constant_override("h_separation", 18)
+		timeline_grid.add_theme_constant_override("v_separation", 9)
+		ending_box.add_child(timeline_grid)
 		for change in influence.get("changes", []):
-			var change_row := HBoxContainer.new()
-			change_row.add_theme_constant_override("separation", 14)
-			ending_box.add_child(change_row)
-			var day_mark := _text(change_row, "第 %d 日" % int(change.get("day", 0)), false, 14)
-			day_mark.custom_minimum_size.x = 66
+			var day_mark := _text(timeline_grid, "第 %d 日" % int(change.get("day", 0)), false, 16)
+			day_mark.custom_minimum_size.x = 78
 			day_mark.add_theme_color_override("font_color", COLORS.accent)
-			var change_line := _text(change_row, "原本%s；后来%s。" % [change.get("without_information", "另有安排"), change.get("with_information", "改变计划")], true, 14)
+			var change_line := _text(timeline_grid, "原本%s；后来%s。" % [change.get("without_information", "另有安排"), change.get("with_information", "改变计划")], true, 16)
 			change_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if influences.is_empty():
-		_text(ending_box, "这一次没有观察到你传递的消息改写他人计划。", true, 14)
+		_text(ending_box, "这一次没有观察到你传递的消息改写他人计划。", true, 16)
 	else:
-		_text(ending_box, "局势已经落定，但被你改变的计划会成为下一段旅途的起点。", true, 14)
-	ending_annex_button = _utility_button("展开局势附录", _toggle_ending_annex)
+		_text(ending_box, "局势已经落定，但被你改变的计划会成为下一段旅途的起点。", true, 16)
+	ending_annex_button = _action_button("回看本局选择与余波", _toggle_ending_annex)
+	ending_annex_button.custom_minimum_size.y = 42
+	ending_annex_button.add_theme_font_size_override("font_size", 16)
 	ending_box.add_child(ending_annex_button)
 	ending_annex_box = VBoxContainer.new()
 	ending_annex_box.add_theme_constant_override("separation", 6)
 	ending_annex_box.hide()
 	ending_box.add_child(ending_annex_box)
-	var record_heading := _text(ending_annex_box, "余波记录", true, 14)
+	var record_heading := _text(ending_annex_box, "你的路线与余波记录", true, 16)
 	record_heading.add_theme_color_override("font_color", COLORS.accent)
 	for highlight in ending.get("highlights", []):
 		if str(highlight).begins_with("你传递的消息改变了"):
 			continue
-		_text(ending_annex_box, "· %s" % highlight, true, 14)
-	var return_button := _ornate_button("收卷 · 返回起点", _return_to_start)
-	return_button.custom_minimum_size = Vector2(380, 68)
-	return_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	ending_box.add_child(return_button)
+		_text(ending_annex_box, "· %s" % highlight, true, 15)
+	var ending_actions := HBoxContainer.new()
+	ending_actions.add_theme_constant_override("separation", 12)
+	ending_box.add_child(ending_actions)
+	var restart_button := _ornate_button("换一条路 · 重新入局", _restart_from_ending)
+	restart_button.custom_minimum_size = Vector2(330, 62)
+	restart_button.add_theme_font_size_override("font_size", 22)
+	restart_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ending_actions.add_child(restart_button)
+	var return_button := _utility_button("返回卷首", _return_to_start)
+	return_button.custom_minimum_size = Vector2(132, 62)
+	return_button.add_theme_font_size_override("font_size", 16)
+	ending_actions.add_child(return_button)
 	ending_layer.show()
 
 
@@ -2843,4 +2897,4 @@ func _toggle_ending_annex() -> void:
 	if not ending_annex_box or not ending_annex_button:
 		return
 	ending_annex_box.visible = not ending_annex_box.visible
-	ending_annex_button.text = "收起局势附录" if ending_annex_box.visible else "展开局势附录"
+	ending_annex_button.text = "收起本局选择与余波" if ending_annex_box.visible else "回看本局选择与余波"
