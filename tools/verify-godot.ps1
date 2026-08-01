@@ -22,6 +22,9 @@ try {
 
         & $godot.Source --headless --path $godotProject --script res://tests/propagation.gd
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+        & $godot.Source --headless --path $godotProject --script res://tests/contender.gd
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
     finally {
         if (-not $server.HasExited) {

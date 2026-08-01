@@ -20,6 +20,11 @@ var current_view: Dictionary = {}
 var pending_operation := ""
 var autosave_after_action := false
 var selected_action: Dictionary = {}
+var available_actions_cache: Array = []
+var focused_actor_id := ""
+var focused_actor_name := ""
+var focused_fact_id := ""
+var focused_fact_claim := ""
 
 var start_layer: Control
 var game_layer: Control
@@ -388,6 +393,7 @@ func _new_game() -> void:
 	var player_name := name_input.text.strip_edges()
 	if player_name == "":
 		player_name = "无名修士"
+	_reset_action_focus()
 	_request("new", HTTPClient.METHOD_POST, "/game/new", {"player_name": player_name})
 
 
@@ -417,6 +423,8 @@ func _execute_action(action_id: String) -> void:
 func _show_start() -> void:
 	current_view = {}
 	selected_action = {}
+	available_actions_cache = []
+	_reset_action_focus()
 	game_layer.hide()
 	confirmation_layer.hide()
 	ending_layer.hide()
@@ -449,14 +457,18 @@ func _render_view() -> void:
 	var travel = current_view.get("travel", null)
 	objective_label.text = "本局目标 · 通过调查、传播或亲自入谷影响青髓芝归属"
 	footer_label.add_theme_color_override("font_color", COLORS.muted)
-	_render_player(player)
-	_render_clues(current_view.get("known_facts", []))
-	_render_scene(current_view.get("recent_events", []), current_view.get("guidance", []), travel)
-	_render_people(current_view.get("known_actors", []))
 	var available_actions = current_view.get("available_actions", [])
 	if not available_actions is Array:
 		available_actions = []
-	_render_actions(available_actions)
+	available_actions_cache = available_actions
+	var known_actors: Array = current_view.get("known_actors", [])
+	var known_facts: Array = current_view.get("known_facts", [])
+	_reconcile_action_focus(known_actors, known_facts)
+	_render_player(player)
+	_render_clues(known_facts, available_actions_cache)
+	_render_scene(current_view.get("recent_events", []), current_view.get("guidance", []), travel)
+	_render_people(known_actors, available_actions_cache)
+	_render_actions(available_actions_cache)
 	_render_feedback(current_view.get("last_turn", null))
 	var ending = current_view.get("ending", null)
 	if bool(current_view.get("resolved", false)) or bool(current_view.get("ended", false)) or ending is Dictionary:
@@ -480,7 +492,7 @@ func _render_player(player: Dictionary) -> void:
 			_text(player_box, "· %s × %d" % [item.get("name", "物品"), int(item.get("amount", 1))])
 
 
-func _render_clues(clues: Array) -> void:
+func _render_clues(clues: Array, actions: Array) -> void:
 	_clear(clues_box)
 	if clues.is_empty():
 		_text(clues_box, "尚未掌握可用线索。", true)
@@ -492,6 +504,13 @@ func _render_clues(clues: Array) -> void:
 		if bool(clue.get("contested", false)):
 			status += " · 与旧说法冲突"
 		_text(clues_box, "%s · 来源：%s" % [status, clue.get("source", "未知")], true, 13)
+		var fact_id := str(clue.get("fact_id", ""))
+		var target_count := _count_tell_actions(actions, "", fact_id)
+		if target_count > 0:
+			var link := _button("选择传播对象 · %d 人" % target_count, _focus_fact_actions.bind(fact_id, str(clue.get("claim", "未知传言"))), true)
+			clues_box.add_child(link)
+		else:
+			_text(clues_box, "当前地点没有新的传播对象", true, 12)
 
 
 func _render_scene(events: Array, guidance: Array, travel) -> void:
@@ -512,7 +531,7 @@ func _render_scene(events: Array, guidance: Array, travel) -> void:
 		_text(scene_box, "第 %d 日 · %s" % [int(event.get("day", 0)), event.get("description", "局势变化")])
 
 
-func _render_people(actors: Array) -> void:
+func _render_people(actors: Array, actions: Array) -> void:
 	_clear(people_box)
 	if actors.is_empty():
 		_text(people_box, "此地没有可交谈的人。", true)
@@ -520,10 +539,36 @@ func _render_people(actors: Array) -> void:
 	for actor in actors:
 		_text(people_box, "%s · %s" % [actor.get("name", "无名者"), actor.get("faction", "散修")], false, 16)
 		_text(people_box, str(actor.get("public_profile", "公开资料尚未收集")), true, 13)
+		var actor_id := str(actor.get("id", ""))
+		var actor_name := str(actor.get("name", "无名者"))
+		var clue_count := _count_tell_actions(actions, actor_id, "")
+		if clue_count > 0:
+			var link := _button("与%s交涉 · %d 条新线索" % [actor_name, clue_count], _focus_actor_actions.bind(actor_id, actor_name), true)
+			people_box.add_child(link)
+		else:
+			_text(people_box, "暂无新的线索可告知", true, 12)
 
 
 func _render_actions(actions: Array) -> void:
 	_clear(actions_box)
+	var focused_actions := _focused_information_actions(actions)
+	if focused_actor_id != "":
+		_text(actions_box, "与%s交涉" % focused_actor_name, false, 18)
+		actions_box.add_child(_button("返回全部行动", _clear_action_focus, true))
+		if focused_actions.is_empty():
+			_text(actions_box, "目前没有新的线索可告知；已经送达的内容不会重复出现。", true)
+			return
+		_add_information_actions(focused_actions)
+		return
+	if focused_fact_id != "":
+		_text(actions_box, "传播线索", false, 18)
+		_text(actions_box, focused_fact_claim, true, 13)
+		actions_box.add_child(_button("返回全部行动", _clear_action_focus, true))
+		if focused_actions.is_empty():
+			_text(actions_box, "当前地点已没有尚未收到这条线索的人。", true)
+			return
+		_add_information_actions(focused_actions)
+		return
 	if actions.is_empty():
 		_text(actions_box, "当前没有可执行行动。", true)
 		return
@@ -555,6 +600,81 @@ func _render_actions(actions: Array) -> void:
 				_add_action_button(action)
 
 
+func _count_tell_actions(actions: Array, actor_id: String, fact_id: String) -> int:
+	var count := 0
+	for action in actions:
+		if action.get("kind", "") != "tell":
+			continue
+		if actor_id != "" and str(action.get("target_id", "")) != actor_id:
+			continue
+		if fact_id != "" and str(action.get("fact_id", "")) != fact_id:
+			continue
+		count += 1
+	return count
+
+
+func _focused_information_actions(actions: Array) -> Array:
+	var result: Array = []
+	for action in actions:
+		if action.get("kind", "") != "tell":
+			continue
+		if focused_actor_id != "" and str(action.get("target_id", "")) != focused_actor_id:
+			continue
+		if focused_fact_id != "" and str(action.get("fact_id", "")) != focused_fact_id:
+			continue
+		result.append(action)
+	return result
+
+
+func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
+	focused_actor_id = actor_id
+	focused_actor_name = actor_name
+	focused_fact_id = ""
+	focused_fact_claim = ""
+	_render_actions(available_actions_cache)
+
+
+func _focus_fact_actions(fact_id: String, fact_claim: String) -> void:
+	focused_fact_id = fact_id
+	focused_fact_claim = fact_claim
+	focused_actor_id = ""
+	focused_actor_name = ""
+	_render_actions(available_actions_cache)
+
+
+func _clear_action_focus() -> void:
+	_reset_action_focus()
+	_render_actions(available_actions_cache)
+
+
+func _reset_action_focus() -> void:
+	focused_actor_id = ""
+	focused_actor_name = ""
+	focused_fact_id = ""
+	focused_fact_claim = ""
+
+
+func _reconcile_action_focus(actors: Array, clues: Array) -> void:
+	if focused_actor_id != "":
+		var actor_still_here := false
+		for actor in actors:
+			if str(actor.get("id", "")) == focused_actor_id:
+				actor_still_here = true
+				break
+		if not actor_still_here:
+			focused_actor_id = ""
+			focused_actor_name = ""
+	if focused_fact_id != "":
+		var fact_still_known := false
+		for clue in clues:
+			if str(clue.get("fact_id", "")) == focused_fact_id:
+				fact_still_known = true
+				break
+		if not fact_still_known:
+			focused_fact_id = ""
+			focused_fact_claim = ""
+
+
 func _add_information_actions(actions: Array) -> void:
 	var tell_groups := {}
 	for action in actions:
@@ -572,6 +692,7 @@ func _add_information_actions(actions: Array) -> void:
 			var button := _button("向%s传递线索" % target, _consider_action.bind(action), true)
 			button.tooltip_text = str(action.get("description", ""))
 			actions_box.add_child(button)
+			_text(actions_box, "“%s”" % action.get("fact_claim", "未知线索"), true, 13)
 		else:
 			var menu := MenuButton.new()
 			menu.text = "向%s传递线索…（%d 条）" % [target, facts.size()]

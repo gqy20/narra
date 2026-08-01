@@ -21,6 +21,14 @@ func _run() -> void:
 	for action_id in ["verify:F02", "wait:complete", "move:L02", "tell:N03:F01"]:
 		if not await _execute(action_id):
 			return
+	for action in app.current_view.get("available_actions", []):
+		if action.get("id", "") == "tell:N03:F01":
+			return _fail("delivered clue is still available")
+	app._focus_actor_actions("N03", "沈砚秋")
+	for action in app._focused_information_actions(app.available_actions_cache):
+		if action.get("fact_id", "") == "F01":
+			return _fail("actor focus still shows the delivered clue")
+	app._clear_action_focus()
 	for index in 4:
 		if not await _execute("wait:next"):
 			return
