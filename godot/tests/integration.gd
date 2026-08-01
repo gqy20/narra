@@ -28,6 +28,8 @@ func _run() -> void:
 	if app.timing_label.text != "第24天 · 传闻":
 		return _fail("initial known timing is not visible")
 	for action in actions:
+		if action.get("kind", "") == "tell" and (action.get("target_role", "") == "" or action.get("relevance", "") == "" or action.get("risk", "") == ""):
+			return _fail("tell action lacks public decision context")
 		if action.get("id", "") == "wait:next":
 			app._consider_action(action)
 			if not app.confirmation_layer.visible:

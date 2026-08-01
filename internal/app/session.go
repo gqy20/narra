@@ -171,13 +171,31 @@ func (s *Session) visibleActors(state *domain.WorldState) []VisibleActor {
 	for _, npc := range state.NPCs {
 		if npc.Location == state.Player.Location {
 			profile := "公开资料尚未收集"
+			role := "可交谈人物"
+			risk := "公开信息不足，暂时无法判断消息可能被如何使用。"
+			focus := make([]string, 0)
 			for _, config := range s.bundle.NPCs {
-				if config.ID == npc.ID && config.PublicProfile != "" {
-					profile = config.PublicProfile
-					break
+				if config.ID != npc.ID {
+					continue
 				}
+				if config.PublicProfile != "" {
+					profile = config.PublicProfile
+				}
+				if config.PublicRole != "" {
+					role = config.PublicRole
+				}
+				if config.PublicRisk != "" {
+					risk = config.PublicRisk
+				}
+				for _, interest := range config.PublicInterests {
+					focus = append(focus, interest.Label)
+				}
+				break
 			}
-			actors = append(actors, VisibleActor{ID: npc.ID, Name: npc.Name, Faction: npc.Faction, PublicProfile: profile})
+			actors = append(actors, VisibleActor{
+				ID: npc.ID, Name: npc.Name, Faction: npc.Faction, PublicProfile: profile,
+				PublicRole: role, PublicFocus: focus, PublicRisk: risk,
+			})
 		}
 	}
 	sort.Slice(actors, func(i, j int) bool { return actors[i].ID < actors[j].ID })

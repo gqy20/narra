@@ -27,9 +27,12 @@ func _run() -> void:
 		if action.get("id", "") == "tell:N03:F01":
 			return _fail("delivered clue is still available")
 	app._focus_actor_actions("N03", "沈砚秋")
-	for action in app._focused_information_actions(app.available_actions_cache):
+	var shen_actions: Array = app._focused_information_actions(app.available_actions_cache)
+	for action in shen_actions:
 		if action.get("fact_id", "") == "F01":
 			return _fail("actor focus still shows the delivered clue")
+		if action.get("relevance", "") == "" or action.get("risk", "") == "":
+			return _fail("actor focus lacks public decision context")
 	app._clear_action_focus()
 	for index in 4:
 		if not await _execute("wait:next"):

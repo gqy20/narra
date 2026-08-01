@@ -119,20 +119,28 @@ type Personality struct {
 }
 
 type NPCConfig struct {
-	ID            string         `json:"id"`
-	Name          string         `json:"name"`
-	Faction       string         `json:"faction"`
-	PublicProfile string         `json:"public_profile,omitempty"`
-	Goal          string         `json:"goal"`
-	Goals         []Goal         `json:"goals,omitempty"`
-	Interests     []string       `json:"interests,omitempty"`
-	Location      string         `json:"location"`
-	Injury        int            `json:"injury"`
-	Resources     map[string]int `json:"resources"`
-	Items         []string       `json:"items"`
-	Beliefs       []Belief       `json:"beliefs"`
-	Personality   Personality    `json:"personality"`
-	Strategies    []Strategy     `json:"strategies"`
+	ID              string           `json:"id"`
+	Name            string           `json:"name"`
+	Faction         string           `json:"faction"`
+	PublicProfile   string           `json:"public_profile,omitempty"`
+	PublicRole      string           `json:"public_role,omitempty"`
+	PublicInterests []PublicInterest `json:"public_interests,omitempty"`
+	PublicRisk      string           `json:"public_risk,omitempty"`
+	Goal            string           `json:"goal"`
+	Goals           []Goal           `json:"goals,omitempty"`
+	Interests       []string         `json:"interests,omitempty"`
+	Location        string           `json:"location"`
+	Injury          int              `json:"injury"`
+	Resources       map[string]int   `json:"resources"`
+	Items           []string         `json:"items"`
+	Beliefs         []Belief         `json:"beliefs"`
+	Personality     Personality      `json:"personality"`
+	Strategies      []Strategy       `json:"strategies"`
+}
+
+type PublicInterest struct {
+	Topic string `json:"topic"`
+	Label string `json:"label"`
 }
 
 type Goal struct {

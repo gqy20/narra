@@ -76,7 +76,7 @@ func TestSaveSlotsRejectPaths(t *testing.T) {
 
 func assertStructuredView(t *testing.T, view *app.PlayerView) {
 	t.Helper()
-	if len(view.KnownActors) == 0 || view.KnownActors[0].PublicProfile == "" {
+	if len(view.KnownActors) == 0 || view.KnownActors[0].PublicProfile == "" || view.KnownActors[0].PublicRole == "" || len(view.KnownActors[0].PublicFocus) == 0 {
 		t.Fatalf("public actor profiles = %+v", view.KnownActors)
 	}
 	foundTell := false
@@ -86,7 +86,7 @@ func assertStructuredView(t *testing.T, view *app.PlayerView) {
 		}
 		if action.Kind == "tell" {
 			foundTell = true
-			if action.TargetID == "" || action.TargetName == "" || action.FactID == "" || action.FactClaim == "" {
+			if action.TargetID == "" || action.TargetName == "" || action.FactID == "" || action.FactClaim == "" || action.Relevance == "" || action.Risk == "" {
 				t.Fatalf("tell action lacks semantic fields: %+v", action)
 			}
 		}

@@ -56,6 +56,9 @@ func Validate(bundle domain.Bundle) error {
 			return fmt.Errorf("invalid or duplicate NPC id %q", npc.ID)
 		}
 		seenNPC[npc.ID] = true
+		if len(npc.PublicInterests) > 0 && (npc.PublicRole == "" || npc.PublicRisk == "") {
+			return fmt.Errorf("NPC %s public context requires role and risk", npc.ID)
+		}
 		if _, ok := bundle.Locations[npc.Location]; !ok {
 			return fmt.Errorf("NPC %s references unknown location %s", npc.ID, npc.Location)
 		}
@@ -158,6 +161,16 @@ func validateTopics(bundle domain.Bundle) error {
 	}
 	for _, npc := range bundle.NPCs {
 		if err := check("NPC "+npc.ID, npc.Interests); err != nil {
+			return err
+		}
+		publicTopics := make([]string, 0, len(npc.PublicInterests))
+		for _, interest := range npc.PublicInterests {
+			if interest.Label == "" {
+				return fmt.Errorf("NPC %s has public interest %s without a label", npc.ID, interest.Topic)
+			}
+			publicTopics = append(publicTopics, interest.Topic)
+		}
+		if err := check("NPC "+npc.ID+" public interests", publicTopics); err != nil {
 			return err
 		}
 		for i, goal := range npc.Goals {

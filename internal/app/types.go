@@ -93,10 +93,13 @@ type VisibleLocation struct {
 }
 
 type VisibleActor struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	Faction       string `json:"faction"`
-	PublicProfile string `json:"public_profile"`
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Faction       string   `json:"faction"`
+	PublicProfile string   `json:"public_profile"`
+	PublicRole    string   `json:"public_role,omitempty"`
+	PublicFocus   []string `json:"public_focus,omitempty"`
+	PublicRisk    string   `json:"public_risk,omitempty"`
 }
 
 type VisibleBelief struct {
@@ -133,5 +136,8 @@ type AvailableAction struct {
 	TargetName  string         `json:"target_name,omitempty"`
 	FactID      string         `json:"fact_id,omitempty"`
 	FactClaim   string         `json:"fact_claim,omitempty"`
+	TargetRole  string         `json:"target_role,omitempty"`
+	Relevance   string         `json:"relevance,omitempty"`
+	Risk        string         `json:"risk,omitempty"`
 	Warnings    []string       `json:"warnings,omitempty"`
 }

@@ -63,13 +63,23 @@ func TestInitialCatalogIsDynamicAndRouteAware(t *testing.T) {
 }
 
 func TestActionMetadataAndPublicProfilesArePlayerFacing(t *testing.T) {
-	view := testSession(t).View()
+	session := testSession(t)
+	view := session.View()
 	if len(view.KnownActors) == 0 {
 		t.Fatal("no visible actors")
 	}
 	for _, actor := range view.KnownActors {
-		if actor.PublicProfile == "" || strings.Contains(actor.PublicProfile, "取得青髓芝并为自己筑基") {
+		if actor.PublicProfile == "" || actor.PublicRole == "" || len(actor.PublicFocus) == 0 || actor.PublicRisk == "" {
 			t.Fatalf("invalid public profile: %+v", actor)
+		}
+	}
+	encoded, err := json.Marshal(view)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, config := range session.bundle.NPCs {
+		if config.Goal != "" && strings.Contains(string(encoded), config.Goal) {
+			t.Fatalf("player view leaked hidden goal for %s", config.Name)
 		}
 	}
 	for _, action := range view.AvailableActions {
@@ -82,10 +92,32 @@ func TestActionMetadataAndPublicProfilesArePlayerFacing(t *testing.T) {
 		if action.Kind == "tell" && len(action.Warnings) == 0 {
 			t.Fatalf("unverified tell action missing warning: %+v", action)
 		}
+		if action.Kind == "tell" && (action.TargetRole == "" || action.Relevance == "" || action.Risk == "") {
+			t.Fatalf("tell action missing public decision context: %+v", action)
+		}
 		if action.ID == "wait:next" && !containsMessage(action.Warnings, "解瘴丹") {
 			t.Fatalf("advance action missing expiring-opportunity warning: %+v", action)
 		}
 	}
+}
+
+func TestVerifiedClueExplainsWhyTargetMayCare(t *testing.T) {
+	session := testSession(t)
+	executeMany(t, session, []string{"verify:F02", "wait:complete", "move:L02"})
+	view := session.View()
+	for _, action := range view.AvailableActions {
+		if action.ID != "tell:N03:F01" {
+			continue
+		}
+		if action.TargetRole != "青岚门行动负责人" || !strings.Contains(action.Relevance, "成熟时机") {
+			t.Fatalf("Shen relevance = %+v", action)
+		}
+		if !strings.Contains(action.Risk, "整支队伍") {
+			t.Fatalf("Shen public risk = %q", action.Risk)
+		}
+		return
+	}
+	t.Fatal("verified clue has no action targeting Shen")
 }
 
 func TestAtomicSaveFileCanReplaceAndReload(t *testing.T) {

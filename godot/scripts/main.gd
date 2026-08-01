@@ -774,8 +774,13 @@ func _render_people(actors: Array, actions: Array) -> void:
 		_text(people_box, "此地没有可交谈的人。", true)
 		return
 	for actor in actors:
-		_text(people_box, "%s · %s" % [actor.get("name", "无名者"), actor.get("faction", "散修")], false, 16)
+		_text(people_box, "%s · %s" % [actor.get("name", "无名者"), actor.get("public_role", "可交谈人物")], false, 16)
+		_text(people_box, str(actor.get("faction", "散修")), true, 14)
 		_text(people_box, str(actor.get("public_profile", "公开资料尚未收集")), true, 14)
+		var focus: Array = actor.get("public_focus", [])
+		if not focus.is_empty():
+			_text(people_box, "公开关注 · %s" % "、".join(focus), false, 14)
+		_text(people_box, "传播风险 · %s" % actor.get("public_risk", "尚不了解"), true, 14)
 		var actor_id := str(actor.get("id", ""))
 		var actor_name := str(actor.get("name", "无名者"))
 		var clue_count := _count_tell_actions(actions, actor_id, "")
@@ -795,7 +800,7 @@ func _render_actions(actions: Array) -> void:
 		if focused_actions.is_empty():
 			_text(actions_box, "目前没有新的线索可告知；已经送达的内容不会重复出现。", true)
 			return
-		_add_information_actions(focused_actions)
+		_add_focused_information_actions(focused_actions)
 		return
 	if focused_fact_id != "":
 		_text(actions_box, "传播线索", false, 18)
@@ -804,7 +809,7 @@ func _render_actions(actions: Array) -> void:
 		if focused_actions.is_empty():
 			_text(actions_box, "当前地点已没有尚未收到这条线索的人。", true)
 			return
-		_add_information_actions(focused_actions)
+		_add_focused_information_actions(focused_actions)
 		return
 	if actions.is_empty():
 		_text(actions_box, "当前没有可执行行动。", true)
@@ -861,6 +866,29 @@ func _focused_information_actions(actions: Array) -> Array:
 			continue
 		result.append(action)
 	return result
+
+
+func _add_focused_information_actions(actions: Array) -> void:
+	for index in actions.size():
+		var action: Dictionary = actions[index]
+		if focused_actor_id != "":
+			_text(actions_box, str(action.get("fact_claim", "未知线索")), false, 16)
+		else:
+			_text(actions_box, "%s · %s" % [action.get("target_name", "某人"), action.get("target_role", "可交谈人物")], false, 16)
+		var relevance := _text(actions_box, str(action.get("relevance", "尚不了解这条线索与对方的关联")), false, 14)
+		relevance.add_theme_color_override("font_color", COLORS.accent)
+		var risk := str(action.get("risk", ""))
+		if risk != "":
+			_text(actions_box, "使用倾向 · %s" % risk, true, 14)
+		for warning_text in action.get("warnings", []):
+			var warning := _text(actions_box, "注意 · %s" % warning_text, false, 14)
+			warning.add_theme_color_override("font_color", COLORS.accent)
+		var button_label := "传递这条线索" if focused_actor_id != "" else "告知%s" % action.get("target_name", "对方")
+		actions_box.add_child(_button(button_label, _consider_action.bind(action), true))
+		if index < actions.size() - 1:
+			var separator := HSeparator.new()
+			separator.modulate = COLORS.line
+			actions_box.add_child(separator)
 
 
 func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
@@ -927,7 +955,7 @@ func _add_information_actions(actions: Array) -> void:
 		if facts.size() == 1:
 			var action: Dictionary = facts[0]
 			var button := _button("向%s传递线索" % target, _consider_action.bind(action), true)
-			button.tooltip_text = str(action.get("description", ""))
+			button.tooltip_text = "%s\n%s\n%s" % [action.get("description", ""), action.get("relevance", ""), action.get("risk", "")]
 			actions_box.add_child(button)
 			_text(actions_box, "“%s”" % action.get("fact_claim", "未知线索"), true, 14)
 		else:
@@ -978,6 +1006,11 @@ func _consider_action(action: Dictionary) -> void:
 	else:
 		_text(confirmation_box, str(action.get("description", "")), true, 15)
 		_text(confirmation_box, "预计占用 %d 日" % int(action.get("duration", 1)), true)
+	if kind == "tell":
+		_text(confirmation_box, "%s · %s" % [action.get("target_name", "某人"), action.get("target_role", "可交谈人物")], false, 15)
+		var relevance_line := _text(confirmation_box, str(action.get("relevance", "关联尚不明确")), false, 14)
+		relevance_line.add_theme_color_override("font_color", COLORS.accent)
+		_text(confirmation_box, "使用倾向 · %s" % action.get("risk", "尚不了解"), true, 14)
 	var warnings = action.get("warnings", [])
 	if warnings is Array:
 		for warning_text in warnings:

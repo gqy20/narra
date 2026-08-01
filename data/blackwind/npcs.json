@@ -1,7 +1,7 @@
 [
   {
     "id":"N01","name":"李玄","faction":"独立散修","goal":"取得青髓芝并为自己筑基","goals":[{"type":"acquire","target_id":"qingsuizhi","priority":5,"topics":["qingsuizhi"]},{"type":"status","target_id":"breakthrough","priority":3}],"interests":["qingsuizhi","blackwind","combat"],"location":"L01","injury":0,
-    "public_profile":"常年出入险地的独行修士，正在收购解瘴物资并打听黑风谷路线。",
+    "public_profile":"常年出入险地的独行修士，正在收购解瘴物资并打听黑风谷路线。","public_role":"独行争夺者","public_interests":[{"topic":"qingsuizhi","label":"青髓芝归属"},{"topic":"route","label":"入谷路线"},{"topic":"combat","label":"战前准备"}],"public_risk":"行动果断，未经核实的消息也可能促使他冒险。",
     "resources":{"combat":5,"support":0,"spirit_stones":100},"items":["moon_incense"],
     "beliefs":[{"fact_id":"F01","claim":"青髓芝将在第21天成熟","confidence":3,"source":"亲自观察","learned_on":0,"secrecy":2},{"fact_id":"F10","claim":"月见香可以引走守巢妖兽","confidence":3,"source":"旧游记","learned_on":0,"secrecy":2}],
     "personality":{"caution":2,"greed":3,"loyalty":1,"ambition":5,"credit":3,"risk_tolerance":5},
@@ -15,7 +15,7 @@
   },
   {
     "id":"N02","name":"陈青山","faction":"陈氏家族","goal":"为陈氏取得青髓芝并维持家主权威","goals":[{"type":"acquire","target_id":"qingsuizhi","priority":4,"topics":["qingsuizhi"]},{"type":"protect","target_id":"chen_family","priority":5,"topics":["chen_family"]}],"interests":["qingsuizhi","chen_family","succession"],"location":"L03","injury":2,
-    "public_profile":"陈氏药庄家主，近期旧伤反复，仍在组织家族队伍参与黑风谷之行。",
+    "public_profile":"陈氏药庄家主，近期旧伤反复，仍在组织家族队伍参与黑风谷之行。","public_role":"陈氏领队","public_interests":[{"topic":"chen_family","label":"陈氏安危"},{"topic":"qingsuizhi","label":"青髓芝归属"},{"topic":"combat","label":"争夺风险"}],"public_risk":"看重家族利益，涉及伤势或商路的消息可能引发强烈反应。",
     "resources":{"combat":5,"support":2,"spirit_stones":180},"items":["jade_box","antidote"],
     "beliefs":[{"fact_id":"F01","claim":"青髓芝将在第21天成熟","confidence":2,"source":"药庄旧志","learned_on":0,"secrecy":2},{"fact_id":"F05","claim":"自己的旧伤已经复发","confidence":3,"source":"自身状态","learned_on":0,"secrecy":2}],
     "personality":{"caution":4,"greed":2,"loyalty":5,"ambition":4,"credit":4,"risk_tolerance":2},
@@ -28,7 +28,7 @@
   },
   {
     "id":"N03","name":"沈砚秋","faction":"青岚门","goal":"代表宗门取得灵药且避免丑闻","goals":[{"type":"acquire","target_id":"qingsuizhi","priority":5,"topics":["qingsuizhi"]},{"type":"protect","target_id":"qinglan","priority":4,"topics":["qinglan"]}],"interests":["qingsuizhi","qinglan","intrigue"],"location":"L02","injury":0,
-    "public_profile":"青岚门此次行动的负责人，行事谨慎，正在核对青髓芝消息与入谷准备。",
+    "public_profile":"青岚门此次行动的负责人，行事谨慎，正在核对青髓芝消息与入谷准备。","public_role":"青岚门行动负责人","public_interests":[{"topic":"qingsuizhi","label":"成熟时机"},{"topic":"qinglan","label":"宗门安排"},{"topic":"route","label":"入谷准备"}],"public_risk":"行事谨慎，通常会核对来源，但可靠消息可能改变整支队伍的计划。",
     "resources":{"combat":5,"support":1,"spirit_stones":120},"items":["antidote"],
     "beliefs":[],"personality":{"caution":4,"greed":1,"loyalty":5,"ambition":3,"credit":5,"risk_tolerance":3},
     "strategies":[
@@ -41,7 +41,7 @@
   },
   {
     "id":"N04","name":"魏无咎","faction":"黑水盟","goal":"最大化情报和交易收益","goals":[{"type":"profit","target_id":"intel_market","priority":5,"topics":["intel","market"]}],"interests":["intel","market","blackwater"],"location":"L01","injury":0,
-    "public_profile":"黑水盟情报商，熟悉坊市消息流向，凡事先问价钱再谈立场。",
+    "public_profile":"黑水盟情报商，熟悉坊市消息流向，凡事先问价钱再谈立场。","public_role":"情报中间人","public_interests":[{"topic":"intel","label":"情报价值"},{"topic":"market","label":"市场行情"},{"topic":"qingsuizhi","label":"青髓芝消息"}],"public_risk":"优先考虑交易价值，消息可能被继续转卖。",
     "resources":{"combat":3,"support":0,"spirit_stones":250},"items":[],
     "beliefs":[{"fact_id":"F01","claim":"青髓芝将在第21天成熟","confidence":3,"source":"韩四","learned_on":0,"secrecy":1},{"fact_id":"F09","claim":"自己不准备亲自夺药","confidence":3,"source":"自身计划","learned_on":0,"secrecy":2}],
     "personality":{"caution":5,"greed":5,"loyalty":1,"ambition":3,"credit":2,"risk_tolerance":1},
@@ -52,7 +52,7 @@
   },
   {
     "id":"N05","name":"王衡","faction":"黑水盟外围","goal":"通过伏击偿还债务并获取资源","goals":[{"type":"avoid","target_id":"debt_default","priority":5,"topics":["debt"]},{"type":"profit","target_id":"ambush","priority":3,"topics":["ambush"]}],"interests":["ambush","debt","combat"],"location":"L04","injury":0,
-    "public_profile":"黑水盟外围的亡命修士，常在黑风谷附近活动，名声并不可靠。",
+    "public_profile":"黑水盟外围的亡命修士，常在黑风谷附近活动，名声并不可靠。","public_role":"谷外亡命修士","public_interests":[{"topic":"ambush","label":"伏击机会"},{"topic":"blackwind","label":"谷外动向"},{"topic":"combat","label":"争夺实力"}],"public_risk":"信誉较差，可能把消息用于伏击或牟利。",
     "resources":{"combat":5,"support":0,"spirit_stones":20},"items":[],
     "beliefs":[{"fact_id":"F06","claim":"陈玉衡会提供陈氏商队路线","confidence":3,"source":"陈玉衡","learned_on":0,"secrecy":2}],
     "personality":{"caution":2,"greed":5,"loyalty":1,"ambition":4,"credit":0,"risk_tolerance":5},
@@ -62,7 +62,7 @@
   },
   {
     "id":"N06","name":"苏晚照","faction":"青岚门","goal":"保存青髓芝药性并取得研究机会","goals":[{"type":"protect","target_id":"qingsuizhi","priority":5,"topics":["qingsuizhi","medicine"]}],"interests":["qingsuizhi","medicine","qinglan"],"location":"L02","injury":0,
-    "public_profile":"青岚门药理弟子，关注灵药保存与移植，对正面争夺兴趣不大。",
+    "public_profile":"青岚门药理弟子，关注灵药保存与移植，对正面争夺兴趣不大。","public_role":"药理与移植研究者","public_interests":[{"topic":"qingsuizhi","label":"灵药归属"},{"topic":"medicine","label":"保存与移植"},{"topic":"qinglan","label":"宗门药务"}],"public_risk":"更重视药性保存，可靠的药理消息容易促使她寻求合作。",
     "resources":{"combat":2,"support":1,"spirit_stones":80},"items":[],
     "beliefs":[{"fact_id":"F07","claim":"第19至20天可用玉髓匣提前移植","confidence":3,"source":"药典","learned_on":0,"secrecy":1}],
     "personality":{"caution":4,"greed":1,"loyalty":4,"ambition":3,"credit":5,"risk_tolerance":1},
@@ -76,7 +76,7 @@
   },
   {
     "id":"N07","name":"陈玉衡","faction":"陈氏家族","goal":"取代陈青山成为下一任家主","goals":[{"type":"status","target_id":"chen_successor","priority":5,"topics":["succession","chen_family"]}],"interests":["chen_family","succession","intrigue"],"location":"L03","injury":0,
-    "public_profile":"陈氏年轻一代中的活跃人物，近来频繁接触家族外部势力。",
+    "public_profile":"陈氏年轻一代中的活跃人物，近来频繁接触家族外部势力。","public_role":"陈氏年轻继承人","public_interests":[{"topic":"succession","label":"继承局势"},{"topic":"chen_family","label":"家族权力"},{"topic":"intrigue","label":"隐秘交易"}],"public_risk":"立场不稳，敏感消息可能被用来争夺家族地位。",
     "resources":{"combat":3,"support":0,"spirit_stones":70},"items":["chen_letter"],
     "beliefs":[{"fact_id":"F06","claim":"自己已向王衡泄露商队路线","confidence":3,"source":"自身行动","learned_on":0,"secrecy":2}],
     "personality":{"caution":3,"greed":3,"loyalty":2,"ambition":5,"credit":2,"risk_tolerance":4},
@@ -87,7 +87,7 @@
   },
   {
     "id":"N08","name":"韩四","faction":"黑水盟","goal":"出售真地图并偿还债务","goals":[{"type":"profit","target_id":"route_intel","priority":4,"topics":["intel","route"]},{"type":"avoid","target_id":"debt_default","priority":4,"topics":["debt"]}],"interests":["intel","route","debt"],"location":"L01","injury":0,
-    "public_profile":"靠出售路线和地图为生的掮客，据说亲自探查过黑风谷外围。",
+    "public_profile":"靠出售路线和地图为生的掮客，据说亲自探查过黑风谷外围。","public_role":"路线掮客","public_interests":[{"topic":"route","label":"入谷路线"},{"topic":"blackwind","label":"谷外地形"},{"topic":"intel","label":"路线情报"}],"public_risk":"熟悉路线但以获利为先，消息可能被卖给其他争夺者。",
     "resources":{"combat":2,"support":0,"spirit_stones":10},"items":["true_map"],
     "beliefs":[{"fact_id":"F01","claim":"青髓芝将在第21天成熟","confidence":3,"source":"亲自探查","learned_on":0,"secrecy":2},{"fact_id":"F03","claim":"北侧入口已经封死","confidence":3,"source":"亲自探查","learned_on":0,"secrecy":2},{"fact_id":"F04","claim":"南侧裂隙需要解瘴丹","confidence":3,"source":"亲自探查","learned_on":0,"secrecy":2}],
     "personality":{"caution":5,"greed":4,"loyalty":1,"ambition":1,"credit":2,"risk_tolerance":1},
@@ -97,7 +97,7 @@
   },
   {
     "id":"N09","name":"赵鹤鸣","faction":"青岚门","goal":"让沈砚秋失败并提升自身地位","goals":[{"type":"status","target_id":"qinglan_rank","priority":5,"topics":["qinglan","intrigue"]}],"interests":["qinglan","intrigue","succession"],"location":"L02","injury":0,
-    "public_profile":"青岚门弟子，热衷传播坊市消息，与沈砚秋在门内存在竞争。",
+    "public_profile":"青岚门弟子，热衷传播坊市消息，与沈砚秋在门内存在竞争。","public_role":"门内竞争者","public_interests":[{"topic":"qinglan","label":"门内声望"},{"topic":"intrigue","label":"门内竞争"},{"topic":"intel","label":"坊市传言"}],"public_risk":"热衷传播未经核实的消息，告诉他可能加速传闻扩散。",
     "resources":{"combat":3,"support":0,"spirit_stones":90},"items":[],
     "beliefs":[{"fact_id":"F02","claim":"青髓芝将在第24天成熟","confidence":1,"source":"自己编造","learned_on":0,"secrecy":0},{"fact_id":"F08","claim":"错误日期由自己故意泄露","confidence":3,"source":"自身计划","learned_on":0,"secrecy":2}],
     "personality":{"caution":3,"greed":2,"loyalty":2,"ambition":5,"credit":2,"risk_tolerance":3},
@@ -107,7 +107,7 @@
   },
   {
     "id":"N10","name":"罗七娘","faction":"中立商人","goal":"从药材波动中获利并保住商铺","goals":[{"type":"profit","target_id":"medicine_market","priority":5,"topics":["market","medicine"]},{"type":"protect","target_id":"shop","priority":3,"topics":["market"]}],"interests":["market","medicine"],"location":"L01","injury":0,
-    "public_profile":"白石坊市药商，掌握解瘴丹货源，对价格变化格外敏感。",
+    "public_profile":"白石坊市药商，掌握解瘴丹货源，对价格变化格外敏感。","public_role":"坊市药商","public_interests":[{"topic":"market","label":"药材行情"},{"topic":"medicine","label":"丹药供给"},{"topic":"blackwind","label":"入谷物资"}],"public_risk":"主要根据供需行动，相关消息可能直接影响解瘴丹价格与库存。",
     "resources":{"combat":1,"support":0,"spirit_stones":200},"items":["antidote","antidote","antidote"],
     "beliefs":[{"fact_id":"F05","claim":"陈青山旧伤复发","confidence":2,"source":"诊疗痕迹","learned_on":0,"secrecy":1}],
     "personality":{"caution":5,"greed":4,"loyalty":2,"ambition":2,"credit":4,"risk_tolerance":1},

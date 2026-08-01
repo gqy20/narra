@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"fantu/internal/domain"
 )
@@ -171,12 +172,18 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 			if claim == "" {
 				claim = "玩家转述的线索"
 			}
+			relevance, risk := s.publicInformationContext(actor.ID, s.bundle.Facts[factID])
 			warnings := make([]string, 0, 1)
 			if belief.Confidence < 3 {
 				warnings = append(warnings, "这条线索尚未核实；对方可能据此改变行动。")
 			}
 			options[id] = actionOption{
-				view: AvailableAction{ID: id, Kind: "tell", Category: "information", Name: "告知" + actor.Name + "一条线索", Description: "分享：“" + claim + "”", Duration: action.Duration, TargetID: actor.ID, TargetName: actor.Name, FactID: factID, FactClaim: claim, Warnings: warnings},
+				view: AvailableAction{
+					ID: id, Kind: "tell", Category: "information", Name: "告知" + actor.Name + "一条线索",
+					Description: "分享：“" + claim + "”", Duration: action.Duration,
+					TargetID: actor.ID, TargetName: actor.Name, TargetRole: actor.PublicRole,
+					FactID: factID, FactClaim: claim, Relevance: relevance, Risk: risk, Warnings: warnings,
+				},
 				command: &domain.PlayerCommand{
 					ActionID: "spread", TargetID: actor.ID, Description: "玩家向" + actor.Name + "分享消息：“" + claim + "”",
 					Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "location", Value: state.Player.Location}},
@@ -185,6 +192,33 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 			}
 		}
 	}
+}
+
+func (s *Session) publicInformationContext(actorID string, fact domain.Fact) (string, string) {
+	for _, actor := range s.bundle.NPCs {
+		if actor.ID != actorID {
+			continue
+		}
+		matched := make([]string, 0)
+		for _, interest := range actor.PublicInterests {
+			for _, topic := range fact.Topics {
+				if interest.Topic == topic {
+					matched = append(matched, interest.Label)
+					break
+				}
+			}
+		}
+		relevance := "从公开信息看，这条线索与对方当前关注的事项关联不明显。"
+		if len(matched) > 0 {
+			relevance = "直接相关 · 对方公开关注：" + strings.Join(matched, "、")
+		}
+		risk := actor.PublicRisk
+		if risk == "" {
+			risk = "公开信息不足，暂时无法判断对方可能如何使用这条消息。"
+		}
+		return relevance, risk
+	}
+	return "尚不了解对方为何会在意这条线索。", "尚不了解对方可能如何使用这条消息。"
 }
 
 func (s *Session) advanceWarnings(state *domain.WorldState) []string {

@@ -21,6 +21,11 @@ func TestLoadBlackwindBundle(t *testing.T) {
 	if got, want := len(bundle.Facts), 10; got != want {
 		t.Fatalf("fact count = %d, want %d", got, want)
 	}
+	for _, npc := range bundle.NPCs {
+		if npc.PublicProfile == "" || npc.PublicRole == "" || len(npc.PublicInterests) == 0 || npc.PublicRisk == "" {
+			t.Fatalf("NPC %s lacks complete public decision context", npc.ID)
+		}
+	}
 }
 
 func TestLoadT01Plan(t *testing.T) {
