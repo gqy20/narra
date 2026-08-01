@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="LocationVisualProfile" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/location_visual_profile.gd" id="1_profile"]
+[ext_resource type="Texture2D" path="res://assets/locations/valley_edge/background.png" id="2_background"]
+
+[resource]
+script = ExtResource("1_profile")
+scene_key = "valley_edge"
+background = ExtResource("2_background")
+ambient_key = "valley_edge"
+parallax_strength = Vector3(0.03, 0.08, 0.14)

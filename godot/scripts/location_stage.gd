@@ -62,7 +62,6 @@ func _draw() -> void:
 	var key := str(location.get("scene_key", "market"))
 	if has_formal_asset():
 		_draw_cover_texture(visual_profile.background)
-		_draw_mist(key)
 		_draw_vignette()
 		return
 	_draw_sky(key)

@@ -87,8 +87,24 @@ func _ensure_buses() -> void:
 
 
 func _ambient_stream(scene_key: String) -> AudioStreamWAV:
-	var frequency := 72.0 if scene_key == "qinglan" else 58.0
-	var air := 0.16 if scene_key == "qinglan" else 0.10
+	var frequency: float
+	var air: float
+	match scene_key:
+		"qinglan":
+			frequency = 72.0
+			air = 0.16
+		"apothecary":
+			frequency = 64.0
+			air = 0.08
+		"valley_edge":
+			frequency = 48.0
+			air = 0.20
+		"inner_valley":
+			frequency = 42.0
+			air = 0.24
+		_:
+			frequency = 58.0
+			air = 0.10
 	return _generated_wave(frequency, 4.0, air, true)
 
 

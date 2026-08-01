@@ -32,6 +32,14 @@ func _run() -> void:
 		return _fail("location stage did not render the current place")
 	if not app.location_stage.has_formal_asset():
 		return _fail("market did not load its registered production background")
+	for scene_key in ["market", "qinglan", "apothecary", "valley_edge", "inner_valley"]:
+		if not app.presentation_registry.has_location(scene_key):
+			return _fail("missing production location profile: " + scene_key)
+	for actor_id in ["N01", "N02", "N03"]:
+		if not app.presentation_registry.has_actor(actor_id):
+			return _fail("missing core actor profile: " + actor_id)
+	if not app.actor_portrait.visible or app.actor_portrait.texture == null:
+		return _fail("initial core actor did not load its registered portrait")
 	for bus_name in ["Ambient", "Event", "UI"]:
 		if AudioServer.get_bus_index(bus_name) < 0:
 			return _fail("missing audio bus: " + bus_name)

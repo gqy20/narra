@@ -3,8 +3,13 @@ extends RefCounted
 const LOCATION_PROFILES := {
 	"market": preload("res://assets/locations/market/profile.tres"),
 	"qinglan": preload("res://assets/locations/qinglan/profile.tres"),
+	"apothecary": preload("res://assets/locations/apothecary/profile.tres"),
+	"valley_edge": preload("res://assets/locations/valley_edge/profile.tres"),
+	"inner_valley": preload("res://assets/locations/inner_valley/profile.tres"),
 }
 const ACTOR_PROFILES := {
+	"N01": preload("res://assets/characters/N01/profile.tres"),
+	"N02": preload("res://assets/characters/N02/profile.tres"),
 	"N03": preload("res://assets/characters/N03/profile.tres"),
 }
 
