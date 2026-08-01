@@ -18,9 +18,25 @@ func _run() -> void:
 	app._new_game()
 	if not await _wait_until_idle():
 		return _fail("new game request timed out")
-	for action_id in ["verify:F02", "wait:complete", "move:L02", "tell:N03:F01"]:
+	for action_id in ["verify:F02", "wait:complete", "move:L02"]:
 		if not await _execute(action_id):
 			return
+	var date_terms: Array = []
+	for action in app.current_view.get("available_actions", []):
+		if str(action.get("id", "")).begins_with("tell:N03:F01:"):
+			date_terms.append(action)
+	if date_terms.size() != 3:
+		var visible_ids: Array[String] = []
+		for action in app.current_view.get("available_actions", []):
+			visible_ids.append(str(action.get("id", "")))
+		return _fail("verified date did not expose three exchange terms: %s" % ", ".join(visible_ids))
+	app._focus_actor_actions("N03", "沈砚秋")
+	var term_text := _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box)
+	if "选择交换条件" not in term_text or "无偿相助" not in term_text or "交换解瘴丹" not in term_text or "换取同行名额" not in term_text or "你提出的条件" not in term_text:
+		return _fail("actor workspace does not explain the three intelligence terms")
+	app._clear_action_focus()
+	if not await _execute("tell:N03:F01:trust"):
+		return
 	if app.timing_label.text != "第21天子时 · 已核实":
 		return _fail("verified timing is not visible in the header")
 	if app.world_map_view.travel_end_day < 1 or app.world_map_view.travel_active or app.presentation_busy:
@@ -39,7 +55,7 @@ func _run() -> void:
 		return _fail("travel route and readiness checks are not available")
 	var found_verified_timing := false
 	for action in app.current_view.get("available_actions", []):
-		if action.get("id", "") == "tell:N03:F01":
+		if str(action.get("id", "")).begins_with("tell:N03:F01:"):
 			return _fail("delivered clue is still available")
 		if "已核实" in str(action.get("timing", "")) and "传闻" not in str(action.get("timing", "")):
 			found_verified_timing = true
@@ -104,6 +120,21 @@ func _run() -> void:
 	if "为何停下" not in _descendant_text(app.scene_box) or "以情报换取解瘴丹" not in _descendant_text(app.scene_box):
 		return _fail("recovery interruption does not explain why time stopped")
 	app._clear_action_focus()
+	if not await _execute("wait:next"):
+		return
+	if int(app.current_view.get("day", 0)) != 10:
+		return _fail("trust route did not stop for the sect review")
+	var vouch := _find_action("route:trust:vouch")
+	var leak := _find_action("route:trust:leak")
+	if vouch.is_empty() or leak.is_empty() or not app._action_needs_confirmation(vouch):
+		return _fail("trust route does not expose both midgame responses")
+	app._focus_actor_actions("N09", "赵鹤鸣")
+	var route_text := _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + _descendant_text(app.actor_focus_footer)
+	if "回应路线考验" not in route_text or "公开担保" not in route_text or "转交计划" not in route_text or "你的回应" not in route_text:
+		return _fail("route response workspace lacks the trust test and its stakes")
+	app._clear_action_focus()
+	if not await _execute("route:trust:vouch"):
+		return
 	for index in 3:
 		if not await _execute("wait:next"):
 			return
@@ -127,6 +158,8 @@ func _run() -> void:
 		return _fail("ending leaked an internal score")
 	if "余波记录" not in _descendant_text(app.ending_box):
 		return _fail("ending overlay does not expose the aftermath section")
+	if "这次选择最终为你带来了什么" not in _descendant_text(app.ending_box) or "2 点信用" not in _descendant_text(app.ending_box):
+		return _fail("ending does not surface the player's intelligence-route return")
 	app._toggle_ending_annex()
 	if not app.ending_annex_box.visible:
 		return _fail("ending aftermath section does not expand")

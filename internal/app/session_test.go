@@ -170,8 +170,9 @@ func TestVerifiedClueExplainsWhyTargetMayCare(t *testing.T) {
 	session := testSession(t)
 	executeMany(t, session, []string{"verify:F02", "wait:complete", "move:L02"})
 	view := session.View()
+	foundTerms := make(map[string]bool)
 	for _, action := range view.AvailableActions {
-		if action.ID != "tell:N03:F01" {
+		if !strings.HasPrefix(action.ID, "tell:N03:F01:") {
 			continue
 		}
 		if action.TargetRole != "青岚门行动负责人" || !strings.Contains(action.Relevance, "成熟时机") {
@@ -180,9 +181,195 @@ func TestVerifiedClueExplainsWhyTargetMayCare(t *testing.T) {
 		if !strings.Contains(action.Risk, "整支队伍") {
 			t.Fatalf("Shen public risk = %q", action.Risk)
 		}
-		return
+		if action.TermLabel == "" || action.PersonalOutcome == "" {
+			t.Fatalf("Shen term lacks personal stakes = %+v", action)
+		}
+		foundTerms[action.TermID] = true
 	}
-	t.Fatal("verified clue has no action targeting Shen")
+	for _, termID := range []string{"trust", "antidote", "escort"} {
+		if !foundTerms[termID] {
+			t.Fatalf("verified clue missing Shen term %s: %+v", termID, foundTerms)
+		}
+	}
+}
+
+func TestShenDateTermsProduceDistinctPersonalAndRelationshipEffects(t *testing.T) {
+	tests := []struct {
+		term         string
+		wantTrust    int
+		wantAntidote int
+		wantFlag     string
+	}{
+		{term: "trust", wantTrust: 2, wantFlag: "qinglan_intel_term_trust"},
+		{term: "antidote", wantAntidote: 1, wantFlag: "qinglan_intel_term_antidote"},
+		{term: "escort", wantTrust: 1, wantFlag: "qinglan_escort_promised"},
+	}
+	for _, test := range tests {
+		t.Run(test.term, func(t *testing.T) {
+			session := testSession(t)
+			executeMany(t, session, []string{"verify:F02", "wait:complete", "move:L02", "tell:N03:F01:" + test.term})
+			state := session.engine.State()
+			if got := state.RelationBetween("N03", state.Player.ID).Trust; got != test.wantTrust {
+				t.Fatalf("trust = %d, want %d", got, test.wantTrust)
+			}
+			if got := state.Player.Items["antidote"]; got != test.wantAntidote {
+				t.Fatalf("antidote = %d, want %d", got, test.wantAntidote)
+			}
+			if test.term == "antidote" && state.NPCs["N03"].Items["antidote"] != 0 {
+				t.Fatalf("the traded antidote was not removed from Shen: %+v", state.NPCs["N03"].Items)
+			}
+			if !state.ActorFlag(state.Player.ID, test.wantFlag) {
+				t.Fatalf("term flag %s was not recorded", test.wantFlag)
+			}
+		})
+	}
+}
+
+func TestShenTrustChangesHisImmediateStrategy(t *testing.T) {
+	session := testSession(t)
+	executeMany(t, session, []string{"verify:F02", "wait:complete", "move:L02", "tell:N03:F01:trust", "wait:next"})
+	state := session.engine.State()
+	if !state.NPCs["N03"].Completed["N03-early-prepare"] || state.NPCs["N03"].Completed["N03-check-player-source"] {
+		t.Fatalf("trusted source did not cause immediate preparation: completed=%+v", state.NPCs["N03"].Completed)
+	}
+	foundRelationshipChange := false
+	for _, decision := range state.Decisions {
+		if decision.ActorID == "N03" && decision.Day == 5 && decision.RelationshipChangedTop && decision.WithoutRelationshipStrategyID == "N03-check-player-source" {
+			foundRelationshipChange = true
+			break
+		}
+	}
+	if !foundRelationshipChange {
+		t.Fatalf("day 5 decision did not record relationship as top-choice cause: %+v", state.Decisions)
+	}
+}
+
+func TestEscortPromiseReturnsAsLateGameRouteChoice(t *testing.T) {
+	session := testSession(t)
+	executeMany(t, session, []string{"verify:F02", "wait:complete", "move:L02", "tell:N03:F01:escort"})
+	view := session.View()
+	for view.Day < 16 {
+		var err error
+		view, err = session.Execute("wait:next")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if actionWithID(view.AvailableActions, "route:escort:review") != nil {
+			if !session.engine.State().WorldFlag("chen_treats_player_as_qinglan") {
+				t.Fatal("Chen Qingshan did not react to the player's Qinglan affiliation")
+			}
+			view, err = session.Execute("route:escort:review")
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if view.Day != 16 || actionWithID(view.AvailableActions, "escort:N03:depart") == nil {
+		t.Fatalf("escort promise did not return on opening day: day=%d actions=%v", view.Day, actionIDs(view.AvailableActions))
+	}
+	view, err := session.Execute("escort:N03:depart")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Location.ID != "L02" || itemAmount(view.Player.Items, "antidote") != 1 || view.Player.Resources["support"] != 1 || actionWithID(view.AvailableActions, "move:L04") == nil {
+		t.Fatalf("escort fulfillment = player %+v at %+v", view.Player, view.Location)
+	}
+	state := session.engine.State()
+	if !state.ActorFlag(state.Player.ID, "qinglan_escort_fulfilled") {
+		t.Fatal("escort fulfillment was not recorded")
+	}
+}
+
+func TestAntidoteRouteForcesKeepOrLendDecision(t *testing.T) {
+	session := testSession(t)
+	executeMany(t, session, []string{"verify:F02", "wait:complete", "move:L02", "tell:N03:F01:antidote"})
+	view := session.View()
+	for actionWithID(view.AvailableActions, "route:antidote:lend") == nil && view.Day < 12 {
+		var err error
+		view, err = session.Execute("wait:next")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if view.Day != 8 || actionWithID(view.AvailableActions, "route:antidote:lend") == nil || actionWithID(view.AvailableActions, "route:antidote:keep") == nil {
+		t.Fatalf("Su Wanzhao request did not create a route decision: day=%d actions=%v", view.Day, actionIDs(view.AvailableActions))
+	}
+	view, err := session.Execute("route:antidote:lend")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := session.engine.State()
+	if itemAmount(view.Player.Items, "antidote") != 0 || view.Player.Resources["support"] != 2 || state.NPCs["N06"].Items["antidote"] != 1 || state.RelationBetween("N06", state.Player.ID).Trust != 2 {
+		t.Fatalf("lend route result = player=%+v su_items=%+v relation=%+v", view.Player, state.NPCs["N06"].Items, state.RelationBetween("N06", state.Player.ID))
+	}
+}
+
+func TestRouteMidgameAlternativesCarryTheirCosts(t *testing.T) {
+	t.Run("betray trust", func(t *testing.T) {
+		session := testSession(t)
+		executeMany(t, session, []string{"verify:F02", "wait:complete", "move:L02", "tell:N03:F01:trust"})
+		advanceToAction(t, session, "route:trust:leak", 12)
+		view, err := session.Execute("route:trust:leak")
+		if err != nil {
+			t.Fatal(err)
+		}
+		state := session.engine.State()
+		if view.Player.Resources["spirit_stones"] != 120 || state.RelationBetween("N03", state.Player.ID).Trust != -2 || state.NPCs["N09"].Beliefs["F01"].Confidence != 3 {
+			t.Fatalf("betrayal result = player=%+v relation=%+v belief=%+v", view.Player, state.RelationBetween("N03", state.Player.ID), state.NPCs["N09"].Beliefs["F01"])
+		}
+		if !containsMessage(session.playerConsequences(state), "20 灵石") {
+			t.Fatalf("betrayal consequence is not explained: %v", session.playerConsequences(state))
+		}
+	})
+
+	t.Run("keep antidote", func(t *testing.T) {
+		session := testSession(t)
+		executeMany(t, session, []string{"verify:F02", "wait:complete", "move:L02", "tell:N03:F01:antidote"})
+		advanceToAction(t, session, "route:antidote:keep", 12)
+		view, err := session.Execute("route:antidote:keep")
+		if err != nil {
+			t.Fatal(err)
+		}
+		state := session.engine.State()
+		if itemAmount(view.Player.Items, "antidote") != 1 || state.RelationBetween("N06", state.Player.ID).Suspicion != 2 {
+			t.Fatalf("keep result = player=%+v relation=%+v", view.Player, state.RelationBetween("N06", state.Player.ID))
+		}
+		if !containsMessage(session.playerConsequences(state), "保留独自决定") {
+			t.Fatalf("independent antidote consequence is not explained: %v", session.playerConsequences(state))
+		}
+	})
+
+	t.Run("leave escort", func(t *testing.T) {
+		session := testSession(t)
+		executeMany(t, session, []string{"verify:F02", "wait:complete", "move:L02", "tell:N03:F01:escort"})
+		advanceToAction(t, session, "route:escort:independent", 13)
+		if _, err := session.Execute("route:escort:independent"); err != nil {
+			t.Fatal(err)
+		}
+		state := session.engine.State()
+		if state.ActorFlag(state.Player.ID, "qinglan_escort_promised") || !state.ActorFlag(state.Player.ID, "qinglan_escort_refused") || state.RelationBetween("N02", state.Player.ID).Suspicion != 0 {
+			t.Fatalf("independent result = flags=%+v relation=%+v", state.ActorFlags[state.Player.ID], state.RelationBetween("N02", state.Player.ID))
+		}
+		if !containsMessage(session.playerConsequences(state), "退出同行名单") {
+			t.Fatalf("escort exit consequence is not explained: %v", session.playerConsequences(state))
+		}
+	})
+}
+
+func advanceToAction(t *testing.T, session *Session, actionID string, maxDay int) PlayerView {
+	t.Helper()
+	view := session.View()
+	for actionWithID(view.AvailableActions, actionID) == nil && view.Day < maxDay {
+		var err error
+		view, err = session.Execute("wait:next")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if actionWithID(view.AvailableActions, actionID) == nil {
+		t.Fatalf("action %s did not appear by day %d: %v", actionID, view.Day, actionIDs(view.AvailableActions))
+	}
+	return view
 }
 
 func actionWithID(actions []AvailableAction, id string) *AvailableAction {
@@ -549,19 +736,19 @@ func TestDemoPreparedContenderCanWinCoreContest(t *testing.T) {
 
 func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	session := testSession(t)
-	actions := []string{"verify:F02", "wait:complete", "move:L02", "tell:N03:F01"}
+	actions := []string{"verify:F02", "wait:complete", "move:L02", "tell:N03:F01:trust"}
 	for index, action := range actions {
 		view, err := session.Execute(action)
 		if err != nil {
 			t.Fatalf("turn %d execute %s: %v", index+1, action, err)
 		}
-		if action == "tell:N03:F01" && (view.LastTurn == nil || !containsMessage(view.LastTurn.Messages, "情报已经送达沈砚秋")) {
+		if action == "tell:N03:F01:trust" && (view.LastTurn == nil || !containsMessage(view.LastTurn.Messages, "情报已经送达沈砚秋")) {
 			t.Fatalf("message delivery feedback = %+v", view.LastTurn)
 		}
-		if action == "tell:N03:F01" && actionIDs(view.AvailableActions)[action] {
+		if action == "tell:N03:F01:trust" && actionIDs(view.AvailableActions)[action] {
 			t.Fatalf("delivered fact remained available: %s", action)
 		}
-		if action == "tell:N03:F01" {
+		if action == "tell:N03:F01:trust" {
 			if !hasCausalStage(view.CausalThreads, "沈砚秋", "F01", "delivered") {
 				t.Fatalf("delivery has no persistent causal thread: %+v", view.CausalThreads)
 			}
@@ -588,7 +775,7 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	if !containsMessage(view.Guidance, "返回坊市购买") {
 		t.Fatalf("day 5 guidance did not preserve the personal route choice: %v", view.Guidance)
 	}
-	for _, wantDay := range []int{8, 17, 19, 21} {
+	for _, wantDay := range []int{8, 10} {
 		view, err = session.Execute("wait:next")
 		if err != nil {
 			t.Fatal(err)
@@ -602,20 +789,39 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 		if wantDay == 8 && !strings.Contains(view.LastTurn.StopReason, "以情报换取解瘴丹") {
 			t.Fatalf("day 8 stop reason = %+v", view.LastTurn)
 		}
+		if wantDay == 10 && (actionWithID(view.AvailableActions, "route:trust:vouch") == nil || actionWithID(view.AvailableActions, "route:trust:leak") == nil) {
+			t.Fatalf("day 10 did not surface the trust-route test: %+v", view.AvailableActions)
+		}
+	}
+	view, err = session.Execute("route:trust:vouch")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Player.Resources["credit"] != 4 || session.engine.State().RelationBetween("N03", view.Player.ID).Trust != 3 {
+		t.Fatalf("public vouch did not change credit and trust: player=%+v relation=%+v", view.Player, session.engine.State().RelationBetween("N03", view.Player.ID))
+	}
+	for _, wantDay := range []int{17, 19, 21} {
+		view, err = session.Execute("wait:next")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if view.Day != wantDay {
+			t.Fatalf("advance stopped on day %d, want %d", view.Day, wantDay)
+		}
 		if wantDay == 17 && !containsMessage(view.LastTurn.Messages, "入口封锁出现松动迹象") {
 			t.Fatalf("day 17 feedback omitted route signal: %+v", view.LastTurn)
-		}
-		if wantDay == 17 && !containsMessage(view.Guidance, "亲自入谷路线受阻") {
-			t.Fatalf("day 17 guidance did not explain the closed route: %v", view.Guidance)
 		}
 	}
 	if view.Ending == nil || !strings.Contains(view.Outcome, "沈砚秋") || !hasDecisionChange(view.Ending.Influence, "沈砚秋", "F01", 5) {
 		t.Fatalf("messenger influence = %+v", view.Ending)
 	}
+	if !containsMessage(view.Ending.PlayerConsequences, "2 点信用") || view.Player.Resources["credit"] != 6 || view.Player.Resources["support"] != 1 {
+		t.Fatalf("trusted intelligence produced no personal return: ending=%+v player=%+v", view.Ending.PlayerConsequences, view.Player)
+	}
 	if !containsMessage(view.Ending.Highlights, "改变了 3 个关键选择") {
 		t.Fatalf("messenger ending omitted causal summary: %+v", view.Ending.Highlights)
 	}
-	if view.Metrics.VisibleDecisionChanges < 1 || view.Metrics.CoreResultDay != 21 || view.Metrics.DecisionInputs != 9 || view.Metrics.AutoAdvancedDays != 18 {
+	if view.Metrics.VisibleDecisionChanges < 1 || view.Metrics.CoreResultDay != 21 || view.Metrics.DecisionInputs != 11 || view.Metrics.AutoAdvancedDays != 17 {
 		t.Fatalf("messenger metrics = %+v", view.Metrics)
 	}
 }

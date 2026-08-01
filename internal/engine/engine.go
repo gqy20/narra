@@ -728,6 +728,12 @@ func (e *Engine) resolveContest() error {
 	} else {
 		e.state.Outcome = fmt.Sprintf("%s 以准备值 %d 取得青髓芝", displayName(e.state, winner.id), winner.score)
 	}
+	if player := e.state.Player; winner.id == "N03" && player != nil && e.state.ActorFlag(player.ID, "qinglan_trust_vouched") && e.state.RelationBetween("N03", player.ID).Trust >= 2 {
+		player.Resources["credit"] += 2
+		player.Resources["support"]++
+		e.state.SetActorFlag(player.ID, "qinglan_trust_rewarded", true)
+		e.state.Outcome += "；沈砚秋依约为你在青岚门记功"
+	}
 	e.state.Events = append(e.state.Events, e.newEvent("contest", winner.id, contest.ItemID, e.state.Outcome, "contest", []domain.Effect{{Type: "transfer_unique", TargetID: winner.id, Key: contest.ItemID}}))
 	return nil
 }

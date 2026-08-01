@@ -480,8 +480,8 @@ func TestStepAcceptsRuntimeCommandsAndExposesSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("day 3 Step() error = %v", err)
 	}
-	if !day3.ActorFlag("N03", "prepared") {
-		t.Fatal("NPC did not react on the day after a runtime command")
+	if day3.NPCs["N03"].Pending == nil || day3.NPCs["N03"].Pending.Intent.Strategy.ID != "N03-check-player-source" {
+		t.Fatalf("NPC did not react by checking an untrusted runtime source: %+v", day3.NPCs["N03"].Pending)
 	}
 
 	day3.NPCs["N01"].Location = "tampered"

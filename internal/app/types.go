@@ -58,9 +58,10 @@ type PresentationCue struct {
 }
 
 type EndingSummary struct {
-	Outcome    string             `json:"outcome"`
-	Highlights []string           `json:"highlights"`
-	Influence  []VisibleInfluence `json:"influence,omitempty"`
+	Outcome            string             `json:"outcome"`
+	PlayerConsequences []string           `json:"player_consequences,omitempty"`
+	Highlights         []string           `json:"highlights"`
+	Influence          []VisibleInfluence `json:"influence,omitempty"`
 }
 
 type VisibleInfluence struct {
@@ -206,6 +207,9 @@ type AvailableAction struct {
 	TargetName       string         `json:"target_name,omitempty"`
 	FactID           string         `json:"fact_id,omitempty"`
 	FactClaim        string         `json:"fact_claim,omitempty"`
+	TermID           string         `json:"term_id,omitempty"`
+	TermLabel        string         `json:"term_label,omitempty"`
+	PersonalOutcome  string         `json:"personal_outcome,omitempty"`
 	TargetRole       string         `json:"target_role,omitempty"`
 	Relevance        string         `json:"relevance,omitempty"`
 	Risk             string         `json:"risk,omitempty"`

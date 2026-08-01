@@ -43,7 +43,7 @@ func _run() -> void:
 
 	app._focus_actor_actions("N03", "沈砚秋")
 	await _hold(2.2)
-	if not await _execute("tell:N03:F01", 1.5, 2.3):
+	if not await _execute("tell:N03:F01:trust", 1.5, 2.3):
 		return
 	if not await _execute("wait:next", 1.2, 1.4):
 		return

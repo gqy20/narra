@@ -3023,6 +3023,8 @@ func _add_overview_choice(action: Dictionary, index: int) -> void:
 		label = "备好入谷药 · 购买解瘴丹"
 	elif action.get("kind", "") == "recover":
 		label = "交出已核实日期 → 获得解瘴丹"
+	elif action.get("kind", "") == "escort":
+		label = "兑现同行承诺 · 随青岚队伍入谷"
 	elif action.get("kind", "") == "cultivate":
 		var combat := int(current_view.get("player", {}).get("resources", {}).get("combat", 0))
 		label = "修炼至下一阶段 · 战力 %d → %d" % [combat, combat + 1]
@@ -3054,7 +3056,15 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 	var state_names := {"neutral": "平静", "alert": "正在留意你", "troubled": "正在权衡消息", "decisive": "已经形成决断"}
 	var expression := str(actor_expression_by_id.get(focused_actor_id, "alert"))
 	objective_label.text = "%s · %s · %s" % [actor.get("public_role", "可交谈人物"), actor.get("faction", "散修"), state_names.get(expression, expression)]
-	var heading := _text(actor_focus_message_list, "选择要传达的话", true, TYPE_SCALE.meta)
+	var has_terms := false
+	var has_route_response := false
+	for action in focused_actions:
+		if str(action.get("term_label", "")) != "":
+			has_terms = true
+		if str(action.get("kind", "")) == "route":
+			has_route_response = true
+	var workspace_heading := "回应路线考验" if has_route_response else ("选择交换条件" if has_terms else "选择要传达的话")
+	var heading := _text(actor_focus_message_list, workspace_heading, true, TYPE_SCALE.meta)
 	heading.add_theme_color_override("font_color", COLORS.accent)
 	if focused_actions.is_empty():
 		focused_actor_action_id = ""
@@ -3065,7 +3075,9 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 	var focused_choice := _resolve_focused_actor_action(focused_actions)
 	for action in focused_actions:
 		var action_id := str(action.get("id", ""))
-		var claim := str(action.get("name", "以情报换取解瘴丹")) if action.get("kind", "") == "recover" else str(action.get("fact_claim", action.get("name", "一条消息")))
+		var claim := str(action.get("term_label", ""))
+		if claim == "":
+			claim = str(action.get("name", "以情报换取解瘴丹")) if action.get("kind", "") in ["recover", "escort"] else str(action.get("fact_claim", action.get("name", "一条消息")))
 		var selected := action_id == str(focused_choice.get("id", ""))
 		var button := _action_button(("◆  " if selected else "　") + claim, _select_focused_actor_action.bind(action_id))
 		button.custom_minimum_size.y = 46
@@ -3094,9 +3106,19 @@ func _select_focused_actor_action(action_id: String) -> void:
 
 
 func _render_actor_focus_detail(action: Dictionary) -> void:
-	var claim := str(action.get("name", "以情报换取解瘴丹")) if action.get("kind", "") == "recover" else str(action.get("fact_claim", action.get("name", "一条消息")))
+	var claim := str(action.get("fact_claim", action.get("name", "一条消息")))
+	if action.get("kind", "") == "route":
+		claim = str(action.get("name", "回应眼前局势"))
+	if action.get("kind", "") in ["recover", "escort"] and str(action.get("term_label", "")) == "":
+		claim = str(action.get("name", "以情报换取解瘴丹"))
 	var title := _text(actor_focus_detail_box, claim, false, 19)
 	title.add_theme_color_override("font_color", COLORS.accent)
+	var term_label := str(action.get("term_label", ""))
+	if term_label != "":
+		var term_prefix := "你的回应" if action.get("kind", "") == "route" else "你提出的条件"
+		var term_heading := _text(actor_focus_detail_box, "%s · %s" % [term_prefix, term_label], true, TYPE_SCALE.meta)
+		term_heading.add_theme_color_override("font_color", COLORS.accent)
+		_text(actor_focus_detail_box, str(action.get("personal_outcome", action.get("description", ""))), false, 15)
 	var relevance := str(action.get("relevance", "尚不了解这条消息会在对方心里留下什么"))
 	var impact_heading := _text(actor_focus_detail_box, "他为何在意", true, TYPE_SCALE.meta)
 	impact_heading.add_theme_color_override("font_color", COLORS.accent)
@@ -3112,7 +3134,11 @@ func _render_actor_focus_detail(action: Dictionary) -> void:
 	if timing != "":
 		_text(actor_focus_detail_box, "时机 · %s" % timing, true, 14)
 
-	var primary_label := "以情报换取解瘴丹" if action.get("kind", "") == "recover" else "把这句话告诉他"
+	var primary_label := "按此条件交付情报" if term_label != "" else ("以情报换取解瘴丹" if action.get("kind", "") == "recover" else "把这句话告诉他")
+	if action.get("kind", "") == "escort":
+		primary_label = "按约随队出发"
+	elif action.get("kind", "") == "route":
+		primary_label = "做出这个决定"
 	var primary := _ornate_button(primary_label, _consider_action.bind(action))
 	primary.custom_minimum_size = Vector2(300, 54)
 	actor_focus_footer.add_child(primary)
@@ -3239,7 +3265,7 @@ func _set_action_category(category: String) -> void:
 func _count_tell_actions(actions: Array, actor_id: String, fact_id: String) -> int:
 	var count := 0
 	for action in actions:
-		if action.get("kind", "") not in ["tell", "recover"]:
+		if action.get("kind", "") not in ["tell", "recover", "escort", "route"]:
 			continue
 		if actor_id != "" and str(action.get("target_id", "")) != actor_id:
 			continue
@@ -3252,7 +3278,7 @@ func _count_tell_actions(actions: Array, actor_id: String, fact_id: String) -> i
 func _focused_information_actions(actions: Array) -> Array:
 	var result: Array = []
 	for action in actions:
-		if action.get("kind", "") not in ["tell", "recover"]:
+		if action.get("kind", "") not in ["tell", "recover", "escort", "route"]:
 			continue
 		if focused_actor_id != "" and str(action.get("target_id", "")) != focused_actor_id:
 			continue
@@ -3266,7 +3292,7 @@ func _add_focused_information_actions(actions: Array) -> void:
 	for index in actions.size():
 		var action: Dictionary = actions[index]
 		if focused_actor_id != "":
-			if action.get("kind", "") == "recover":
+			if action.get("kind", "") in ["recover", "escort", "route"]:
 				_text(actions_box, str(action.get("name", "以情报换取解瘴丹")), false, 16)
 				_text(actions_box, str(action.get("description", "交出情报并换取入谷所需物品")), true, 13)
 			else:
@@ -3280,8 +3306,13 @@ func _add_focused_information_actions(actions: Array) -> void:
 			button_label = "交出已核实日期 → 获得解瘴丹"
 			var warning_line := _text(actions_box, "代价 · 消息送出后不可撤回", false, 13)
 			warning_line.add_theme_color_override("font_color", COLORS.danger)
+		elif action.get("kind", "") == "escort":
+			button_label = "按约随队出发"
+		elif action.get("kind", "") == "route":
+			button_label = str(action.get("name", "做出路线决定"))
 		else:
-			button_label = "把这句话告诉他" if focused_actor_id != "" else "告诉%s" % action.get("target_name", "对方")
+			var term_label := str(action.get("term_label", ""))
+			button_label = ("按“%s”交付情报" % term_label) if term_label != "" else ("把这句话告诉他" if focused_actor_id != "" else "告诉%s" % action.get("target_name", "对方"))
 		if int(action.get("completion_day", 0)) > 0:
 			button_label += " · %d 日" % int(action.get("duration", 1))
 		var tell_button := _action_button(button_label, _consider_action.bind(action))
@@ -3311,7 +3342,7 @@ func _action_has_visible_entry(action: Dictionary) -> bool:
 	var kind := str(action.get("kind", ""))
 	if kind == "move":
 		return str(action.get("target_id", "")) != ""
-	if kind in ["tell", "recover"]:
+	if kind in ["tell", "recover", "escort", "route"]:
 		return str(action.get("target_id", "")) != ""
 	return kind != ""
 
@@ -3529,7 +3560,7 @@ func _action_needs_confirmation(action: Dictionary) -> bool:
 	var warnings = action.get("warnings", [])
 	var has_warnings: bool = warnings is Array and not warnings.is_empty()
 	var kind := str(action.get("kind", ""))
-	return not action.get("costs", {}).is_empty() or bool(action.get("irreversible", false)) or has_warnings or kind in ["move", "tell", "recover"] or action.get("id", "") == "wait:next"
+	return not action.get("costs", {}).is_empty() or bool(action.get("irreversible", false)) or has_warnings or kind in ["move", "tell", "recover", "escort", "route"] or action.get("id", "") == "wait:next"
 
 
 func _toggle_confirmation_details() -> void:
@@ -3549,6 +3580,10 @@ func _commitment_label(action: Dictionary) -> String:
 			return "传出此话"
 		"move":
 			return "即刻启程"
+		"escort":
+			return "按约随队出发"
+		"route":
+			return "确认这个选择"
 		"advance":
 			return "就此落子"
 	return "就这么做"
@@ -3613,6 +3648,12 @@ func _render_ending(ending: Dictionary) -> void:
 	var rule := HSeparator.new()
 	rule.modulate = Color(COLORS.accent, 0.46)
 	ending_box.add_child(rule)
+	var consequences: Array = ending.get("player_consequences", [])
+	if not consequences.is_empty():
+		var gain_heading := _text(ending_box, "这次选择最终为你带来了什么", true, 16)
+		gain_heading.add_theme_color_override("font_color", COLORS.accent)
+		for consequence in consequences:
+			_text(ending_box, str(consequence), false, 17)
 	if not influences.is_empty():
 		var impact_heading := _text(ending_box, "你的介入留下了这些痕迹", true, 16)
 		impact_heading.add_theme_color_override("font_color", COLORS.accent)

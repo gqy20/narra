@@ -214,6 +214,7 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 
 func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 	ending := &EndingSummary{Outcome: visibleOutcome(state.Outcome)}
+	ending.PlayerConsequences = s.playerConsequences(state)
 	counts := make(map[string]int)
 	for _, actionID := range s.history {
 		if strings.HasPrefix(actionID, "wait") {
@@ -230,7 +231,7 @@ func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 	for _, entry := range []struct {
 		key  string
 		text string
-	}{{"verify", "核验情报"}, {"tell", "分享情报"}, {"buy", "购买物品"}, {"move", "移动"}, {"cultivate", "修炼"}, {"heal", "疗伤"}} {
+	}{{"verify", "核验情报"}, {"tell", "分享情报"}, {"route", "回应路线考验"}, {"buy", "购买物品"}, {"move", "移动"}, {"cultivate", "修炼"}, {"heal", "疗伤"}} {
 		if counts[entry.key] > 0 {
 			ending.Highlights = append(ending.Highlights, fmt.Sprintf("%s %d 次。", entry.text, counts[entry.key]))
 		}
@@ -246,6 +247,50 @@ func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 		ending.Highlights = append([]string{fmt.Sprintf("你传递的消息改变了 %d 个关键选择，并影响了最终归属。", changedDecisions)}, ending.Highlights...)
 	}
 	return ending
+}
+
+func (s *Session) playerConsequences(state *domain.WorldState) []string {
+	result := make([]string, 0, 4)
+	playerID := state.Player.ID
+	if state.ActorFlag(playerID, "qinglan_intel_term_trust") {
+		trust := state.RelationBetween("N03", playerID).Trust
+		switch {
+		case state.ActorFlag(playerID, "qinglan_trust_rewarded"):
+			result = append(result, "你在宗门审核中兑现了担保；沈砚秋取得青髓芝后为你记功，你获得 2 点信用与 1 点支援。")
+		case state.ActorFlag(playerID, "qinglan_trust_betrayed"):
+			result = append(result, fmt.Sprintf("你把沈砚秋的计划转交赵鹤鸣换取 20 灵石；沈砚秋对你的最终信任为 %d。", trust))
+		case state.ActorFlag(playerID, "qinglan_trust_vouched"):
+			result = append(result, fmt.Sprintf("你公开为消息担保并完成了信任路线的履约；沈砚秋对你的最终信任为 %d。", trust))
+		default:
+			result = append(result, fmt.Sprintf("你最初无偿帮助沈砚秋，却没有回应赵鹤鸣的公开质疑；关系停留在 %d 点信任，未形成宗门记功。", trust))
+		}
+	}
+	if state.ActorFlag(playerID, "qinglan_intel_term_antidote") {
+		switch {
+		case state.ActorFlag(playerID, "qinglan_antidote_lent"):
+			result = append(result, "苏晚照提出队伍药物缺口后，你交回解瘴丹，放弃独行资格并换得 2 点支援与她的信任。")
+		case state.ActorFlag(playerID, "qinglan_antidote_kept"):
+			result = append(result, "你拒绝归还交易所得的解瘴丹，保留独自决定入谷时机的自由，也失去了苏晚照的信任。")
+		default:
+			result = append(result, "你用成熟日期换得解瘴丹，但没有正面回应苏晚照的借丹请求；丹药仍是你的独行筹码。")
+		}
+	}
+	if state.ActorFlag(playerID, "qinglan_intel_term_escort") {
+		switch {
+		case state.ActorFlag(playerID, "qinglan_escort_fulfilled"):
+			result = append(result, "你通过青岚门审核并兑现同行承诺，取得随队解瘴丹与 1 点支援。")
+		case state.ActorFlag(playerID, "qinglan_escort_refused"):
+			result = append(result, "你在宗门审核时退出同行名单，放弃随队收益并保留了公开的散修身份。")
+		case state.ActorFlag(playerID, "qinglan_escort_approved"):
+			result = append(result, "你通过了青岚门审核，却没有在开谷前返回驻地集结，同行承诺最终失效。")
+		default:
+			result = append(result, "你换得同行承诺，却没有完成宗门审核，因而失去了第16日的集结资格。")
+		}
+		if state.WorldFlag("chen_treats_player_as_qinglan") && !state.WorldFlag("player_declared_independent") {
+			result = append(result, "陈青山已经把你视为青岚门行动的一员，陈氏后续合作将以阵营关系重新评估。")
+		}
+	}
+	return result
 }
 
 func confidenceLabel(confidence int) string {

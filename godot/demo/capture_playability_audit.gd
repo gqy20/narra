@@ -41,7 +41,7 @@ func _run() -> void:
 	app._focus_actor_actions("N03", "沈砚秋")
 	await _capture("04-actor-message-choice.png")
 
-	var tell_action := _find_action("tell:N03:F01")
+	var tell_action := _find_action("tell:N03:F01:trust")
 	if tell_action.is_empty():
 		return _fail("missing tell action")
 	app._consider_action(tell_action)
