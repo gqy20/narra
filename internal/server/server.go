@@ -2,6 +2,7 @@
 package server
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,10 +22,18 @@ const APIVersion = "v1"
 var validSlot = regexp.MustCompile(`^[A-Za-z0-9_-]{1,40}$`)
 
 type GameServer struct {
-	mu      sync.Mutex
-	bundle  domain.Bundle
-	saveDir string
-	session *app.Session
+	mu            sync.Mutex
+	bundle        domain.Bundle
+	saveDir       string
+	session       *app.Session
+	shutdownToken string
+	shutdown      func()
+}
+
+// Options configures process-level capabilities that are disabled in tests and embedded uses by default.
+type Options struct {
+	ShutdownToken string
+	Shutdown      func()
 }
 
 type Response struct {
@@ -50,8 +59,22 @@ type slotRequest struct {
 	Slot string `json:"slot"`
 }
 
+type shutdownRequest struct {
+	Token string `json:"token"`
+}
+
 func New(bundle domain.Bundle, saveDir string) *GameServer {
-	return &GameServer{bundle: bundle, saveDir: saveDir}
+	return NewWithOptions(bundle, saveDir, Options{})
+}
+
+// NewWithOptions creates a game server with optional process-control capabilities.
+func NewWithOptions(bundle domain.Bundle, saveDir string, options Options) *GameServer {
+	return &GameServer{
+		bundle:        bundle,
+		saveDir:       saveDir,
+		shutdownToken: options.ShutdownToken,
+		shutdown:      options.Shutdown,
+	}
 }
 
 func (s *GameServer) Handler() http.Handler {
@@ -63,7 +86,28 @@ func (s *GameServer) Handler() http.Handler {
 	mux.HandleFunc("/api/v1/game/save", s.save)
 	mux.HandleFunc("/api/v1/game/load", s.load)
 	mux.HandleFunc("/api/v1/game/quit", s.quit)
+	if s.shutdownToken != "" && s.shutdown != nil {
+		mux.HandleFunc("/api/v1/server/shutdown", s.shutdownServer)
+	}
 	return securityHeaders(mux)
+}
+
+func (s *GameServer) shutdownServer(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodPost {
+		writeError(writer, http.StatusMethodNotAllowed, "method_not_allowed", "仅支持 POST")
+		return
+	}
+	var input shutdownRequest
+	if err := decodeJSON(request, &input); err != nil {
+		writeError(writer, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	if subtle.ConstantTimeCompare([]byte(input.Token), []byte(s.shutdownToken)) != 1 {
+		writeError(writer, http.StatusForbidden, "invalid_shutdown_token", "关闭令牌无效")
+		return
+	}
+	writeJSON(writer, http.StatusAccepted, Response{APIVersion: APIVersion})
+	go s.shutdown()
 }
 
 func (s *GameServer) health(writer http.ResponseWriter, request *http.Request) {

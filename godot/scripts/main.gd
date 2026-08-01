@@ -13,6 +13,9 @@ const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
 const BUNDLED_SERVER_NAME := "fantu-server.exe"
 const BUNDLED_SERVER_STARTUP_DELAY := 0.4
+const PORTABLE_USER_ARG := "--portable"
+const LOG_MAX_MIB := 5
+const LOG_BACKUPS := 5
 const TYPE_SCALE := {
 	"display": 60,
 	"brand": 28,
@@ -80,6 +83,19 @@ var journal_current_feedback_signature := ""
 var journal_tab_labels: Array[String] = ["回响", "线索", "人物", "行装"]
 var journal_tab_colors: Array[Color] = [COLORS.muted, COLORS.muted, COLORS.muted, COLORS.muted]
 var bundled_server_pid := -1
+var runtime_root := ""
+var logs_dir := ""
+var archived_logs_dir := ""
+var saves_dir := ""
+var crash_dir := ""
+var portable_mode := false
+var session_id := ""
+var shutdown_token := ""
+var build_version := "dev"
+var pending_request_path := ""
+var pending_request_method := ""
+var request_started_msec := 0
+var shutdown_in_progress := false
 
 var start_layer: Control
 var game_layer: Control
@@ -157,6 +173,14 @@ var display_font: SystemFont
 
 
 func _ready() -> void:
+	_configure_runtime_paths()
+	_configure_runtime_identity()
+	get_tree().auto_accept_quit = false
+	_log_event("INFO", "startup", "client starting", {
+		"pid": OS.get_process_id(),
+		"os": OS.get_name(),
+		"portable": portable_mode,
+	})
 	_configure_theme()
 	audio_director = AudioDirectorScript.new()
 	add_child(audio_director)
@@ -170,8 +194,49 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	if bundled_server_pid > 0:
+		_log_event("WARN", "server_force_stop", "forcing bundled service to stop", {"pid": bundled_server_pid})
 		OS.kill(bundled_server_pid)
 		bundled_server_pid = -1
+	_log_event("INFO", "stopped", "client stopped")
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_begin_graceful_shutdown()
+
+
+func _begin_graceful_shutdown() -> void:
+	if shutdown_in_progress:
+		return
+	shutdown_in_progress = true
+	_log_event("INFO", "shutdown_requested", "window close requested")
+	if bundled_server_pid <= 0:
+		get_tree().quit()
+		return
+	var shutdown_http := HTTPRequest.new()
+	shutdown_http.timeout = 1.5
+	add_child(shutdown_http)
+	var request_error := shutdown_http.request(
+		API_BASE + "/server/shutdown",
+		PackedStringArray(["Content-Type: application/json"]),
+		HTTPClient.METHOD_POST,
+		JSON.stringify({"token": shutdown_token})
+	)
+	if request_error == OK:
+		var response: Array = await shutdown_http.request_completed
+		_log_event("INFO", "server_shutdown_response", "shutdown endpoint completed", {
+			"result": response[0],
+			"status": response[1],
+		})
+		await get_tree().create_timer(0.5).timeout
+	shutdown_http.queue_free()
+	if OS.is_process_running(bundled_server_pid):
+		_log_event("WARN", "server_shutdown_fallback", "service did not stop gracefully", {"pid": bundled_server_pid})
+		OS.kill(bundled_server_pid)
+	else:
+		_log_event("INFO", "server_stopped", "bundled service stopped gracefully")
+	bundled_server_pid = -1
+	get_tree().quit()
 
 
 func _start_bundled_server() -> void:
@@ -183,16 +248,170 @@ func _start_bundled_server() -> void:
 		push_error("Bundled game server is missing: %s" % server_path)
 		return
 	var data_dir := install_dir.path_join("data").path_join("blackwind")
-	var save_dir := OS.get_user_data_dir().path_join("saves")
-	var mkdir_error := DirAccess.make_dir_recursive_absolute(save_dir)
-	if mkdir_error != OK:
-		push_error("Could not create the save directory: %s" % save_dir)
-		return
 	bundled_server_pid = OS.create_process(
 		server_path,
-		PackedStringArray(["-data", data_dir, "-saves", save_dir]),
+		PackedStringArray([
+			"-data", data_dir,
+			"-saves", saves_dir,
+			"-log", logs_dir.path_join("server.log"),
+			"-crash-dir", crash_dir,
+			"-log-max-mb", str(LOG_MAX_MIB),
+			"-log-backups", str(LOG_BACKUPS),
+			"-version", build_version,
+			"-session-id", session_id,
+			"-shutdown-token", shutdown_token,
+		]),
 		false
 	)
+	if bundled_server_pid > 0:
+		_log_event("INFO", "server_started", "bundled service process created", {
+			"pid": bundled_server_pid,
+			"data": data_dir,
+			"saves": saves_dir,
+		})
+	else:
+		_log_event("ERROR", "server_start_failed", "could not create bundled service process", {"path": server_path})
+
+
+func _configure_runtime_paths() -> void:
+	portable_mode = OS.get_cmdline_user_args().has(PORTABLE_USER_ARG)
+	if portable_mode and not OS.has_feature("editor"):
+		runtime_root = OS.get_executable_path().get_base_dir()
+	else:
+		runtime_root = OS.get_user_data_dir()
+	logs_dir = runtime_root.path_join("logs")
+	archived_logs_dir = logs_dir.path_join("archived")
+	saves_dir = runtime_root.path_join("saves")
+	crash_dir = runtime_root.path_join("crash")
+	for directory in [logs_dir, archived_logs_dir, saves_dir, crash_dir]:
+		var mkdir_error := DirAccess.make_dir_recursive_absolute(directory)
+		if mkdir_error != OK:
+			push_error("Could not create runtime directory: %s" % directory)
+	_archive_previous_client_logs()
+
+
+func _configure_runtime_identity() -> void:
+	var crypto := Crypto.new()
+	session_id = crypto.generate_random_bytes(16).hex_encode()
+	shutdown_token = crypto.generate_random_bytes(24).hex_encode()
+	build_version = str(ProjectSettings.get_setting("application/config/version", "dev"))
+	if not OS.has_feature("editor"):
+		var build_info_path := OS.get_executable_path().get_base_dir().path_join("build-info.json")
+		if FileAccess.file_exists(build_info_path):
+			var parsed = JSON.parse_string(FileAccess.get_file_as_string(build_info_path))
+			if parsed is Dictionary:
+				build_version = str(parsed.get("version", build_version))
+
+
+func _log_event(level: String, event: String, message: String, fields := {}) -> void:
+	var parts: Array[String] = [
+		"timestamp=%sZ" % Time.get_datetime_string_from_system(true, false),
+		"level=%s" % level,
+		"component=client",
+		"event=%s" % event,
+		"session=%s" % JSON.stringify(session_id),
+		"version=%s" % JSON.stringify(build_version),
+		"message=%s" % JSON.stringify(message),
+	]
+	if fields is Dictionary:
+		var keys: Array = fields.keys()
+		keys.sort()
+		for key in keys:
+			parts.append("%s=%s" % [str(key), JSON.stringify(str(fields[key]))])
+	print(" ".join(parts))
+
+
+func _archive_previous_client_logs() -> void:
+	var log_directory := DirAccess.open(logs_dir)
+	if log_directory == null:
+		return
+	for file_name in log_directory.get_files():
+		if file_name == "client.log" or not file_name.begins_with("client") or not file_name.ends_with(".log"):
+			continue
+		var source_path := logs_dir.path_join(file_name)
+		var target_path := archived_logs_dir.path_join(file_name)
+		if FileAccess.file_exists(target_path):
+			DirAccess.remove_absolute(target_path)
+		var archive_error := DirAccess.rename_absolute(source_path, target_path)
+		if archive_error != OK:
+			push_warning("Could not archive client log: %s" % source_path)
+	var archive_directory := DirAccess.open(archived_logs_dir)
+	if archive_directory == null:
+		return
+	var client_archives: Array[String] = []
+	for file_name in archive_directory.get_files():
+		if file_name.begins_with("client") and file_name.ends_with(".log"):
+			client_archives.append(file_name)
+	client_archives.sort()
+	while client_archives.size() > LOG_BACKUPS:
+		DirAccess.remove_absolute(archived_logs_dir.path_join(client_archives.pop_front()))
+
+
+func _open_log_folder() -> void:
+	_log_event("INFO", "open_log_folder", "opening log directory")
+	var open_error := OS.shell_open(logs_dir)
+	if open_error != OK:
+		push_error("Could not open the log directory: %s" % logs_dir)
+
+
+func _export_diagnostics(open_folder := true) -> String:
+	_log_event("INFO", "diagnostics_export", "creating diagnostics archive")
+	var diagnostics_dir := runtime_root.path_join("diagnostics")
+	var mkdir_error := DirAccess.make_dir_recursive_absolute(diagnostics_dir)
+	if mkdir_error != OK:
+		_log_event("ERROR", "diagnostics_failed", "could not create diagnostics directory", {"error": mkdir_error})
+		_show_error("无法创建诊断目录。")
+		return ""
+	var timestamp := Time.get_datetime_string_from_system(true, false).replace("-", "").replace(":", "")
+	var archive_path := diagnostics_dir.path_join("Fantu-Diagnostics-%sZ.zip" % timestamp)
+	var packer := ZIPPacker.new()
+	var open_error := packer.open(archive_path)
+	if open_error != OK:
+		_log_event("ERROR", "diagnostics_failed", "could not open diagnostics archive", {"error": open_error})
+		_show_error("无法创建诊断压缩包。")
+		return ""
+	var manifest := {
+		"application": "Fantu",
+		"generated_at_utc": "%sZ" % Time.get_datetime_string_from_system(true, false),
+		"version": build_version,
+		"session_id": session_id,
+		"operating_system": OS.get_name(),
+		"godot": Engine.get_version_info().get("string", "unknown"),
+		"portable_mode": portable_mode,
+		"contents": "Logs and environment metadata only; saves and request bodies are excluded.",
+	}
+	packer.start_file("manifest.json")
+	packer.write_file(JSON.stringify(manifest, "  ").to_utf8_buffer())
+	packer.close_file()
+	_add_diagnostic_log(packer, logs_dir.path_join("client.log"), "logs/client.log")
+	_add_diagnostic_log(packer, logs_dir.path_join("server.log"), "logs/server.log")
+	var archive_directory := DirAccess.open(archived_logs_dir)
+	if archive_directory != null:
+		var archive_names: Array[String] = []
+		for file_name in archive_directory.get_files():
+			if file_name.ends_with(".log"):
+				archive_names.append(file_name)
+		archive_names.sort()
+		for file_name in archive_names:
+			_add_diagnostic_log(packer, archived_logs_dir.path_join(file_name), "logs/archived/" + file_name)
+	packer.close()
+	_log_event("INFO", "diagnostics_created", "diagnostics archive created", {"file": archive_path.get_file()})
+	if open_folder:
+		OS.shell_open(diagnostics_dir)
+	return archive_path
+
+
+func _add_diagnostic_log(packer: ZIPPacker, source_path: String, archive_path: String) -> void:
+	if not FileAccess.file_exists(source_path):
+		return
+	var source := FileAccess.open(source_path, FileAccess.READ)
+	if source == null:
+		_log_event("WARN", "diagnostics_file_skipped", "could not read diagnostics file", {"file": source_path.get_file()})
+		return
+	if packer.start_file(archive_path) != OK:
+		return
+	packer.write_file(source.get_buffer(source.get_length()))
+	packer.close_file()
 
 
 func _configure_theme() -> void:
@@ -685,7 +904,7 @@ func _build_settings_layer() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	settings_layer.add_child(center)
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(500, 420)
+	card.custom_minimum_size = Vector2(500, 530)
 	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 14, COLORS.accent_pressed, 28, 24))
 	center.add_child(card)
 	settings_box = VBoxContainer.new()
@@ -700,6 +919,8 @@ func _build_settings_layer() -> void:
 	motion_button = _action_button("动态效果 · 开启", _toggle_motion)
 	settings_box.add_child(motion_button)
 	settings_box.add_child(_action_button("全部静音", _toggle_sound))
+	settings_box.add_child(_action_button("打开日志目录", _open_log_folder))
+	settings_box.add_child(_action_button("导出诊断包", _export_diagnostics))
 	settings_box.add_child(_button("返回游戏", _close_audio_settings, false))
 
 
@@ -1234,6 +1455,14 @@ func _request(operation: String, method: HTTPClient.Method, path: String, payloa
 	if pending_operation != "" or operation == "action" and presentation_busy:
 		return
 	pending_operation = operation
+	pending_request_path = path
+	pending_request_method = _http_method_name(method)
+	request_started_msec = Time.get_ticks_msec()
+	_log_event("INFO", "http_request", "request started", {
+		"method": pending_request_method,
+		"operation": operation,
+		"path": path,
+	})
 	_set_buttons_disabled(self, true)
 	if action_dock and action_dock.visible:
 		action_dock_title.text = _operation_label(operation) + "…"
@@ -1246,16 +1475,55 @@ func _request(operation: String, method: HTTPClient.Method, path: String, payloa
 	var body := "" if method == HTTPClient.METHOD_GET else JSON.stringify(payload)
 	var error := http.request(API_BASE + path, headers, method, body)
 	if error != OK:
+		_log_event("ERROR", "http_send_failed", "request could not be sent", {
+			"error": error,
+			"method": pending_request_method,
+			"operation": operation,
+			"path": path,
+		})
 		pending_operation = ""
+		pending_request_path = ""
+		pending_request_method = ""
 		_set_buttons_disabled(self, false)
 		_show_error("无法发送请求（%s）" % error)
 
 
-func _on_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+func _http_method_name(method: HTTPClient.Method) -> String:
+	match method:
+		HTTPClient.METHOD_GET:
+			return "GET"
+		HTTPClient.METHOD_POST:
+			return "POST"
+		HTTPClient.METHOD_PUT:
+			return "PUT"
+		HTTPClient.METHOD_DELETE:
+			return "DELETE"
+		_:
+			return str(method)
+
+
+func _on_request_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	var operation := pending_operation
+	var request_path := pending_request_path
+	var request_method := pending_request_method
+	var duration_msec := maxi(0, Time.get_ticks_msec() - request_started_msec)
 	pending_operation = ""
+	pending_request_path = ""
+	pending_request_method = ""
 	_set_buttons_disabled(self, presentation_busy)
 	var parsed = JSON.parse_string(body.get_string_from_utf8())
+	var error_code := ""
+	if parsed is Dictionary and parsed.get("error", {}) is Dictionary:
+		error_code = str(parsed.get("error", {}).get("code", ""))
+	_log_event("INFO" if response_code >= 200 and response_code < 300 else "ERROR", "http_response", "request completed", {
+		"duration_ms": duration_msec,
+		"error_code": error_code,
+		"method": request_method,
+		"operation": operation,
+		"path": request_path,
+		"result": result,
+		"status": response_code,
+	})
 	if response_code < 200 or response_code >= 300 or not parsed is Dictionary:
 		queued_followup_action_id = ""
 		var message := "本地服务无响应，请先运行项目启动脚本。"

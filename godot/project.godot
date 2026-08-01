@@ -6,6 +6,15 @@ config_version=5
 
 config/name="凡途：黑风谷"
 run/main_scene="res://main.tscn"
+config/version="0.1.0"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="Fantu"
+
+[debug]
+
+file_logging/enable_file_logging=true
+file_logging/log_path="user://logs/client.log"
+file_logging/max_log_files=5
 
 [display]
 

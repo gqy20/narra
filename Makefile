@@ -15,7 +15,7 @@ PACKAGE_DIR ?= dist/fantu-windows-x86_64
 PS_FILE := $(POWERSHELL) -NoLogo -NoProfile -ExecutionPolicy Bypass -File
 VERSION_ARG := $(if $(strip $(VERSION)),-Version "$(VERSION)",)
 
-.PHONY: help doctor fmt test test-go test-godot vet verify \
+.PHONY: help doctor fmt test test-go test-godot test-logging vet verify \
 	run-cli run-server run-godot record-gameplay \
 	build build-server templates-windows package-windows package-windows-fast \
 	release-windows smoke-windows clean clean-package clean-server
@@ -28,6 +28,7 @@ help:
 	@echo   make test                   Run Go and Godot tests
 	@echo   make test-go                Run the Go test suite
 	@echo   make test-godot             Run Godot integration tests
+	@echo   make test-logging           Test logging failure and rotation paths
 	@echo   make vet                    Run go vet
 	@echo   make verify                 Run formatting, tests, vet, and Godot checks
 	@echo.
@@ -63,11 +64,16 @@ test-go:
 test-godot:
 	$(PS_FILE) tools/verify-godot.ps1
 
+test-logging:
+	$(GO) test ./internal/logfile ./cmd/server ./internal/server
+	$(PS_FILE) tools/verify-server-diagnostics.ps1
+
 vet:
 	$(GO) vet ./...
 
 verify:
 	$(PS_FILE) tools/verify.ps1
+	$(PS_FILE) tools/verify-server-diagnostics.ps1
 	$(PS_FILE) tools/verify-godot.ps1
 
 run-cli:

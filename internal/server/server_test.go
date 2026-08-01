@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"fantu/internal/app"
 	"fantu/internal/scenario"
@@ -71,6 +72,41 @@ func TestSaveSlotsRejectPaths(t *testing.T) {
 	response, status := request(t, service.URL, http.MethodPost, "/api/v1/game/save", map[string]string{"slot": "../escape"})
 	if status != http.StatusBadRequest || response.Error == nil || response.Error.Code != "invalid_slot" {
 		t.Fatalf("invalid slot = %d %+v", status, response)
+	}
+}
+
+func TestShutdownRequiresTokenAndSignalsOnceAuthorized(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	shutdown := make(chan struct{}, 1)
+	service := httptest.NewServer(NewWithOptions(bundle, t.TempDir(), Options{
+		ShutdownToken: "test-token",
+		Shutdown: func() {
+			shutdown <- struct{}{}
+		},
+	}).Handler())
+	defer service.Close()
+
+	response, status := request(t, service.URL, http.MethodPost, "/api/v1/server/shutdown", map[string]string{"token": "wrong"})
+	if status != http.StatusForbidden || response.Error == nil || response.Error.Code != "invalid_shutdown_token" {
+		t.Fatalf("invalid shutdown token = %d %+v", status, response)
+	}
+	select {
+	case <-shutdown:
+		t.Fatal("unauthorized shutdown invoked callback")
+	default:
+	}
+
+	_, status = request(t, service.URL, http.MethodPost, "/api/v1/server/shutdown", map[string]string{"token": "test-token"})
+	if status != http.StatusAccepted {
+		t.Fatalf("authorized shutdown status = %d", status)
+	}
+	select {
+	case <-shutdown:
+	case <-time.After(time.Second):
+		t.Fatal("authorized shutdown did not invoke callback")
 	}
 }
 

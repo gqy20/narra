@@ -39,11 +39,13 @@ Use `-SkipSmokeTest` only in an environment that cannot launch Windows executabl
 dist/
 |-- fantu-windows-x86_64/
 |   |-- Fantu.exe
+|   |-- Fantu-Portable.cmd
 |   |-- fantu-server.exe
+|   |-- build-info.json
 |   |-- data/blackwind/
 |   |-- README.txt
 |   `-- SHA256SUMS.txt
 `-- fantu-windows-x86_64.zip
 ```
 
-`Fantu.exe` starts the local service automatically in exported Windows builds and stops the process when the game exits. Save files are written under the Godot per-user application-data directory instead of the installation directory.
+`Fantu.exe` starts the local service automatically in exported Windows builds and stops the process when the game exits. Logs, saves, and crash diagnostics are written under `%APPDATA%/Fantu/` instead of the installation directory. See [runtime logging](LOGGING.md) for log rotation and portable developer mode.

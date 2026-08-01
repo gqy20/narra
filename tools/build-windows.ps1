@@ -77,18 +77,47 @@ try {
     New-Item -ItemType Directory -Path $dataDestination -Force | Out-Null
     Copy-Item -Path (Join-Path $projectRoot "data\blackwind\*") -Destination $dataDestination -Recurse -Force
 
+    $resolvedVersion = if ([string]::IsNullOrWhiteSpace($Version)) { "dev" } else { $Version }
+    $gitCommit = "unknown"
+    try {
+        $gitCommit = (& git rev-parse --short HEAD 2>$null).Trim()
+    }
+    catch {
+        $gitCommit = "unknown"
+    }
+    $buildInfo = [ordered]@{
+        application = "Fantu"
+        version = $resolvedVersion
+        commit = $gitCommit
+        built_at_utc = [DateTime]::UtcNow.ToString("o")
+        platform = "windows-x86_64"
+    } | ConvertTo-Json
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText((Join-Path $packageDir "build-info.json"), $buildInfo, $utf8NoBom)
+
     $releaseNotes = @"
 Fantu for Windows
 
 Run Fantu.exe to start the game. The bundled local rules service starts and stops automatically.
-Save files are stored in the current Windows user's Godot application-data directory.
+Logs, saves, and crash diagnostics are stored under %APPDATA%\Fantu.
+Run Fantu-Portable.cmd only when you want logs and saves beside the game executable.
 
 Files:
 - Fantu.exe: game client
+- Fantu-Portable.cmd: optional portable developer launcher
 - fantu-server.exe: local rules service
+- build-info.json: release version and source revision
 - data/blackwind: game scenario data
 "@
     Set-Content -LiteralPath (Join-Path $packageDir "README.txt") -Value $releaseNotes -Encoding utf8
+
+    $portableLauncher = @"
+@echo off
+setlocal
+if not exist "%~dp0logs" mkdir "%~dp0logs"
+start "" "%~dp0Fantu.exe" --log-file "%~dp0logs\client.log" -- --portable
+"@
+    Set-Content -LiteralPath (Join-Path $packageDir "Fantu-Portable.cmd") -Value $portableLauncher -Encoding ascii
 
     if (-not $SkipSmokeTest) {
         & (Join-Path $PSScriptRoot "smoke-test-windows.ps1") -PackageDirectory $packageDir

@@ -130,6 +130,8 @@ go run ./cmd/server
 
 构建结果使用英文文件名，输出到 `dist/fantu-windows-x86_64/`，并生成 `dist/fantu-windows-x86_64.zip`。完整说明见 [Windows 打包说明](docs/PACKAGING.md)。
 
+发行版的客户端日志、服务端日志和存档统一写入 `%APPDATA%\Fantu`；日志轮转、故障排查和便携开发模式见 [运行日志说明](docs/LOGGING.md)。
+
 ## 运行 T00
 
 ```powershell
