@@ -48,6 +48,8 @@ var focused_actor_id := ""
 var focused_actor_name := ""
 var focused_fact_id := ""
 var focused_fact_claim := ""
+var stage_actor_id := ""
+var stage_actor_name := ""
 var selected_map_location_id := ""
 var rendered_location_id := ""
 var visual_mode := "map"
@@ -81,7 +83,7 @@ var map_panel: VBoxContainer
 var location_panel: VBoxContainer
 var map_detail_box: VBoxContainer
 var location_detail_box: VBoxContainer
-var stage_people_box: HBoxContainer
+var stage_people_box: HFlowContainer
 var map_mode_button: Button
 var location_mode_button: Button
 var world_map_view: Control
@@ -90,6 +92,8 @@ var presentation_director: Control
 var audio_director: Node
 var actor_portrait_frame: PanelContainer
 var actor_portrait: TextureRect
+var actor_portrait_name: Label
+var actor_portrait_meta: Label
 var sound_button: Button
 var settings_layer: Control
 var settings_box: VBoxContainer
@@ -322,17 +326,36 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	actor_portrait_frame.add_theme_stylebox_override("panel", _panel_style(Color("101612e8"), 1, 8, Color(COLORS.accent, 0.55), 4, 4))
 	actor_portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage_canvas.add_child(actor_portrait_frame)
+	var portrait_stack := Control.new()
+	portrait_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	actor_portrait_frame.add_child(portrait_stack)
 	actor_portrait = TextureRect.new()
+	actor_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	actor_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	actor_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	actor_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	actor_portrait_frame.add_child(actor_portrait)
+	portrait_stack.add_child(actor_portrait)
+	var portrait_caption := PanelContainer.new()
+	portrait_caption.anchor_left = 0.0
+	portrait_caption.anchor_right = 1.0
+	portrait_caption.anchor_top = 0.73
+	portrait_caption.anchor_bottom = 1.0
+	portrait_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	portrait_caption.add_theme_stylebox_override("panel", _panel_style(Color("0a0f0cde"), 0, 4, Color.TRANSPARENT, 12, 9))
+	portrait_stack.add_child(portrait_caption)
+	var portrait_caption_content := VBoxContainer.new()
+	portrait_caption_content.add_theme_constant_override("separation", 2)
+	portrait_caption.add_child(portrait_caption_content)
+	actor_portrait_name = _text(portrait_caption_content, "", false, 17)
+	actor_portrait_name.add_theme_color_override("font_color", COLORS.accent)
+	actor_portrait_meta = _text(portrait_caption_content, "", true, 12)
 	actor_portrait_frame.hide()
 	location_detail_box = VBoxContainer.new()
 	location_detail_box.add_theme_constant_override("separation", 3)
 	location_panel.add_child(location_detail_box)
-	stage_people_box = HBoxContainer.new()
-	stage_people_box.add_theme_constant_override("separation", 8)
+	stage_people_box = HFlowContainer.new()
+	stage_people_box.add_theme_constant_override("h_separation", 8)
+	stage_people_box.add_theme_constant_override("v_separation", 7)
 	location_panel.add_child(stage_people_box)
 	_set_visual_mode("map")
 
@@ -931,6 +954,9 @@ func _render_view() -> void:
 	if rendered_location_id != location_id:
 		selected_map_location_id = location_id
 		rendered_location_id = location_id
+		stage_actor_id = ""
+		stage_actor_name = ""
+	_reconcile_stage_actor(known_actors)
 	timing_label.text = _known_timing(known_facts)
 	objective_label.text = "当前判断 · %s" % (guidance[0] if not guidance.is_empty() else "根据已知线索选择调查、交涉、准备或等待")
 	_render_player(player)
@@ -1012,43 +1038,102 @@ func _render_location_stage(location: Dictionary, actors: Array, actions: Array)
 	audio_director.set_scene(str(location.get("scene_key", "")))
 	_render_actor_portrait(actors)
 	_clear(location_detail_box)
-	_clear(stage_people_box)
-	var place_line := _text(location_detail_box, "%s · %s" % [location.get("name", "未知地点"), "安稳" if bool(location.get("safe", false)) else "险地"], false, 17)
+	var place_title := "%s · %s" % [location.get("name", "未知地点"), "安稳" if bool(location.get("safe", false)) else "险地"]
+	if not actors.is_empty():
+		place_title += " · 在场 %d 人" % actors.size()
+	var place_line := _text(location_detail_box, place_title, false, 17)
 	place_line.add_theme_color_override("font_color", COLORS.accent)
 	_text(location_detail_box, str(location.get("atmosphere", location.get("description", ""))), true, 13)
+	_render_stage_people(actors, actions)
+
+
+func _render_stage_people(actors: Array, actions: Array) -> void:
+	_clear(stage_people_box)
 	if actors.is_empty():
 		_text(stage_people_box, "此地暂时无人可交涉", true, 13)
 		return
-	for actor in actors:
+	for index in actors.size():
+		var actor: Dictionary = actors[index]
 		var actor_id := str(actor.get("id", ""))
 		var actor_name := str(actor.get("name", "无名者"))
-		var button := _button("%s · %s" % [actor_name, actor.get("public_role", "可交谈人物")], _focus_actor_from_stage.bind(actor_id, actor_name), true)
-		button.custom_minimum_size.y = 40
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.tooltip_text = str(actor.get("public_profile", ""))
+		var clue_count := _count_tell_actions(actions, actor_id, "")
+		var selected := actor_id == stage_actor_id
+		var button_text := ("◆ " if selected else "") + actor_name
+		if clue_count > 0:
+			button_text += " · %d 条" % clue_count
+		var button := _button(button_text, _focus_actor_from_stage.bind(actor_id, actor_name), true)
+		button.custom_minimum_size = Vector2(148, 40)
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.tooltip_text = "%s\n%s" % [actor.get("public_role", "可交谈人物"), actor.get("public_profile", "")]
+		if selected:
+			var profile: ActorVisualProfile = presentation_registry.actor_profile(actor_id)
+			var actor_accent := profile.accent_color if profile else COLORS.accent
+			button.add_theme_color_override("font_color", COLORS.ink)
+			button.add_theme_stylebox_override("normal", _panel_style(COLORS.panel_hover, 1, 6, actor_accent.lerp(COLORS.accent, 0.35), 12, 7))
 		stage_people_box.add_child(button)
 
 
 func _render_actor_portrait(actors: Array) -> void:
 	actor_portrait_frame.hide()
 	actor_portrait.texture = null
-	for actor in actors:
-		var actor_id := str(actor.get("id", ""))
-		var profile: ActorVisualProfile = presentation_registry.actor_profile(actor_id)
-		if profile == null or profile.neutral == null:
-			continue
-		actor_portrait.texture = profile.portrait()
-		actor_portrait_frame.tooltip_text = "%s · %s" % [actor.get("name", "无名者"), actor.get("public_role", "可交谈人物")]
-		actor_portrait_frame.show()
-		break
+	var actor := _selected_stage_actor(actors)
+	if actor.is_empty():
+		return
+	_show_actor_portrait(actor, "neutral")
 
 
 func _focus_portrait(actor_id: String) -> void:
+	var actor := _actor_by_id(current_view.get("known_actors", []), actor_id)
+	if actor.is_empty():
+		actor = {"id": actor_id, "name": stage_actor_name, "public_role": "可交谈人物"}
+	stage_actor_id = actor_id
+	stage_actor_name = str(actor.get("name", stage_actor_name))
+	_show_actor_portrait(actor, "alert")
+
+
+func _show_actor_portrait(actor: Dictionary, expression: String) -> void:
+	var actor_id := str(actor.get("id", ""))
 	var profile: ActorVisualProfile = presentation_registry.actor_profile(actor_id)
 	if profile == null or profile.neutral == null:
 		return
-	actor_portrait.texture = profile.portrait("alert")
+	actor_portrait.texture = profile.portrait(expression)
+	actor_portrait_name.text = str(actor.get("name", "无名者"))
+	var role := str(actor.get("public_role", "可交谈人物"))
+	var faction := str(actor.get("faction", ""))
+	actor_portrait_meta.text = role if faction == "" else "%s · %s" % [role, faction]
+	actor_portrait_frame.tooltip_text = "%s · %s" % [actor_portrait_name.text, role]
+	actor_portrait_frame.add_theme_stylebox_override("panel", _panel_style(Color("101612e8"), 1, 8, profile.accent_color.lerp(COLORS.accent, 0.4), 4, 4))
 	actor_portrait_frame.show()
+
+
+func _selected_stage_actor(actors: Array) -> Dictionary:
+	var selected := _actor_by_id(actors, stage_actor_id)
+	if not selected.is_empty() and presentation_registry.has_actor(stage_actor_id):
+		return selected
+	for actor in actors:
+		var actor_id := str(actor.get("id", ""))
+		if presentation_registry.has_actor(actor_id):
+			stage_actor_id = actor_id
+			stage_actor_name = str(actor.get("name", "无名者"))
+			return actor
+	return {}
+
+
+func _actor_by_id(actors, actor_id: String) -> Dictionary:
+	if not actors is Array:
+		return {}
+	for actor in actors:
+		if str(actor.get("id", "")) == actor_id:
+			return actor
+	return {}
+
+
+func _reconcile_stage_actor(actors: Array) -> void:
+	if stage_actor_id != "" and not _actor_by_id(actors, stage_actor_id).is_empty():
+		return
+	stage_actor_id = ""
+	stage_actor_name = ""
+	_selected_stage_actor(actors)
 	actor_portrait_frame.pivot_offset = actor_portrait_frame.size * 0.5
 	actor_portrait_frame.scale = Vector2(0.965, 0.965)
 	actor_portrait_frame.modulate = Color(1, 1, 1, 0.45)
@@ -1061,7 +1146,6 @@ func _focus_portrait(actor_id: String) -> void:
 func _focus_actor_from_stage(actor_id: String, actor_name: String) -> void:
 	_set_visual_mode("location")
 	audio_director.play_ui()
-	_focus_portrait(actor_id)
 	_focus_actor_actions(actor_id, actor_name)
 
 
@@ -1180,7 +1264,8 @@ func _render_people(actors: Array, actions: Array) -> void:
 	if actors.is_empty():
 		_text(people_box, "此地没有可交谈的人。", true)
 		return
-	for actor in actors:
+	for index in actors.size():
+		var actor: Dictionary = actors[index]
 		_text(people_box, "%s · %s" % [actor.get("name", "无名者"), actor.get("public_role", "可交谈人物")], false, 16)
 		_text(people_box, str(actor.get("faction", "散修")), true, 14)
 		_text(people_box, str(actor.get("public_profile", "公开资料尚未收集")), true, 14)
@@ -1191,11 +1276,13 @@ func _render_people(actors: Array, actions: Array) -> void:
 		var actor_id := str(actor.get("id", ""))
 		var actor_name := str(actor.get("name", "无名者"))
 		var clue_count := _count_tell_actions(actions, actor_id, "")
-		if clue_count > 0:
-			var link := _button("交涉 · %d 条可用线索" % clue_count, _focus_actor_actions.bind(actor_id, actor_name), true)
-			people_box.add_child(link)
-		else:
-			_text(people_box, "暂无新的线索可告知", true, TYPE_SCALE.meta)
+		var link_text := "查看并交涉 · %d 条可用线索" % clue_count if clue_count > 0 else "查看人物 · 暂无线索可告知"
+		var link := _button(link_text, _focus_actor_from_reference.bind(actor_id, actor_name), true)
+		people_box.add_child(link)
+		if index < actors.size() - 1:
+			var separator := HSeparator.new()
+			separator.modulate = Color(COLORS.line, 0.7)
+			people_box.add_child(separator)
 
 
 func _render_actions(actions: Array) -> void:
@@ -1304,7 +1391,17 @@ func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
 	focused_actor_name = actor_name
 	focused_fact_id = ""
 	focused_fact_claim = ""
+	stage_actor_id = actor_id
+	stage_actor_name = actor_name
+	_focus_portrait(actor_id)
+	_render_stage_people(current_view.get("known_actors", []), available_actions_cache)
 	_render_actions(available_actions_cache)
+
+
+func _focus_actor_from_reference(actor_id: String, actor_name: String) -> void:
+	_set_visual_mode("location")
+	audio_director.play_ui()
+	_focus_actor_actions(actor_id, actor_name)
 
 
 func _focus_fact_actions(fact_id: String, fact_claim: String) -> void:

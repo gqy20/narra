@@ -43,6 +43,15 @@ func _run() -> void:
 			return _fail("actor profile has no loadable portrait: " + actor_id)
 	if not app.actor_portrait.visible or app.actor_portrait.texture == null:
 		return _fail("initial core actor did not load its registered portrait")
+	if app.stage_actor_id != "N01" or app.actor_portrait_name.text != "李玄":
+		return _fail("location stage did not establish the first visible actor")
+	app._focus_actor_from_stage("N04", "魏无咎")
+	if app.stage_actor_id != "N04" or app.focused_actor_id != "N04":
+		return _fail("actor selection did not synchronize stage and action focus")
+	if app.actor_portrait.texture != app.presentation_registry.actor_profile("N04").portrait():
+		return _fail("actor selection did not switch the production portrait")
+	if app.actor_portrait_name.text != "魏无咎" or not app.location_panel.visible:
+		return _fail("actor selection did not update the visible stage caption")
 	for bus_name in ["Ambient", "Event", "UI"]:
 		if AudioServer.get_bus_index(bus_name) < 0:
 			return _fail("missing audio bus: " + bus_name)
