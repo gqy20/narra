@@ -47,11 +47,14 @@ func _run() -> void:
 		return
 	if not await _execute("wait:next", 1.2, 1.4):
 		return
-	await process_frame
-	var actions_scroll = app.actions_box.get_parent()
-	if actions_scroll is ScrollContainer and app.actions_box.get_child_count() > 2:
-		actions_scroll.ensure_control_visible(app.actions_box.get_child(2))
-	await _hold(2.6)
+	if not app.causal_layer.visible:
+		return _fail("causal theatre did not open")
+	await _hold(4.2)
+	app._dismiss_causal()
+	await _hold(1.0)
+	app._open_journal()
+	await _hold(2.8)
+	app._close_journal()
 
 	app._clear_action_focus()
 	for index in 3:

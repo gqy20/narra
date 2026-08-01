@@ -23,7 +23,7 @@ try {
         Start-Sleep -Milliseconds 500
         $previousErrorPreference = $ErrorActionPreference
         $ErrorActionPreference = "Continue"
-        $godotOutput = @(& $godot.Source --path $godotProject --resolution 1152x720 --write-movie $aviPath --fixed-fps 20 --disable-vsync --script res://demo/record_gameplay.gd 2>&1)
+        $godotOutput = @(& $godot.Source --path $godotProject --resolution 1280x800 --write-movie $aviPath --fixed-fps 20 --disable-vsync --script res://demo/record_gameplay.gd 2>&1)
         $godotExitCode = $LASTEXITCODE
         $ErrorActionPreference = $previousErrorPreference
         $godotOutput | ForEach-Object { Write-Host $_ }

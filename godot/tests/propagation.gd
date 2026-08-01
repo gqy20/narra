@@ -60,9 +60,14 @@ func _run() -> void:
 		return
 	if app.actor_expression_by_id.get("N03", "") != "decisive" or app.actor_portrait.texture != shen_profile.decisive:
 		return _fail("visible decision change did not put Shen Yanqiu into the decisive state")
-	var causal_text := _descendant_text(app.actions_box)
+	if not app.causal_layer.visible or app.causal_background.texture == null or app.causal_portrait.texture != shen_profile.decisive:
+		return _fail("decision change did not enter the full-screen causal theatre")
+	var causal_text := _descendant_text(app.causal_layer)
 	if "沈砚秋" not in causal_text or "原本" not in causal_text or "现在" not in causal_text:
-		return _fail("recent interaction result does not show the causal before/after change")
+		return _fail("causal theatre does not show the actor and before/after change")
+	app._dismiss_causal()
+	if app.causal_layer.visible:
+		return _fail("causal theatre cannot be dismissed")
 	for index in 3:
 		if not await _execute("wait:next"):
 			return

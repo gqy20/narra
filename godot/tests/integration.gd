@@ -70,6 +70,12 @@ func _run() -> void:
 		return _fail("initial day is not player-facing day one")
 	if app.timing_label.text != "第24天 · 传闻":
 		return _fail("initial known timing is not visible")
+	app._open_journal()
+	if not app.journal_layer.visible or "烟测修士" not in _descendant_text(app.journal_panel):
+		return _fail("travel dossier does not expose the player summary")
+	app._close_journal()
+	if app.journal_layer.visible:
+		return _fail("travel dossier cannot be dismissed")
 	var found_verification := false
 	for action in actions:
 		if action.get("timing", "") == "" or action.get("expected_outcomes", []).is_empty():
@@ -117,6 +123,15 @@ func _wait_until_idle(timeout_ms := 8000) -> bool:
 			if app.pending_operation == "" and not app.presentation_busy:
 				return true
 	return false
+
+
+func _descendant_text(node: Node) -> String:
+	var result := ""
+	if node is Label or node is Button:
+		result += str(node.text) + "\n"
+	for child in node.get_children():
+		result += _descendant_text(child)
+	return result
 
 
 func _fail(message: String) -> void:

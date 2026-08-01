@@ -5,6 +5,9 @@ const LocationStageScript = preload("res://scripts/location_stage.gd")
 const PresentationDirectorScript = preload("res://scripts/presentation_director.gd")
 const PresentationRegistryScript = preload("res://scripts/presentation_registry.gd")
 const AudioDirectorScript = preload("res://scripts/audio_director.gd")
+const CausalSealTexture = preload("res://assets/ui/causal/causal-seal.png")
+const DecisionFrameTexture = preload("res://assets/ui/causal/decision-frame.png")
+const TimelineArrowTexture = preload("res://assets/ui/causal/timeline-arrow.png")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
 const TYPE_SCALE := {
@@ -75,8 +78,21 @@ var scene_box: VBoxContainer
 var people_box: VBoxContainer
 var actions_box: VBoxContainer
 var footer_label: Label
+var journal_layer: Control
+var journal_panel: PanelContainer
 var ending_layer: Control
 var ending_box: VBoxContainer
+var ending_background: TextureRect
+var ending_annex_box: VBoxContainer
+var ending_annex_button: Button
+var causal_layer: Control
+var causal_background: TextureRect
+var causal_portrait: TextureRect
+var causal_message: Label
+var causal_actor_meta: Label
+var causal_original: Label
+var causal_now: Label
+var causal_day: Label
 var confirmation_layer: Control
 var confirmation_box: VBoxContainer
 var visual_stack: Control
@@ -182,8 +198,8 @@ func _build_interface() -> void:
 	add_child(top_rule)
 
 	game_layer = VBoxContainer.new()
-	game_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 24)
-	game_layer.add_theme_constant_override("separation", 16)
+	game_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 18)
+	game_layer.add_theme_constant_override("separation", 10)
 	add_child(game_layer)
 	_build_header()
 	_build_dashboard()
@@ -191,8 +207,10 @@ func _build_interface() -> void:
 	game_layer.hide()
 
 	_build_start_layer()
+	_build_journal_layer()
 	_build_confirmation_layer()
 	_build_settings_layer()
+	_build_causal_layer()
 	_build_ending_layer()
 	presentation_director = PresentationDirectorScript.new()
 	add_child(presentation_director)
@@ -200,20 +218,20 @@ func _build_interface() -> void:
 
 func _build_header() -> void:
 	var header := PanelContainer.new()
-	header.add_theme_stylebox_override("panel", _panel_style(COLORS.panel_alt, 1, 10, COLORS.line_soft, 20, 16))
-	header.custom_minimum_size.y = 132
+	var header_style := _panel_style(Color("0b100ddd"), 0, 0, Color.TRANSPARENT, 16, 9)
+	header_style.border_width_bottom = 1
+	header_style.border_color = Color(COLORS.accent, 0.34)
+	header.add_theme_stylebox_override("panel", header_style)
+	header.custom_minimum_size.y = 74
 	game_layer.add_child(header)
-	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 9)
-	header.add_child(stack)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
-	stack.add_child(row)
+	row.add_theme_constant_override("separation", 16)
+	header.add_child(row)
 
 	var brand := Label.new()
-	brand.text = "凡途  /  黑风谷"
+	brand.text = "凡途 · 黑风谷"
 	brand.add_theme_font_override("font", display_font)
-	brand.add_theme_font_size_override("font_size", TYPE_SCALE.brand)
+	brand.add_theme_font_size_override("font_size", 24)
 	brand.add_theme_color_override("font_color", COLORS.accent)
 	brand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(brand)
@@ -222,46 +240,54 @@ func _build_header() -> void:
 	place_label = _header_value(row, "所在")
 	phase_label = _header_value(row, "局势")
 	timing_label = _header_value(row, "已知时机")
+	var journal_button := _button("随身卷宗", _open_journal, true)
+	journal_button.custom_minimum_size = Vector2(104, 38)
+	row.add_child(journal_button)
 	sound_button = _button("声音", _open_audio_settings, true)
+	sound_button.custom_minimum_size = Vector2(66, 38)
 	row.add_child(sound_button)
-	row.add_child(_button("存档", _save_game, true))
-	row.add_child(_button("返回", _return_to_start, true))
-	player_summary_label = Label.new()
-	player_summary_label.add_theme_font_size_override("font_size", TYPE_SCALE.compact)
-	player_summary_label.add_theme_constant_override("line_spacing", 3)
-	player_summary_label.add_theme_color_override("font_color", COLORS.ink)
-	stack.add_child(player_summary_label)
-	objective_label = Label.new()
-	objective_label.text = "当前判断 · 正在读取局势"
-	objective_label.add_theme_font_size_override("font_size", TYPE_SCALE.detail)
-	objective_label.add_theme_constant_override("line_spacing", 4)
-	objective_label.add_theme_color_override("font_color", COLORS.muted)
-	stack.add_child(objective_label)
+	var save_button := _button("存档", _save_game, true)
+	save_button.custom_minimum_size = Vector2(62, 38)
+	row.add_child(save_button)
+	var return_button := _button("返回", _return_to_start, true)
+	return_button.custom_minimum_size = Vector2(62, 38)
+	row.add_child(return_button)
 
 
 func _build_dashboard() -> void:
 	var workspace := HBoxContainer.new()
 	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	workspace.add_theme_constant_override("separation", 16)
+	workspace.add_theme_constant_override("separation", 14)
 	game_layer.add_child(workspace)
 
 	var world_column := VBoxContainer.new()
-	world_column.custom_minimum_size.x = 760
+	world_column.custom_minimum_size.x = 820
 	world_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	world_column.size_flags_stretch_ratio = 1.75
-	world_column.add_theme_constant_override("separation", 12)
+	world_column.size_flags_stretch_ratio = 2.05
+	world_column.add_theme_constant_override("separation", 8)
 	workspace.add_child(world_column)
 	_build_world_stage(world_column)
-	scene_box = _zone(world_column, "行旅回响", 0.38)
 
 	var decision_column := VBoxContainer.new()
-	decision_column.custom_minimum_size.x = 430
+	decision_column.custom_minimum_size.x = 360
 	decision_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	decision_column.size_flags_stretch_ratio = 1.0
-	decision_column.add_theme_constant_override("separation", 12)
+	decision_column.size_flags_stretch_ratio = 0.95
+	decision_column.add_theme_constant_override("separation", 8)
 	workspace.add_child(decision_column)
-	actions_box = _zone(decision_column, "下一步", 1.24)
-	_build_reference_tabs(decision_column)
+	var decision_eyebrow := Label.new()
+	decision_eyebrow.text = "此刻如何落子"
+	decision_eyebrow.add_theme_font_override("font", display_font)
+	decision_eyebrow.add_theme_font_size_override("font_size", TYPE_SCALE.section)
+	decision_eyebrow.add_theme_color_override("font_color", COLORS.accent)
+	decision_column.add_child(decision_eyebrow)
+	objective_label = Label.new()
+	objective_label.text = "正在读取局势"
+	objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	objective_label.add_theme_font_size_override("font_size", TYPE_SCALE.detail)
+	objective_label.add_theme_constant_override("line_spacing", 4)
+	objective_label.add_theme_color_override("font_color", COLORS.muted)
+	decision_column.add_child(objective_label)
+	actions_box = _zone(decision_column, "可行之事", 1.0)
 
 
 func _build_world_stage(parent: VBoxContainer) -> void:
@@ -285,8 +311,8 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	var stage_frame := PanelContainer.new()
 	stage_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	stage_frame.size_flags_stretch_ratio = 1.0
-	stage_frame.custom_minimum_size.y = 430
-	stage_frame.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 10, COLORS.line_soft, 12, 10))
+	stage_frame.custom_minimum_size.y = 560
+	stage_frame.add_theme_stylebox_override("panel", _panel_style(Color(COLORS.panel, 0.66), 0, 2, Color.TRANSPARENT, 8, 8))
 	parent.add_child(stage_frame)
 	visual_stack = Control.new()
 	visual_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -432,6 +458,60 @@ func _build_start_layer() -> void:
 	content.add_child(connection_label)
 
 
+func _build_journal_layer() -> void:
+	journal_layer = Control.new()
+	journal_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	journal_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	journal_layer.hide()
+	add_child(journal_layer)
+	var shade := ColorRect.new()
+	shade.color = Color("030504b8")
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	journal_layer.add_child(shade)
+	var dismiss_area := Button.new()
+	dismiss_area.flat = true
+	dismiss_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dismiss_area.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	dismiss_area.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	dismiss_area.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	dismiss_area.pressed.connect(_close_journal)
+	journal_layer.add_child(dismiss_area)
+	journal_panel = PanelContainer.new()
+	journal_panel.anchor_left = 0.64
+	journal_panel.anchor_right = 0.992
+	journal_panel.anchor_top = 0.026
+	journal_panel.anchor_bottom = 0.974
+	journal_panel.add_theme_stylebox_override("panel", _panel_style(Color("101612f5"), 1, 3, Color(COLORS.accent, 0.44), 24, 20))
+	journal_layer.add_child(journal_panel)
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 12)
+	journal_panel.add_child(outer)
+	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 12)
+	outer.add_child(title_row)
+	var title := Label.new()
+	title.text = "随身卷宗"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_font_override("font", display_font)
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", COLORS.accent)
+	title_row.add_child(title)
+	var close_button := _button("收起", _close_journal, true)
+	close_button.custom_minimum_size = Vector2(72, 38)
+	title_row.add_child(close_button)
+	player_summary_label = Label.new()
+	player_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	player_summary_label.add_theme_font_size_override("font_size", TYPE_SCALE.compact)
+	player_summary_label.add_theme_constant_override("line_spacing", 4)
+	player_summary_label.add_theme_color_override("font_color", COLORS.ink)
+	outer.add_child(player_summary_label)
+	var rule := HSeparator.new()
+	rule.modulate = Color(COLORS.accent, 0.35)
+	outer.add_child(rule)
+	_build_reference_tabs(outer)
+
+
 func _build_confirmation_layer() -> void:
 	confirmation_layer = Control.new()
 	confirmation_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -507,21 +587,134 @@ func _audio_slider(parent: VBoxContainer, label_text: String, bus_name: String, 
 
 
 func _build_ending_layer() -> void:
-	ending_layer = CenterContainer.new()
+	ending_layer = Control.new()
 	ending_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ending_layer.hide()
 	add_child(ending_layer)
+	ending_background = TextureRect.new()
+	ending_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ending_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ending_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	ending_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ending_layer.add_child(ending_background)
 	var shade := ColorRect.new()
-	shade.color = Color("050706e8")
+	shade.color = Color("030504c9")
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ending_layer.add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ending_layer.add_child(center)
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(680, 520)
-	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 18, COLORS.accent_pressed, 32, 28))
-	ending_layer.add_child(card)
+	card.custom_minimum_size = Vector2(820, 580)
+	card.add_theme_stylebox_override("panel", _panel_style(Color("080b09e8"), 0, 2, Color.TRANSPARENT, 44, 34))
+	center.add_child(card)
 	ending_box = VBoxContainer.new()
-	ending_box.add_theme_constant_override("separation", 16)
+	ending_box.add_theme_constant_override("separation", 14)
 	card.add_child(ending_box)
+
+
+func _build_causal_layer() -> void:
+	causal_layer = Control.new()
+	causal_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	causal_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	causal_layer.hide()
+	add_child(causal_layer)
+	causal_background = TextureRect.new()
+	causal_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	causal_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	causal_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	causal_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	causal_layer.add_child(causal_background)
+	var shade := ColorRect.new()
+	shade.color = Color("030504a8")
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	causal_layer.add_child(shade)
+
+	causal_portrait = TextureRect.new()
+	causal_portrait.anchor_left = 0.015
+	causal_portrait.anchor_right = 0.42
+	causal_portrait.anchor_top = 0.035
+	causal_portrait.anchor_bottom = 1.0
+	causal_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	causal_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	causal_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	causal_layer.add_child(causal_portrait)
+
+	var content := VBoxContainer.new()
+	content.anchor_left = 0.285
+	content.anchor_right = 0.92
+	content.anchor_top = 0.285
+	content.anchor_bottom = 0.91
+	content.add_theme_constant_override("separation", 20)
+	causal_layer.add_child(content)
+	causal_actor_meta = _text(content, "一念入局", true, 14)
+	causal_actor_meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	causal_actor_meta.add_theme_color_override("font_color", COLORS.accent)
+	causal_message = _text(content, "你送出的消息改变了一个人的判断", false, 30)
+	causal_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	causal_message.add_theme_font_override("font", display_font)
+	causal_message.add_theme_color_override("font_color", Color("ead6a8"))
+	causal_message.add_theme_constant_override("line_spacing", 8)
+
+	var timeline := Control.new()
+	timeline.custom_minimum_size.y = 190
+	timeline.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(timeline)
+	var arrow := TextureRect.new()
+	arrow.anchor_left = 0.13
+	arrow.anchor_right = 0.87
+	arrow.anchor_top = 0.28
+	arrow.anchor_bottom = 0.70
+	arrow.texture = TimelineArrowTexture
+	arrow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	arrow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	timeline.add_child(arrow)
+	var before_stack := VBoxContainer.new()
+	before_stack.anchor_left = 0.0
+	before_stack.anchor_right = 0.47
+	before_stack.anchor_top = 0.0
+	before_stack.anchor_bottom = 1.0
+	timeline.add_child(before_stack)
+	var before_heading := _text(before_stack, "原本", false, 28)
+	before_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	causal_original = _text(before_stack, "原本的安排", false, 18)
+	causal_original.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	causal_original.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	causal_original.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var now_stack := VBoxContainer.new()
+	now_stack.anchor_left = 0.53
+	now_stack.anchor_right = 1.0
+	now_stack.anchor_top = 0.0
+	now_stack.anchor_bottom = 1.0
+	timeline.add_child(now_stack)
+	now_stack.z_index = 1
+	var seal := TextureRect.new()
+	seal.anchor_left = 0.67
+	seal.anchor_right = 0.91
+	seal.anchor_top = -0.12
+	seal.anchor_bottom = 0.90
+	seal.texture = CausalSealTexture
+	seal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	seal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	seal.modulate = Color(1, 1, 1, 0.74)
+	seal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	timeline.add_child(seal)
+	var now_heading := _text(now_stack, "", false, 28)
+	now_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	causal_now = _text(now_stack, "新的安排", false, 18)
+	causal_now.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	causal_now.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	causal_now.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+	causal_day = _text(content, "已有决断", true, 15)
+	causal_day.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	causal_day.add_theme_color_override("font_color", COLORS.accent)
+	var continue_button := _ornate_button("记下这次变化", _dismiss_causal)
+	continue_button.custom_minimum_size = Vector2(430, 74)
+	continue_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	content.add_child(continue_button)
 
 
 func _header_value(parent: Container, caption: String) -> Label:
@@ -546,7 +739,7 @@ func _zone(parent: VBoxContainer, title_text: String, ratio: float) -> VBoxConta
 	var panel := PanelContainer.new()
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = ratio
-	panel.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 10, COLORS.line_soft, 18, 16))
+	panel.add_theme_stylebox_override("panel", _panel_style(Color(COLORS.panel, 0.62), 0, 2, Color.TRANSPARENT, 16, 14))
 	parent.add_child(panel)
 	var outer := VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 10)
@@ -572,26 +765,11 @@ func _zone(parent: VBoxContainer, title_text: String, ratio: float) -> VBoxConta
 
 
 func _build_reference_tabs(parent: VBoxContainer) -> void:
-	var panel := PanelContainer.new()
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 10, COLORS.line_soft, 18, 16))
-	parent.add_child(panel)
-	var outer := VBoxContainer.new()
-	outer.add_theme_constant_override("separation", 10)
-	panel.add_child(outer)
-	var title := Label.new()
-	title.text = "随身资料"
-	title.add_theme_font_override("font", display_font)
-	title.add_theme_font_size_override("font_size", TYPE_SCALE.section)
-	title.add_theme_color_override("font_color", COLORS.accent)
-	outer.add_child(title)
-	var rule := HSeparator.new()
-	rule.modulate = Color(COLORS.accent, 0.35)
-	outer.add_child(rule)
 	var tabs := TabContainer.new()
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tabs.add_theme_font_size_override("font_size", TYPE_SCALE.compact)
-	outer.add_child(tabs)
+	parent.add_child(tabs)
+	scene_box = _reference_tab(tabs, "回响")
 	clues_box = _reference_tab(tabs, "线索")
 	people_box = _reference_tab(tabs, "人物")
 
@@ -654,6 +832,31 @@ func _button(text_value: String, callback: Callable, secondary: bool) -> Button:
 		button.add_theme_stylebox_override("pressed", _panel_style(COLORS.accent_pressed, 0, 6, COLORS.accent_pressed, 14, 12))
 	button.add_theme_stylebox_override("focus", _panel_style(Color.TRANSPARENT, 2, 7, COLORS.accent_hover, 12, 8))
 	button.add_theme_stylebox_override("disabled", _panel_style(Color(COLORS.panel_alt, 0.58), 1, 6, Color(COLORS.line, 0.5), 14, 10))
+	button.pressed.connect(callback)
+	return button
+
+
+func _ornate_button(text_value: String, callback: Callable) -> Button:
+	var button := Button.new()
+	button.text = text_value
+	button.add_theme_font_override("font", display_font)
+	button.add_theme_font_size_override("font_size", 20)
+	button.add_theme_color_override("font_color", Color("e5c47d"))
+	button.add_theme_color_override("font_hover_color", COLORS.ink)
+	button.add_theme_color_override("font_pressed_color", COLORS.accent_pressed)
+	button.add_theme_stylebox_override("normal", _panel_style(Color("080b09b8"), 0, 0, Color.TRANSPARENT, 20, 14))
+	button.add_theme_stylebox_override("hover", _panel_style(Color("171c16e6"), 0, 0, Color.TRANSPARENT, 20, 14))
+	button.add_theme_stylebox_override("pressed", _panel_style(Color("050706f2"), 0, 0, Color.TRANSPARENT, 20, 15))
+	button.add_theme_stylebox_override("focus", _panel_style(Color.TRANSPARENT, 1, 2, COLORS.accent_hover, 18, 12))
+	var frame := TextureRect.new()
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.texture = DecisionFrameTexture
+	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	frame.stretch_mode = TextureRect.STRETCH_SCALE
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.modulate = Color(1, 1, 1, 0.90)
+	button.add_child(frame)
+	button.move_child(frame, 0)
 	button.pressed.connect(callback)
 	return button
 
@@ -788,6 +991,9 @@ func _show_footer_message(message: String) -> void:
 
 func _play_action_presentation(previous_view: Dictionary, next_view: Dictionary) -> void:
 	presentation_director.cancel()
+	if ending_layer.visible:
+		causal_layer.hide()
+		return
 	var feedback: Dictionary = next_view.get("last_turn", {})
 	var cue: Dictionary = feedback.get("presentation", {})
 	var previous_location: Dictionary = previous_view.get("location", {})
@@ -806,6 +1012,9 @@ func _play_action_presentation(previous_view: Dictionary, next_view: Dictionary)
 		world_map_view.animate_travel(from_id, to_id, int(previous_view.get("day", 0)), int(next_view.get("day", 0)))
 		return
 	_apply_presentation_cue(cue)
+	if _has_causal_change(feedback):
+		_present_causal_change(feedback, next_location)
+		return
 	presentation_director.present(feedback, str(previous_location.get("name", "")), str(next_location.get("name", "")))
 
 
@@ -818,7 +1027,60 @@ func _finish_travel_presentation(feedback: Dictionary, previous_location: Dictio
 	var phase := str(current_view.get("phase", ""))
 	phase_label.text = "准备" if phase == "" else phase
 	location_stage.play_establish()
-	presentation_director.present(feedback, str(previous_location.get("name", "")), str(next_location.get("name", "")))
+	if _has_causal_change(feedback):
+		_present_causal_change(feedback, next_location)
+	else:
+		presentation_director.present(feedback, str(previous_location.get("name", "")), str(next_location.get("name", "")))
+
+
+func _has_causal_change(feedback: Dictionary) -> bool:
+	var influences = feedback.get("influence", [])
+	if not influences is Array or influences.is_empty():
+		return false
+	for influence in influences:
+		if influence.get("changes", []) is Array and not influence.get("changes", []).is_empty():
+			return true
+	return false
+
+
+func _present_causal_change(feedback: Dictionary, location: Dictionary) -> void:
+	var influences: Array = feedback.get("influence", [])
+	if influences.is_empty():
+		return
+	var influence: Dictionary = influences[0]
+	var changes: Array = influence.get("changes", [])
+	if changes.is_empty():
+		return
+	var change: Dictionary = changes[0]
+	var actor_name := str(influence.get("actor_name", "有人"))
+	var actor_id := _actor_id_by_name(actor_name)
+	var fact_claim := str(influence.get("fact_claim", "你送出的消息"))
+	var profile: ActorVisualProfile = presentation_registry.actor_profile(actor_id)
+	var location_profile: LocationVisualProfile = presentation_registry.location_profile(str(location.get("scene_key", "")))
+	causal_background.texture = location_profile.background if location_profile and location_profile.background else null
+	causal_portrait.texture = profile.portrait("decisive") if profile else null
+	causal_actor_meta.text = "%s · 已有决断" % actor_name
+	causal_message.text = "你告知%s：%s" % [actor_name, fact_claim]
+	causal_original.text = str(change.get("without_information", "原有安排"))
+	causal_now.text = str(change.get("with_information", "新的安排"))
+	var change_day := int(change.get("day", feedback.get("day", current_view.get("day", 0))))
+	causal_day.text = "第 %d 日 · 从原本到现在，你的消息进入了他的选择" % change_day
+	causal_layer.modulate = Color(1, 1, 1, 0)
+	causal_layer.show()
+	causal_portrait.modulate = Color(1, 1, 1, 0)
+	causal_portrait.position.x = -32
+	var tween := create_tween().set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(causal_layer, "modulate", Color.WHITE, 0.34)
+	tween.tween_property(causal_portrait, "modulate", Color.WHITE, 0.48).set_delay(0.10)
+	tween.tween_property(causal_portrait, "position:x", 0.0, 0.62).set_delay(0.08)
+	audio_director.play_cue("focus", 3)
+
+
+func _dismiss_causal() -> void:
+	audio_director.play_ui()
+	causal_layer.hide()
+	causal_layer.modulate = Color.WHITE
 
 
 func _apply_presentation_cue(cue: Dictionary) -> void:
@@ -898,6 +1160,23 @@ func _close_audio_settings() -> void:
 	settings_layer.hide()
 
 
+func _open_journal() -> void:
+	audio_director.play_ui()
+	journal_panel.position.x = 42
+	journal_layer.modulate = Color(1, 1, 1, 0)
+	journal_layer.show()
+	var tween := create_tween().set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(journal_layer, "modulate", Color.WHITE, 0.22)
+	tween.tween_property(journal_panel, "position:x", 0.0, 0.28)
+
+
+func _close_journal() -> void:
+	audio_director.play_ui()
+	journal_layer.hide()
+	journal_panel.position.x = 0
+
+
 func _set_bus_volume(value: float, bus_name: String) -> void:
 	var bus_index := AudioServer.get_bus_index(bus_name)
 	if bus_index < 0:
@@ -927,8 +1206,10 @@ func _show_start() -> void:
 	presentation_busy = false
 	_reset_action_focus()
 	game_layer.hide()
+	journal_layer.hide()
 	confirmation_layer.hide()
 	settings_layer.hide()
+	causal_layer.hide()
 	ending_layer.hide()
 	if presentation_director:
 		presentation_director.cancel()
@@ -976,7 +1257,7 @@ func _render_view() -> void:
 		stage_actor_name = ""
 	_reconcile_stage_actor(known_actors)
 	timing_label.text = _known_timing(known_facts)
-	objective_label.text = "当前判断 · %s" % (guidance[0] if not guidance.is_empty() else "根据已知线索选择调查、交涉、准备或等待")
+	objective_label.text = "下一节点 · %s" % (guidance[0] if not guidance.is_empty() else "根据已知线索选择调查、交涉、准备或等待")
 	_render_player(player)
 	_render_clues(known_facts, available_actions_cache)
 	_render_scene(current_view.get("recent_events", []), guidance.slice(1), travel, current_view.get("last_turn", null), str(player.get("name", "旅人")))
@@ -1381,7 +1662,6 @@ func _render_actions(actions: Array) -> void:
 	if focused_actor_id != "":
 		_text(actions_box, "与%s交涉" % focused_actor_name, false, 18)
 		_render_focused_actor_summary(focused_actions)
-		_render_recent_interaction_result()
 		actions_box.add_child(_button("返回全部行动", _clear_action_focus, true))
 		if focused_actions.is_empty():
 			_text(actions_box, "目前没有新的线索可告知；已经送达的内容不会重复出现。", true)
@@ -1391,7 +1671,6 @@ func _render_actions(actions: Array) -> void:
 	if focused_fact_id != "":
 		_text(actions_box, "传播线索", false, 18)
 		_text(actions_box, focused_fact_claim, true, 14)
-		_render_recent_interaction_result()
 		actions_box.add_child(_button("返回全部行动", _clear_action_focus, true))
 		if focused_actions.is_empty():
 			_text(actions_box, "当前地点已没有尚未收到这条线索的人。", true)
@@ -1399,10 +1678,8 @@ func _render_actions(actions: Array) -> void:
 		_add_focused_information_actions(focused_actions)
 		return
 	if actions.is_empty():
-		_render_recent_interaction_result()
 		_text(actions_box, "当前没有可执行行动。", true)
 		return
-	_render_recent_interaction_result()
 	var grouped := {}
 	for action in actions:
 		var category := str(action.get("category", "other"))
@@ -1451,35 +1728,6 @@ func _render_focused_actor_summary(focused_actions: Array) -> void:
 	var expression := str(actor_expression_by_id.get(focused_actor_id, "alert"))
 	var state_line := _text(content, "当前状态 · %s · 可谈线索 %d 条" % [state_names.get(expression, expression), focused_actions.size()], false, 13)
 	state_line.add_theme_color_override("font_color", COLORS.success if expression == "decisive" else COLORS.muted)
-	actions_box.add_child(panel)
-
-
-func _render_recent_interaction_result() -> void:
-	var feedback = current_view.get("last_turn", null)
-	if not feedback is Dictionary:
-		return
-	var action_id := str(feedback.get("action_id", ""))
-	var influences: Array = feedback.get("influence", [])
-	if not action_id.begins_with("tell:") and influences.is_empty():
-		return
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _panel_style(Color("172019"), 1, 7, Color(COLORS.accent, 0.58), 13, 11))
-	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 5)
-	panel.add_child(content)
-	var heading := _text(content, "最近一次交涉", true, 13)
-	heading.add_theme_color_override("font_color", COLORS.accent)
-	if action_id.begins_with("tell:"):
-		_text(content, "%s · 消息已送达" % feedback.get("action", "传递线索"), false, 15)
-	if influences.is_empty():
-		_text(content, "对方正在权衡；当前尚未观察到计划变化。推进局势后会在这里核对结果。", true, 13)
-	else:
-		for influence in influences:
-			_text(content, "%s因“%s”改变判断" % [influence.get("actor_name", "有人"), influence.get("fact_claim", "消息")], false, 14)
-			for change in influence.get("changes", []):
-				_text(content, "原本 · %s" % change.get("without_information", "其他安排"), true, 13)
-				var changed := _text(content, "现在 · %s" % change.get("with_information", "新的安排"), false, 13)
-				changed.add_theme_color_override("font_color", COLORS.success)
 	actions_box.add_child(panel)
 
 
@@ -1645,7 +1893,7 @@ func _add_action_decision_context(parent: VBoxContainer, action: Dictionary, com
 		var outcome_line := _text(parent, "预期 · %s" % outcomes, false, 14)
 		outcome_line.add_theme_color_override("font_color", COLORS.success)
 	var resolves := _joined_action_values(action.get("resolves", []))
-	if resolves != "":
+	if resolves != "" and not compact:
 		_text(parent, "解决 · %s" % resolves, true, 14)
 	var timing := str(action.get("timing", ""))
 	if timing != "":
@@ -1756,30 +2004,47 @@ func _render_feedback_into(parent: VBoxContainer, feedback: Dictionary) -> void:
 
 func _render_ending(ending: Dictionary) -> void:
 	_clear(ending_box)
+	var location_profile: LocationVisualProfile = presentation_registry.location_profile(str(current_view.get("location", {}).get("scene_key", "")))
+	ending_background.texture = location_profile.background if location_profile and location_profile.background else null
 	var eyebrow := _text(ending_box, "尘埃落定", true, 15)
 	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var outcome_heading := _text(ending_box, "最终归属", true, 13)
-	outcome_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	outcome_heading.add_theme_color_override("font_color", COLORS.accent)
 	var title := _text(ending_box, str(ending.get("outcome", current_view.get("outcome", "旅程结束"))), false, 30)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_color_override("font_color", Color("ead6a8"))
 	var influences: Array = ending.get("influence", [])
 	if not influences.is_empty():
-		var impact_heading := _text(ending_box, "你的介入", true, 14)
+		var impact_heading := _text(ending_box, "你的介入如何留下痕迹", true, 14)
 		impact_heading.add_theme_color_override("font_color", COLORS.accent)
 	for influence in influences:
 		_text(ending_box, "你将“%s”告诉了%s。" % [influence.get("fact_claim", "消息"), influence.get("actor_name", "某人")], false, 15)
 		for change in influence.get("changes", []):
 			_text(ending_box, "第 %d 日 · 原本%s，后来%s。" % [int(change.get("day", 0)), change.get("without_information", "另有安排"), change.get("with_information", "改变计划")], true, 14)
-	var record_heading := _text(ending_box, "余波记录", true, 14)
-	record_heading.add_theme_color_override("font_color", COLORS.accent)
-	for highlight in ending.get("highlights", []):
-		if str(highlight).begins_with("你传递的消息改变了"):
-			continue
-		_text(ending_box, "· %s" % highlight)
 	if influences.is_empty():
 		_text(ending_box, "这一次没有观察到你传递的消息改写他人计划。", true, 14)
 	else:
 		_text(ending_box, "局势已经落定，但被你改变的计划会成为下一段旅途的起点。", true, 14)
-	ending_box.add_child(_button("返回起点", _return_to_start, false))
+	ending_annex_button = _button("展开局势附录", _toggle_ending_annex, true)
+	ending_annex_button.custom_minimum_size.y = 40
+	ending_box.add_child(ending_annex_button)
+	ending_annex_box = VBoxContainer.new()
+	ending_annex_box.add_theme_constant_override("separation", 6)
+	ending_annex_box.hide()
+	ending_box.add_child(ending_annex_box)
+	var record_heading := _text(ending_annex_box, "余波记录", true, 14)
+	record_heading.add_theme_color_override("font_color", COLORS.accent)
+	for highlight in ending.get("highlights", []):
+		if str(highlight).begins_with("你传递的消息改变了"):
+			continue
+		_text(ending_annex_box, "· %s" % highlight, true, 14)
+	var return_button := _ornate_button("收卷 · 返回起点", _return_to_start)
+	return_button.custom_minimum_size = Vector2(390, 70)
+	return_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	ending_box.add_child(return_button)
 	ending_layer.show()
+
+
+func _toggle_ending_annex() -> void:
+	if not ending_annex_box or not ending_annex_button:
+		return
+	ending_annex_box.visible = not ending_annex_box.visible
+	ending_annex_button.text = "收起局势附录" if ending_annex_box.visible else "展开局势附录"
