@@ -11,6 +11,7 @@ type PlayerView struct {
 	Outcome          string            `json:"outcome,omitempty"`
 	Player           VisiblePlayer     `json:"player"`
 	Location         VisibleLocation   `json:"location"`
+	WorldMap         VisibleWorldMap   `json:"world_map"`
 	KnownActors      []VisibleActor    `json:"known_actors"`
 	KnownFacts       []VisibleBelief   `json:"known_facts"`
 	RecentEvents     []VisibleEvent    `json:"recent_events"`
@@ -87,9 +88,41 @@ type VisiblePlayer struct {
 }
 
 type VisibleLocation struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Safe bool   `json:"safe"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Safe        bool   `json:"safe"`
+	SceneKey    string `json:"scene_key,omitempty"`
+	Description string `json:"description,omitempty"`
+	Atmosphere  string `json:"atmosphere,omitempty"`
+}
+
+type VisibleWorldMap struct {
+	Locations []VisibleMapLocation `json:"locations"`
+	Routes    []VisibleMapRoute    `json:"routes"`
+}
+
+type VisibleMapLocation struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Safe        bool    `json:"safe"`
+	X           float64 `json:"x"`
+	Y           float64 `json:"y"`
+	SceneKey    string  `json:"scene_key,omitempty"`
+	Description string  `json:"description,omitempty"`
+	Atmosphere  string  `json:"atmosphere,omitempty"`
+	Current     bool    `json:"current"`
+	Contest     bool    `json:"contest"`
+	ActorCount  int     `json:"actor_count,omitempty"`
+}
+
+type VisibleMapRoute struct {
+	FromID   string   `json:"from_id"`
+	ToID     string   `json:"to_id"`
+	Duration int      `json:"duration"`
+	Danger   int      `json:"danger"`
+	Status   string   `json:"status"`
+	ActionID string   `json:"action_id,omitempty"`
+	Blockers []string `json:"blockers,omitempty"`
 }
 
 type VisibleActor struct {

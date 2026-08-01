@@ -1,5 +1,8 @@
 extends Control
 
+const WorldMapViewScript = preload("res://scripts/world_map.gd")
+const LocationStageScript = preload("res://scripts/location_stage.gd")
+const PresentationDirectorScript = preload("res://scripts/presentation_director.gd")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
 const TYPE_SCALE := {
@@ -43,6 +46,10 @@ var focused_actor_id := ""
 var focused_actor_name := ""
 var focused_fact_id := ""
 var focused_fact_claim := ""
+var selected_map_location_id := ""
+var rendered_location_id := ""
+var visual_mode := "map"
+var view_before_action: Dictionary = {}
 
 var start_layer: Control
 var game_layer: Control
@@ -64,6 +71,17 @@ var ending_layer: Control
 var ending_box: VBoxContainer
 var confirmation_layer: Control
 var confirmation_box: VBoxContainer
+var visual_stack: Control
+var map_panel: VBoxContainer
+var location_panel: VBoxContainer
+var map_detail_box: VBoxContainer
+var location_detail_box: VBoxContainer
+var stage_people_box: HBoxContainer
+var map_mode_button: Button
+var location_mode_button: Button
+var world_map_view: Control
+var location_stage: Control
+var presentation_director: Control
 var body_font: SystemFont
 var medium_font: SystemFont
 var display_font: SystemFont
@@ -157,6 +175,8 @@ func _build_interface() -> void:
 	_build_start_layer()
 	_build_confirmation_layer()
 	_build_ending_layer()
+	presentation_director = PresentationDirectorScript.new()
+	add_child(presentation_director)
 
 
 func _build_header() -> void:
@@ -199,28 +219,86 @@ func _build_header() -> void:
 
 
 func _build_dashboard() -> void:
-	var columns := HBoxContainer.new()
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 16)
-	game_layer.add_child(columns)
+	var workspace := HBoxContainer.new()
+	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	workspace.add_theme_constant_override("separation", 16)
+	game_layer.add_child(workspace)
 
-	var left := VBoxContainer.new()
-	left.custom_minimum_size.x = 440
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.add_child(left)
-	scene_box = _zone(left, "局势与变化", 1.0)
+	var world_column := VBoxContainer.new()
+	world_column.custom_minimum_size.x = 760
+	world_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	world_column.size_flags_stretch_ratio = 1.75
+	world_column.add_theme_constant_override("separation", 12)
+	workspace.add_child(world_column)
+	_build_world_stage(world_column)
+	scene_box = _zone(world_column, "行旅回响", 0.38)
 
-	var center := VBoxContainer.new()
-	center.custom_minimum_size.x = 410
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.add_child(center)
-	actions_box = _zone(center, "现在能做什么", 1.0)
+	var decision_column := VBoxContainer.new()
+	decision_column.custom_minimum_size.x = 430
+	decision_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	decision_column.size_flags_stretch_ratio = 1.0
+	decision_column.add_theme_constant_override("separation", 12)
+	workspace.add_child(decision_column)
+	actions_box = _zone(decision_column, "下一步", 1.24)
+	_build_reference_tabs(decision_column)
 
-	var right := VBoxContainer.new()
-	right.custom_minimum_size.x = 330
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.add_child(right)
-	_build_reference_tabs(right)
+
+func _build_world_stage(parent: VBoxContainer) -> void:
+	var mode_row := HBoxContainer.new()
+	mode_row.add_theme_constant_override("separation", 8)
+	parent.add_child(mode_row)
+	var heading := Label.new()
+	heading.text = "行旅视野"
+	heading.add_theme_font_override("font", display_font)
+	heading.add_theme_font_size_override("font_size", TYPE_SCALE.section)
+	heading.add_theme_color_override("font_color", COLORS.accent)
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mode_row.add_child(heading)
+	map_mode_button = _button("区域地图", _set_visual_mode.bind("map"), true)
+	map_mode_button.custom_minimum_size = Vector2(116, 38)
+	mode_row.add_child(map_mode_button)
+	location_mode_button = _button("当前地点", _set_visual_mode.bind("location"), true)
+	location_mode_button.custom_minimum_size = Vector2(116, 38)
+	mode_row.add_child(location_mode_button)
+
+	var stage_frame := PanelContainer.new()
+	stage_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stage_frame.size_flags_stretch_ratio = 1.0
+	stage_frame.custom_minimum_size.y = 430
+	stage_frame.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 10, COLORS.line_soft, 12, 10))
+	parent.add_child(stage_frame)
+	visual_stack = Control.new()
+	visual_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	visual_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stage_frame.add_child(visual_stack)
+
+	map_panel = VBoxContainer.new()
+	map_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	map_panel.add_theme_constant_override("separation", 8)
+	visual_stack.add_child(map_panel)
+	world_map_view = WorldMapViewScript.new()
+	world_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	world_map_view.location_selected.connect(_on_map_location_selected)
+	map_panel.add_child(world_map_view)
+	map_detail_box = VBoxContainer.new()
+	map_detail_box.custom_minimum_size.y = 88
+	map_detail_box.add_theme_constant_override("separation", 5)
+	map_panel.add_child(map_detail_box)
+
+	location_panel = VBoxContainer.new()
+	location_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	location_panel.add_theme_constant_override("separation", 8)
+	visual_stack.add_child(location_panel)
+	location_stage = LocationStageScript.new()
+	location_stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	location_panel.add_child(location_stage)
+	location_detail_box = VBoxContainer.new()
+	location_detail_box.add_theme_constant_override("separation", 3)
+	location_panel.add_child(location_detail_box)
+	stage_people_box = HBoxContainer.new()
+	stage_people_box.add_theme_constant_override("separation", 8)
+	location_panel.add_child(stage_people_box)
+	_set_visual_mode("map")
 
 
 func _build_footer() -> void:
@@ -570,9 +648,15 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 		_show_start()
 		return
 	if parsed.has("view"):
+		var previous_view := view_before_action if operation == "action" else current_view
 		current_view = parsed["view"]
 		_show_game()
 		_render_view()
+		if operation == "action" and presentation_director:
+			var previous_location := str(previous_view.get("location", {}).get("name", "")) if previous_view is Dictionary else ""
+			var next_location := str(current_view.get("location", {}).get("name", ""))
+			presentation_director.present(current_view.get("last_turn", {}), previous_location, next_location)
+		view_before_action = {}
 	if operation == "action" and autosave_after_action:
 		autosave_after_action = false
 		_request("autosave", HTTPClient.METHOD_POST, "/game/save", {"slot": AUTOSAVE_SLOT})
@@ -601,6 +685,7 @@ func _new_game() -> void:
 	if player_name == "":
 		player_name = "无名修士"
 	_reset_action_focus()
+	_set_visual_mode("map")
 	_request("new", HTTPClient.METHOD_POST, "/game/new", {"player_name": player_name})
 
 
@@ -611,6 +696,7 @@ func _retry_connection() -> void:
 
 
 func _load_game() -> void:
+	_set_visual_mode("map")
 	_request("load", HTTPClient.METHOD_POST, "/game/load", {"slot": AUTOSAVE_SLOT})
 
 
@@ -623,6 +709,7 @@ func _return_to_start() -> void:
 
 
 func _execute_action(action_id: String) -> void:
+	view_before_action = current_view.duplicate(true)
 	autosave_after_action = true
 	_request("action", HTTPClient.METHOD_POST, "/game/action", {"action_id": action_id})
 
@@ -631,10 +718,15 @@ func _show_start() -> void:
 	current_view = {}
 	selected_action = {}
 	available_actions_cache = []
+	selected_map_location_id = ""
+	rendered_location_id = ""
+	view_before_action = {}
 	_reset_action_focus()
 	game_layer.hide()
 	confirmation_layer.hide()
 	ending_layer.hide()
+	if presentation_director:
+		presentation_director.cancel()
 	start_layer.show()
 
 
@@ -671,6 +763,10 @@ func _render_view() -> void:
 	var known_facts: Array = current_view.get("known_facts", [])
 	var guidance: Array = current_view.get("guidance", [])
 	_reconcile_action_focus(known_actors, known_facts)
+	var location_id := str(location.get("id", ""))
+	if rendered_location_id != location_id:
+		selected_map_location_id = location_id
+		rendered_location_id = location_id
 	timing_label.text = _known_timing(known_facts)
 	objective_label.text = "当前判断 · %s" % (guidance[0] if not guidance.is_empty() else "根据已知线索选择调查、交涉、准备或等待")
 	_render_player(player)
@@ -678,9 +774,120 @@ func _render_view() -> void:
 	_render_scene(current_view.get("recent_events", []), guidance.slice(1), travel, current_view.get("last_turn", null), str(player.get("name", "旅人")))
 	_render_people(known_actors, available_actions_cache)
 	_render_actions(available_actions_cache)
+	_render_world_map(current_view.get("world_map", {}), location, available_actions_cache)
+	_render_location_stage(location, known_actors, available_actions_cache)
 	var ending = current_view.get("ending", null)
 	if bool(current_view.get("resolved", false)) or bool(current_view.get("ended", false)) or ending is Dictionary:
 		_render_ending(ending if ending is Dictionary else {})
+
+
+func _set_visual_mode(mode: String) -> void:
+	visual_mode = mode
+	if mode == "map" and (focused_actor_id != "" or focused_fact_id != ""):
+		_reset_action_focus()
+		if actions_box:
+			_render_actions(available_actions_cache)
+	if map_panel:
+		map_panel.visible = mode == "map"
+	if location_panel:
+		location_panel.visible = mode == "location"
+	if map_mode_button:
+		map_mode_button.text = "区域地图 · 当前" if mode == "map" else "区域地图"
+	if location_mode_button:
+		location_mode_button.text = "当前地点 · 当前" if mode == "location" else "当前地点"
+
+
+func _render_world_map(world_map, current_location: Dictionary, actions: Array) -> void:
+	if not world_map is Dictionary:
+		world_map = {}
+	world_map_view.set_map(world_map, selected_map_location_id)
+	_render_map_detail(world_map, current_location, actions)
+
+
+func _on_map_location_selected(location_id: String) -> void:
+	selected_map_location_id = location_id
+	_render_map_detail(current_view.get("world_map", {}), current_view.get("location", {}), available_actions_cache)
+
+
+func _render_map_detail(world_map: Dictionary, current_location: Dictionary, actions: Array) -> void:
+	_clear(map_detail_box)
+	var selected := _map_location(world_map.get("locations", []), selected_map_location_id)
+	if selected.is_empty():
+		_text(map_detail_box, "选择地点查看路线", true, 14)
+		return
+	var title_line := _text(map_detail_box, "%s · %s" % [selected.get("name", "未知地点"), "安全落脚点" if bool(selected.get("safe", false)) else "危险区域"], false, 16)
+	title_line.add_theme_color_override("font_color", COLORS.accent if bool(selected.get("current", false)) else COLORS.ink)
+	_text(map_detail_box, str(selected.get("description", "尚无公开地点资料")), true, 13)
+	if bool(selected.get("current", false)):
+		var enter_button := _button("进入当前地点场景", _set_visual_mode.bind("location"), true)
+		enter_button.custom_minimum_size.y = 38
+		map_detail_box.add_child(enter_button)
+		return
+	var route := _current_map_route(world_map.get("routes", []), str(current_location.get("id", "")), selected_map_location_id)
+	if route.is_empty():
+		_text(map_detail_box, "这里不与当前位置直接相连，需要从相邻地点转进。", true, 13)
+		return
+	var route_status := str(route.get("status", "known"))
+	if route_status == "available":
+		var action := _action_by_id(actions, str(route.get("action_id", "")))
+		if not action.is_empty():
+			var move_button := _button("动身 · %d 日 · 危险 %d" % [int(route.get("duration", 1)), int(route.get("danger", 0))], _consider_action.bind(action), false)
+			move_button.custom_minimum_size.y = 40
+			map_detail_box.add_child(move_button)
+	elif route_status == "blocked":
+		var blockers := _joined_action_values(route.get("blockers", []))
+		var blocked_line := _text(map_detail_box, "路线受阻 · %s" % blockers, false, 13)
+		blocked_line.add_theme_color_override("font_color", COLORS.danger)
+
+
+func _render_location_stage(location: Dictionary, actors: Array, actions: Array) -> void:
+	location_stage.set_location(location)
+	_clear(location_detail_box)
+	_clear(stage_people_box)
+	var place_line := _text(location_detail_box, "%s · %s" % [location.get("name", "未知地点"), "安稳" if bool(location.get("safe", false)) else "险地"], false, 17)
+	place_line.add_theme_color_override("font_color", COLORS.accent)
+	_text(location_detail_box, str(location.get("atmosphere", location.get("description", ""))), true, 13)
+	if actors.is_empty():
+		_text(stage_people_box, "此地暂时无人可交涉", true, 13)
+		return
+	for actor in actors:
+		var actor_id := str(actor.get("id", ""))
+		var actor_name := str(actor.get("name", "无名者"))
+		var button := _button("%s · %s" % [actor_name, actor.get("public_role", "可交谈人物")], _focus_actor_from_stage.bind(actor_id, actor_name), true)
+		button.custom_minimum_size.y = 40
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.tooltip_text = str(actor.get("public_profile", ""))
+		stage_people_box.add_child(button)
+
+
+func _focus_actor_from_stage(actor_id: String, actor_name: String) -> void:
+	_set_visual_mode("location")
+	_focus_actor_actions(actor_id, actor_name)
+
+
+func _map_location(locations, location_id: String) -> Dictionary:
+	if not locations is Array:
+		return {}
+	for location in locations:
+		if str(location.get("id", "")) == location_id:
+			return location
+	return {}
+
+
+func _current_map_route(routes, from_id: String, to_id: String) -> Dictionary:
+	if not routes is Array:
+		return {}
+	for route in routes:
+		if str(route.get("from_id", "")) == from_id and str(route.get("to_id", "")) == to_id:
+			return route
+	return {}
+
+
+func _action_by_id(actions: Array, action_id: String) -> Dictionary:
+	for action in actions:
+		if str(action.get("id", "")) == action_id:
+			return action
+	return {}
 
 
 func _render_player(player: Dictionary) -> void:

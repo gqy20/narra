@@ -73,6 +73,7 @@ func (s *Session) View() PlayerView {
 		view.Guidance = s.guidance(state, view.AvailableActions)
 		view.Travel = s.travelGuidance(state)
 	}
+	view.WorldMap = s.visibleWorldMap(state, view.AvailableActions)
 	view.LastTurn = cloneTurnFeedback(s.lastTurn)
 	view.Metrics = s.metricsView(state)
 	return view
@@ -163,7 +164,10 @@ func (s *Session) visibleItems(items map[string]int) []VisibleItem {
 
 func (s *Session) visibleLocation(locationID string) VisibleLocation {
 	location := s.bundle.Locations[locationID]
-	return VisibleLocation{ID: locationID, Name: location.Name, Safe: location.Safe}
+	return VisibleLocation{
+		ID: locationID, Name: location.Name, Safe: location.Safe, SceneKey: location.SceneKey,
+		Description: location.Description, Atmosphere: location.Atmosphere,
+	}
 }
 
 func (s *Session) visibleActors(state *domain.WorldState) []VisibleActor {

@@ -218,10 +218,15 @@ type ItemDefinition struct {
 }
 
 type Location struct {
-	ID     string  `json:"id"`
-	Name   string  `json:"name"`
-	Safe   bool    `json:"safe"`
-	Routes []Route `json:"routes"`
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Safe        bool    `json:"safe"`
+	MapX        float64 `json:"map_x,omitempty"`
+	MapY        float64 `json:"map_y,omitempty"`
+	SceneKey    string  `json:"scene_key,omitempty"`
+	Description string  `json:"description,omitempty"`
+	Atmosphere  string  `json:"atmosphere,omitempty"`
+	Routes      []Route `json:"routes"`
 }
 
 type Route struct {

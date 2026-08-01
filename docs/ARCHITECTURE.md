@@ -19,7 +19,7 @@ internal/
   batch/             批量运行、扰动和统计
   report/            单次运行报告适配器
 data/blackwind/      黑风谷正式场景数据
-godot/               只消费 PlayerView 的桌面 MVP 客户端
+godot/               只消费 PlayerView 的 2D 场景化桌面客户端
 testdata/            Go 工具自动忽略的验收玩家计划
 docs/                产品、架构、规格和验收文档
 tools/               本地开发与持续集成脚本
@@ -89,10 +89,18 @@ Godot 客户端按如下单向数据流工作：
 
 ```text
 Godot 控件 ──动作 ID──> /api/v1 ──> app.Session ──> engine
-Godot 六区视图 <────── PlayerView <───────────────┘
+Godot 地图/场景/行动视图 <── PlayerView <─────────┘
 ```
 
 人物公开资料和动作语义元数据都由应用层生成。Godot 可折叠“人物 × 线索”组合，但不会自行决定哪些组合合法。所有写操作在服务端串行完成，行动成功后客户端再发起自动存档。
+
+2D 表现层由三个可替换组件组成：
+
+- `world_map.gd` 只绘制 `PlayerView.world_map` 中的公开地点、路线和当前可走状态；
+- `location_stage.gd` 根据地点的 `scene_key` 绘制当前地点舞台，人物交互仍来自 `KnownActors`；
+- `presentation_director.gd` 顺序播放 `LastTurn` 中已经公开的结果，不读取或推演世界状态。
+
+地图坐标、场景键、地点描述和氛围文本属于场景公开表现数据，保存在 `data/blackwind/locations.json`。远处 NPC 的实时位置、数量、目标和路线不进入 `PlayerView`；地图只在当前位置显示实际可见人物数量。路线按钮只提交应用层提供的 `move:*` 动作 ID，Godot 不复刻物品、开放时间或期限规则。
 
 存档写入同目录临时文件，完成刷盘与确定性回放校验后再替换目标文件。API 只接受受限槽名并映射到服务端 `saveDir`，避免 UI 传入路径。玩家可见动作附带稳定的语义字段（类型、目标、事实），用于图形界面分组而不依赖字符串解析。
 

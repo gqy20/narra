@@ -62,6 +62,38 @@ func TestInitialCatalogIsDynamicAndRouteAware(t *testing.T) {
 	}
 }
 
+func TestWorldMapOnlyExposesPublicRouteState(t *testing.T) {
+	view := testSession(t).View()
+	if len(view.WorldMap.Locations) != 5 || len(view.WorldMap.Routes) == 0 {
+		t.Fatalf("world map is incomplete: %+v", view.WorldMap)
+	}
+	currentCount := 0
+	for _, location := range view.WorldMap.Locations {
+		if location.Name == "" || location.SceneKey == "" || location.Description == "" || location.X <= 0 || location.Y <= 0 {
+			t.Fatalf("map location lacks presentation data: %+v", location)
+		}
+		if location.Current {
+			currentCount++
+			if location.ID != "L01" || location.ActorCount != len(view.KnownActors) {
+				t.Fatalf("current map location = %+v", location)
+			}
+		} else if location.ActorCount != 0 {
+			t.Fatalf("map leaked remote actor count: %+v", location)
+		}
+	}
+	if currentCount != 1 {
+		t.Fatalf("current map location count = %d", currentCount)
+	}
+	available := mapRoute(view.WorldMap.Routes, "L01", "L02")
+	if available == nil || available.Status != "available" || available.ActionID != "move:L02" {
+		t.Fatalf("available route = %+v", available)
+	}
+	blocked := mapRoute(view.WorldMap.Routes, "L01", "L04")
+	if blocked == nil || blocked.Status != "blocked" || blocked.ActionID != "" || !containsMessage(blocked.Blockers, "解瘴丹") || !containsMessage(blocked.Blockers, "入口") {
+		t.Fatalf("blocked route = %+v", blocked)
+	}
+}
+
 func TestActionMetadataAndPublicProfilesArePlayerFacing(t *testing.T) {
 	session := testSession(t)
 	view := session.View()
@@ -154,6 +186,15 @@ func actionWithID(actions []AvailableAction, id string) *AvailableAction {
 	for index := range actions {
 		if actions[index].ID == id {
 			return &actions[index]
+		}
+	}
+	return nil
+}
+
+func mapRoute(routes []VisibleMapRoute, fromID, toID string) *VisibleMapRoute {
+	for index := range routes {
+		if routes[index].FromID == fromID && routes[index].ToID == toID {
+			return &routes[index]
 		}
 	}
 	return nil

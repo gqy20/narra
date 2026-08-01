@@ -23,6 +23,20 @@ func _run() -> void:
 	var actions: Array = app.current_view.get("available_actions", [])
 	if actions.is_empty():
 		return _fail("new game returned no actions")
+	var world_map: Dictionary = app.current_view.get("world_map", {})
+	if world_map.get("locations", []).size() != 5 or world_map.get("routes", []).is_empty():
+		return _fail("new game returned no public world map")
+	if app.world_map_view.locations.size() != 5:
+		return _fail("2D world map did not consume the player view")
+	if str(app.location_stage.location.get("scene_key", "")) != "market":
+		return _fail("location stage did not render the current place")
+	app._on_map_location_selected("L04")
+	if app.selected_map_location_id != "L04" or app.map_detail_box.get_child_count() == 0:
+		return _fail("map location selection has no detail state")
+	app._set_visual_mode("location")
+	if not app.location_panel.visible or app.map_panel.visible:
+		return _fail("location scene mode did not replace the map")
+	app._set_visual_mode("map")
 	if app.day_label.text != "第 1 / 30 日":
 		return _fail("initial day is not player-facing day one")
 	if app.timing_label.text != "第24天 · 传闻":
@@ -55,6 +69,8 @@ func _run() -> void:
 		return _fail("action or autosave request timed out")
 	if int(app.current_view.get("day", 0)) < 1:
 		return _fail("action returned an invalid view")
+	if app.presentation_director.generation < 1:
+		return _fail("action result did not enter the presentation queue")
 	print("Godot integration smoke test passed: day %d, %d actions" % [app.current_view.get("day", 0), app.current_view.get("available_actions", []).size()])
 	quit(0)
 
