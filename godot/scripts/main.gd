@@ -2,16 +2,34 @@ extends Control
 
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
+const TYPE_SCALE := {
+	"display": 60,
+	"brand": 28,
+	"section": 18,
+	"metric": 18,
+	"body": 16,
+	"compact": 15,
+	"detail": 14,
+	"meta": 13,
+	"button": 15,
+}
 const COLORS := {
-	"bg": Color("0b100e"),
-	"panel": Color("141b17"),
-	"panel_alt": Color("1b241e"),
-	"line": Color("354238"),
-	"ink": Color("ece6d5"),
-	"muted": Color("a9ad9e"),
-	"accent": Color("c69a56"),
-	"danger": Color("b96e64"),
-	"success": Color("7fa47e"),
+	"bg": Color("090c0a"),
+	"bg_lift": Color("101712"),
+	"panel": Color("121713"),
+	"panel_alt": Color("1a231d"),
+	"panel_hover": Color("232e26"),
+	"line": Color("344039"),
+	"line_soft": Color("242e28"),
+	"ink": Color("f2ebdd"),
+	"muted": Color("a9b3a6"),
+	"accent": Color("d6ae62"),
+	"accent_hover": Color("e4c079"),
+	"accent_pressed": Color("b98e47"),
+	"accent_ink": Color("15110a"),
+	"danger": Color("c46352"),
+	"danger_deep": Color("8f352c"),
+	"success": Color("82aa78"),
 }
 
 @onready var http: HTTPRequest = $HTTPRequest
@@ -46,23 +64,90 @@ var ending_layer: Control
 var ending_box: VBoxContainer
 var confirmation_layer: Control
 var confirmation_box: VBoxContainer
+var body_font: SystemFont
+var medium_font: SystemFont
+var display_font: SystemFont
 
 
 func _ready() -> void:
+	_configure_theme()
 	http.request_completed.connect(_on_request_completed)
 	_build_interface()
 	_request("health", HTTPClient.METHOD_GET, "/health")
 
 
+func _configure_theme() -> void:
+	body_font = SystemFont.new()
+	body_font.font_names = PackedStringArray(["Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC"])
+	body_font.font_weight = 400
+	medium_font = SystemFont.new()
+	medium_font.font_names = body_font.font_names
+	medium_font.font_weight = 500
+	display_font = SystemFont.new()
+	display_font.font_names = PackedStringArray(["STZhongsong", "SimSun", "Noto Serif CJK SC"])
+	display_font.font_weight = 600
+	var app_theme := Theme.new()
+	app_theme.default_font = body_font
+	app_theme.default_font_size = TYPE_SCALE.body
+	app_theme.set_font("font", "Button", medium_font)
+	app_theme.set_font("font", "MenuButton", medium_font)
+	app_theme.set_font("font", "TabBar", medium_font)
+	app_theme.set_color("font_color", "Label", COLORS.ink)
+	app_theme.set_color("font_color", "Button", COLORS.ink)
+	app_theme.set_color("font_hover_color", "Button", COLORS.ink)
+	app_theme.set_color("font_pressed_color", "Button", COLORS.ink)
+	app_theme.set_color("font_focus_color", "Button", COLORS.ink)
+	app_theme.set_color("font_disabled_color", "Button", Color(COLORS.muted, 0.45))
+	app_theme.set_color("font_color", "LineEdit", COLORS.ink)
+	app_theme.set_color("font_placeholder_color", "LineEdit", Color(COLORS.muted, 0.62))
+	app_theme.set_color("caret_color", "LineEdit", COLORS.accent)
+	app_theme.set_color("selection_color", "LineEdit", Color(COLORS.accent, 0.28))
+	app_theme.set_stylebox("panel", "TabContainer", _panel_style(Color.TRANSPARENT, 0, 0))
+	app_theme.set_stylebox("tab_selected", "TabBar", _tab_style(COLORS.panel_hover, COLORS.accent))
+	app_theme.set_stylebox("tab_hovered", "TabBar", _tab_style(COLORS.panel_alt, COLORS.line))
+	app_theme.set_stylebox("tab_unselected", "TabBar", _tab_style(Color.TRANSPARENT, Color.TRANSPARENT))
+	app_theme.set_color("font_selected_color", "TabBar", COLORS.accent)
+	app_theme.set_color("font_hovered_color", "TabBar", COLORS.ink)
+	app_theme.set_color("font_unselected_color", "TabBar", COLORS.muted)
+	app_theme.set_stylebox("scroll", "VScrollBar", _panel_style(Color.TRANSPARENT, 0, 0, Color.TRANSPARENT, 0, 0))
+	app_theme.set_stylebox("grabber", "VScrollBar", _panel_style(Color(COLORS.line, 0.82), 0, 4, Color.TRANSPARENT, 0, 0))
+	app_theme.set_stylebox("grabber_highlight", "VScrollBar", _panel_style(COLORS.accent_pressed, 0, 4, Color.TRANSPARENT, 0, 0))
+	app_theme.set_stylebox("grabber_pressed", "VScrollBar", _panel_style(COLORS.accent, 0, 4, Color.TRANSPARENT, 0, 0))
+	app_theme.set_constant("minimum_grab_thickness", "VScrollBar", 28)
+	app_theme.set_stylebox("panel", "TooltipPanel", _panel_style(COLORS.panel_alt, 1, 5, COLORS.line, 10, 8))
+	app_theme.set_color("font_color", "TooltipLabel", COLORS.ink)
+	app_theme.set_font_size("font_size", "TooltipLabel", TYPE_SCALE.meta)
+	theme = app_theme
+
+
 func _build_interface() -> void:
-	var background := ColorRect.new()
-	background.color = COLORS.bg
+	var background := TextureRect.new()
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.46, 1.0])
+	gradient.colors = PackedColorArray([COLORS.bg_lift, COLORS.bg, Color("060806")])
+	var gradient_texture := GradientTexture2D.new()
+	gradient_texture.gradient = gradient
+	gradient_texture.width = 1024
+	gradient_texture.height = 1024
+	gradient_texture.fill_from = Vector2(0.0, 0.0)
+	gradient_texture.fill_to = Vector2(1.0, 1.0)
+	background.texture = gradient_texture
+	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	background.stretch_mode = TextureRect.STRETCH_SCALE
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(background)
 
+	var top_rule := ColorRect.new()
+	top_rule.color = Color(COLORS.accent, 0.45)
+	top_rule.custom_minimum_size.y = 2
+	top_rule.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(top_rule)
+
 	game_layer = VBoxContainer.new()
-	game_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 20)
-	game_layer.add_theme_constant_override("separation", 14)
+	game_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 24)
+	game_layer.add_theme_constant_override("separation", 16)
 	add_child(game_layer)
 	_build_header()
 	_build_dashboard()
@@ -76,11 +161,11 @@ func _build_interface() -> void:
 
 func _build_header() -> void:
 	var header := PanelContainer.new()
-	header.add_theme_stylebox_override("panel", _panel_style(COLORS.panel_alt, 1, 12))
-	header.custom_minimum_size.y = 126
+	header.add_theme_stylebox_override("panel", _panel_style(COLORS.panel_alt, 1, 10, COLORS.line_soft, 20, 16))
+	header.custom_minimum_size.y = 132
 	game_layer.add_child(header)
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 8)
+	stack.add_theme_constant_override("separation", 9)
 	header.add_child(stack)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
@@ -88,7 +173,8 @@ func _build_header() -> void:
 
 	var brand := Label.new()
 	brand.text = "凡途  /  黑风谷"
-	brand.add_theme_font_size_override("font_size", 26)
+	brand.add_theme_font_override("font", display_font)
+	brand.add_theme_font_size_override("font_size", TYPE_SCALE.brand)
 	brand.add_theme_color_override("font_color", COLORS.accent)
 	brand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(brand)
@@ -100,12 +186,14 @@ func _build_header() -> void:
 	row.add_child(_button("存档", _save_game, true))
 	row.add_child(_button("返回", _return_to_start, true))
 	player_summary_label = Label.new()
-	player_summary_label.add_theme_font_size_override("font_size", 15)
+	player_summary_label.add_theme_font_size_override("font_size", TYPE_SCALE.compact)
+	player_summary_label.add_theme_constant_override("line_spacing", 3)
 	player_summary_label.add_theme_color_override("font_color", COLORS.ink)
 	stack.add_child(player_summary_label)
 	objective_label = Label.new()
 	objective_label.text = "当前判断 · 正在读取局势"
-	objective_label.add_theme_font_size_override("font_size", 14)
+	objective_label.add_theme_font_size_override("font_size", TYPE_SCALE.detail)
+	objective_label.add_theme_constant_override("line_spacing", 4)
 	objective_label.add_theme_color_override("font_color", COLORS.muted)
 	stack.add_child(objective_label)
 
@@ -113,7 +201,7 @@ func _build_header() -> void:
 func _build_dashboard() -> void:
 	var columns := HBoxContainer.new()
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 14)
+	columns.add_theme_constant_override("separation", 16)
 	game_layer.add_child(columns)
 
 	var left := VBoxContainer.new()
@@ -139,7 +227,9 @@ func _build_footer() -> void:
 	footer_label = Label.new()
 	footer_label.text = ""
 	footer_label.add_theme_color_override("font_color", COLORS.muted)
-	footer_label.add_theme_font_size_override("font_size", 14)
+	footer_label.add_theme_font_override("font", medium_font)
+	footer_label.add_theme_font_size_override("font_size", TYPE_SCALE.meta)
+	footer_label.custom_minimum_size.y = 20
 	game_layer.add_child(footer_label)
 
 
@@ -148,34 +238,46 @@ func _build_start_layer() -> void:
 	start_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(start_layer)
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(520, 430)
-	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 24))
+	card.custom_minimum_size = Vector2(568, 468)
+	card.add_theme_stylebox_override("panel", _panel_style(Color("111713"), 1, 18, COLORS.line, 36, 30))
 	start_layer.add_child(card)
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 18)
+	content.add_theme_constant_override("separation", 20)
 	card.add_child(content)
 
 	var eyebrow := Label.new()
-	eyebrow.text = "黑风谷异动 · 三十日局势"
+	eyebrow.text = "黑风谷异动　·　三十日局势"
 	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	eyebrow.add_theme_color_override("font_color", COLORS.accent)
+	eyebrow.add_theme_font_override("font", medium_font)
+	eyebrow.add_theme_font_size_override("font_size", TYPE_SCALE.meta)
 	content.add_child(eyebrow)
 	var title := Label.new()
 	title.text = "凡 途"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 52)
+	title.add_theme_font_override("font", display_font)
+	title.add_theme_font_size_override("font_size", TYPE_SCALE.display)
 	title.add_theme_color_override("font_color", COLORS.ink)
 	content.add_child(title)
 	var subtitle := Label.new()
 	subtitle.text = "三十日内，青髓芝的归属将被决定。\n核验、交易、赶路，或让消息改变他人的选择。"
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.add_theme_color_override("font_color", COLORS.muted)
+	subtitle.add_theme_font_size_override("font_size", TYPE_SCALE.body)
+	subtitle.add_theme_constant_override("line_spacing", 7)
 	content.add_child(subtitle)
+	var divider := HSeparator.new()
+	divider.modulate = Color(COLORS.accent, 0.48)
+	content.add_child(divider)
 
 	name_input = LineEdit.new()
 	name_input.placeholder_text = "输入角色名"
 	name_input.text = "无名修士"
-	name_input.add_theme_font_size_override("font_size", 18)
+	name_input.add_theme_font_size_override("font_size", TYPE_SCALE.metric)
+	name_input.custom_minimum_size.y = 52
+	name_input.add_theme_stylebox_override("normal", _input_style(COLORS.panel_alt, COLORS.line))
+	name_input.add_theme_stylebox_override("focus", _input_style(COLORS.panel_hover, COLORS.accent))
+	name_input.add_theme_constant_override("minimum_character_width", 8)
 	content.add_child(name_input)
 	content.add_child(_button("开始新的旅程", _new_game, false))
 	content.add_child(_button("继续上次旅程", _load_game, true))
@@ -187,6 +289,8 @@ func _build_start_layer() -> void:
 	connection_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	connection_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	connection_label.add_theme_color_override("font_color", COLORS.muted)
+	connection_label.add_theme_font_size_override("font_size", TYPE_SCALE.detail)
+	connection_label.add_theme_constant_override("line_spacing", 4)
 	content.add_child(connection_label)
 
 
@@ -197,7 +301,7 @@ func _build_confirmation_layer() -> void:
 	confirmation_layer.hide()
 	add_child(confirmation_layer)
 	var shade := ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.72)
+	shade.color = Color("050706d9")
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	confirmation_layer.add_child(shade)
 	var center := CenterContainer.new()
@@ -205,7 +309,7 @@ func _build_confirmation_layer() -> void:
 	confirmation_layer.add_child(center)
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(540, 330)
-	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 2, 22))
+	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 16, COLORS.accent_pressed, 28, 24))
 	center.add_child(card)
 	confirmation_box = VBoxContainer.new()
 	confirmation_box.add_theme_constant_override("separation", 14)
@@ -218,12 +322,12 @@ func _build_ending_layer() -> void:
 	ending_layer.hide()
 	add_child(ending_layer)
 	var shade := ColorRect.new()
-	shade.color = Color(0, 0, 0, 0.78)
+	shade.color = Color("050706e8")
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ending_layer.add_child(shade)
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(680, 520)
-	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 2, 26))
+	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 18, COLORS.accent_pressed, 32, 28))
 	ending_layer.add_child(card)
 	ending_box = VBoxContainer.new()
 	ending_box.add_theme_constant_override("separation", 16)
@@ -234,12 +338,14 @@ func _header_value(parent: Container, caption: String) -> Label:
 	var group := VBoxContainer.new()
 	var small := Label.new()
 	small.text = caption
-	small.add_theme_font_size_override("font_size", 13)
+	small.add_theme_font_override("font", medium_font)
+	small.add_theme_font_size_override("font_size", TYPE_SCALE.meta)
 	small.add_theme_color_override("font_color", COLORS.muted)
 	group.add_child(small)
 	var value := Label.new()
 	value.text = "—"
-	value.add_theme_font_size_override("font_size", 18)
+	value.add_theme_font_override("font", medium_font)
+	value.add_theme_font_size_override("font_size", TYPE_SCALE.metric)
 	value.add_theme_color_override("font_color", COLORS.ink)
 	group.add_child(value)
 	parent.add_child(group)
@@ -250,18 +356,19 @@ func _zone(parent: VBoxContainer, title_text: String, ratio: float) -> VBoxConta
 	var panel := PanelContainer.new()
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = ratio
-	panel.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 14))
+	panel.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 10, COLORS.line_soft, 18, 16))
 	parent.add_child(panel)
 	var outer := VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 10)
 	panel.add_child(outer)
 	var title := Label.new()
 	title.text = title_text
-	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_font_override("font", display_font)
+	title.add_theme_font_size_override("font_size", TYPE_SCALE.section)
 	title.add_theme_color_override("font_color", COLORS.accent)
 	outer.add_child(title)
 	var rule := HSeparator.new()
-	rule.modulate = COLORS.line
+	rule.modulate = Color(COLORS.accent, 0.35)
 	outer.add_child(rule)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -277,22 +384,23 @@ func _zone(parent: VBoxContainer, title_text: String, ratio: float) -> VBoxConta
 func _build_reference_tabs(parent: VBoxContainer) -> void:
 	var panel := PanelContainer.new()
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 14))
+	panel.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 10, COLORS.line_soft, 18, 16))
 	parent.add_child(panel)
 	var outer := VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 10)
 	panel.add_child(outer)
 	var title := Label.new()
 	title.text = "随身资料"
-	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_font_override("font", display_font)
+	title.add_theme_font_size_override("font_size", TYPE_SCALE.section)
 	title.add_theme_color_override("font_color", COLORS.accent)
 	outer.add_child(title)
 	var rule := HSeparator.new()
-	rule.modulate = COLORS.line
+	rule.modulate = Color(COLORS.accent, 0.35)
 	outer.add_child(rule)
 	var tabs := TabContainer.new()
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tabs.add_theme_font_size_override("font_size", 15)
+	tabs.add_theme_font_size_override("font_size", TYPE_SCALE.compact)
 	outer.add_child(tabs)
 	clues_box = _reference_tab(tabs, "线索")
 	people_box = _reference_tab(tabs, "人物")
@@ -311,38 +419,86 @@ func _reference_tab(tabs: TabContainer, tab_name: String) -> VBoxContainer:
 	return box
 
 
-func _panel_style(color: Color, border: int, radius: int) -> StyleBoxFlat:
+func _panel_style(color: Color, border: int, radius: int, border_color := COLORS.line, horizontal_margin := 16, vertical_margin := 14) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = color
-	style.border_color = COLORS.line
+	style.border_color = border_color
 	style.set_border_width_all(border)
 	style.set_corner_radius_all(radius)
-	style.content_margin_left = 16
-	style.content_margin_right = 16
-	style.content_margin_top = 14
-	style.content_margin_bottom = 14
+	style.content_margin_left = horizontal_margin
+	style.content_margin_right = horizontal_margin
+	style.content_margin_top = vertical_margin
+	style.content_margin_bottom = vertical_margin
 	return style
+
+
+func _tab_style(color: Color, border_color: Color) -> StyleBoxFlat:
+	var style := _panel_style(color, 0, 5, border_color, 12, 8)
+	style.border_width_bottom = 2 if border_color.a > 0.0 else 0
+	return style
+
+
+func _input_style(color: Color, border_color: Color) -> StyleBoxFlat:
+	return _panel_style(color, 1, 6, border_color, 16, 11)
 
 
 func _button(text_value: String, callback: Callable, secondary: bool) -> Button:
 	var button := Button.new()
 	button.text = text_value
-	button.custom_minimum_size.y = 44
-	button.add_theme_font_size_override("font_size", 16)
-	var normal_color: Color = COLORS.panel_alt if secondary else Color("5b462d")
-	button.add_theme_stylebox_override("normal", _panel_style(normal_color, 1, 8))
-	button.add_theme_stylebox_override("hover", _panel_style(Color("745a38"), 1, 8))
-	button.add_theme_stylebox_override("pressed", _panel_style(Color("3e3122"), 1, 8))
+	button.custom_minimum_size.y = 46
+	button.add_theme_font_override("font", medium_font)
+	button.add_theme_font_size_override("font_size", TYPE_SCALE.button)
+	if secondary:
+		button.add_theme_color_override("font_color", COLORS.ink)
+		button.add_theme_color_override("font_hover_color", COLORS.ink)
+		button.add_theme_color_override("font_pressed_color", COLORS.accent)
+		button.add_theme_stylebox_override("normal", _panel_style(COLORS.panel_alt, 1, 6, COLORS.line, 14, 10))
+		button.add_theme_stylebox_override("hover", _panel_style(COLORS.panel_hover, 1, 6, COLORS.accent_pressed, 14, 10))
+		button.add_theme_stylebox_override("pressed", _panel_style(COLORS.bg_lift, 1, 6, COLORS.accent, 14, 11))
+	else:
+		button.add_theme_color_override("font_color", COLORS.accent_ink)
+		button.add_theme_color_override("font_hover_color", COLORS.accent_ink)
+		button.add_theme_color_override("font_pressed_color", COLORS.accent_ink)
+		button.add_theme_stylebox_override("normal", _panel_style(COLORS.accent, 0, 6, COLORS.accent, 14, 11))
+		button.add_theme_stylebox_override("hover", _panel_style(COLORS.accent_hover, 0, 6, COLORS.accent_hover, 14, 10))
+		button.add_theme_stylebox_override("pressed", _panel_style(COLORS.accent_pressed, 0, 6, COLORS.accent_pressed, 14, 12))
+	button.add_theme_stylebox_override("focus", _panel_style(Color.TRANSPARENT, 2, 7, COLORS.accent_hover, 12, 8))
+	button.add_theme_stylebox_override("disabled", _panel_style(Color(COLORS.panel_alt, 0.58), 1, 6, Color(COLORS.line, 0.5), 14, 10))
 	button.pressed.connect(callback)
 	return button
 
 
-func _text(parent: Container, value: String, muted := false, size := 15) -> Label:
+func _style_menu_button(button: MenuButton) -> void:
+	button.add_theme_font_override("font", medium_font)
+	button.add_theme_font_size_override("font_size", TYPE_SCALE.button)
+	button.add_theme_color_override("font_color", COLORS.ink)
+	button.add_theme_color_override("font_hover_color", COLORS.ink)
+	button.add_theme_color_override("font_pressed_color", COLORS.accent)
+	button.add_theme_stylebox_override("normal", _panel_style(COLORS.panel_alt, 1, 6, COLORS.line, 14, 9))
+	button.add_theme_stylebox_override("hover", _panel_style(COLORS.panel_hover, 1, 6, COLORS.accent_pressed, 14, 9))
+	button.add_theme_stylebox_override("pressed", _panel_style(COLORS.bg_lift, 1, 6, COLORS.accent, 14, 10))
+	button.add_theme_stylebox_override("focus", _panel_style(Color.TRANSPARENT, 2, 7, COLORS.accent_hover, 12, 7))
+	var popup := button.get_popup()
+	popup.add_theme_color_override("font_color", COLORS.ink)
+	popup.add_theme_color_override("font_hover_color", COLORS.accent_ink)
+	popup.add_theme_stylebox_override("panel", _panel_style(COLORS.panel_alt, 1, 7, COLORS.line, 8, 8))
+	popup.add_theme_stylebox_override("hover", _panel_style(COLORS.accent, 0, 4, COLORS.accent, 8, 6))
+
+
+func _text(parent: Container, value: String, muted := false, size := TYPE_SCALE.body) -> Label:
 	var label := Label.new()
 	label.text = value
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if size >= 24:
+		label.add_theme_font_override("font", display_font)
+	elif size >= 17 or size <= TYPE_SCALE.meta:
+		label.add_theme_font_override("font", medium_font)
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", COLORS.muted if muted else COLORS.ink)
+	if size <= TYPE_SCALE.body:
+		label.add_theme_constant_override("line_spacing", 4)
+	elif size < 24:
+		label.add_theme_constant_override("line_spacing", 3)
 	parent.add_child(label)
 	return label
 
@@ -577,7 +733,7 @@ func _render_clues(clues: Array, actions: Array) -> void:
 			var link := _button("传播 · %d 名可选人物" % target_count, _focus_fact_actions.bind(fact_id, str(clue.get("claim", "未知传言"))), true)
 			clues_box.add_child(link)
 		else:
-			_text(clues_box, "当前地点没有新的传播对象", true, 12)
+			_text(clues_box, "当前地点没有新的传播对象", true, TYPE_SCALE.meta)
 
 
 func _render_scene(events: Array, guidance: Array, travel, feedback, player_name: String) -> void:
@@ -591,10 +747,12 @@ func _render_scene(events: Array, guidance: Array, travel, feedback, player_name
 		scene_box.add_child(separator)
 	if travel is Dictionary:
 		var readiness := "可以动身" if bool(travel.get("ready", false)) else "尚有阻碍"
-		_text(scene_box, "个人入谷准备 · %s" % readiness, false, 17)
+		var readiness_line := _text(scene_box, "个人入谷准备 · %s" % readiness, false, 17)
+		readiness_line.add_theme_color_override("font_color", COLORS.success if bool(travel.get("ready", false)) else COLORS.danger)
 		_text(scene_box, "目的地：%s" % travel.get("destination", "未知"), true, 14)
 		for blocker in travel.get("blockers", []):
-			_text(scene_box, "· %s" % blocker, true)
+			var blocker_line := _text(scene_box, "· %s" % blocker, true)
+			blocker_line.add_theme_color_override("font_color", Color(COLORS.danger, 0.88))
 	for tip in guidance:
 		_text(scene_box, "指引 · %s" % tip, true)
 	if events.is_empty():
@@ -625,7 +783,7 @@ func _render_people(actors: Array, actions: Array) -> void:
 			var link := _button("交涉 · %d 条可用线索" % clue_count, _focus_actor_actions.bind(actor_id, actor_name), true)
 			people_box.add_child(link)
 		else:
-			_text(people_box, "暂无新的线索可告知", true, 12)
+			_text(people_box, "暂无新的线索可告知", true, TYPE_SCALE.meta)
 
 
 func _render_actions(actions: Array) -> void:
@@ -776,6 +934,7 @@ func _add_information_actions(actions: Array) -> void:
 			var menu := MenuButton.new()
 			menu.text = "向%s传递线索…（%d 条）" % [target, facts.size()]
 			menu.custom_minimum_size.y = 42
+			_style_menu_button(menu)
 			menu.get_popup().id_pressed.connect(_on_tell_fact_selected.bind(facts))
 			for index in facts.size():
 				menu.get_popup().add_item(str(facts[index].get("fact_claim", "一条线索")), index)
@@ -792,8 +951,7 @@ func _add_action_button(action: Dictionary) -> void:
 		label += "　· 最多 %d 日" % duration
 	else:
 		label += "　· %d 日" % duration
-	var secondary: bool = action.get("category", "") in ["self", "time"]
-	var button := _button(label, _consider_action.bind(action), secondary)
+	var button := _button(label, _consider_action.bind(action), true)
 	button.tooltip_text = str(action.get("description", ""))
 	actions_box.add_child(button)
 	_text(actions_box, str(action.get("description", "")), true, 14)
@@ -824,14 +982,15 @@ func _consider_action(action: Dictionary) -> void:
 	if warnings is Array:
 		for warning_text in warnings:
 			var warning_line := _text(confirmation_box, "注意 · %s" % warning_text, false, 14)
-			warning_line.add_theme_color_override("font_color", COLORS.accent)
+			warning_line.add_theme_color_override("font_color", COLORS.danger)
 	var costs: Dictionary = action.get("costs", {})
 	if not costs.is_empty():
 		var cost_names := {"spirit_stones": "灵石", "credit": "信用", "combat": "战力", "support": "助力"}
 		var cost_parts: Array[String] = []
 		for key in costs:
 			cost_parts.append("%s %s" % [cost_names.get(key, key), costs[key]])
-		_text(confirmation_box, "消耗：" + "、".join(cost_parts), false, 15)
+		var cost_line := _text(confirmation_box, "消耗：" + "、".join(cost_parts), false, 15)
+		cost_line.add_theme_color_override("font_color", COLORS.danger)
 	confirmation_box.add_child(_button("确认执行", _confirm_selected_action, false))
 	confirmation_box.add_child(_button("再想想", _cancel_confirmation, true))
 	confirmation_layer.show()
@@ -851,8 +1010,13 @@ func _cancel_confirmation() -> void:
 
 func _render_feedback_into(parent: VBoxContainer, feedback: Dictionary) -> void:
 	var status_names := {"completed": "已经完成", "started": "已经开始", "failed": "未能完成", "advanced": "已经推进"}
-	var status := str(status_names.get(feedback.get("status", ""), feedback.get("status", "已结算")))
-	_text(parent, "%s · %s" % [feedback.get("action", "行动"), status], false, 17)
+	var status_key := str(feedback.get("status", ""))
+	var status := str(status_names.get(status_key, feedback.get("status", "已结算")))
+	var status_line := _text(parent, "%s · %s" % [feedback.get("action", "行动"), status], false, 17)
+	if status_key == "failed":
+		status_line.add_theme_color_override("font_color", COLORS.danger)
+	elif status_key == "completed":
+		status_line.add_theme_color_override("font_color", COLORS.success)
 	var days := int(feedback.get("days_advanced", 0))
 	if days > 0:
 		var time_line := _text(parent, "时日推进 · %d 日" % days, false, 15)
