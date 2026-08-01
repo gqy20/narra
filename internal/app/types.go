@@ -76,11 +76,18 @@ type PlayMetrics struct {
 }
 
 type TravelGuidance struct {
-	Destination string   `json:"destination"`
-	TravelDays  int      `json:"travel_days"`
-	Ready       bool     `json:"ready"`
-	Blockers    []string `json:"blockers,omitempty"`
-	Timing      string   `json:"timing,omitempty"`
+	Destination string        `json:"destination"`
+	TravelDays  int           `json:"travel_days"`
+	Ready       bool          `json:"ready"`
+	Blockers    []string      `json:"blockers,omitempty"`
+	Timing      string        `json:"timing,omitempty"`
+	Route       []string      `json:"route,omitempty"`
+	Checks      []TravelCheck `json:"checks,omitempty"`
+}
+
+type TravelCheck struct {
+	Label string `json:"label"`
+	Ready bool   `json:"ready"`
 }
 
 type VisiblePlayer struct {

@@ -17,20 +17,43 @@ func (s *Session) travelGuidance(state *domain.WorldState) *TravelGuidance {
 	}
 	routes, days, ok := s.shortestPublicRoute(state.Player.Location, destinationID)
 	if !ok {
-		return &TravelGuidance{Destination: destination.Name, Blockers: []string{"尚未发现可行路线"}}
+		return &TravelGuidance{
+			Destination: destination.Name,
+			Blockers:    []string{"尚未发现可行路线"},
+			Checks:      []TravelCheck{{Label: "可用路线已发现", Ready: false}},
+		}
 	}
-	guidance := &TravelGuidance{Destination: destination.Name, TravelDays: days}
+	guidance := &TravelGuidance{
+		Destination: destination.Name,
+		TravelDays:  days,
+		Checks:      []TravelCheck{{Label: "可用路线已发现", Ready: true}},
+	}
+	if current, found := s.bundle.Locations[state.Player.Location]; found {
+		guidance.Route = append(guidance.Route, current.Name)
+	}
 	seen := make(map[string]bool)
+	seenChecks := make(map[string]bool)
 	for _, route := range routes {
-		if route.RequiredItem != "" && state.Player.Items[route.RequiredItem] <= 0 {
+		if next, found := s.bundle.Locations[route.To]; found {
+			guidance.Route = append(guidance.Route, next.Name)
+		}
+		if route.RequiredItem != "" {
 			name := route.RequiredItem
 			if item, found := s.bundle.Items[route.RequiredItem]; found {
 				name = item.Name
 			}
-			appendBlocker(&guidance.Blockers, seen, "缺少"+name)
+			hasItem := state.Player.Items[route.RequiredItem] > 0
+			appendTravelCheck(&guidance.Checks, seenChecks, "携带"+name, hasItem)
+			if !hasItem {
+				appendBlocker(&guidance.Blockers, seen, "缺少"+name)
+			}
 		}
-		if route.RequiredFlag != "" && !state.WorldFlag(route.RequiredFlag) {
-			appendBlocker(&guidance.Blockers, seen, routeFlagLabel(route.RequiredFlag))
+		if route.RequiredFlag != "" {
+			flagReady := state.WorldFlag(route.RequiredFlag)
+			appendTravelCheck(&guidance.Checks, seenChecks, routeFlagCheckLabel(route.RequiredFlag), flagReady)
+			if !flagReady {
+				appendBlocker(&guidance.Blockers, seen, routeFlagLabel(route.RequiredFlag))
+			}
 		}
 	}
 	guidance.Ready = len(guidance.Blockers) == 0
@@ -147,11 +170,28 @@ func appendBlocker(blockers *[]string, seen map[string]bool, blocker string) {
 	*blockers = append(*blockers, blocker)
 }
 
+func appendTravelCheck(checks *[]TravelCheck, seen map[string]bool, label string, ready bool) {
+	if label == "" || seen[label] {
+		return
+	}
+	seen[label] = true
+	*checks = append(*checks, TravelCheck{Label: label, Ready: ready})
+}
+
 func routeFlagLabel(flag string) string {
 	switch flag {
 	case "valley_open":
 		return "黑风谷入口尚未开放"
 	default:
 		return "路线条件尚未满足"
+	}
+}
+
+func routeFlagCheckLabel(flag string) string {
+	switch flag {
+	case "valley_open":
+		return "黑风谷入口开放"
+	default:
+		return "路线条件满足"
 	}
 }

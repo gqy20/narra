@@ -284,6 +284,9 @@ func TestInitialGuidanceExplainsCoreDecisionWithoutLeakingTrueDate(t *testing.T)
 	if view.Travel == nil || view.Travel.TravelDays != 3 || view.Travel.Ready || !containsMessage(view.Travel.Blockers, "缺少解瘴丹") || !containsMessage(view.Travel.Blockers, "入口尚未开放") || !strings.Contains(view.Travel.Timing, "未经核实") {
 		t.Fatalf("initial travel guidance = %+v", view.Travel)
 	}
+	if len(view.Travel.Route) < 2 || !containsMessage(view.Travel.Route, "黑风谷") || !travelCheckReady(view.Travel.Checks, "可用路线", true) || !travelCheckReady(view.Travel.Checks, "携带解瘴丹", false) || !travelCheckReady(view.Travel.Checks, "入口开放", false) {
+		t.Fatalf("initial travel route/checks = %+v", view.Travel)
+	}
 }
 
 func TestWaitUntilCompleteSkipsBusyDays(t *testing.T) {
@@ -310,11 +313,17 @@ func TestTravelGuidanceSeparatesItemRouteAndKnownDeadline(t *testing.T) {
 	if view.Travel == nil || containsMessage(view.Travel.Blockers, "缺少解瘴丹") || !containsMessage(view.Travel.Blockers, "入口尚未开放") || !strings.Contains(view.Travel.Timing, "已核实日期") {
 		t.Fatalf("prepared travel guidance = %+v", view.Travel)
 	}
+	if !travelCheckReady(view.Travel.Checks, "携带解瘴丹", true) || !travelCheckReady(view.Travel.Checks, "入口开放", false) {
+		t.Fatalf("prepared travel checks = %+v", view.Travel.Checks)
+	}
 	for view.Day < 17 {
 		view, _ = session.Execute("wait")
 	}
 	if view.Travel == nil || !view.Travel.Ready || len(view.Travel.Blockers) != 0 {
 		t.Fatalf("day 17 travel guidance = %+v", view.Travel)
+	}
+	if !travelCheckReady(view.Travel.Checks, "携带解瘴丹", true) || !travelCheckReady(view.Travel.Checks, "入口开放", true) {
+		t.Fatalf("ready travel checks = %+v", view.Travel.Checks)
 	}
 }
 
@@ -572,6 +581,15 @@ func beliefConfidence(beliefs []VisibleBelief, id string) int {
 func containsMessage(messages []string, fragment string) bool {
 	for _, message := range messages {
 		if strings.Contains(message, fragment) {
+			return true
+		}
+	}
+	return false
+}
+
+func travelCheckReady(checks []TravelCheck, fragment string, ready bool) bool {
+	for _, check := range checks {
+		if strings.Contains(check.Label, fragment) && check.Ready == ready {
 			return true
 		}
 	}

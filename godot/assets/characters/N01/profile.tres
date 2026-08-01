@@ -1,10 +1,16 @@
-[gd_resource type="Resource" script_class="ActorVisualProfile" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="ActorVisualProfile" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/actor_visual_profile.gd" id="1_profile"]
 [ext_resource type="Texture2D" path="res://assets/characters/N01/neutral.png" id="2_neutral"]
+[ext_resource type="Texture2D" path="res://assets/characters/N01/alert.png" id="3_alert"]
+[ext_resource type="Texture2D" path="res://assets/characters/N01/troubled.png" id="4_troubled"]
+[ext_resource type="Texture2D" path="res://assets/characters/N01/decisive.png" id="5_decisive"]
 
 [resource]
 script = ExtResource("1_profile")
 actor_id = "N01"
 neutral = ExtResource("2_neutral")
+alert = ExtResource("3_alert")
+troubled = ExtResource("4_troubled")
+decisive = ExtResource("5_decisive")
 accent_color = Color(0.55, 0.43, 0.31, 1)

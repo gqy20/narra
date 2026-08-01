@@ -101,6 +101,14 @@ go run ./cmd/server
 ./tools/verify-godot.ps1
 ```
 
+录制一段由真实 Godot 客户端与本地规则服务共同驱动的完整玩法演示：
+
+```powershell
+./tools/record-gameplay.ps1
+```
+
+脚本会依次展示开局、地点场景、日期核验、地图赶路、沈砚秋交涉、决策变化和结局，并将 H.264 MP4 写入 `artifacts/video/fantu-gameplay-demo.mp4`。
+
 ## 运行 T00
 
 ```powershell

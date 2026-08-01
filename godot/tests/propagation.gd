@@ -29,6 +29,14 @@ func _run() -> void:
 		return _fail("Qinglan presentation profile did not become active")
 	if not app.actor_portrait_frame.visible or app.actor_portrait.texture == null:
 		return _fail("Shen Yanqiu portrait is not visible at the location")
+	var shen_profile: ActorVisualProfile = app.presentation_registry.actor_profile("N03")
+	if shen_profile == null or shen_profile.alert == null or shen_profile.troubled == null or shen_profile.decisive == null:
+		return _fail("Shen Yanqiu expression portraits are not fully registered")
+	if app.actor_expression_by_id.get("N03", "") != "troubled" or app.actor_portrait.texture != shen_profile.troubled:
+		return _fail("delivered information did not put Shen Yanqiu into the weighing state")
+	var travel: Dictionary = app.current_view.get("travel", {})
+	if travel.get("route", []).size() < 2 or travel.get("checks", []).is_empty():
+		return _fail("travel route and readiness checks are not available")
 	var found_verified_timing := false
 	for action in app.current_view.get("available_actions", []):
 		if action.get("id", "") == "tell:N03:F01":
@@ -38,6 +46,9 @@ func _run() -> void:
 	if not found_verified_timing:
 		return _fail("action timing did not update after verification")
 	app._focus_actor_actions("N03", "沈砚秋")
+	var dossier_text := _descendant_text(app.actions_box)
+	if "传播风险" not in dossier_text or "当前状态" not in dossier_text or "正在权衡" not in dossier_text:
+		return _fail("focused actor dossier does not expose decision context and state")
 	var shen_actions: Array = app._focused_information_actions(app.available_actions_cache)
 	for action in shen_actions:
 		if action.get("fact_id", "") == "F01":
@@ -45,7 +56,14 @@ func _run() -> void:
 		if action.get("relevance", "") == "" or action.get("risk", "") == "":
 			return _fail("actor focus lacks public decision context")
 	app._clear_action_focus()
-	for index in 4:
+	if not await _execute("wait:next"):
+		return
+	if app.actor_expression_by_id.get("N03", "") != "decisive" or app.actor_portrait.texture != shen_profile.decisive:
+		return _fail("visible decision change did not put Shen Yanqiu into the decisive state")
+	var causal_text := _descendant_text(app.actions_box)
+	if "沈砚秋" not in causal_text or "原本" not in causal_text or "现在" not in causal_text:
+		return _fail("recent interaction result does not show the causal before/after change")
+	for index in 3:
 		if not await _execute("wait:next"):
 			return
 
@@ -60,6 +78,8 @@ func _run() -> void:
 		return _fail("unexpected propagation outcome")
 	if "准备值" in str(app.current_view.get("outcome", "")):
 		return _fail("ending leaked an internal score")
+	if "余波记录" not in _descendant_text(app.ending_box):
+		return _fail("ending overlay does not expose the aftermath section")
 	print("Godot propagation journey passed: ending visible on day %d" % app.current_view.get("day", 0))
 	quit(0)
 
@@ -97,6 +117,15 @@ func _wait_until_idle(timeout_ms := 10000) -> bool:
 			if app.pending_operation == "" and not app.presentation_busy:
 				return true
 	return false
+
+
+func _descendant_text(node: Node) -> String:
+	var result := ""
+	if node is Label or node is Button:
+		result += str(node.text) + "\n"
+	for child in node.get_children():
+		result += _descendant_text(child)
+	return result
 
 
 func _fail(message: String) -> void:

@@ -50,6 +50,7 @@ var focused_fact_id := ""
 var focused_fact_claim := ""
 var stage_actor_id := ""
 var stage_actor_name := ""
+var actor_expression_by_id := {}
 var selected_map_location_id := ""
 var rendered_location_id := ""
 var visual_mode := "map"
@@ -761,6 +762,8 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 	if parsed.has("view") and operation not in ["autosave", "save"]:
 		var previous_view := view_before_action if operation == "action" else current_view
 		current_view = parsed["view"]
+		if operation == "action":
+			_apply_feedback_actor_state(current_view.get("last_turn", {}))
 		_show_game()
 		_render_view()
 		if operation == "action":
@@ -830,6 +833,20 @@ func _apply_presentation_cue(cue: Dictionary) -> void:
 		_focus_portrait(str(cue.get("subject_id", "")))
 
 
+func _apply_feedback_actor_state(feedback: Dictionary) -> void:
+	if feedback.is_empty():
+		return
+	var action_id := str(feedback.get("action_id", ""))
+	if action_id.begins_with("tell:"):
+		var parts := action_id.split(":")
+		if parts.size() >= 2:
+			actor_expression_by_id[str(parts[1])] = "troubled"
+	for influence in feedback.get("influence", []):
+		var actor_id := _actor_id_by_name(str(influence.get("actor_name", "")))
+		if actor_id != "":
+			actor_expression_by_id[actor_id] = "decisive"
+
+
 func _on_travel_day_changed(day: int) -> void:
 	day_label.text = "第 %d / %d 日" % [maxi(1, day), int(current_view.get("duration", 0))]
 
@@ -844,6 +861,7 @@ func _new_game() -> void:
 	var player_name := name_input.text.strip_edges()
 	if player_name == "":
 		player_name = "无名修士"
+	actor_expression_by_id.clear()
 	_reset_action_focus()
 	_set_visual_mode("map")
 	_request("new", HTTPClient.METHOD_POST, "/game/new", {"player_name": player_name})
@@ -1011,6 +1029,14 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 	var title_line := _text(map_detail_box, "%s · %s" % [selected.get("name", "未知地点"), "安全落脚点" if bool(selected.get("safe", false)) else "危险区域"], false, 16)
 	title_line.add_theme_color_override("font_color", COLORS.accent if bool(selected.get("current", false)) else COLORS.ink)
 	_text(map_detail_box, str(selected.get("description", "尚无公开地点资料")), true, 13)
+	if bool(selected.get("contest", false)):
+		var contest_line := _text(map_detail_box, "核心目标 · 青髓芝争夺将在这里落定", false, 13)
+		contest_line.add_theme_color_override("font_color", COLORS.accent)
+	match str(selected.get("scene_key", "")):
+		"valley_edge":
+			_text(map_detail_box, "推进阶段 · 第一段：谷口判断", true, 13)
+		"inner_valley":
+			_text(map_detail_box, "推进阶段 · 第二段：核心争夺", true, 13)
 	if bool(selected.get("current", false)):
 		var enter_button := _button("进入当前地点场景", _set_visual_mode.bind("location"), true)
 		enter_button.custom_minimum_size.y = 38
@@ -1038,7 +1064,15 @@ func _render_location_stage(location: Dictionary, actors: Array, actions: Array)
 	audio_director.set_scene(str(location.get("scene_key", "")))
 	_render_actor_portrait(actors)
 	_clear(location_detail_box)
+	var phase_marker := ""
+	match str(location.get("scene_key", "")):
+		"valley_edge":
+			phase_marker = "第一段 · 谷口判断"
+		"inner_valley":
+			phase_marker = "第二段 · 核心争夺"
 	var place_title := "%s · %s" % [location.get("name", "未知地点"), "安稳" if bool(location.get("safe", false)) else "险地"]
+	if phase_marker != "":
+		place_title += " · %s" % phase_marker
 	if not actors.is_empty():
 		place_title += " · 在场 %d 人" % actors.size()
 	var place_line := _text(location_detail_box, place_title, false, 17)
@@ -1079,16 +1113,20 @@ func _render_actor_portrait(actors: Array) -> void:
 	var actor := _selected_stage_actor(actors)
 	if actor.is_empty():
 		return
-	_show_actor_portrait(actor, "neutral")
+	var actor_id := str(actor.get("id", ""))
+	_show_actor_portrait(actor, str(actor_expression_by_id.get(actor_id, "neutral")))
 
 
-func _focus_portrait(actor_id: String) -> void:
+func _focus_portrait(actor_id: String, expression_override := "") -> void:
 	var actor := _actor_by_id(current_view.get("known_actors", []), actor_id)
 	if actor.is_empty():
 		actor = {"id": actor_id, "name": stage_actor_name, "public_role": "可交谈人物"}
 	stage_actor_id = actor_id
 	stage_actor_name = str(actor.get("name", stage_actor_name))
-	_show_actor_portrait(actor, "alert")
+	var expression := expression_override
+	if expression == "":
+		expression = str(actor_expression_by_id.get(actor_id, "alert"))
+	_show_actor_portrait(actor, expression)
 
 
 func _show_actor_portrait(actor: Dictionary, expression: String) -> void:
@@ -1096,14 +1134,36 @@ func _show_actor_portrait(actor: Dictionary, expression: String) -> void:
 	var profile: ActorVisualProfile = presentation_registry.actor_profile(actor_id)
 	if profile == null or profile.neutral == null:
 		return
-	actor_portrait.texture = profile.portrait(expression)
+	var portrait_texture := profile.portrait(expression)
+	if portrait_texture == null:
+		return
+	actor_portrait.texture = portrait_texture
 	actor_portrait_name.text = str(actor.get("name", "无名者"))
 	var role := str(actor.get("public_role", "可交谈人物"))
 	var faction := str(actor.get("faction", ""))
-	actor_portrait_meta.text = role if faction == "" else "%s · %s" % [role, faction]
+	var expression_names := {"neutral": "平静", "alert": "警觉", "troubled": "权衡中", "decisive": "已有决断"}
+	var meta_parts: Array[String] = [role]
+	if faction != "":
+		meta_parts.append(faction)
+	if expression != "neutral":
+		meta_parts.append(str(expression_names.get(expression, expression)))
+	actor_portrait_meta.text = " · ".join(meta_parts)
 	actor_portrait_frame.tooltip_text = "%s · %s" % [actor_portrait_name.text, role]
 	actor_portrait_frame.add_theme_stylebox_override("panel", _panel_style(Color("101612e8"), 1, 8, profile.accent_color.lerp(COLORS.accent, 0.4), 4, 4))
 	actor_portrait_frame.show()
+	var target_modulate := Color.WHITE
+	match expression:
+		"alert":
+			target_modulate = Color("f0eadf")
+		"troubled":
+			target_modulate = Color("cbd3cb")
+		"decisive":
+			target_modulate = Color("fff0c8")
+	actor_portrait.modulate = Color(target_modulate, 0.25)
+	actor_portrait.scale = Vector2(0.985, 0.985)
+	var portrait_tween := create_tween().set_parallel(true)
+	portrait_tween.tween_property(actor_portrait, "modulate", target_modulate, 0.28)
+	portrait_tween.tween_property(actor_portrait, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func _selected_stage_actor(actors: Array) -> Dictionary:
@@ -1126,6 +1186,13 @@ func _actor_by_id(actors, actor_id: String) -> Dictionary:
 		if str(actor.get("id", "")) == actor_id:
 			return actor
 	return {}
+
+
+func _actor_id_by_name(actor_name: String) -> String:
+	for actor in current_view.get("known_actors", []):
+		if str(actor.get("name", "")) == actor_name:
+			return str(actor.get("id", ""))
+	return ""
 
 
 func _reconcile_stage_actor(actors: Array) -> void:
@@ -1237,13 +1304,7 @@ func _render_scene(events: Array, guidance: Array, travel, feedback, player_name
 		separator.modulate = COLORS.line
 		scene_box.add_child(separator)
 	if travel is Dictionary:
-		var readiness := "可以动身" if bool(travel.get("ready", false)) else "尚有阻碍"
-		var readiness_line := _text(scene_box, "个人入谷准备 · %s" % readiness, false, 17)
-		readiness_line.add_theme_color_override("font_color", COLORS.success if bool(travel.get("ready", false)) else COLORS.danger)
-		_text(scene_box, "目的地：%s" % travel.get("destination", "未知"), true, 14)
-		for blocker in travel.get("blockers", []):
-			var blocker_line := _text(scene_box, "· %s" % blocker, true)
-			blocker_line.add_theme_color_override("font_color", Color(COLORS.danger, 0.88))
+		_render_travel_readiness(travel)
 	for tip in guidance:
 		_text(scene_box, "指引 · %s" % tip, true)
 	if events.is_empty():
@@ -1257,6 +1318,35 @@ func _render_scene(events: Array, guidance: Array, travel, feedback, player_name
 		if feedback is Dictionary and int(event.get("day", -1)) == int(feedback.get("day", -2)) and str(event.get("actor_name", "")) == player_name:
 			continue
 		_text(scene_box, "第 %d 日 · %s" % [int(event.get("day", 0)), event.get("description", "局势变化")])
+
+
+func _render_travel_readiness(travel: Dictionary) -> void:
+	var panel := PanelContainer.new()
+	var ready := bool(travel.get("ready", false))
+	panel.add_theme_stylebox_override("panel", _panel_style(COLORS.panel_alt, 1, 7, Color(COLORS.success if ready else COLORS.danger, 0.7), 13, 11))
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 5)
+	panel.add_child(content)
+	var readiness := "行装已齐" if ready else "仍需准备"
+	var readiness_line := _text(content, "黑风谷行装 · %s" % readiness, false, 17)
+	readiness_line.add_theme_color_override("font_color", COLORS.success if ready else COLORS.danger)
+	var route: Array = travel.get("route", [])
+	if not route.is_empty():
+		_text(content, "路线 · %s · 约 %d 日" % [" → ".join(route), int(travel.get("travel_days", 0))], true, 13)
+	else:
+		_text(content, "目的地 · %s" % travel.get("destination", "未知"), true, 13)
+	var checks: Array = travel.get("checks", [])
+	for check in checks:
+		var check_ready := bool(check.get("ready", false))
+		var marker := "已备" if check_ready else "未备"
+		var check_line := _text(content, "%s · %s" % [marker, check.get("label", "路线条件")], false, 13)
+		check_line.add_theme_color_override("font_color", COLORS.success if check_ready else COLORS.danger)
+	var timing := str(travel.get("timing", ""))
+	if timing != "":
+		var timing_line := _text(content, "时机 · %s" % timing, true, 13)
+		if timing.contains("来不及"):
+			timing_line.add_theme_color_override("font_color", COLORS.danger)
+	scene_box.add_child(panel)
 
 
 func _render_people(actors: Array, actions: Array) -> void:
@@ -1290,6 +1380,8 @@ func _render_actions(actions: Array) -> void:
 	var focused_actions := _focused_information_actions(actions)
 	if focused_actor_id != "":
 		_text(actions_box, "与%s交涉" % focused_actor_name, false, 18)
+		_render_focused_actor_summary(focused_actions)
+		_render_recent_interaction_result()
 		actions_box.add_child(_button("返回全部行动", _clear_action_focus, true))
 		if focused_actions.is_empty():
 			_text(actions_box, "目前没有新的线索可告知；已经送达的内容不会重复出现。", true)
@@ -1299,6 +1391,7 @@ func _render_actions(actions: Array) -> void:
 	if focused_fact_id != "":
 		_text(actions_box, "传播线索", false, 18)
 		_text(actions_box, focused_fact_claim, true, 14)
+		_render_recent_interaction_result()
 		actions_box.add_child(_button("返回全部行动", _clear_action_focus, true))
 		if focused_actions.is_empty():
 			_text(actions_box, "当前地点已没有尚未收到这条线索的人。", true)
@@ -1306,8 +1399,10 @@ func _render_actions(actions: Array) -> void:
 		_add_focused_information_actions(focused_actions)
 		return
 	if actions.is_empty():
+		_render_recent_interaction_result()
 		_text(actions_box, "当前没有可执行行动。", true)
 		return
+	_render_recent_interaction_result()
 	var grouped := {}
 	for action in actions:
 		var category := str(action.get("category", "other"))
@@ -1334,6 +1429,58 @@ func _render_actions(actions: Array) -> void:
 		else:
 			for action in grouped[category]:
 				_add_action_button(action)
+
+
+func _render_focused_actor_summary(focused_actions: Array) -> void:
+	var actor := _actor_by_id(current_view.get("known_actors", []), focused_actor_id)
+	if actor.is_empty():
+		return
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _panel_style(COLORS.panel_alt, 1, 7, COLORS.line, 13, 11))
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 6)
+	panel.add_child(content)
+	var role_line := _text(content, "%s · %s" % [actor.get("public_role", "可交谈人物"), actor.get("faction", "散修")], true, 13)
+	role_line.add_theme_color_override("font_color", COLORS.accent)
+	_text(content, str(actor.get("public_profile", "公开资料尚未收集")), false, 14)
+	var focus: Array = actor.get("public_focus", [])
+	if not focus.is_empty():
+		_text(content, "关注 · %s" % "、".join(focus), true, 13)
+	_text(content, "传播风险 · %s" % actor.get("public_risk", "尚不了解"), true, 13)
+	var state_names := {"neutral": "平静", "alert": "正在留意你", "troubled": "正在权衡消息", "decisive": "已经形成决断"}
+	var expression := str(actor_expression_by_id.get(focused_actor_id, "alert"))
+	var state_line := _text(content, "当前状态 · %s · 可谈线索 %d 条" % [state_names.get(expression, expression), focused_actions.size()], false, 13)
+	state_line.add_theme_color_override("font_color", COLORS.success if expression == "decisive" else COLORS.muted)
+	actions_box.add_child(panel)
+
+
+func _render_recent_interaction_result() -> void:
+	var feedback = current_view.get("last_turn", null)
+	if not feedback is Dictionary:
+		return
+	var action_id := str(feedback.get("action_id", ""))
+	var influences: Array = feedback.get("influence", [])
+	if not action_id.begins_with("tell:") and influences.is_empty():
+		return
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _panel_style(Color("172019"), 1, 7, Color(COLORS.accent, 0.58), 13, 11))
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 5)
+	panel.add_child(content)
+	var heading := _text(content, "最近一次交涉", true, 13)
+	heading.add_theme_color_override("font_color", COLORS.accent)
+	if action_id.begins_with("tell:"):
+		_text(content, "%s · 消息已送达" % feedback.get("action", "传递线索"), false, 15)
+	if influences.is_empty():
+		_text(content, "对方正在权衡；当前尚未观察到计划变化。推进局势后会在这里核对结果。", true, 13)
+	else:
+		for influence in influences:
+			_text(content, "%s因“%s”改变判断" % [influence.get("actor_name", "有人"), influence.get("fact_claim", "消息")], false, 14)
+			for change in influence.get("changes", []):
+				_text(content, "原本 · %s" % change.get("without_information", "其他安排"), true, 13)
+				var changed := _text(content, "现在 · %s" % change.get("with_information", "新的安排"), false, 13)
+				changed.add_theme_color_override("font_color", COLORS.success)
+	actions_box.add_child(panel)
 
 
 func _count_tell_actions(actions: Array, actor_id: String, fact_id: String) -> int:
@@ -1611,21 +1758,28 @@ func _render_ending(ending: Dictionary) -> void:
 	_clear(ending_box)
 	var eyebrow := _text(ending_box, "尘埃落定", true, 15)
 	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var outcome_heading := _text(ending_box, "最终归属", true, 13)
+	outcome_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	outcome_heading.add_theme_color_override("font_color", COLORS.accent)
 	var title := _text(ending_box, str(ending.get("outcome", current_view.get("outcome", "旅程结束"))), false, 30)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var influences: Array = ending.get("influence", [])
 	if not influences.is_empty():
-		var impact_heading := _text(ending_box, "你的选择如何改变了局势", true, 14)
+		var impact_heading := _text(ending_box, "你的介入", true, 14)
 		impact_heading.add_theme_color_override("font_color", COLORS.accent)
 	for influence in influences:
 		_text(ending_box, "你将“%s”告诉了%s。" % [influence.get("fact_claim", "消息"), influence.get("actor_name", "某人")], false, 15)
 		for change in influence.get("changes", []):
 			_text(ending_box, "第 %d 日 · 原本%s，后来%s。" % [int(change.get("day", 0)), change.get("without_information", "另有安排"), change.get("with_information", "改变计划")], true, 14)
-	var record_heading := _text(ending_box, "本局记录", true, 14)
+	var record_heading := _text(ending_box, "余波记录", true, 14)
 	record_heading.add_theme_color_override("font_color", COLORS.accent)
 	for highlight in ending.get("highlights", []):
 		if str(highlight).begins_with("你传递的消息改变了"):
 			continue
 		_text(ending_box, "· %s" % highlight)
+	if influences.is_empty():
+		_text(ending_box, "这一次没有观察到你传递的消息改写他人计划。", true, 14)
+	else:
+		_text(ending_box, "局势已经落定，但被你改变的计划会成为下一段旅途的起点。", true, 14)
 	ending_box.add_child(_button("返回起点", _return_to_start, false))
 	ending_layer.show()
