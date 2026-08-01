@@ -9,14 +9,16 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"fantu/internal/diagnosticlog"
 )
 
 func TestAccessLogContainsMetadataWithoutBodyOrQuery(t *testing.T) {
 	var output bytes.Buffer
-	logger := log.New(&output, "", 0)
+	logger := diagnosticlog.New(log.New(&output, "", 0), diagnosticlog.Info, "server", "session-1", "0.1.0")
 	handler := accessLog(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusTeapot)
-	}), logger, "session-1", "0.1.0")
+	}), logger)
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/game/action?secret=query-value", strings.NewReader(`{"secret":"body-value"}`))
 	response := httptest.NewRecorder()
 
@@ -44,7 +46,7 @@ func TestServerErrorWriterPersistsPanicDiagnostic(t *testing.T) {
 	var output bytes.Buffer
 	crashDir := t.TempDir()
 	writer := serverErrorWriter{
-		logger:   log.New(&output, "", 0),
+		logger:   diagnosticlog.New(log.New(&output, "", 0), diagnosticlog.Info, "server", "session-1", "0.1.0"),
 		session:  "session-1",
 		version:  "0.1.0",
 		crashDir: crashDir,
@@ -52,7 +54,7 @@ func TestServerErrorWriterPersistsPanicDiagnostic(t *testing.T) {
 	if _, err := writer.Write([]byte("http: panic serving 127.0.0.1: test panic\nstack")); err != nil {
 		t.Fatal(err)
 	}
-	archives, err := filepath.Glob(filepath.Join(crashDir, "server-http-panic-*.log"))
+	archives, err := filepath.Glob(filepath.Join(crashDir, "server-http-crash-*.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

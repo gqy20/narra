@@ -13,11 +13,13 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
 
+	"fantu/internal/crashreport"
+	"fantu/internal/diagnosticlog"
 	"fantu/internal/logfile"
 	"fantu/internal/scenario"
 	gameserver "fantu/internal/server"
@@ -31,12 +33,18 @@ func main() {
 	crashDir := flag.String("crash-dir", "", "directory for recovered HTTP panic diagnostics")
 	logMaxMB := flag.Int64("log-max-mb", 5, "maximum active server log size in MiB")
 	logBackups := flag.Int("log-backups", 5, "number of archived server logs to retain")
+	logLevelName := flag.String("log-level", "INFO", "minimum diagnostic level: DEBUG, INFO, WARN, or ERROR")
 	version := flag.String("version", "dev", "game build version included in diagnostics")
 	sessionID := flag.String("session-id", "", "client session identifier included in diagnostics")
 	shutdownToken := flag.String("shutdown-token", "", "token required by the loopback graceful-shutdown endpoint")
 	flag.Parse()
 	if *sessionID == "" {
 		*sessionID = fmt.Sprintf("server-%d", os.Getpid())
+	}
+	logLevel, err := diagnosticlog.ParseLevel(*logLevelName)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "server: configure logging:", err)
+		os.Exit(2)
 	}
 
 	logOutput := io.Writer(os.Stderr)
@@ -49,20 +57,21 @@ func main() {
 			os.Exit(1)
 		}
 		defer rotatingLog.Close()
-		logOutput = io.MultiWriter(os.Stderr, rotatingLog)
+		logOutput = &logfile.FallbackWriter{Primary: rotatingLog, Fallback: os.Stderr}
 	}
-	logger := log.New(logOutput, "", 0)
-	logEvent(logger, *sessionID, *version, "INFO", "startup", "starting rules service",
+	logger := diagnosticlog.New(log.New(logOutput, "", 0), logLevel, "server", *sessionID, *version)
+	defer captureUnhandledPanic(logger, *crashDir, *sessionID, *version)
+	logger.Event(diagnosticlog.Info, "startup", "starting rules service",
 		"pid", os.Getpid(), "address", *address, "data", *dataDir, "saves", *saveDir)
 
 	if err := os.MkdirAll(*saveDir, 0o755); err != nil {
-		failWithContext(logger, *sessionID, *version, fmt.Errorf("prepare save directory: %w", err))
+		failWithContext(logger, fmt.Errorf("prepare save directory: %w", err))
 	}
 	bundle, err := scenario.Load(*dataDir)
 	if err != nil {
-		failWithContext(logger, *sessionID, *version, fmt.Errorf("load scenario data: %w", err))
+		failWithContext(logger, fmt.Errorf("load scenario data: %w", err))
 	}
-	logEvent(logger, *sessionID, *version, "INFO", "scenario_loaded", "scenario data loaded")
+	logger.Event(diagnosticlog.Info, "scenario_loaded", "scenario data loaded")
 	shutdownReasons := make(chan string, 1)
 	requestShutdown := func(reason string) {
 		select {
@@ -78,7 +87,7 @@ func main() {
 	}).Handler()
 	service := &http.Server{
 		Addr:              *address,
-		Handler:           accessLog(handler, logger, *sessionID, *version),
+		Handler:           accessLog(handler, logger),
 		ReadHeaderTimeout: 5 * time.Second,
 		ErrorLog: log.New(serverErrorWriter{
 			logger:   logger,
@@ -96,51 +105,43 @@ func main() {
 	}()
 	go func() {
 		reason := <-shutdownReasons
-		logEvent(logger, *sessionID, *version, "INFO", "shutdown_requested", "graceful shutdown requested", "reason", reason)
+		logger.Event(diagnosticlog.Info, "shutdown_requested", "graceful shutdown requested", "reason", reason)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := service.Shutdown(ctx); err != nil {
-			logEvent(logger, *sessionID, *version, "ERROR", "shutdown_failed", "graceful shutdown failed", "error", err)
+			logger.Event(diagnosticlog.Error, "shutdown_failed", "graceful shutdown failed", "error", err)
 		}
 	}()
 
 	listener, err := net.Listen("tcp", *address)
 	if err != nil {
-		failWithContext(logger, *sessionID, *version, fmt.Errorf("listen: %w", err))
+		failWithContext(logger, fmt.Errorf("listen: %w", err))
 	}
-	logEvent(logger, *sessionID, *version, "INFO", "listening", "rules service is ready", "url", "http://"+listener.Addr().String())
+	logger.Event(diagnosticlog.Info, "listening", "rules service is ready", "url", "http://"+listener.Addr().String())
 	if err := service.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		failWithContext(logger, *sessionID, *version, fmt.Errorf("serve: %w", err))
+		failWithContext(logger, fmt.Errorf("serve: %w", err))
 	}
-	logEvent(logger, *sessionID, *version, "INFO", "stopped", "rules service stopped")
+	logger.Event(diagnosticlog.Info, "stopped", "rules service stopped")
 }
 
-func failWithContext(logger *log.Logger, sessionID, version string, err error) {
-	logEvent(logger, sessionID, version, "ERROR", "fatal", "rules service cannot continue", "error", err)
+func failWithContext(logger *diagnosticlog.Logger, err error) {
+	logger.Event(diagnosticlog.Error, "fatal", "rules service cannot continue", "error", err)
 	os.Exit(1)
 }
 
-func logEvent(logger *log.Logger, sessionID, version, level, event, message string, fields ...any) {
-	var line strings.Builder
-	line.WriteString("timestamp=")
-	line.WriteString(time.Now().UTC().Format(time.RFC3339Nano))
-	line.WriteString(" level=")
-	line.WriteString(level)
-	line.WriteString(" component=server event=")
-	line.WriteString(event)
-	line.WriteString(" session=")
-	line.WriteString(strconv.Quote(sessionID))
-	line.WriteString(" version=")
-	line.WriteString(strconv.Quote(version))
-	line.WriteString(" message=")
-	line.WriteString(strconv.Quote(message))
-	for index := 0; index+1 < len(fields); index += 2 {
-		line.WriteByte(' ')
-		line.WriteString(fmt.Sprint(fields[index]))
-		line.WriteByte('=')
-		line.WriteString(strconv.Quote(fmt.Sprint(fields[index+1])))
+func captureUnhandledPanic(logger *diagnosticlog.Logger, crashDir, sessionID, version string) {
+	panicValue := recover()
+	if panicValue == nil {
+		return
 	}
-	logger.Print(line.String())
+	stack := debug.Stack()
+	logger.Event(diagnosticlog.Error, "process_panic", "unhandled server panic", "error", panicValue)
+	if report, err := crashreport.Write(crashDir, "server", sessionID, version, fmt.Sprint(panicValue), stack); err != nil {
+		logger.Event(diagnosticlog.Error, "crash_report_failed", "could not persist server crash report", "error", err)
+	} else {
+		logger.Event(diagnosticlog.Error, "crash_report_created", "server crash report created", "file", filepath.Base(report.MetadataPath), "minidump", filepath.Base(report.DumpPath))
+	}
+	panic(panicValue)
 }
 
 type responseStatusWriter struct {
@@ -156,7 +157,7 @@ func (writer *responseStatusWriter) WriteHeader(status int) {
 	writer.ResponseWriter.WriteHeader(status)
 }
 
-func accessLog(next http.Handler, logger *log.Logger, sessionID, version string) http.Handler {
+func accessLog(next http.Handler, logger *diagnosticlog.Logger) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		started := time.Now()
 		statusWriter := &responseStatusWriter{ResponseWriter: writer}
@@ -165,7 +166,7 @@ func accessLog(next http.Handler, logger *log.Logger, sessionID, version string)
 		if status == 0 {
 			status = http.StatusOK
 		}
-		logEvent(logger, sessionID, version, "INFO", "http_request", "request completed",
+		logger.Event(diagnosticlog.Info, "http_request", "request completed",
 			"method", request.Method,
 			"path", request.URL.Path,
 			"status", status,
@@ -175,7 +176,7 @@ func accessLog(next http.Handler, logger *log.Logger, sessionID, version string)
 }
 
 type serverErrorWriter struct {
-	logger   *log.Logger
+	logger   *diagnosticlog.Logger
 	session  string
 	version  string
 	crashDir string
@@ -183,11 +184,12 @@ type serverErrorWriter struct {
 
 func (writer serverErrorWriter) Write(data []byte) (int, error) {
 	message := strings.TrimSpace(string(data))
-	logEvent(writer.logger, writer.session, writer.version, "ERROR", "http_internal", message)
+	writer.logger.Event(diagnosticlog.Error, "http_internal", message)
 	if writer.crashDir != "" && strings.Contains(strings.ToLower(message), "panic") {
-		if err := os.MkdirAll(writer.crashDir, 0o755); err == nil {
-			name := "server-http-panic-" + time.Now().UTC().Format("20060102-150405.000000000") + ".log"
-			_ = os.WriteFile(filepath.Join(writer.crashDir, name), data, 0o644)
+		if report, err := crashreport.Write(writer.crashDir, "server-http", writer.session, writer.version, message, data); err != nil {
+			writer.logger.Event(diagnosticlog.Error, "crash_report_failed", "could not persist HTTP panic report", "error", err)
+		} else {
+			writer.logger.Event(diagnosticlog.Error, "crash_report_created", "HTTP panic report created", "file", filepath.Base(report.MetadataPath), "minidump", filepath.Base(report.DumpPath))
 		}
 	}
 	return len(data), nil

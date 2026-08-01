@@ -9,12 +9,15 @@ run/main_scene="res://main.tscn"
 config/version="0.1.0"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="Fantu"
+run/flush_stdout_on_print=true
 
 [debug]
 
 file_logging/enable_file_logging=true
-file_logging/log_path="user://logs/client.log"
+file_logging/log_path="user://logs/engine.log"
 file_logging/max_log_files=5
+settings/crash_handler/message="Fantu encountered a native engine failure. On the next launch, use Settings > Export Diagnostics and send the generated archive to support."
+settings/gdscript/always_track_call_stacks=true
 
 [display]
 

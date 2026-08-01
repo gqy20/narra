@@ -30,6 +30,8 @@ For a versioned archive name:
 
 The script runs the Go test suite, builds a stripped Windows rules service, imports and exports the Godot project, copies runtime scenario data, runs a headless release smoke test, writes SHA-256 checksums, and creates a compressed ZIP archive.
 
+`build-info.json` records the version, commit, build time, platform, and `source_dirty` state. A formal release should be built from a clean tree so its source revision is reproducible.
+
 Use `-SkipTests` only when tests have already passed in the same source revision.
 Use `-SkipSmokeTest` only in an environment that cannot launch Windows executables.
 
@@ -40,6 +42,8 @@ dist/
 |-- fantu-windows-x86_64/
 |   |-- Fantu.exe
 |   |-- Fantu-Portable.cmd
+|   |-- Enable-Crash-Dumps.cmd
+|   |-- Disable-Crash-Dumps.cmd
 |   |-- fantu-server.exe
 |   |-- build-info.json
 |   |-- data/blackwind/
@@ -49,3 +53,5 @@ dist/
 ```
 
 `Fantu.exe` starts the local service automatically in exported Windows builds and stops the process when the game exits. Logs, saves, and crash diagnostics are written under `%APPDATA%/Fantu/` instead of the installation directory. See [runtime logging](LOGGING.md) for log rotation and portable developer mode.
+
+Native Windows Error Reporting dumps for `Fantu.exe` are intentionally opt-in. The two crash-dump scripts enable or remove the current-user WER setting without requiring administrator privileges. The service's own recovered-panic minidumps do not require this opt-in.

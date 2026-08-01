@@ -34,6 +34,11 @@ try {
         Pop-Location
     }
 
+    $invalidLevelResult = Invoke-ExpectedServerFailure -Arguments @("-log-level", "VERBOSE")
+    if ($invalidLevelResult.ExitCode -ne 2 -or $invalidLevelResult.Output -notmatch "unsupported log level") {
+        throw "An invalid server log level did not produce the expected configuration error."
+    }
+
     $missingDataLog = Join-Path $temporaryRoot "missing-data.log"
     $missingDataResult = Invoke-ExpectedServerFailure -Arguments @(
         "-data", (Join-Path $temporaryRoot "missing-data"),

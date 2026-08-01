@@ -65,7 +65,7 @@ test-godot:
 	$(PS_FILE) tools/verify-godot.ps1
 
 test-logging:
-	$(GO) test ./internal/logfile ./cmd/server ./internal/server
+	$(GO) test ./internal/logfile ./internal/diagnosticlog ./internal/crashreport ./cmd/server ./internal/server
 	$(PS_FILE) tools/verify-server-diagnostics.ps1
 
 vet:

@@ -30,6 +30,7 @@ $game = Start-Process `
 $runtimeRoot = Join-Path $env:APPDATA "Fantu"
 $logsDirectory = Join-Path $runtimeRoot "logs"
 $clientLog = Join-Path $logsDirectory "client.log"
+$engineLog = Join-Path $logsDirectory "engine.log"
 $serverLog = Join-Path $logsDirectory "server.log"
 
 $healthPassed = $false
@@ -66,7 +67,7 @@ try {
         throw "The bundled rules service remained active after Fantu.exe exited."
     }
 
-    foreach ($directoryName in @("logs", "logs\archived", "saves", "crash")) {
+    foreach ($directoryName in @("logs", "logs\archived", "saves", "crash", "diagnostics")) {
         $directoryPath = Join-Path $runtimeRoot $directoryName
         if (-not (Test-Path -LiteralPath $directoryPath -PathType Container)) {
             throw "Expected runtime directory was not created: $directoryPath"
@@ -77,6 +78,9 @@ try {
     }
     if (-not (Test-Path -LiteralPath $serverLog -PathType Leaf)) {
         throw "The packaged rules service did not create server.log."
+    }
+    if (-not (Test-Path -LiteralPath $engineLog -PathType Leaf)) {
+        throw "The packaged client did not create engine.log."
     }
     $serverLogContent = Get-Content -LiteralPath $serverLog -Raw
     foreach ($expectedServerField in @("component=server", "event=listening", "session=", "version=", 'url="http://127.0.0.1:8787"')) {
@@ -93,8 +97,17 @@ try {
     if (-not (Test-Path -LiteralPath (Join-Path $packageDirectory "build-info.json") -PathType Leaf)) {
         throw "The Windows package does not contain build-info.json."
     }
+    $buildInfo = Get-Content -LiteralPath (Join-Path $packageDirectory "build-info.json") -Raw | ConvertFrom-Json
+    if ($null -eq $buildInfo.source_dirty) {
+        throw "build-info.json does not declare whether the source tree was dirty."
+    }
     if (-not (Test-Path -LiteralPath (Join-Path $packageDirectory "Fantu-Portable.cmd") -PathType Leaf)) {
         throw "The Windows package does not contain Fantu-Portable.cmd."
+    }
+    foreach ($crashScript in @("Enable-Crash-Dumps.cmd", "Disable-Crash-Dumps.cmd")) {
+        if (-not (Test-Path -LiteralPath (Join-Path $packageDirectory $crashScript) -PathType Leaf)) {
+            throw "The Windows package does not contain $crashScript."
+        }
     }
 }
 finally {

@@ -79,8 +79,10 @@ try {
 
     $resolvedVersion = if ([string]::IsNullOrWhiteSpace($Version)) { "dev" } else { $Version }
     $gitCommit = "unknown"
+    $sourceDirty = $false
     try {
         $gitCommit = (& git rev-parse --short HEAD 2>$null).Trim()
+        $sourceDirty = @(& git status --porcelain 2>$null).Count -gt 0
     }
     catch {
         $gitCommit = "unknown"
@@ -89,6 +91,7 @@ try {
         application = "Fantu"
         version = $resolvedVersion
         commit = $gitCommit
+        source_dirty = $sourceDirty
         built_at_utc = [DateTime]::UtcNow.ToString("o")
         platform = "windows-x86_64"
     } | ConvertTo-Json
@@ -105,6 +108,8 @@ Run Fantu-Portable.cmd only when you want logs and saves beside the game executa
 Files:
 - Fantu.exe: game client
 - Fantu-Portable.cmd: optional portable developer launcher
+- Enable-Crash-Dumps.cmd: opt in to Windows native Fantu.exe minidumps
+- Disable-Crash-Dumps.cmd: remove the native minidump opt-in
 - fantu-server.exe: local rules service
 - build-info.json: release version and source revision
 - data/blackwind: game scenario data
@@ -115,9 +120,31 @@ Files:
 @echo off
 setlocal
 if not exist "%~dp0logs" mkdir "%~dp0logs"
-start "" "%~dp0Fantu.exe" --log-file "%~dp0logs\client.log" -- --portable
+start "" "%~dp0Fantu.exe" --log-file "%~dp0logs\engine.log" -- --portable
 "@
     Set-Content -LiteralPath (Join-Path $packageDir "Fantu-Portable.cmd") -Value $portableLauncher -Encoding ascii
+
+    $enableCrashDumps = @"
+@echo off
+setlocal
+set "DUMP_DIR=%APPDATA%\Fantu\crash"
+if not exist "%DUMP_DIR%" mkdir "%DUMP_DIR%"
+reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Fantu.exe" /v DumpFolder /t REG_EXPAND_SZ /d "%DUMP_DIR%" /f
+if errorlevel 1 exit /b 1
+reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Fantu.exe" /v DumpType /t REG_DWORD /d 2 /f
+if errorlevel 1 exit /b 1
+reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Fantu.exe" /v DumpCount /t REG_DWORD /d 5 /f
+echo Native Fantu.exe crash dumps are enabled in "%DUMP_DIR%".
+"@
+    Set-Content -LiteralPath (Join-Path $packageDir "Enable-Crash-Dumps.cmd") -Value $enableCrashDumps -Encoding ascii
+
+    $disableCrashDumps = @"
+@echo off
+reg delete "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Fantu.exe" /f
+if errorlevel 1 exit /b 1
+echo Native Fantu.exe crash dumps are disabled.
+"@
+    Set-Content -LiteralPath (Join-Path $packageDir "Disable-Crash-Dumps.cmd") -Value $disableCrashDumps -Encoding ascii
 
     if (-not $SkipSmokeTest) {
         & (Join-Path $PSScriptRoot "smoke-test-windows.ps1") -PackageDirectory $packageDir

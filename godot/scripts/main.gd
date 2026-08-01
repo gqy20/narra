@@ -16,6 +16,9 @@ const BUNDLED_SERVER_STARTUP_DELAY := 0.4
 const PORTABLE_USER_ARG := "--portable"
 const LOG_MAX_MIB := 5
 const LOG_BACKUPS := 5
+const LOG_LEVELS: Array[String] = ["DEBUG", "INFO", "WARN", "ERROR"]
+const LOG_LEVEL_RANK := {"DEBUG": 0, "INFO": 1, "WARN": 2, "ERROR": 3}
+const DIAGNOSTIC_FILE_MAX_BYTES := 25 * 1024 * 1024
 const TYPE_SCALE := {
 	"display": 60,
 	"brand": 28,
@@ -88,6 +91,7 @@ var logs_dir := ""
 var archived_logs_dir := ""
 var saves_dir := ""
 var crash_dir := ""
+var client_log_path := ""
 var portable_mode := false
 var session_id := ""
 var shutdown_token := ""
@@ -96,6 +100,13 @@ var pending_request_path := ""
 var pending_request_method := ""
 var request_started_msec := 0
 var shutdown_in_progress := false
+var log_level := "INFO"
+var runtime_warning := ""
+var recovery_log_path := ""
+var session_marker_path := ""
+var build_info: Dictionary = {}
+var last_server_http_status := 0
+var client_log_failure_reported := false
 
 var start_layer: Control
 var game_layer: Control
@@ -167,6 +178,7 @@ var sound_button: Button
 var motion_button: Button
 var settings_layer: Control
 var settings_box: VBoxContainer
+var log_level_button: Button
 var body_font: SystemFont
 var medium_font: SystemFont
 var display_font: SystemFont
@@ -175,6 +187,7 @@ var display_font: SystemFont
 func _ready() -> void:
 	_configure_runtime_paths()
 	_configure_runtime_identity()
+	_initialize_crash_tracking()
 	get_tree().auto_accept_quit = false
 	_log_event("INFO", "startup", "client starting", {
 		"pid": OS.get_process_id(),
@@ -186,6 +199,8 @@ func _ready() -> void:
 	add_child(audio_director)
 	http.request_completed.connect(_on_request_completed)
 	_build_interface()
+	if runtime_warning != "":
+		_show_error(runtime_warning)
 	_start_bundled_server()
 	if bundled_server_pid > 0:
 		await get_tree().create_timer(BUNDLED_SERVER_STARTUP_DELAY).timeout
@@ -198,6 +213,7 @@ func _exit_tree() -> void:
 		OS.kill(bundled_server_pid)
 		bundled_server_pid = -1
 	_log_event("INFO", "stopped", "client stopped")
+	_clear_crash_marker()
 
 
 func _notification(what: int) -> void:
@@ -257,6 +273,7 @@ func _start_bundled_server() -> void:
 			"-crash-dir", crash_dir,
 			"-log-max-mb", str(LOG_MAX_MIB),
 			"-log-backups", str(LOG_BACKUPS),
+			"-log-level", log_level,
 			"-version", build_version,
 			"-session-id", session_id,
 			"-shutdown-token", shutdown_token,
@@ -283,10 +300,25 @@ func _configure_runtime_paths() -> void:
 	archived_logs_dir = logs_dir.path_join("archived")
 	saves_dir = runtime_root.path_join("saves")
 	crash_dir = runtime_root.path_join("crash")
-	for directory in [logs_dir, archived_logs_dir, saves_dir, crash_dir]:
+	client_log_path = logs_dir.path_join("client.log")
+	var failed_directories: Array[String] = []
+	for directory in [logs_dir, archived_logs_dir, saves_dir, crash_dir, runtime_root.path_join("diagnostics")]:
 		var mkdir_error := DirAccess.make_dir_recursive_absolute(directory)
 		if mkdir_error != OK:
-			push_error("Could not create runtime directory: %s" % directory)
+			failed_directories.append(directory)
+	if not failed_directories.is_empty():
+		var requested_root := runtime_root
+		runtime_root = OS.get_cache_dir().path_join("Fantu-Recovery")
+		logs_dir = runtime_root.path_join("logs")
+		archived_logs_dir = logs_dir.path_join("archived")
+		saves_dir = runtime_root.path_join("saves")
+		crash_dir = runtime_root.path_join("crash")
+		client_log_path = logs_dir.path_join("client.log")
+		for directory in [logs_dir, archived_logs_dir, saves_dir, crash_dir, runtime_root.path_join("diagnostics")]:
+			DirAccess.make_dir_recursive_absolute(directory)
+		runtime_warning = "运行数据目录不可写，已降级到恢复目录：%s（原目录：%s）" % [runtime_root, requested_root]
+		recovery_log_path = logs_dir.path_join("client-recovery.log")
+		push_error(runtime_warning)
 	_archive_previous_client_logs()
 
 
@@ -295,15 +327,27 @@ func _configure_runtime_identity() -> void:
 	session_id = crypto.generate_random_bytes(16).hex_encode()
 	shutdown_token = crypto.generate_random_bytes(24).hex_encode()
 	build_version = str(ProjectSettings.get_setting("application/config/version", "dev"))
+	_load_diagnostic_settings()
 	if not OS.has_feature("editor"):
 		var build_info_path := OS.get_executable_path().get_base_dir().path_join("build-info.json")
 		if FileAccess.file_exists(build_info_path):
 			var parsed = JSON.parse_string(FileAccess.get_file_as_string(build_info_path))
 			if parsed is Dictionary:
+				build_info = parsed
 				build_version = str(parsed.get("version", build_version))
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--log-level="):
+			var requested_level := argument.trim_prefix("--log-level=").to_upper()
+			if LOG_LEVELS.has(requested_level):
+				log_level = requested_level
 
 
 func _log_event(level: String, event: String, message: String, fields := {}) -> void:
+	level = level.to_upper()
+	if not LOG_LEVEL_RANK.has(level):
+		level = "INFO"
+	if int(LOG_LEVEL_RANK[level]) < int(LOG_LEVEL_RANK.get(log_level, 1)):
+		return
 	var parts: Array[String] = [
 		"timestamp=%sZ" % Time.get_datetime_string_from_system(true, false),
 		"level=%s" % level,
@@ -311,14 +355,159 @@ func _log_event(level: String, event: String, message: String, fields := {}) -> 
 		"event=%s" % event,
 		"session=%s" % JSON.stringify(session_id),
 		"version=%s" % JSON.stringify(build_version),
-		"message=%s" % JSON.stringify(message),
+		"message=%s" % JSON.stringify(_redact_log_text(message)),
 	]
 	if fields is Dictionary:
 		var keys: Array = fields.keys()
 		keys.sort()
 		for key in keys:
-			parts.append("%s=%s" % [str(key), JSON.stringify(str(fields[key]))])
-	print(" ".join(parts))
+			parts.append("%s=%s" % [str(key), JSON.stringify(_redact_log_field(str(key), fields[key]))])
+	var line := " ".join(parts)
+	print(line)
+	_write_client_log(line)
+
+
+func _redact_log_field(key: String, value: Variant) -> String:
+	var lower_key := key.to_lower()
+	for sensitive_key in ["token", "password", "secret", "authorization", "cookie", "request_body", "response_body", "player_name", "query"]:
+		if lower_key.contains(sensitive_key):
+			return "[REDACTED]"
+	var text := _redact_log_text(str(value))
+	if lower_key.contains("path") or lower_key in ["data", "saves", "crash_dir"]:
+		if runtime_root != "":
+			text = text.replace(runtime_root, "<runtime>")
+		var install_dir := OS.get_executable_path().get_base_dir()
+		if install_dir != "":
+			text = text.replace(install_dir, "<app>")
+	return text
+
+
+func _redact_log_text(value: String) -> String:
+	var text := value.replace("\r", "\\r").replace("\n", "\\n")
+	var credential_pattern := RegEx.new()
+	if credential_pattern.compile("(?i)(token|password|secret|authorization|cookie)=([^\\s&]+)") == OK:
+		text = credential_pattern.sub(text, "$1=[REDACTED]", true)
+	var url_pattern := RegEx.new()
+	if url_pattern.compile("(https?://[^\\s?]+)\\?[^\\s]+") == OK:
+		text = url_pattern.sub(text, "$1", true)
+	return text
+
+
+func _append_recovery_log(line: String) -> void:
+	var recovery_file := FileAccess.open(recovery_log_path, FileAccess.READ_WRITE)
+	if recovery_file == null:
+		recovery_file = FileAccess.open(recovery_log_path, FileAccess.WRITE)
+	if recovery_file == null:
+		push_error("Could not write fallback client diagnostics: %s" % recovery_log_path)
+		return
+	recovery_file.seek_end()
+	recovery_file.store_line(line)
+
+
+func _write_client_log(line: String) -> void:
+	var encoded_size := line.to_utf8_buffer().size() + 1
+	if _file_size(client_log_path) + encoded_size > LOG_MAX_MIB * 1024 * 1024:
+		_rotate_client_log()
+	var client_file := FileAccess.open(client_log_path, FileAccess.READ_WRITE)
+	if client_file == null:
+		client_file = FileAccess.open(client_log_path, FileAccess.WRITE)
+	if client_file == null:
+		if not client_log_failure_reported:
+			client_log_failure_reported = true
+			runtime_warning = "客户端日志文件不可写：%s。诊断信息将仅输出到控制台。" % client_log_path
+			push_error(runtime_warning)
+		if recovery_log_path != "":
+			_append_recovery_log(line)
+		return
+	client_file.seek_end()
+	client_file.store_line(line)
+
+
+func _file_size(path: String) -> int:
+	var file := FileAccess.open(path, FileAccess.READ)
+	return file.get_length() if file != null else 0
+
+
+func _rotate_client_log() -> void:
+	var timestamp := Time.get_datetime_string_from_system(true, false).replace("-", "").replace(":", "")
+	var target_path := archived_logs_dir.path_join("client-%sZ.log" % timestamp)
+	var suffix := 1
+	while FileAccess.file_exists(target_path):
+		target_path = archived_logs_dir.path_join("client-%sZ-%d.log" % [timestamp, suffix])
+		suffix += 1
+	var rotate_error := DirAccess.rename_absolute(client_log_path, target_path)
+	if rotate_error != OK:
+		push_error("Could not rotate client log: %s" % client_log_path)
+		return
+	_prune_log_archives("client-")
+
+
+func _prune_log_archives(prefix: String) -> void:
+	var archive_directory := DirAccess.open(archived_logs_dir)
+	if archive_directory == null:
+		return
+	var archives: Array[String] = []
+	for file_name in archive_directory.get_files():
+		if file_name.begins_with(prefix) and file_name.ends_with(".log"):
+			archives.append(file_name)
+	archives.sort()
+	while archives.size() > LOG_BACKUPS:
+		DirAccess.remove_absolute(archived_logs_dir.path_join(archives.pop_front()))
+
+
+func _load_diagnostic_settings() -> void:
+	var config := ConfigFile.new()
+	if config.load(runtime_root.path_join("settings.cfg")) == OK:
+		var configured_level := str(config.get_value("diagnostics", "log_level", "INFO")).to_upper()
+		if LOG_LEVELS.has(configured_level):
+			log_level = configured_level
+
+
+func _save_diagnostic_settings() -> void:
+	var config := ConfigFile.new()
+	var settings_path := runtime_root.path_join("settings.cfg")
+	config.load(settings_path)
+	config.set_value("diagnostics", "log_level", log_level)
+	var save_error := config.save(settings_path)
+	if save_error != OK:
+		_log_event("ERROR", "settings_save_failed", "could not save diagnostic settings", {"error": save_error, "path": settings_path})
+
+
+func _initialize_crash_tracking() -> void:
+	session_marker_path = crash_dir.path_join("client-running.json")
+	if FileAccess.file_exists(session_marker_path):
+		var timestamp := Time.get_datetime_string_from_system(true, false).replace("-", "").replace(":", "")
+		var unclean_path := crash_dir.path_join("client-unclean-exit-%sZ.json" % timestamp)
+		var previous_marker := FileAccess.get_file_as_string(session_marker_path)
+		var previous_data = JSON.parse_string(previous_marker)
+		if not previous_data is Dictionary:
+			previous_data = {"raw_marker": _redact_log_text(previous_marker)}
+		previous_data["detected_at_utc"] = "%sZ" % Time.get_datetime_string_from_system(true, false)
+		previous_data["reason"] = "The previous client session did not complete normal shutdown."
+		var report := FileAccess.open(unclean_path, FileAccess.WRITE)
+		if report != null:
+			report.store_string(JSON.stringify(previous_data, "  "))
+		_log_event("ERROR", "previous_unclean_exit", "previous client session ended unexpectedly", {"file": unclean_path.get_file()})
+	var marker := FileAccess.open(session_marker_path, FileAccess.WRITE)
+	if marker == null:
+		_log_event("ERROR", "crash_marker_failed", "could not create client crash marker", {"path": session_marker_path})
+		return
+	marker.store_string(JSON.stringify({
+		"application": "Fantu",
+		"session_id": session_id,
+		"version": build_version,
+		"pid": OS.get_process_id(),
+		"started_at_utc": "%sZ" % Time.get_datetime_string_from_system(true, false),
+		"operating_system": OS.get_name(),
+		"godot": Engine.get_version_info().get("string", "unknown"),
+	}, "  "))
+
+
+func _clear_crash_marker() -> void:
+	if session_marker_path != "" and FileAccess.file_exists(session_marker_path):
+		var remove_error := DirAccess.remove_absolute(session_marker_path)
+		if remove_error != OK:
+			push_warning("Could not clear client crash marker: %s" % session_marker_path)
 
 
 func _archive_previous_client_logs() -> void:
@@ -326,25 +515,26 @@ func _archive_previous_client_logs() -> void:
 	if log_directory == null:
 		return
 	for file_name in log_directory.get_files():
-		if file_name == "client.log" or not file_name.begins_with("client") or not file_name.ends_with(".log"):
+		if file_name in ["client.log", "engine.log"] or not file_name.ends_with(".log"):
+			continue
+		var archive_prefix := "client" if file_name.begins_with("client") else "engine" if file_name.begins_with("engine") else ""
+		if archive_prefix == "":
 			continue
 		var source_path := logs_dir.path_join(file_name)
-		var target_path := archived_logs_dir.path_join(file_name)
+		var modified := FileAccess.get_modified_time(source_path)
+		var timestamp := Time.get_datetime_string_from_unix_time(modified).replace("-", "").replace(":", "")
+		var target_name := "%s-%sZ.log" % [archive_prefix, timestamp]
+		var target_path := archived_logs_dir.path_join(target_name)
+		var suffix := 1
 		if FileAccess.file_exists(target_path):
-			DirAccess.remove_absolute(target_path)
+			while FileAccess.file_exists(archived_logs_dir.path_join("%s-%sZ-%d.log" % [archive_prefix, timestamp, suffix])):
+				suffix += 1
+			target_path = archived_logs_dir.path_join("%s-%sZ-%d.log" % [archive_prefix, timestamp, suffix])
 		var archive_error := DirAccess.rename_absolute(source_path, target_path)
 		if archive_error != OK:
 			push_warning("Could not archive client log: %s" % source_path)
-	var archive_directory := DirAccess.open(archived_logs_dir)
-	if archive_directory == null:
-		return
-	var client_archives: Array[String] = []
-	for file_name in archive_directory.get_files():
-		if file_name.begins_with("client") and file_name.ends_with(".log"):
-			client_archives.append(file_name)
-	client_archives.sort()
-	while client_archives.size() > LOG_BACKUPS:
-		DirAccess.remove_absolute(archived_logs_dir.path_join(client_archives.pop_front()))
+	_prune_log_archives("client-")
+	_prune_log_archives("engine-")
 
 
 func _open_log_folder() -> void:
@@ -378,12 +568,18 @@ func _export_diagnostics(open_folder := true) -> String:
 		"operating_system": OS.get_name(),
 		"godot": Engine.get_version_info().get("string", "unknown"),
 		"portable_mode": portable_mode,
+		"log_level": log_level,
+		"environment": _diagnostic_environment(),
 		"contents": "Logs and environment metadata only; saves and request bodies are excluded.",
 	}
 	packer.start_file("manifest.json")
 	packer.write_file(JSON.stringify(manifest, "  ").to_utf8_buffer())
 	packer.close_file()
+	packer.start_file("environment.json")
+	packer.write_file(JSON.stringify(_diagnostic_environment(), "  ").to_utf8_buffer())
+	packer.close_file()
 	_add_diagnostic_log(packer, logs_dir.path_join("client.log"), "logs/client.log")
+	_add_diagnostic_log(packer, logs_dir.path_join("engine.log"), "logs/engine.log")
 	_add_diagnostic_log(packer, logs_dir.path_join("server.log"), "logs/server.log")
 	var archive_directory := DirAccess.open(archived_logs_dir)
 	if archive_directory != null:
@@ -394,6 +590,17 @@ func _export_diagnostics(open_folder := true) -> String:
 		archive_names.sort()
 		for file_name in archive_names:
 			_add_diagnostic_log(packer, archived_logs_dir.path_join(file_name), "logs/archived/" + file_name)
+	var crash_directory := DirAccess.open(crash_dir)
+	if crash_directory != null:
+		var crash_names: Array[String] = []
+		for file_name in crash_directory.get_files():
+			if file_name.ends_with(".json") or file_name.ends_with(".dmp") or file_name.ends_with(".log"):
+				crash_names.append(file_name)
+		crash_names.sort()
+		while crash_names.size() > LOG_BACKUPS:
+			crash_names.pop_front()
+		for file_name in crash_names:
+			_add_diagnostic_log(packer, crash_dir.path_join(file_name), "crash/" + file_name)
 	packer.close()
 	_log_event("INFO", "diagnostics_created", "diagnostics archive created", {"file": archive_path.get_file()})
 	if open_folder:
@@ -408,10 +615,45 @@ func _add_diagnostic_log(packer: ZIPPacker, source_path: String, archive_path: S
 	if source == null:
 		_log_event("WARN", "diagnostics_file_skipped", "could not read diagnostics file", {"file": source_path.get_file()})
 		return
+	if source.get_length() > DIAGNOSTIC_FILE_MAX_BYTES:
+		_log_event("WARN", "diagnostics_file_skipped", "diagnostics file exceeds size limit", {"file": source_path.get_file(), "size": source.get_length()})
+		return
 	if packer.start_file(archive_path) != OK:
 		return
 	packer.write_file(source.get_buffer(source.get_length()))
 	packer.close_file()
+
+
+func _diagnostic_environment() -> Dictionary:
+	var memory := OS.get_memory_info()
+	var screen_size := DisplayServer.screen_get_size()
+	var runtime_space := -1
+	var runtime_directory := DirAccess.open(runtime_root)
+	if runtime_directory != null:
+		runtime_space = runtime_directory.get_space_left()
+	return {
+		"operating_system": OS.get_name(),
+		"os_distribution": OS.get_distribution_name(),
+		"os_version": OS.get_version(),
+		"locale": OS.get_locale(),
+		"processor": OS.get_processor_name(),
+		"processor_count": OS.get_processor_count(),
+		"memory_physical_bytes": memory.get("physical", -1),
+		"memory_available_bytes": memory.get("free", -1),
+		"screen_width": screen_size.x,
+		"screen_height": screen_size.y,
+		"screen_dpi": DisplayServer.screen_get_dpi(),
+		"graphics_adapter": RenderingServer.get_video_adapter_name(),
+		"graphics_vendor": RenderingServer.get_video_adapter_vendor(),
+		"graphics_api": RenderingServer.get_video_adapter_api_version(),
+		"godot_version": Engine.get_version_info().get("string", "unknown"),
+		"build": build_info,
+		"runtime_space_available_bytes": runtime_space,
+		"portable_mode": portable_mode,
+		"server_process_running": bundled_server_pid > 0 and OS.is_process_running(bundled_server_pid),
+		"last_server_http_status": last_server_http_status,
+		"log_level": log_level,
+	}
 
 
 func _configure_theme() -> void:
@@ -904,7 +1146,7 @@ func _build_settings_layer() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	settings_layer.add_child(center)
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(500, 530)
+	card.custom_minimum_size = Vector2(500, 610)
 	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 14, COLORS.accent_pressed, 28, 24))
 	center.add_child(card)
 	settings_box = VBoxContainer.new()
@@ -919,9 +1161,21 @@ func _build_settings_layer() -> void:
 	motion_button = _action_button("动态效果 · 开启", _toggle_motion)
 	settings_box.add_child(motion_button)
 	settings_box.add_child(_action_button("全部静音", _toggle_sound))
+	log_level_button = _action_button("日志等级 · %s" % log_level, _cycle_log_level)
+	log_level_button.tooltip_text = "DEBUG 记录更多诊断信息；INFO 适合正式版。服务端会在下次启动时应用新等级。"
+	settings_box.add_child(log_level_button)
 	settings_box.add_child(_action_button("打开日志目录", _open_log_folder))
 	settings_box.add_child(_action_button("导出诊断包", _export_diagnostics))
 	settings_box.add_child(_button("返回游戏", _close_audio_settings, false))
+
+
+func _cycle_log_level() -> void:
+	var level_index := LOG_LEVELS.find(log_level)
+	log_level = LOG_LEVELS[(level_index + 1) % LOG_LEVELS.size()]
+	if log_level_button:
+		log_level_button.text = "日志等级 · %s" % log_level
+	_save_diagnostic_settings()
+	_log_event(log_level, "log_level_changed", "client log level changed", {"new_level": log_level, "server_effect": "next_start"})
 
 
 func _audio_slider(parent: VBoxContainer, label_text: String, bus_name: String, initial_value: float) -> void:
@@ -1503,6 +1757,7 @@ func _http_method_name(method: HTTPClient.Method) -> String:
 
 
 func _on_request_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	last_server_http_status = response_code
 	var operation := pending_operation
 	var request_path := pending_request_path
 	var request_method := pending_request_method

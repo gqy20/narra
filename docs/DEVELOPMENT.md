@@ -26,7 +26,7 @@ make test-logging
 make verify
 ```
 
-`make verify` is the local quality gate: formatting check, Go tests, `go vet`, logging failure-path checks, and Godot integration tests. Logging checks cover rotation, missing scenario data, occupied ports, invalid log directories, access-log privacy, graceful-shutdown authorization, and panic diagnostics.
+`make verify` is the local quality gate: formatting check, Go tests, `go vet`, logging failure-path checks, and Godot integration tests. Logging checks cover client/server rotation, level filtering, centralized redaction, write-failure fallback, missing scenario data, occupied ports, invalid log directories, graceful-shutdown authorization, diagnostics environment metadata, and panic/crash reports.
 
 Run the game through one of the supported front ends:
 
