@@ -68,6 +68,14 @@ func _run() -> void:
 	app._dismiss_causal()
 	if app.causal_layer.visible:
 		return _fail("causal theatre cannot be dismissed")
+	var saved_known_actors: Array = app.current_view.get("known_actors", [])
+	app.current_view["known_actors"] = []
+	app._present_causal_change(app.current_view.get("last_turn", {}), app.current_view.get("location", {}))
+	app.current_view["known_actors"] = saved_known_actors
+	await process_frame
+	if app.causal_layer.visible or "余波继续" not in app.presentation_director.title_label.text:
+		return _fail("repeated causal change did not step down to the compact ripple presentation")
+	app.presentation_director.cancel()
 	for index in 3:
 		if not await _execute("wait:next"):
 			return
@@ -79,6 +87,8 @@ func _run() -> void:
 		return _fail("resolved view actions are not an empty array")
 	if not app.ending_layer.visible:
 		return _fail("ending overlay is not visible")
+	if not app.ending_portrait.visible or app.ending_portrait.texture != shen_profile.decisive:
+		return _fail("ending did not carry the decisive actor into the final narrative frame")
 	if "沈砚秋" not in str(app.current_view.get("outcome", "")):
 		return _fail("unexpected propagation outcome")
 	if "准备值" in str(app.current_view.get("outcome", "")):

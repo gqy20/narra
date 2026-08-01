@@ -13,6 +13,8 @@ func _run() -> void:
 	await process_frame
 	if not await _wait_until_idle():
 		return _fail("health request timed out")
+	if app.connection_label.text != "":
+		return _fail("healthy start screen leaks local-service diagnostics")
 
 	app.name_input.text = "烟测修士"
 	app._new_game()
@@ -28,6 +30,10 @@ func _run() -> void:
 		return _fail("new game returned no public world map")
 	if app.world_map_view.locations.size() != 5:
 		return _fail("2D world map did not consume the player view")
+	if not app.world_map_view.has_formal_assets():
+		return _fail("world map does not use the registered scenic assets")
+	if app.active_action_category == "" or "当前" not in _descendant_text(app.actions_box):
+		return _fail("action rail did not establish one progressive-disclosure category")
 	if str(app.location_stage.location.get("scene_key", "")) != "market":
 		return _fail("location stage did not render the current place")
 	if not app.location_stage.has_formal_asset():
@@ -58,6 +64,10 @@ func _run() -> void:
 	app._open_audio_settings()
 	if not app.settings_layer.visible:
 		return _fail("audio settings entry did not open")
+	app._toggle_motion()
+	if app.motion_enabled or app.world_map_view.motion_enabled or app.presentation_director.motion_enabled:
+		return _fail("reduced-motion preference did not propagate to presentation components")
+	app._toggle_motion()
 	app._close_audio_settings()
 	app._on_map_location_selected("L04")
 	if app.selected_map_location_id != "L04" or app.map_detail_box.get_child_count() == 0:
@@ -92,6 +102,11 @@ func _run() -> void:
 			app._consider_action(action)
 			if not app.confirmation_layer.visible:
 				return _fail("multi-day advance has no confirmation")
+			if app.confirmation_details_box.visible:
+				return _fail("confirmation reveals secondary reasoning before the player asks")
+			app._toggle_confirmation_details()
+			if not app.confirmation_details_box.visible:
+				return _fail("confirmation reasoning disclosure cannot be opened")
 			app._cancel_confirmation()
 			break
 	if not found_verification:

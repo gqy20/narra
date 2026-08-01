@@ -4,6 +4,7 @@ var card: PanelContainer
 var title_label: Label
 var message_label: Label
 var generation := 0
+var motion_enabled := true
 
 
 func _ready() -> void:
@@ -75,6 +76,15 @@ func _play_entries(entries: Array[String], feedback: Dictionary, token: int) -> 
 		title_label.text = "第 %d 日 · %s" % [int(feedback.get("day", 0)), feedback.get("action", "行动结果")]
 		message_label.text = entry
 		card.show()
+		if not motion_enabled:
+			card.modulate = Color.WHITE
+			card.offset_top = -154
+			card.offset_bottom = -42
+			await get_tree().create_timer(0.82).timeout
+			if token != generation:
+				return
+			card.hide()
+			continue
 		card.modulate = Color(1, 1, 1, 0)
 		card.offset_top = -132
 		card.offset_bottom = -20

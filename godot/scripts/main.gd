@@ -8,6 +8,7 @@ const AudioDirectorScript = preload("res://scripts/audio_director.gd")
 const CausalSealTexture = preload("res://assets/ui/causal/causal-seal.png")
 const DecisionFrameTexture = preload("res://assets/ui/causal/decision-frame.png")
 const TimelineArrowTexture = preload("res://assets/ui/causal/timeline-arrow.png")
+const StartBackgroundTexture = preload("res://assets/locations/market/background.png")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
 const TYPE_SCALE := {
@@ -60,7 +61,13 @@ var visual_mode := "map"
 var view_before_action: Dictionary = {}
 var presentation_registry = PresentationRegistryScript.new()
 var sound_enabled := true
+var motion_enabled := true
 var presentation_busy := false
+var active_action_category := ""
+var focused_actor_details_visible := false
+var causal_change_count_by_actor := {}
+var causal_actor_id_by_name := {}
+var last_causal_actor_id := ""
 
 var start_layer: Control
 var game_layer: Control
@@ -83,6 +90,7 @@ var journal_panel: PanelContainer
 var ending_layer: Control
 var ending_box: VBoxContainer
 var ending_background: TextureRect
+var ending_portrait: TextureRect
 var ending_annex_box: VBoxContainer
 var ending_annex_button: Button
 var causal_layer: Control
@@ -95,6 +103,8 @@ var causal_now: Label
 var causal_day: Label
 var confirmation_layer: Control
 var confirmation_box: VBoxContainer
+var confirmation_details_box: VBoxContainer
+var confirmation_details_button: Button
 var visual_stack: Control
 var map_panel: VBoxContainer
 var location_panel: VBoxContainer
@@ -112,6 +122,7 @@ var actor_portrait: TextureRect
 var actor_portrait_name: Label
 var actor_portrait_meta: Label
 var sound_button: Button
+var motion_button: Button
 var settings_layer: Control
 var settings_box: VBoxContainer
 var body_font: SystemFont
@@ -240,16 +251,16 @@ func _build_header() -> void:
 	place_label = _header_value(row, "所在")
 	phase_label = _header_value(row, "局势")
 	timing_label = _header_value(row, "已知时机")
-	var journal_button := _button("随身卷宗", _open_journal, true)
+	var journal_button := _utility_button("随身卷宗", _open_journal)
 	journal_button.custom_minimum_size = Vector2(104, 38)
 	row.add_child(journal_button)
-	sound_button = _button("声音", _open_audio_settings, true)
+	sound_button = _utility_button("声音", _open_audio_settings)
 	sound_button.custom_minimum_size = Vector2(66, 38)
 	row.add_child(sound_button)
-	var save_button := _button("存档", _save_game, true)
+	var save_button := _utility_button("存档", _save_game)
 	save_button.custom_minimum_size = Vector2(62, 38)
 	row.add_child(save_button)
-	var return_button := _button("返回", _return_to_start, true)
+	var return_button := _utility_button("返回", _return_to_start)
 	return_button.custom_minimum_size = Vector2(62, 38)
 	row.add_child(return_button)
 
@@ -301,10 +312,10 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	heading.add_theme_color_override("font_color", COLORS.accent)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mode_row.add_child(heading)
-	map_mode_button = _button("区域地图", _set_visual_mode.bind("map"), true)
+	map_mode_button = _mode_button("区域地图", _set_visual_mode.bind("map"))
 	map_mode_button.custom_minimum_size = Vector2(116, 38)
 	mode_row.add_child(map_mode_button)
-	location_mode_button = _button("当前地点", _set_visual_mode.bind("location"), true)
+	location_mode_button = _mode_button("当前地点", _set_visual_mode.bind("location"))
 	location_mode_button.custom_minimum_size = Vector2(116, 38)
 	mode_row.add_child(location_mode_button)
 
@@ -346,11 +357,11 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	location_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	stage_canvas.add_child(location_stage)
 	actor_portrait_frame = PanelContainer.new()
-	actor_portrait_frame.anchor_left = 0.70
+	actor_portrait_frame.anchor_left = 0.67
 	actor_portrait_frame.anchor_right = 0.98
-	actor_portrait_frame.anchor_top = 0.035
-	actor_portrait_frame.anchor_bottom = 0.965
-	actor_portrait_frame.add_theme_stylebox_override("panel", _panel_style(Color("101612e8"), 1, 8, Color(COLORS.accent, 0.55), 4, 4))
+	actor_portrait_frame.anchor_top = 0.015
+	actor_portrait_frame.anchor_bottom = 0.985
+	actor_portrait_frame.add_theme_stylebox_override("panel", _panel_style(Color("080b0966"), 0, 0, Color.TRANSPARENT, 0, 0))
 	actor_portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage_canvas.add_child(actor_portrait_frame)
 	var portrait_stack := Control.new()
@@ -365,10 +376,10 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	var portrait_caption := PanelContainer.new()
 	portrait_caption.anchor_left = 0.0
 	portrait_caption.anchor_right = 1.0
-	portrait_caption.anchor_top = 0.73
+	portrait_caption.anchor_top = 0.76
 	portrait_caption.anchor_bottom = 1.0
 	portrait_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	portrait_caption.add_theme_stylebox_override("panel", _panel_style(Color("0a0f0cde"), 0, 4, Color.TRANSPARENT, 12, 9))
+	portrait_caption.add_theme_stylebox_override("panel", _panel_style(Color("070b08d6"), 0, 0, Color.TRANSPARENT, 14, 10))
 	portrait_stack.add_child(portrait_caption)
 	var portrait_caption_content := VBoxContainer.new()
 	portrait_caption_content.add_theme_constant_override("separation", 2)
@@ -398,34 +409,52 @@ func _build_footer() -> void:
 
 
 func _build_start_layer() -> void:
-	start_layer = CenterContainer.new()
+	start_layer = Control.new()
 	start_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(start_layer)
+	var scene := TextureRect.new()
+	scene.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scene.texture = StartBackgroundTexture
+	scene.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	scene.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	scene.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	start_layer.add_child(scene)
+	var shade := ColorRect.new()
+	shade.color = Color("030504a8")
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	start_layer.add_child(shade)
+	var center := CenterContainer.new()
+	center.anchor_left = 0.39
+	center.anchor_right = 0.95
+	center.anchor_top = 0.04
+	center.anchor_bottom = 0.98
+	start_layer.add_child(center)
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(568, 468)
-	card.add_theme_stylebox_override("panel", _panel_style(Color("111713"), 1, 18, COLORS.line, 36, 30))
-	start_layer.add_child(card)
+	card.custom_minimum_size = Vector2(610, 536)
+	card.add_theme_stylebox_override("panel", _panel_style(Color("070a08a8"), 0, 0, Color.TRANSPARENT, 44, 36))
+	center.add_child(card)
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 20)
+	content.add_theme_constant_override("separation", 18)
 	card.add_child(content)
 
 	var eyebrow := Label.new()
 	eyebrow.text = "黑风谷异动　·　三十日局势"
-	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	eyebrow.add_theme_color_override("font_color", COLORS.accent)
 	eyebrow.add_theme_font_override("font", medium_font)
 	eyebrow.add_theme_font_size_override("font_size", TYPE_SCALE.meta)
 	content.add_child(eyebrow)
 	var title := Label.new()
 	title.text = "凡 途"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	title.add_theme_font_override("font", display_font)
 	title.add_theme_font_size_override("font_size", TYPE_SCALE.display)
 	title.add_theme_color_override("font_color", COLORS.ink)
 	content.add_child(title)
 	var subtitle := Label.new()
-	subtitle.text = "三十日内，青髓芝的归属将被决定。\n核验、交易、赶路，或让消息改变他人的选择。"
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.text = "三十日内，青髓芝的归属将被决定。\n你未必亲手夺取它，也能让一条消息改写别人的去向。"
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	subtitle.add_theme_color_override("font_color", COLORS.muted)
 	subtitle.add_theme_font_size_override("font_size", TYPE_SCALE.body)
 	subtitle.add_theme_constant_override("line_spacing", 7)
@@ -443,17 +472,19 @@ func _build_start_layer() -> void:
 	name_input.add_theme_stylebox_override("focus", _input_style(COLORS.panel_hover, COLORS.accent))
 	name_input.add_theme_constant_override("minimum_character_width", 8)
 	content.add_child(name_input)
-	content.add_child(_button("开始新的旅程", _new_game, false))
-	content.add_child(_button("继续上次旅程", _load_game, true))
-	retry_button = _button("重新连接本地服务", _retry_connection, true)
+	var begin_button := _ornate_button("踏入黑风谷", _new_game)
+	begin_button.custom_minimum_size.y = 66
+	content.add_child(begin_button)
+	content.add_child(_action_button("继续上次旅程", _load_game))
+	retry_button = _action_button("重新连接本地服务", _retry_connection)
 	retry_button.hide()
 	content.add_child(retry_button)
 	connection_label = Label.new()
-	connection_label.text = "正在确认本地服务…"
-	connection_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	connection_label.text = ""
+	connection_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	connection_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	connection_label.add_theme_color_override("font_color", COLORS.muted)
-	connection_label.add_theme_font_size_override("font_size", TYPE_SCALE.detail)
+	connection_label.add_theme_font_size_override("font_size", TYPE_SCALE.meta)
 	connection_label.add_theme_constant_override("line_spacing", 4)
 	content.add_child(connection_label)
 
@@ -497,7 +528,7 @@ func _build_journal_layer() -> void:
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", COLORS.accent)
 	title_row.add_child(title)
-	var close_button := _button("收起", _close_journal, true)
+	var close_button := _utility_button("收起", _close_journal)
 	close_button.custom_minimum_size = Vector2(72, 38)
 	title_row.add_child(close_button)
 	player_summary_label = Label.new()
@@ -526,7 +557,7 @@ func _build_confirmation_layer() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	confirmation_layer.add_child(center)
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(540, 330)
+	card.custom_minimum_size = Vector2(620, 390)
 	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 16, COLORS.accent_pressed, 28, 24))
 	center.add_child(card)
 	confirmation_box = VBoxContainer.new()
@@ -554,13 +585,15 @@ func _build_settings_layer() -> void:
 	settings_box = VBoxContainer.new()
 	settings_box.add_theme_constant_override("separation", 13)
 	card.add_child(settings_box)
-	_text(settings_box, "声音设置", false, 25)
-	_text(settings_box, "环境声与事件提示不会改变模拟结果。", true, 14)
+	_text(settings_box, "体验设置", false, 25)
+	_text(settings_box, "声音与动态效果只影响呈现，不会改变推演结果。", true, 14)
 	_audio_slider(settings_box, "主音量", "Master", 82.0)
 	_audio_slider(settings_box, "环境", "Ambient", 64.0)
 	_audio_slider(settings_box, "事件", "Event", 78.0)
 	_audio_slider(settings_box, "界面", "UI", 70.0)
-	settings_box.add_child(_button("全部静音", _toggle_sound, true))
+	motion_button = _action_button("动态效果 · 开启", _toggle_motion)
+	settings_box.add_child(motion_button)
+	settings_box.add_child(_action_button("全部静音", _toggle_sound))
 	settings_box.add_child(_button("返回游戏", _close_audio_settings, false))
 
 
@@ -589,6 +622,7 @@ func _audio_slider(parent: VBoxContainer, label_text: String, bus_name: String, 
 func _build_ending_layer() -> void:
 	ending_layer = Control.new()
 	ending_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ending_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	ending_layer.hide()
 	add_child(ending_layer)
 	ending_background = TextureRect.new()
@@ -598,19 +632,36 @@ func _build_ending_layer() -> void:
 	ending_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ending_layer.add_child(ending_background)
 	var shade := ColorRect.new()
-	shade.color = Color("030504c9")
+	shade.color = Color("030504a8")
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ending_layer.add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	ending_layer.add_child(center)
-	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(820, 580)
-	card.add_theme_stylebox_override("panel", _panel_style(Color("080b09e8"), 0, 2, Color.TRANSPARENT, 44, 34))
-	center.add_child(card)
+	ending_portrait = TextureRect.new()
+	ending_portrait.anchor_left = 0.015
+	ending_portrait.anchor_right = 0.42
+	ending_portrait.anchor_top = 0.04
+	ending_portrait.anchor_bottom = 1.0
+	ending_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ending_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	ending_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ending_layer.add_child(ending_portrait)
+	var seal := TextureRect.new()
+	seal.anchor_left = 0.70
+	seal.anchor_right = 0.92
+	seal.anchor_top = 0.05
+	seal.anchor_bottom = 0.39
+	seal.texture = CausalSealTexture
+	seal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	seal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	seal.modulate = Color(1, 1, 1, 0.24)
+	seal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ending_layer.add_child(seal)
 	ending_box = VBoxContainer.new()
-	ending_box.add_theme_constant_override("separation", 14)
-	card.add_child(ending_box)
+	ending_box.anchor_left = 0.38
+	ending_box.anchor_right = 0.93
+	ending_box.anchor_top = 0.13
+	ending_box.anchor_bottom = 0.94
+	ending_box.add_theme_constant_override("separation", 12)
+	ending_layer.add_child(ending_box)
 
 
 func _build_causal_layer() -> void:
@@ -642,15 +693,16 @@ func _build_causal_layer() -> void:
 	causal_layer.add_child(causal_portrait)
 
 	var content := VBoxContainer.new()
-	content.anchor_left = 0.285
-	content.anchor_right = 0.92
-	content.anchor_top = 0.285
-	content.anchor_bottom = 0.91
+	content.anchor_left = 0.12
+	content.anchor_right = 0.88
+	content.anchor_top = 0.34
+	content.anchor_bottom = 0.94
 	content.add_theme_constant_override("separation", 20)
 	causal_layer.add_child(content)
 	causal_actor_meta = _text(content, "一念入局", true, 14)
 	causal_actor_meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	causal_actor_meta.add_theme_color_override("font_color", COLORS.accent)
+	causal_actor_meta.hide()
 	causal_message = _text(content, "你送出的消息改变了一个人的判断", false, 30)
 	causal_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	causal_message.add_theme_font_override("font", display_font)
@@ -836,6 +888,76 @@ func _button(text_value: String, callback: Callable, secondary: bool) -> Button:
 	return button
 
 
+func _utility_button(text_value: String, callback: Callable) -> Button:
+	var button := Button.new()
+	button.text = text_value
+	button.custom_minimum_size.y = 36
+	button.add_theme_font_override("font", medium_font)
+	button.add_theme_font_size_override("font_size", TYPE_SCALE.detail)
+	button.add_theme_color_override("font_color", COLORS.muted)
+	button.add_theme_color_override("font_hover_color", COLORS.ink)
+	button.add_theme_color_override("font_pressed_color", COLORS.accent)
+	button.add_theme_stylebox_override("normal", _panel_style(Color.TRANSPARENT, 0, 2, Color.TRANSPARENT, 10, 7))
+	button.add_theme_stylebox_override("hover", _panel_style(Color(COLORS.panel_alt, 0.72), 0, 2, Color.TRANSPARENT, 10, 7))
+	button.add_theme_stylebox_override("pressed", _panel_style(Color(COLORS.bg_lift, 0.92), 0, 2, Color.TRANSPARENT, 10, 8))
+	button.add_theme_stylebox_override("focus", _panel_style(Color.TRANSPARENT, 1, 2, COLORS.accent, 9, 6))
+	button.add_theme_stylebox_override("disabled", _panel_style(Color.TRANSPARENT, 0, 2, Color.TRANSPARENT, 10, 7))
+	button.pressed.connect(callback)
+	return button
+
+
+func _mode_button(text_value: String, callback: Callable) -> Button:
+	var button := _utility_button(text_value, callback)
+	button.add_theme_font_size_override("font_size", TYPE_SCALE.compact)
+	button.custom_minimum_size.y = 38
+	return button
+
+
+func _style_mode_state(button: Button, active: bool) -> void:
+	button.add_theme_color_override("font_color", COLORS.accent if active else COLORS.muted)
+	var normal := _panel_style(Color.TRANSPARENT, 0, 0, Color.TRANSPARENT, 12, 7)
+	normal.border_width_bottom = 2 if active else 0
+	normal.border_color = COLORS.accent
+	button.add_theme_stylebox_override("normal", normal)
+
+
+func _action_button(text_value: String, callback: Callable) -> Button:
+	var button := Button.new()
+	button.text = text_value
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.custom_minimum_size.y = 42
+	button.add_theme_font_override("font", medium_font)
+	button.add_theme_font_size_override("font_size", TYPE_SCALE.button)
+	button.add_theme_color_override("font_color", COLORS.ink)
+	button.add_theme_color_override("font_hover_color", COLORS.ink)
+	button.add_theme_color_override("font_pressed_color", COLORS.accent)
+	var normal := _panel_style(Color(COLORS.panel_alt, 0.38), 0, 2, Color.TRANSPARENT, 14, 9)
+	normal.border_width_left = 2
+	normal.border_color = Color(COLORS.line, 0.84)
+	var hover := _panel_style(Color(COLORS.panel_hover, 0.78), 0, 2, Color.TRANSPARENT, 14, 9)
+	hover.border_width_left = 2
+	hover.border_color = COLORS.accent
+	var pressed := _panel_style(Color(COLORS.bg_lift, 0.92), 0, 2, Color.TRANSPARENT, 14, 10)
+	pressed.border_width_left = 2
+	pressed.border_color = COLORS.accent_pressed
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("focus", _panel_style(Color.TRANSPARENT, 1, 2, COLORS.accent_hover, 12, 7))
+	button.add_theme_stylebox_override("disabled", _panel_style(Color(COLORS.panel_alt, 0.26), 0, 2, Color.TRANSPARENT, 14, 9))
+	button.pressed.connect(callback)
+	return button
+
+
+func _category_button(text_value: String, category: String, active: bool) -> Button:
+	var marker := "当前" if active else "展开"
+	var button := _utility_button("%s　·　%s" % [text_value, marker], _set_action_category.bind(category))
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.custom_minimum_size.y = 34
+	button.add_theme_color_override("font_color", COLORS.accent if active else COLORS.muted)
+	return button
+
+
 func _ornate_button(text_value: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = text_value
@@ -867,10 +989,16 @@ func _style_menu_button(button: MenuButton) -> void:
 	button.add_theme_color_override("font_color", COLORS.ink)
 	button.add_theme_color_override("font_hover_color", COLORS.ink)
 	button.add_theme_color_override("font_pressed_color", COLORS.accent)
-	button.add_theme_stylebox_override("normal", _panel_style(COLORS.panel_alt, 1, 6, COLORS.line, 14, 9))
-	button.add_theme_stylebox_override("hover", _panel_style(COLORS.panel_hover, 1, 6, COLORS.accent_pressed, 14, 9))
-	button.add_theme_stylebox_override("pressed", _panel_style(COLORS.bg_lift, 1, 6, COLORS.accent, 14, 10))
-	button.add_theme_stylebox_override("focus", _panel_style(Color.TRANSPARENT, 2, 7, COLORS.accent_hover, 12, 7))
+	var normal := _panel_style(Color(COLORS.panel_alt, 0.38), 0, 2, Color.TRANSPARENT, 14, 9)
+	normal.border_width_left = 2
+	normal.border_color = Color(COLORS.line, 0.84)
+	var hover := _panel_style(Color(COLORS.panel_hover, 0.78), 0, 2, Color.TRANSPARENT, 14, 9)
+	hover.border_width_left = 2
+	hover.border_color = COLORS.accent
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", hover)
+	button.add_theme_stylebox_override("focus", _panel_style(Color.TRANSPARENT, 1, 2, COLORS.accent_hover, 12, 7))
 	var popup := button.get_popup()
 	popup.add_theme_color_override("font_color", COLORS.ink)
 	popup.add_theme_color_override("font_hover_color", COLORS.accent_ink)
@@ -929,7 +1057,7 @@ func _request(operation: String, method: HTTPClient.Method, path: String, payloa
 	if footer_label:
 		footer_label.text = _operation_label(operation) + "…"
 	if start_layer.visible and connection_label:
-		connection_label.text = _operation_label(operation) + "…"
+		connection_label.text = "正在确认旅途入口…"
 	var headers := PackedStringArray(["Content-Type: application/json"])
 	var body := "" if method == HTTPClient.METHOD_GET else JSON.stringify(payload)
 	var error := http.request(API_BASE + path, headers, method, body)
@@ -952,7 +1080,7 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 		return
 
 	if connection_label:
-		connection_label.text = "本地规则服务已就绪"
+		connection_label.text = ""
 		connection_label.add_theme_color_override("font_color", COLORS.success)
 		retry_button.hide()
 	if operation == "health":
@@ -1054,7 +1182,23 @@ func _present_causal_change(feedback: Dictionary, location: Dictionary) -> void:
 	var change: Dictionary = changes[0]
 	var actor_name := str(influence.get("actor_name", "有人"))
 	var actor_id := _actor_id_by_name(actor_name)
+	if actor_id != "":
+		causal_actor_id_by_name[actor_name] = actor_id
+		last_causal_actor_id = actor_id
+	elif causal_actor_id_by_name.has(actor_name):
+		actor_id = str(causal_actor_id_by_name[actor_name])
 	var fact_claim := str(influence.get("fact_claim", "你送出的消息"))
+	var causal_key := actor_name
+	var previous_count := int(causal_change_count_by_actor.get(causal_key, 0))
+	causal_change_count_by_actor[causal_key] = previous_count + 1
+	var change_day := int(change.get("day", feedback.get("day", current_view.get("day", 0))))
+	if previous_count > 0:
+		var ripple := feedback.duplicate(true)
+		ripple["action"] = "余波继续 · %s" % actor_name
+		ripple["messages"] = ["第 %d 日 · %s不再%s，转而%s。" % [change_day, actor_name, change.get("without_information", "照原计划行事"), change.get("with_information", "改变安排")]]
+		presentation_director.present(ripple, "", "")
+		audio_director.play_cue("focus", 2)
+		return
 	var profile: ActorVisualProfile = presentation_registry.actor_profile(actor_id)
 	var location_profile: LocationVisualProfile = presentation_registry.location_profile(str(location.get("scene_key", "")))
 	causal_background.texture = location_profile.background if location_profile and location_profile.background else null
@@ -1063,17 +1207,18 @@ func _present_causal_change(feedback: Dictionary, location: Dictionary) -> void:
 	causal_message.text = "你告知%s：%s" % [actor_name, fact_claim]
 	causal_original.text = str(change.get("without_information", "原有安排"))
 	causal_now.text = str(change.get("with_information", "新的安排"))
-	var change_day := int(change.get("day", feedback.get("day", current_view.get("day", 0))))
-	causal_day.text = "第 %d 日 · 从原本到现在，你的消息进入了他的选择" % change_day
-	causal_layer.modulate = Color(1, 1, 1, 0)
+	causal_day.text = "第 %d 日 · 由原本到现在，已有决断" % change_day
+	causal_layer.modulate = Color(1, 1, 1, 0) if motion_enabled else Color.WHITE
 	causal_layer.show()
-	causal_portrait.modulate = Color(1, 1, 1, 0)
-	causal_portrait.position.x = -32
-	var tween := create_tween().set_parallel(true)
-	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(causal_layer, "modulate", Color.WHITE, 0.34)
-	tween.tween_property(causal_portrait, "modulate", Color.WHITE, 0.48).set_delay(0.10)
-	tween.tween_property(causal_portrait, "position:x", 0.0, 0.62).set_delay(0.08)
+	var portrait_tint := Color(0.78, 0.78, 0.74, 1.0)
+	causal_portrait.modulate = Color(portrait_tint, 0) if motion_enabled else portrait_tint
+	causal_portrait.position.x = -32 if motion_enabled else 0
+	if motion_enabled:
+		var tween := create_tween().set_parallel(true)
+		tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(causal_layer, "modulate", Color.WHITE, 0.34)
+		tween.tween_property(causal_portrait, "modulate", portrait_tint, 0.48).set_delay(0.10)
+		tween.tween_property(causal_portrait, "position:x", 0.0, 0.62).set_delay(0.08)
 	audio_director.play_cue("focus", 3)
 
 
@@ -1124,13 +1269,17 @@ func _new_game() -> void:
 	if player_name == "":
 		player_name = "无名修士"
 	actor_expression_by_id.clear()
+	causal_change_count_by_actor.clear()
+	causal_actor_id_by_name.clear()
+	last_causal_actor_id = ""
+	active_action_category = ""
 	_reset_action_focus()
 	_set_visual_mode("map")
 	_request("new", HTTPClient.METHOD_POST, "/game/new", {"player_name": player_name})
 
 
 func _retry_connection() -> void:
-	connection_label.text = "正在重新连接…"
+	connection_label.text = "正在重新确认旅途入口…"
 	connection_label.add_theme_color_override("font_color", COLORS.muted)
 	_request("health", HTTPClient.METHOD_GET, "/health")
 
@@ -1150,6 +1299,16 @@ func _toggle_sound() -> void:
 	audio_director.set_enabled(sound_enabled)
 
 
+func _toggle_motion() -> void:
+	motion_enabled = not motion_enabled
+	if motion_button:
+		motion_button.text = "动态效果 · 开启" if motion_enabled else "动态效果 · 精简"
+	if world_map_view:
+		world_map_view.set_motion_enabled(motion_enabled)
+	if presentation_director:
+		presentation_director.motion_enabled = motion_enabled
+
+
 func _open_audio_settings() -> void:
 	audio_director.play_ui()
 	settings_layer.show()
@@ -1162,6 +1321,11 @@ func _close_audio_settings() -> void:
 
 func _open_journal() -> void:
 	audio_director.play_ui()
+	if not motion_enabled:
+		journal_panel.position.x = 0
+		journal_layer.modulate = Color.WHITE
+		journal_layer.show()
+		return
 	journal_panel.position.x = 42
 	journal_layer.modulate = Color(1, 1, 1, 0)
 	journal_layer.show()
@@ -1204,6 +1368,10 @@ func _show_start() -> void:
 	rendered_location_id = ""
 	view_before_action = {}
 	presentation_busy = false
+	causal_change_count_by_actor.clear()
+	causal_actor_id_by_name.clear()
+	last_causal_actor_id = ""
+	active_action_category = ""
 	_reset_action_focus()
 	game_layer.hide()
 	journal_layer.hide()
@@ -1282,9 +1450,11 @@ func _set_visual_mode(mode: String) -> void:
 	if location_panel:
 		location_panel.visible = mode == "location"
 	if map_mode_button:
-		map_mode_button.text = "区域地图 · 当前" if mode == "map" else "区域地图"
+		map_mode_button.text = "区域地图"
+		_style_mode_state(map_mode_button, mode == "map")
 	if location_mode_button:
-		location_mode_button.text = "当前地点 · 当前" if mode == "location" else "当前地点"
+		location_mode_button.text = "当前地点"
+		_style_mode_state(location_mode_button, mode == "location")
 	if mode == "location" and previous_mode != "location" and location_stage:
 		location_stage.play_establish.call_deferred()
 
@@ -1319,7 +1489,7 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 		"inner_valley":
 			_text(map_detail_box, "推进阶段 · 第二段：核心争夺", true, 13)
 	if bool(selected.get("current", false)):
-		var enter_button := _button("进入当前地点场景", _set_visual_mode.bind("location"), true)
+		var enter_button := _action_button("进入当前地点场景", _set_visual_mode.bind("location"))
 		enter_button.custom_minimum_size.y = 38
 		map_detail_box.add_child(enter_button)
 		return
@@ -1376,7 +1546,7 @@ func _render_stage_people(actors: Array, actions: Array) -> void:
 		var button_text := ("◆ " if selected else "") + actor_name
 		if clue_count > 0:
 			button_text += " · %d 条" % clue_count
-		var button := _button(button_text, _focus_actor_from_stage.bind(actor_id, actor_name), true)
+		var button := _action_button(button_text, _focus_actor_from_stage.bind(actor_id, actor_name))
 		button.custom_minimum_size = Vector2(148, 40)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.tooltip_text = "%s\n%s" % [actor.get("public_role", "可交谈人物"), actor.get("public_profile", "")]
@@ -1532,7 +1702,7 @@ func _render_player(player: Dictionary) -> void:
 	for item in items:
 		item_parts.append("%s×%d" % [item.get("name", "物品"), int(item.get("amount", 1))])
 	var inventory := "无关键物品" if item_parts.is_empty() else "、".join(item_parts)
-	player_summary_label.text = "%s　%s　战力 %s　助力 %s　伤势 %d　灵石 %s　持有：%s" % [
+	player_summary_label.text = "%s　·　%s\n战力 %s　助力 %s　伤势 %d　灵石 %s\n随身所持　%s" % [
 		player.get("name", "旅人"), state, resources.get("combat", 0), resources.get("support", 0),
 		int(player.get("injury", 0)), resources.get("spirit_stones", 0), inventory,
 	]
@@ -1569,7 +1739,7 @@ func _render_clues(clues: Array, actions: Array) -> void:
 		var fact_id := str(clue.get("fact_id", ""))
 		var target_count := _count_tell_actions(actions, "", fact_id)
 		if target_count > 0:
-			var link := _button("传播 · %d 名可选人物" % target_count, _focus_fact_actions.bind(fact_id, str(clue.get("claim", "未知传言"))), true)
+			var link := _action_button("传播 · %d 名可选人物" % target_count, _focus_fact_actions.bind(fact_id, str(clue.get("claim", "未知传言"))))
 			clues_box.add_child(link)
 		else:
 			_text(clues_box, "当前地点没有新的传播对象", true, TYPE_SCALE.meta)
@@ -1648,7 +1818,7 @@ func _render_people(actors: Array, actions: Array) -> void:
 		var actor_name := str(actor.get("name", "无名者"))
 		var clue_count := _count_tell_actions(actions, actor_id, "")
 		var link_text := "查看并交涉 · %d 条可用线索" % clue_count if clue_count > 0 else "查看人物 · 暂无线索可告知"
-		var link := _button(link_text, _focus_actor_from_reference.bind(actor_id, actor_name), true)
+		var link := _action_button(link_text, _focus_actor_from_reference.bind(actor_id, actor_name))
 		people_box.add_child(link)
 		if index < actors.size() - 1:
 			var separator := HSeparator.new()
@@ -1662,7 +1832,7 @@ func _render_actions(actions: Array) -> void:
 	if focused_actor_id != "":
 		_text(actions_box, "与%s交涉" % focused_actor_name, false, 18)
 		_render_focused_actor_summary(focused_actions)
-		actions_box.add_child(_button("返回全部行动", _clear_action_focus, true))
+		actions_box.add_child(_utility_button("返回全部行动", _clear_action_focus))
 		if focused_actions.is_empty():
 			_text(actions_box, "目前没有新的线索可告知；已经送达的内容不会重复出现。", true)
 			return
@@ -1671,7 +1841,7 @@ func _render_actions(actions: Array) -> void:
 	if focused_fact_id != "":
 		_text(actions_box, "传播线索", false, 18)
 		_text(actions_box, focused_fact_claim, true, 14)
-		actions_box.add_child(_button("返回全部行动", _clear_action_focus, true))
+		actions_box.add_child(_utility_button("返回全部行动", _clear_action_focus))
 		if focused_actions.is_empty():
 			_text(actions_box, "当前地点已没有尚未收到这条线索的人。", true)
 			return
@@ -1696,15 +1866,26 @@ func _render_actions(actions: Array) -> void:
 		"time": "等待与推进",
 		"other": "其他",
 	}
+	var first_category := ""
+	for category in order:
+		if grouped.has(category):
+			first_category = category
+			break
+	if active_action_category != "" and not grouped.has(active_action_category):
+		active_action_category = ""
+	if active_action_category == "":
+		active_action_category = first_category
 	for category in order:
 		if not grouped.has(category):
 			continue
-		var heading := _text(actions_box, str(category_names[category]), true, 13)
-		heading.add_theme_color_override("font_color", COLORS.accent)
+		var category_actions: Array = grouped[category]
+		actions_box.add_child(_category_button("%s　%d" % [category_names[category], category_actions.size()], category, active_action_category == category))
+		if active_action_category != category:
+			continue
 		if category == "information":
-			_add_information_actions(grouped[category])
+			_add_information_actions(category_actions)
 		else:
-			for action in grouped[category]:
+			for action in category_actions:
 				_add_action_button(action)
 
 
@@ -1713,22 +1894,40 @@ func _render_focused_actor_summary(focused_actions: Array) -> void:
 	if actor.is_empty():
 		return
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _panel_style(COLORS.panel_alt, 1, 7, COLORS.line, 13, 11))
+	var summary_style := _panel_style(Color(COLORS.panel_alt, 0.34), 0, 2, Color.TRANSPARENT, 13, 10)
+	summary_style.border_width_left = 2
+	summary_style.border_color = Color(COLORS.accent, 0.56)
+	panel.add_theme_stylebox_override("panel", summary_style)
 	var content := VBoxContainer.new()
 	content.add_theme_constant_override("separation", 6)
 	panel.add_child(content)
 	var role_line := _text(content, "%s · %s" % [actor.get("public_role", "可交谈人物"), actor.get("faction", "散修")], true, 13)
 	role_line.add_theme_color_override("font_color", COLORS.accent)
 	_text(content, str(actor.get("public_profile", "公开资料尚未收集")), false, 14)
-	var focus: Array = actor.get("public_focus", [])
-	if not focus.is_empty():
-		_text(content, "关注 · %s" % "、".join(focus), true, 13)
-	_text(content, "传播风险 · %s" % actor.get("public_risk", "尚不了解"), true, 13)
 	var state_names := {"neutral": "平静", "alert": "正在留意你", "troubled": "正在权衡消息", "decisive": "已经形成决断"}
 	var expression := str(actor_expression_by_id.get(focused_actor_id, "alert"))
 	var state_line := _text(content, "当前状态 · %s · 可谈线索 %d 条" % [state_names.get(expression, expression), focused_actions.size()], false, 13)
 	state_line.add_theme_color_override("font_color", COLORS.success if expression == "decisive" else COLORS.muted)
+	var details := VBoxContainer.new()
+	details.add_theme_constant_override("separation", 5)
+	content.add_child(details)
+	var focus: Array = actor.get("public_focus", [])
+	if not focus.is_empty():
+		_text(details, "关注 · %s" % "、".join(focus), true, 13)
+	_text(details, "传播风险 · %s" % actor.get("public_risk", "尚不了解"), true, 13)
+	details.visible = focused_actor_details_visible
+	content.add_child(_utility_button("收起判断依据" if focused_actor_details_visible else "查看判断依据", _toggle_focused_actor_details))
 	actions_box.add_child(panel)
+
+
+func _toggle_focused_actor_details() -> void:
+	focused_actor_details_visible = not focused_actor_details_visible
+	_render_actions(available_actions_cache)
+
+
+func _set_action_category(category: String) -> void:
+	active_action_category = category
+	_render_actions(available_actions_cache)
 
 
 func _count_tell_actions(actions: Array, actor_id: String, fact_id: String) -> int:
@@ -1766,15 +1965,9 @@ func _add_focused_information_actions(actions: Array) -> void:
 			_text(actions_box, "%s · %s" % [action.get("target_name", "某人"), action.get("target_role", "可交谈人物")], false, 16)
 		var relevance := _text(actions_box, str(action.get("relevance", "尚不了解这条线索与对方的关联")), false, 14)
 		relevance.add_theme_color_override("font_color", COLORS.accent)
-		var risk := str(action.get("risk", ""))
-		if risk != "":
-			_text(actions_box, "使用倾向 · %s" % risk, true, 14)
-		for warning_text in action.get("warnings", []):
-			var warning := _text(actions_box, "注意 · %s" % warning_text, false, 14)
-			warning.add_theme_color_override("font_color", COLORS.accent)
 		_add_action_decision_context(actions_box, action, true)
 		var button_label := "传递这条线索" if focused_actor_id != "" else "告知%s" % action.get("target_name", "对方")
-		actions_box.add_child(_button(button_label, _consider_action.bind(action), true))
+		actions_box.add_child(_action_button(button_label, _consider_action.bind(action)))
 		if index < actions.size() - 1:
 			var separator := HSeparator.new()
 			separator.modulate = COLORS.line
@@ -1786,6 +1979,7 @@ func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
 	focused_actor_name = actor_name
 	focused_fact_id = ""
 	focused_fact_claim = ""
+	focused_actor_details_visible = false
 	stage_actor_id = actor_id
 	stage_actor_name = actor_name
 	_focus_portrait(actor_id)
@@ -1817,6 +2011,7 @@ func _reset_action_focus() -> void:
 	focused_actor_name = ""
 	focused_fact_id = ""
 	focused_fact_claim = ""
+	focused_actor_details_visible = false
 
 
 func _reconcile_action_focus(actors: Array, clues: Array) -> void:
@@ -1854,7 +2049,7 @@ func _add_information_actions(actions: Array) -> void:
 		var facts: Array = tell_groups[target]
 		if facts.size() == 1:
 			var action: Dictionary = facts[0]
-			var button := _button("向%s传递线索" % target, _consider_action.bind(action), true)
+			var button := _action_button("向%s传递线索" % target, _consider_action.bind(action))
 			button.tooltip_text = "%s\n%s\n%s" % [action.get("description", ""), action.get("relevance", ""), action.get("risk", "")]
 			actions_box.add_child(button)
 			_text(actions_box, "“%s”" % action.get("fact_claim", "未知线索"), true, 14)
@@ -1879,7 +2074,7 @@ func _add_action_button(action: Dictionary) -> void:
 		label += "　· 第 %d 日完成" % int(action.get("completion_day", 0))
 	else:
 		label += "　· %d 日" % duration
-	var button := _button(label, _consider_action.bind(action), true)
+	var button := _action_button(label, _consider_action.bind(action))
 	button.tooltip_text = str(action.get("description", ""))
 	actions_box.add_child(button)
 	_add_action_decision_context(actions_box, action, true)
@@ -1926,19 +2121,23 @@ func _consider_action(action: Dictionary) -> void:
 		return
 	selected_action = action
 	_clear(confirmation_box)
-	_text(confirmation_box, "确认这次选择？", false, 24)
-	_text(confirmation_box, str(action.get("name", "行动")), false, 19)
+	var eyebrow := _text(confirmation_box, "落子之前", true, 13)
+	eyebrow.add_theme_color_override("font_color", COLORS.accent)
+	_text(confirmation_box, str(action.get("name", "行动")), false, 27)
 	if action.get("id", "") == "wait:next":
-		var warning := _text(confirmation_box, "将逐日推演并在下一次值得关注的变化处停下，实际可能跨越多个平静日。", false, 15)
+		var warning := _text(confirmation_box, "时间会连续推进，直到下一次值得关注的变化出现。", false, 15)
 		warning.add_theme_color_override("font_color", COLORS.accent)
 	else:
 		_text(confirmation_box, str(action.get("description", "")), true, 15)
-	_add_action_decision_context(confirmation_box, action)
-	if kind == "tell":
-		_text(confirmation_box, "%s · %s" % [action.get("target_name", "某人"), action.get("target_role", "可交谈人物")], false, 15)
-		var relevance_line := _text(confirmation_box, str(action.get("relevance", "关联尚不明确")), false, 14)
-		relevance_line.add_theme_color_override("font_color", COLORS.accent)
-		_text(confirmation_box, "使用倾向 · %s" % action.get("risk", "尚不了解"), true, 14)
+	var outcomes := _joined_action_values(action.get("expected_outcomes", []))
+	if outcomes != "":
+		var outcome_line := _text(confirmation_box, "将带来 · %s" % outcomes, false, 15)
+		outcome_line.add_theme_color_override("font_color", COLORS.success)
+	var timing := str(action.get("timing", ""))
+	if timing != "":
+		var timing_line := _text(confirmation_box, "时机 · %s" % timing, true, 14)
+		if timing.contains("挤压") or timing.contains("来不及") or timing.contains("无法预先保证"):
+			timing_line.add_theme_color_override("font_color", COLORS.danger)
 	var warnings = action.get("warnings", [])
 	if warnings is Array:
 		for warning_text in warnings:
@@ -1952,9 +2151,35 @@ func _consider_action(action: Dictionary) -> void:
 			cost_parts.append("%s %s" % [cost_names.get(key, key), costs[key]])
 		var cost_line := _text(confirmation_box, "消耗：" + "、".join(cost_parts), false, 15)
 		cost_line.add_theme_color_override("font_color", COLORS.danger)
-	confirmation_box.add_child(_button("确认执行", _confirm_selected_action, false))
-	confirmation_box.add_child(_button("再想想", _cancel_confirmation, true))
+	confirmation_details_button = _utility_button("查看判断依据", _toggle_confirmation_details)
+	confirmation_box.add_child(confirmation_details_button)
+	confirmation_details_box = VBoxContainer.new()
+	confirmation_details_box.add_theme_constant_override("separation", 6)
+	confirmation_details_box.hide()
+	confirmation_box.add_child(confirmation_details_box)
+	_add_action_decision_context(confirmation_details_box, action)
+	if kind == "tell":
+		_text(confirmation_details_box, "%s · %s" % [action.get("target_name", "某人"), action.get("target_role", "可交谈人物")], false, 15)
+		var relevance_line := _text(confirmation_details_box, str(action.get("relevance", "关联尚不明确")), false, 14)
+		relevance_line.add_theme_color_override("font_color", COLORS.accent)
+		_text(confirmation_details_box, "使用倾向 · %s" % action.get("risk", "尚不了解"), true, 14)
+	var button_row := HBoxContainer.new()
+	button_row.add_theme_constant_override("separation", 12)
+	confirmation_box.add_child(button_row)
+	var cancel_button := _utility_button("再想想", _cancel_confirmation)
+	cancel_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button_row.add_child(cancel_button)
+	var confirm_button := _button("确认执行", _confirm_selected_action, false)
+	confirm_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button_row.add_child(confirm_button)
 	confirmation_layer.show()
+
+
+func _toggle_confirmation_details() -> void:
+	if not confirmation_details_box or not confirmation_details_button:
+		return
+	confirmation_details_box.visible = not confirmation_details_box.visible
+	confirmation_details_button.text = "收起判断依据" if confirmation_details_box.visible else "查看判断依据"
 
 
 func _confirm_selected_action() -> void:
@@ -2006,25 +2231,48 @@ func _render_ending(ending: Dictionary) -> void:
 	_clear(ending_box)
 	var location_profile: LocationVisualProfile = presentation_registry.location_profile(str(current_view.get("location", {}).get("scene_key", "")))
 	ending_background.texture = location_profile.background if location_profile and location_profile.background else null
-	var eyebrow := _text(ending_box, "尘埃落定", true, 15)
-	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var title := _text(ending_box, str(ending.get("outcome", current_view.get("outcome", "旅程结束"))), false, 30)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_color_override("font_color", Color("ead6a8"))
+	var outcome := str(ending.get("outcome", current_view.get("outcome", "旅程结束")))
 	var influences: Array = ending.get("influence", [])
+	var ending_actor_id := ""
+	for actor in current_view.get("known_actors", []):
+		var actor_name := str(actor.get("name", ""))
+		if actor_name != "" and outcome.contains(actor_name):
+			ending_actor_id = str(actor.get("id", ""))
+			break
+	if ending_actor_id == "":
+		ending_actor_id = last_causal_actor_id
+	if ending_actor_id == "" and not influences.is_empty():
+		ending_actor_id = _actor_id_by_name(str(influences[0].get("actor_name", "")))
+	var actor_profile: ActorVisualProfile = presentation_registry.actor_profile(ending_actor_id)
+	ending_portrait.texture = actor_profile.portrait("decisive") if actor_profile else null
+	ending_portrait.visible = ending_portrait.texture != null
+	ending_box.anchor_left = 0.38 if ending_portrait.visible else 0.23
+	var eyebrow := _text(ending_box, "尘埃落定", true, 15)
+	eyebrow.add_theme_color_override("font_color", COLORS.accent)
+	var title := _text(ending_box, outcome, false, 34)
+	title.add_theme_color_override("font_color", Color("ead6a8"))
+	var rule := HSeparator.new()
+	rule.modulate = Color(COLORS.accent, 0.46)
+	ending_box.add_child(rule)
 	if not influences.is_empty():
-		var impact_heading := _text(ending_box, "你的介入如何留下痕迹", true, 14)
+		var impact_heading := _text(ending_box, "你的介入留下了这些痕迹", true, 14)
 		impact_heading.add_theme_color_override("font_color", COLORS.accent)
 	for influence in influences:
 		_text(ending_box, "你将“%s”告诉了%s。" % [influence.get("fact_claim", "消息"), influence.get("actor_name", "某人")], false, 15)
 		for change in influence.get("changes", []):
-			_text(ending_box, "第 %d 日 · 原本%s，后来%s。" % [int(change.get("day", 0)), change.get("without_information", "另有安排"), change.get("with_information", "改变计划")], true, 14)
+			var change_row := HBoxContainer.new()
+			change_row.add_theme_constant_override("separation", 14)
+			ending_box.add_child(change_row)
+			var day_mark := _text(change_row, "第 %d 日" % int(change.get("day", 0)), false, 14)
+			day_mark.custom_minimum_size.x = 66
+			day_mark.add_theme_color_override("font_color", COLORS.accent)
+			var change_line := _text(change_row, "原本%s；后来%s。" % [change.get("without_information", "另有安排"), change.get("with_information", "改变计划")], true, 14)
+			change_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if influences.is_empty():
 		_text(ending_box, "这一次没有观察到你传递的消息改写他人计划。", true, 14)
 	else:
 		_text(ending_box, "局势已经落定，但被你改变的计划会成为下一段旅途的起点。", true, 14)
-	ending_annex_button = _button("展开局势附录", _toggle_ending_annex, true)
-	ending_annex_button.custom_minimum_size.y = 40
+	ending_annex_button = _utility_button("展开局势附录", _toggle_ending_annex)
 	ending_box.add_child(ending_annex_button)
 	ending_annex_box = VBoxContainer.new()
 	ending_annex_box.add_theme_constant_override("separation", 6)
@@ -2037,8 +2285,8 @@ func _render_ending(ending: Dictionary) -> void:
 			continue
 		_text(ending_annex_box, "· %s" % highlight, true, 14)
 	var return_button := _ornate_button("收卷 · 返回起点", _return_to_start)
-	return_button.custom_minimum_size = Vector2(390, 70)
-	return_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	return_button.custom_minimum_size = Vector2(380, 68)
+	return_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	ending_box.add_child(return_button)
 	ending_layer.show()
 
