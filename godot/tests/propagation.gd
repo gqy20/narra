@@ -49,13 +49,15 @@ func _run() -> void:
 	if threads.is_empty() or threads[0].get("stage", "") != "delivered":
 		return _fail("delivered information has no persistent causal thread")
 	app._open_journal()
-	if "情报因果线" not in _descendant_text(app.scene_box) or "等待公开回响" not in _descendant_text(app.scene_box):
+	if app.action_canvas.visible or "情报因果线" not in _descendant_text(app.scene_box) or "等待公开回响" not in _descendant_text(app.scene_box):
 		return _fail("journal does not show the delivered causal stage")
 	app._close_journal()
+	if not app.action_canvas.visible:
+		return _fail("closing the journal did not restore the location action layer")
 	app._focus_actor_actions("N03", "沈砚秋")
-	var dossier_text := _descendant_text(app.actions_box)
-	if "传播风险" not in dossier_text or "当前状态" not in dossier_text or "正在权衡" not in dossier_text:
-		return _fail("focused actor dossier does not expose decision context and state")
+	var dossier_text: String = _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + str(app.objective_label.text)
+	if "传播风险" not in dossier_text or "正在权衡" not in dossier_text or not app.actor_focus_workspace.visible:
+		return _fail("focused actor workspace does not expose decision context and state")
 	var shen_actions: Array = app._focused_information_actions(app.available_actions_cache)
 	for action in shen_actions:
 		if action.get("fact_id", "") == "F01":
@@ -70,13 +72,13 @@ func _run() -> void:
 	threads = app.current_view.get("causal_threads", [])
 	if threads.is_empty() or threads[0].get("stage", "") != "changed":
 		return _fail("causal thread did not advance after a public decision change")
-	if not app.causal_layer.visible or app.causal_background.texture == null or app.causal_portrait.texture != shen_profile.decisive:
+	if not app.causal_layer.visible or app.action_canvas.visible or app.causal_background.texture == null or app.causal_portrait.texture != shen_profile.decisive:
 		return _fail("decision change did not enter the full-screen causal theatre")
 	var causal_text := _descendant_text(app.causal_layer)
 	if "沈砚秋" not in causal_text or "原本" not in causal_text or "现在" not in causal_text:
 		return _fail("causal theatre does not show the actor and before/after change")
 	app._dismiss_causal()
-	if app.causal_layer.visible:
+	if app.causal_layer.visible or not app.action_canvas.visible:
 		return _fail("causal theatre cannot be dismissed")
 	var saved_known_actors: Array = app.current_view.get("known_actors", [])
 	app.current_view["known_actors"] = []
@@ -96,7 +98,8 @@ func _run() -> void:
 	if not app._action_needs_confirmation(recovery):
 		return _fail("irreversible recovery exchange lost its confirmation")
 	app._focus_actor_actions("N06", "苏晚照")
-	if "以情报换取解瘴丹" not in _descendant_text(app.actions_box):
+	var recovery_focus_text: String = _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + _descendant_text(app.actor_focus_footer)
+	if "以情报换取解瘴丹" not in recovery_focus_text:
 		return _fail("recovery action is not visible from Su Wanzhao's dialogue")
 	if "为何停下" not in _descendant_text(app.scene_box) or "以情报换取解瘴丹" not in _descendant_text(app.scene_box):
 		return _fail("recovery interruption does not explain why time stopped")
@@ -110,7 +113,7 @@ func _run() -> void:
 	var actions = app.current_view.get("available_actions", null)
 	if not actions is Array or not actions.is_empty():
 		return _fail("resolved view actions are not an empty array")
-	if not app.ending_layer.visible:
+	if not app.ending_layer.visible or app.action_canvas.visible:
 		return _fail("ending overlay is not visible")
 	if not app.ending_portrait.visible or app.ending_portrait.texture != shen_profile.decisive:
 		return _fail("ending did not carry the decisive actor into the final narrative frame")

@@ -39,9 +39,11 @@ func _run() -> void:
 		return _fail("2D world map did not consume the player view")
 	if not app.world_map_view.has_formal_assets():
 		return _fail("world map does not use the registered scenic assets")
-	var action_text := _descendant_text(app.actions_box)
-	if "核验" not in action_text or "起手任选" not in action_text or "亲自入谷" not in action_text or "查证与探索" in action_text or app.active_action_category != "":
-		return _fail("contextual action dock fell back to dashboard categories")
+	var action_text := _descendant_text(app.overview_actions_box)
+	if "核验" not in action_text or "起手任选" not in action_text or "保留入谷" not in action_text or "查证与探索" in action_text or app.active_action_category != "":
+		return _fail("compact contextual action dock fell back to dashboard categories")
+	if not app.overview_actions_box.visible or app.legacy_action_scroll.visible or app.actor_focus_workspace.visible:
+		return _fail("default location state is not the compact non-scrolling overview")
 	if str(app.location_stage.location.get("scene_key", "")) != "market":
 		return _fail("location stage did not render the current place")
 	if not app.location_stage.has_formal_asset():
@@ -67,21 +69,24 @@ func _run() -> void:
 		return _fail("actor selection did not switch the production portrait")
 	if app.actor_portrait_name.text != "魏无咎" or not app.location_panel.visible:
 		return _fail("actor selection did not update the visible stage caption")
-	if app.actions_box.get_child_count() < 2 or "眼下可说" not in _descendant_text(app.actions_box.get_child(1)):
-		return _fail("actor focus does not place available dialogue before the dossier")
+	var actor_focus_text := _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + _descendant_text(app.actor_focus_footer)
+	if not app.actor_focus_workspace.visible or app.legacy_action_scroll.visible or "选择要传达的话" not in actor_focus_text or "传播风险" not in actor_focus_text or "送出后不可撤回" not in actor_focus_text:
+		return _fail("actor focus does not expose selection, decision context, and fixed commitment footer")
 	if app.location_detail_box.visible or app.stage_people_box.visible:
 		return _fail("actor focus keeps unrelated location chrome above the dialogue action")
 	for bus_name in ["Ambient", "Event", "UI"]:
 		if AudioServer.get_bus_index(bus_name) < 0:
 			return _fail("missing audio bus: " + bus_name)
 	app._open_audio_settings()
-	if not app.settings_layer.visible:
+	if not app.settings_layer.visible or app.action_canvas.visible:
 		return _fail("audio settings entry did not open")
 	app._toggle_motion()
 	if app.motion_enabled or app.world_map_view.motion_enabled or app.presentation_director.motion_enabled:
 		return _fail("reduced-motion preference did not propagate to presentation components")
 	app._toggle_motion()
 	app._close_audio_settings()
+	if not app.action_canvas.visible:
+		return _fail("closing audio settings did not restore the location action layer")
 	app._on_map_location_selected("L02")
 	if app.selected_map_location_id != "L02" or app.map_detail_box.get_child_count() == 0:
 		return _fail("map location selection has no detail state")
@@ -102,7 +107,7 @@ func _run() -> void:
 	if app.timing_label.text != "第24天 · 传闻":
 		return _fail("initial known timing is not visible")
 	app._open_journal()
-	if not app.journal_layer.visible or "烟测修士" not in _descendant_text(app.journal_panel):
+	if not app.journal_layer.visible or app.action_canvas.visible or "烟测修士" not in _descendant_text(app.journal_panel):
 		return _fail("travel dossier does not expose the player summary")
 	if app.journal_tabs.get_tab_count() != 4 or app.journal_travel_button.text != "行装 !2":
 		return _fail("travel dossier does not expose four layered sections with blocking gear status")
@@ -120,7 +125,7 @@ func _run() -> void:
 		return _fail("gear section cannot reveal completed checks on demand")
 	app._select_journal_tab(0)
 	app._close_journal()
-	if app.journal_layer.visible:
+	if app.journal_layer.visible or app.action_canvas.visible != (app.visual_mode == "location"):
 		return _fail("travel dossier cannot be dismissed")
 	var found_verification := false
 	for action in actions:

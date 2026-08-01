@@ -40,3 +40,41 @@ No actionable P0, P1, or P2 visual issue remains in the recorded MVP path.
 - The final recording contains 1157 rendered source frames and a 57.8-second H.264/AAC deliverable.
 
 final result: passed
+
+---
+
+# Design QA — 信息面板双状态
+
+## Target and evidence
+
+- Target: compact overview plus expanded actor-focus state, keeping the live world and portrait visible.
+- Logical viewport: 1280 × 800; capture output uses the project stretch settings.
+- Target board: `C:\Users\gqy17\.codex\generated_images\019fbdbf-1661-7d20-a981-2df4a66194b6\exec-44fbafa3-3edb-417c-821d-feaf37ed98a4.png`.
+- Implementation captures: `artifacts/screenshots/ui-overview-2048x1152.png` and `artifacts/screenshots/ui-actor-focus-2048x1152.png`.
+- Combined comparison: `artifacts/screenshots/ui-design-qa-comparison.png`.
+
+## Comparison findings
+
+No actionable P0, P1, or P2 issue remains in the implemented path.
+
+- Layout: the default state exposes location, people, guidance, and three primary actions without an inner vertical scroll. The actor state expands into a two-column workspace while preserving the persistent header and portrait.
+- Hierarchy: gold headings and selected states retain the target’s restrained wuxia HUD treatment; secondary explanations use muted text and do not compete with the primary decision.
+- Information completeness: each overview choice exposes duration and outcome in one scan line. Actor focus exposes relevance, likely impact, propagation risk, timing, and an irreversible-action warning before submission.
+- Interaction states: person selection, focused message selection, back navigation, legacy fact focus, confirmation, map/location switching, and action execution remain wired to the existing game behavior.
+- Fixed action area: the actor CTA, duration, and warning remain visible at the bottom while the detail column can scroll when content grows.
+- Viewport stability: the decision layer is isolated from the dashboard layout, so expanded content cannot displace or cover the persistent header. Both reference states were visually inspected at the project’s 1280 × 800 logical viewport.
+- Typography and contrast: display/body font roles, line spacing, selected borders, semantic danger color, and dark translucent surfaces remain legible over the scene artwork.
+- Imagery: existing authored location and portrait assets are preserved without placeholder substitution or crop regression.
+
+## Verification
+
+- `tools/verify-godot.ps1` passes integration, propagation, contender, diagnostics, and logging checks.
+- `tools/capture-ui-states.ps1` reproducibly captures both UI states.
+- The source/implementation comparison contains no clipped primary action, overlapping header, broken wrapping, or missing fixed CTA.
+
+## Remaining polish
+
+- P3: the overview’s fourth and later low-priority actions remain behind an explicit “展开其余” control; a future controller pass should validate focus order when that list is expanded.
+- P3: dedicated text-scaling and ultrawide validation remains separate platform QA beyond the fixed desktop viewport used by the current game build.
+
+final result: passed

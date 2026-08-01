@@ -56,7 +56,7 @@ func _run() -> void:
 
 	if not bool(app.current_view.get("resolved", false)):
 		return _fail("prepared contender route did not resolve")
-	if not app.ending_layer.visible:
+	if not app.ending_layer.visible or app.action_canvas.visible:
 		return _fail("ending overlay is not visible")
 	var player: Dictionary = app.current_view.get("player", {})
 	if int(player.get("resources", {}).get("combat", 0)) < 7:
@@ -88,7 +88,7 @@ func _execute_cultivation_stage() -> bool:
 		_fail("missing action: cultivate")
 		return false
 	var before_combat := int(app.current_view.get("player", {}).get("resources", {}).get("combat", 0))
-	var action_text := _descendant_text(app.actions_box)
+	var action_text := _descendant_text(app.overview_actions_box)
 	if ("修炼至下一阶段 · 战力 %d → %d" % [before_combat, before_combat + 1]) not in action_text:
 		_fail("cultivation action does not explain the next visible stage")
 		return false

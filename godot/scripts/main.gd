@@ -60,6 +60,7 @@ var queued_followup_action_id := ""
 var available_actions_cache: Array = []
 var focused_actor_id := ""
 var focused_actor_name := ""
+var focused_actor_action_id := ""
 var focused_fact_id := ""
 var focused_fact_claim := ""
 var stage_actor_id := ""
@@ -134,6 +135,15 @@ var journal_feedback_details_button: Button
 var journal_travel_details_box: VBoxContainer
 var journal_travel_details_button: Button
 var actions_box: VBoxContainer
+var overview_actions_box: VBoxContainer
+var legacy_action_scroll: ScrollContainer
+var actor_focus_workspace: HBoxContainer
+var actor_focus_message_list: VBoxContainer
+var actor_focus_detail_scroll: ScrollContainer
+var actor_focus_detail_box: VBoxContainer
+var actor_focus_footer: HBoxContainer
+var action_canvas: CanvasLayer
+var action_dock_host: Control
 var action_dock: PanelContainer
 var action_dock_title: Label
 var footer_label: Label
@@ -797,19 +807,36 @@ func _build_dashboard() -> void:
 	workspace.add_child(world_column)
 	_build_world_stage(world_column)
 
+	action_dock_host = Control.new()
+	action_dock_host.anchor_left = 0.025
+	action_dock_host.anchor_right = 0.62
+	action_dock_host.anchor_top = 0.50
+	action_dock_host.anchor_bottom = 0.985
+	action_dock_host.clip_contents = true
+	# Keep the decision layer on its own canvas so focused content can never
+	# enlarge either the dashboard workspace or the root interface.
+	action_canvas = CanvasLayer.new()
+	action_canvas.layer = 1
+	add_child(action_canvas)
+	action_canvas.add_child(action_dock_host)
+
 	action_dock = PanelContainer.new()
-	action_dock.anchor_left = 0.025
-	action_dock.anchor_right = 0.62
-	action_dock.anchor_top = 0.50
-	action_dock.anchor_bottom = 0.985
+	action_dock.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var dock_style := _panel_style(Color("0b100ddf"), 0, 2, Color.TRANSPARENT, 22, 16)
 	dock_style.border_width_left = 2
 	dock_style.border_color = Color(COLORS.accent, 0.68)
 	action_dock.add_theme_stylebox_override("panel", dock_style)
-	workspace.add_child(action_dock)
+	action_dock_host.add_child(action_dock)
+	var action_content_host := Control.new()
+	action_content_host.clip_contents = true
+	action_content_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_content_host.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	action_dock.add_child(action_content_host)
 	var decision_column := VBoxContainer.new()
+	decision_column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	decision_column.grow_vertical = Control.GROW_DIRECTION_END
 	decision_column.add_theme_constant_override("separation", 7)
-	action_dock.add_child(decision_column)
+	action_content_host.add_child(decision_column)
 	var title_row := HBoxContainer.new()
 	title_row.add_theme_constant_override("separation", 12)
 	decision_column.add_child(title_row)
@@ -823,6 +850,8 @@ func _build_dashboard() -> void:
 	objective_label = Label.new()
 	objective_label.text = "风声未定，先看清眼前的人和路。"
 	objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	objective_label.max_lines_visible = 2
+	objective_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	objective_label.add_theme_font_size_override("font_size", TYPE_SCALE.meta)
 	objective_label.add_theme_constant_override("line_spacing", 3)
 	objective_label.add_theme_color_override("font_color", COLORS.muted)
@@ -837,14 +866,53 @@ func _build_dashboard() -> void:
 	var rule := HSeparator.new()
 	rule.modulate = Color(COLORS.accent, 0.24)
 	decision_column.add_child(rule)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	decision_column.add_child(scroll)
+	overview_actions_box = VBoxContainer.new()
+	overview_actions_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	overview_actions_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	overview_actions_box.add_theme_constant_override("separation", 5)
+	decision_column.add_child(overview_actions_box)
+
+	actor_focus_workspace = HBoxContainer.new()
+	actor_focus_workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	actor_focus_workspace.add_theme_constant_override("separation", 14)
+	decision_column.add_child(actor_focus_workspace)
+	var message_panel := PanelContainer.new()
+	message_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	message_panel.size_flags_stretch_ratio = 0.38
+	message_panel.add_theme_stylebox_override("panel", _panel_style(Color(COLORS.panel_alt, 0.24), 0, 1, Color.TRANSPARENT, 8, 8))
+	actor_focus_workspace.add_child(message_panel)
+	actor_focus_message_list = VBoxContainer.new()
+	actor_focus_message_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actor_focus_message_list.add_theme_constant_override("separation", 6)
+	message_panel.add_child(actor_focus_message_list)
+	actor_focus_detail_scroll = ScrollContainer.new()
+	actor_focus_detail_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actor_focus_detail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	actor_focus_detail_scroll.size_flags_stretch_ratio = 0.62
+	actor_focus_detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	actor_focus_workspace.add_child(actor_focus_detail_scroll)
+	actor_focus_detail_box = VBoxContainer.new()
+	actor_focus_detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actor_focus_detail_box.add_theme_constant_override("separation", 9)
+	actor_focus_detail_scroll.add_child(actor_focus_detail_box)
+
+	legacy_action_scroll = ScrollContainer.new()
+	legacy_action_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	legacy_action_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	decision_column.add_child(legacy_action_scroll)
 	actions_box = VBoxContainer.new()
 	actions_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	actions_box.add_theme_constant_override("separation", 7)
-	scroll.add_child(actions_box)
+	legacy_action_scroll.add_child(actions_box)
+
+	actor_focus_footer = HBoxContainer.new()
+	actor_focus_footer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actor_focus_footer.add_theme_constant_override("separation", 12)
+	decision_column.add_child(actor_focus_footer)
+	overview_actions_box.hide()
+	actor_focus_workspace.hide()
+	legacy_action_scroll.hide()
+	actor_focus_footer.hide()
 	action_dock.hide()
 
 
@@ -1921,6 +1989,7 @@ func _present_causal_change(feedback: Dictionary, location: Dictionary) -> void:
 	causal_day.text = "第 %d 日 · 由原本到现在，已有决断" % change_day
 	causal_layer.modulate = Color(1, 1, 1, 0) if motion_enabled else Color.WHITE
 	causal_layer.show()
+	_sync_action_canvas_visibility()
 	var portrait_tint := Color(0.78, 0.78, 0.74, 1.0)
 	causal_portrait.modulate = Color(portrait_tint, 0) if motion_enabled else portrait_tint
 	causal_portrait.position.x = -32 if motion_enabled else 0
@@ -1937,6 +2006,7 @@ func _dismiss_causal() -> void:
 	audio_director.play_ui()
 	causal_layer.hide()
 	causal_layer.modulate = Color.WHITE
+	_sync_action_canvas_visibility()
 
 
 func _apply_presentation_cue(cue: Dictionary) -> void:
@@ -2030,11 +2100,13 @@ func _toggle_motion() -> void:
 func _open_audio_settings() -> void:
 	audio_director.play_ui()
 	settings_layer.show()
+	_sync_action_canvas_visibility()
 
 
 func _close_audio_settings() -> void:
 	audio_director.play_ui()
 	settings_layer.hide()
+	_sync_action_canvas_visibility()
 
 
 func _open_journal() -> void:
@@ -2043,10 +2115,12 @@ func _open_journal() -> void:
 		journal_panel.position.x = 0
 		journal_layer.modulate = Color.WHITE
 		journal_layer.show()
+		_sync_action_canvas_visibility()
 		return
 	journal_panel.position.x = 42
 	journal_layer.modulate = Color(1, 1, 1, 0)
 	journal_layer.show()
+	_sync_action_canvas_visibility()
 	var tween := create_tween().set_parallel(true)
 	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(journal_layer, "modulate", Color.WHITE, 0.22)
@@ -2057,6 +2131,7 @@ func _close_journal() -> void:
 	audio_director.play_ui()
 	journal_layer.hide()
 	journal_panel.position.x = 0
+	_sync_action_canvas_visibility()
 	if journal_current_feedback_signature != "":
 		journal_seen_feedback_signature = journal_current_feedback_signature
 		_render_journal_tab_states(
@@ -2131,11 +2206,13 @@ func _show_start() -> void:
 	if presentation_director:
 		presentation_director.cancel()
 	start_layer.show()
+	_sync_action_canvas_visibility()
 
 
 func _show_game() -> void:
 	start_layer.hide()
 	game_layer.show()
+	_sync_action_canvas_visibility()
 
 
 func _show_error(message: String) -> void:
@@ -2183,8 +2260,7 @@ func _render_view() -> void:
 	_render_actions(available_actions_cache)
 	_render_world_map(current_view.get("world_map", {}), location, available_actions_cache)
 	_render_location_stage(location, known_actors, available_actions_cache)
-	if action_dock and not confirmation_layer.visible:
-		action_dock.visible = visual_mode == "location"
+	_sync_action_canvas_visibility()
 	var ending = current_view.get("ending", null)
 	if bool(current_view.get("resolved", false)) or bool(current_view.get("ended", false)) or ending is Dictionary:
 		_render_ending(ending if ending is Dictionary else {})
@@ -2201,8 +2277,7 @@ func _set_visual_mode(mode: String) -> void:
 		map_panel.visible = mode == "map"
 	if location_panel:
 		location_panel.visible = mode == "location"
-	if action_dock:
-		action_dock.visible = mode == "location"
+	_sync_action_canvas_visibility()
 	if map_mode_button:
 		map_mode_button.text = "地图"
 		map_mode_button.tooltip_text = "查看公开地点、路线与行程"
@@ -2215,6 +2290,24 @@ func _set_visual_mode(mode: String) -> void:
 		location_stage.play_establish.call_deferred()
 	if actions_box:
 		_render_actions(available_actions_cache)
+
+
+func _sync_action_canvas_visibility() -> void:
+	if not action_canvas or not action_dock:
+		return
+	var should_show := (
+		game_layer
+		and game_layer.visible
+		and visual_mode == "location"
+		and not start_layer.visible
+		and not journal_layer.visible
+		and not confirmation_layer.visible
+		and not settings_layer.visible
+		and not causal_layer.visible
+		and not ending_layer.visible
+	)
+	action_canvas.visible = should_show
+	action_dock.visible = should_show
 
 
 func _render_world_map(world_map, current_location: Dictionary, actions: Array) -> void:
@@ -2857,31 +2950,28 @@ func _render_people(actors: Array, actions: Array) -> void:
 
 func _render_actions(actions: Array) -> void:
 	_clear(actions_box)
+	_clear(overview_actions_box)
+	_clear(actor_focus_message_list)
+	_clear(actor_focus_detail_box)
+	_clear(actor_focus_footer)
 	var focused_actions := _focused_information_actions(actions)
 	var has_action_focus := focused_actor_id != "" or focused_fact_id != ""
+	_configure_action_dock_layout(has_action_focus)
 	if location_detail_box:
 		location_detail_box.visible = not has_action_focus
 	if stage_people_box:
 		stage_people_box.visible = not has_action_focus
+	overview_actions_box.visible = not has_action_focus
+	actor_focus_workspace.visible = focused_actor_id != ""
+	actor_focus_footer.visible = focused_actor_id != "" and not focused_actions.is_empty()
+	legacy_action_scroll.visible = focused_fact_id != ""
 	if focused_actor_id != "":
 		action_dock_title.text = "与%s说话" % focused_actor_name
-		var back := _utility_button("回到眼前", _clear_action_focus)
-		back.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		actions_box.add_child(back)
-		if focused_actions.is_empty():
-			_render_focused_actor_summary(focused_actions)
-			_text(actions_box, "此刻没有新的话可说。已经送达的消息不会重复出现。", true)
-			return
-		var talk_heading := _text(actions_box, "眼下可说 · %d 条" % focused_actions.size(), true, TYPE_SCALE.meta)
-		talk_heading.add_theme_color_override("font_color", COLORS.accent)
-		_add_focused_information_actions(focused_actions)
-		var actor_rule := HSeparator.new()
-		actor_rule.modulate = Color(COLORS.line, 0.62)
-		actions_box.add_child(actor_rule)
-		_render_focused_actor_summary(focused_actions)
+		_render_actor_focus_workspace(focused_actions)
 		return
 	if focused_fact_id != "":
 		action_dock_title.text = "把消息交给谁"
+		objective_label.text = focused_fact_claim
 		_text(actions_box, focused_fact_claim, true, 14)
 		var back := _utility_button("回到眼前", _clear_action_focus)
 		back.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -2892,25 +2982,149 @@ func _render_actions(actions: Array) -> void:
 		_add_focused_information_actions(focused_actions)
 		return
 	action_dock_title.text = str(current_view.get("location", {}).get("name", "眼前"))
+	var guidance: Array = current_view.get("guidance", [])
+	objective_label.text = str(guidance[0]) if not guidance.is_empty() else "风声未定，先看清眼前的人和路。"
 	if actions.is_empty():
-		_text(actions_box, "眼下无事可做，或许该换个地方看看。", true)
+		_text(overview_actions_box, "眼下无事可做，或许该换个地方看看。", true)
 		return
 	var eligible := _location_context_actions(actions)
 	if eligible.is_empty():
-		_text(actions_box, "想赶路就翻开地图；想传话就先选中一个人。", true, 14)
+		_text(overview_actions_box, "想赶路就翻开地图；想传话就先选中一个人。", true, 14)
 		return
-	_render_first_day_route_compass(eligible)
+	_render_first_day_route_compass(eligible, overview_actions_box)
 	var visible_count := eligible.size() if show_all_actions else mini(3, eligible.size())
 	for index in visible_count:
-		_add_contextual_choice(eligible[index])
+		_add_overview_choice(eligible[index], index)
 	if eligible.size() > visible_count:
 		var more := _utility_button("展开其余 %d 项安排" % (eligible.size() - visible_count), _toggle_all_actions)
 		more.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		actions_box.add_child(more)
+		overview_actions_box.add_child(more)
 	elif show_all_actions and eligible.size() > 3:
 		var less := _utility_button("只看眼前要事", _toggle_all_actions)
 		less.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		actions_box.add_child(less)
+		overview_actions_box.add_child(less)
+
+
+func _configure_action_dock_layout(has_action_focus: bool) -> void:
+	if not action_dock or not action_dock_host:
+		return
+	action_dock_host.anchor_top = 0.22 if has_action_focus else 0.45
+	var dock_style := _panel_style(Color("0b100df2") if has_action_focus else Color("0b100de8"), 0, 2, Color.TRANSPARENT, 22, 16)
+	dock_style.border_width_left = 2
+	dock_style.border_color = Color(COLORS.accent, 0.72 if has_action_focus else 0.62)
+	action_dock.add_theme_stylebox_override("panel", dock_style)
+
+
+func _add_overview_choice(action: Dictionary, index: int) -> void:
+	var label := str(action.get("name", "做一件事"))
+	if action.get("id", "") == "verify:F02":
+		label = "查明日期 · 核验成熟传闻"
+	elif action.get("kind", "") == "buy" and action.get("target_id", "") == "antidote":
+		label = "备好入谷药 · 购买解瘴丹"
+	elif action.get("kind", "") == "recover":
+		label = "交出已核实日期 → 获得解瘴丹"
+	elif action.get("kind", "") == "cultivate":
+		var combat := int(current_view.get("player", {}).get("resources", {}).get("combat", 0))
+		label = "修炼至下一阶段 · 战力 %d → %d" % [combat, combat + 1]
+	if action.get("id", "") == "wait:next":
+		label = "静候下一阵风声"
+	var meta: Array[String] = []
+	if int(action.get("completion_day", 0)) > 0:
+		meta.append("%d日" % int(action.get("duration", 1)))
+	else:
+		meta.append("%d日" % int(action.get("duration", 1)))
+	var outcomes := _joined_action_values(action.get("expected_outcomes", []))
+	if outcomes != "":
+		meta.append(outcomes)
+	var button_label := "%d　%s" % [index + 1, label]
+	if not meta.is_empty():
+		button_label += "　·　%s" % " · ".join(meta)
+	var callback := _consider_action.bind(action, "wait:complete") if action.get("kind", "") == "cultivate" else _consider_action.bind(action)
+	var button := _action_button(button_label, callback)
+	button.custom_minimum_size.y = 44
+	button.tooltip_text = "%s\n%s" % [action.get("description", ""), action.get("timing", "")]
+	overview_actions_box.add_child(button)
+
+
+func _render_actor_focus_workspace(focused_actions: Array) -> void:
+	var back := _utility_button("‹  返回%s" % current_view.get("location", {}).get("name", "眼前"), _clear_action_focus)
+	back.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	actor_focus_message_list.add_child(back)
+	var actor := _actor_by_id(current_view.get("known_actors", []), focused_actor_id)
+	var state_names := {"neutral": "平静", "alert": "正在留意你", "troubled": "正在权衡消息", "decisive": "已经形成决断"}
+	var expression := str(actor_expression_by_id.get(focused_actor_id, "alert"))
+	objective_label.text = "%s · %s · %s" % [actor.get("public_role", "可交谈人物"), actor.get("faction", "散修"), state_names.get(expression, expression)]
+	var heading := _text(actor_focus_message_list, "选择要传达的话", true, TYPE_SCALE.meta)
+	heading.add_theme_color_override("font_color", COLORS.accent)
+	if focused_actions.is_empty():
+		focused_actor_action_id = ""
+		_text(actor_focus_message_list, "此刻没有新的话可说", true, 14)
+		_text(actor_focus_detail_box, str(actor.get("public_profile", "公开资料尚未收集")), false, 16)
+		_text(actor_focus_detail_box, "已经送达的消息不会重复出现。完整人物档案可在随身卷宗中查看。", true, 14)
+		return
+	var focused_choice := _resolve_focused_actor_action(focused_actions)
+	for action in focused_actions:
+		var action_id := str(action.get("id", ""))
+		var claim := str(action.get("name", "以情报换取解瘴丹")) if action.get("kind", "") == "recover" else str(action.get("fact_claim", action.get("name", "一条消息")))
+		var selected := action_id == str(focused_choice.get("id", ""))
+		var button := _action_button(("◆  " if selected else "　") + claim, _select_focused_actor_action.bind(action_id))
+		button.custom_minimum_size.y = 46
+		if selected:
+			var selected_style := _panel_style(Color(COLORS.panel_hover, 0.72), 0, 2, Color.TRANSPARENT, 12, 8)
+			selected_style.border_width_left = 2
+			selected_style.border_color = COLORS.accent
+			button.add_theme_stylebox_override("normal", selected_style)
+		actor_focus_message_list.add_child(button)
+	_render_actor_focus_detail(focused_choice)
+
+
+func _resolve_focused_actor_action(actions: Array) -> Dictionary:
+	for action in actions:
+		if str(action.get("id", "")) == focused_actor_action_id:
+			return action
+	var first: Dictionary = actions[0]
+	focused_actor_action_id = str(first.get("id", ""))
+	return first
+
+
+func _select_focused_actor_action(action_id: String) -> void:
+	focused_actor_action_id = action_id
+	_render_actions(available_actions_cache)
+	actor_focus_detail_scroll.set_deferred("scroll_vertical", 0)
+
+
+func _render_actor_focus_detail(action: Dictionary) -> void:
+	var claim := str(action.get("name", "以情报换取解瘴丹")) if action.get("kind", "") == "recover" else str(action.get("fact_claim", action.get("name", "一条消息")))
+	var title := _text(actor_focus_detail_box, claim, false, 19)
+	title.add_theme_color_override("font_color", COLORS.accent)
+	var relevance := str(action.get("relevance", "尚不了解这条消息会在对方心里留下什么"))
+	var impact_heading := _text(actor_focus_detail_box, "他为何在意", true, TYPE_SCALE.meta)
+	impact_heading.add_theme_color_override("font_color", COLORS.accent)
+	_text(actor_focus_detail_box, relevance, false, 15)
+	var outcomes := _joined_action_values(action.get("expected_outcomes", []))
+	var outcome_heading := _text(actor_focus_detail_box, "可能影响", true, TYPE_SCALE.meta)
+	outcome_heading.add_theme_color_override("font_color", COLORS.accent)
+	_text(actor_focus_detail_box, outcomes if outcomes != "" else str(action.get("description", "影响仍待局势验证")), false, 15)
+	var risk_heading := _text(actor_focus_detail_box, "传播风险", true, TYPE_SCALE.meta)
+	risk_heading.add_theme_color_override("font_color", COLORS.accent)
+	_text(actor_focus_detail_box, str(action.get("risk", "尚未发现明确风险")), false, 15)
+	var timing := str(action.get("timing", ""))
+	if timing != "":
+		_text(actor_focus_detail_box, "时机 · %s" % timing, true, 14)
+
+	var primary_label := "以情报换取解瘴丹" if action.get("kind", "") == "recover" else "把这句话告诉他"
+	var primary := _ornate_button(primary_label, _consider_action.bind(action))
+	primary.custom_minimum_size = Vector2(300, 54)
+	actor_focus_footer.add_child(primary)
+	var duration := _text(actor_focus_footer, "耗时 · %d 日" % int(action.get("duration", 1)), false, 15)
+	duration.autowrap_mode = TextServer.AUTOWRAP_OFF
+	duration.custom_minimum_size.x = 110
+	duration.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var warning := _text(actor_focus_footer, "送出后不可撤回", false, 14)
+	warning.autowrap_mode = TextServer.AUTOWRAP_OFF
+	warning.custom_minimum_size.x = 150
+	warning.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	warning.add_theme_color_override("font_color", COLORS.danger)
 
 
 func _location_context_actions(actions: Array) -> Array:
@@ -2923,9 +3137,11 @@ func _location_context_actions(actions: Array) -> Array:
 	return result
 
 
-func _render_first_day_route_compass(actions: Array) -> void:
+func _render_first_day_route_compass(actions: Array, parent: VBoxContainer = null) -> void:
 	if int(current_view.get("day", 0)) > 1:
 		return
+	if parent == null:
+		parent = actions_box
 	var has_verify := not _action_by_id(actions, "verify:F02").is_empty()
 	var has_antidote := false
 	for action in actions:
@@ -2935,23 +3151,18 @@ func _render_first_day_route_compass(actions: Array) -> void:
 	if not has_verify and not has_antidote:
 		return
 	var panel := PanelContainer.new()
-	var style := _panel_style(Color(COLORS.panel_alt, 0.34), 0, 2, Color.TRANSPARENT, 11, 6)
+	var style := _panel_style(Color(COLORS.panel_alt, 0.26), 0, 2, Color.TRANSPARENT, 10, 4)
 	style.border_width_left = 2
 	style.border_color = Color(COLORS.accent, 0.64)
 	panel.add_theme_stylebox_override("panel", style)
-	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 2)
+	var content := HBoxContainer.new()
+	content.add_theme_constant_override("separation", 10)
 	panel.add_child(content)
-	var heading := _text(content, "起手任选 · 查日期 / 备丹药 / 找人传话", false, 14)
+	var heading := _text(content, "起手任选 · 查日期 / 备丹药 / 找人传话　—　情报可靠 / 保留入谷 / 影响人物安排", false, 12)
+	heading.autowrap_mode = TextServer.AUTOWRAP_OFF
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.add_theme_color_override("font_color", COLORS.accent)
-	var meanings: Array[String] = []
-	if has_verify:
-		meanings.append("情报更可靠")
-	if has_antidote:
-		meanings.append("保留亲自入谷")
-	meanings.append("影响人物安排")
-	_text(content, "分别用于：%s" % " · ".join(meanings), true, 12)
-	actions_box.add_child(panel)
+	parent.add_child(panel)
 
 
 func _add_contextual_choice(action: Dictionary) -> void:
@@ -3085,6 +3296,7 @@ func _add_focused_information_actions(actions: Array) -> void:
 func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
 	focused_actor_id = actor_id
 	focused_actor_name = actor_name
+	focused_actor_action_id = ""
 	focused_fact_id = ""
 	focused_fact_claim = ""
 	focused_actor_details_visible = false
@@ -3126,6 +3338,7 @@ func _clear_action_focus() -> void:
 func _reset_action_focus() -> void:
 	focused_actor_id = ""
 	focused_actor_name = ""
+	focused_actor_action_id = ""
 	focused_fact_id = ""
 	focused_fact_claim = ""
 	focused_actor_details_visible = false
@@ -3142,6 +3355,7 @@ func _reconcile_action_focus(actors: Array, clues: Array) -> void:
 		if not actor_still_here:
 			focused_actor_id = ""
 			focused_actor_name = ""
+			focused_actor_action_id = ""
 	if focused_fact_id != "":
 		var fact_still_known := false
 		for clue in clues:
@@ -3308,6 +3522,7 @@ func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 	if action_dock:
 		action_dock.hide()
 	confirmation_layer.show()
+	_sync_action_canvas_visibility()
 
 
 func _action_needs_confirmation(action: Dictionary) -> bool:
@@ -3352,8 +3567,7 @@ func _cancel_confirmation() -> void:
 	selected_action = {}
 	selected_followup_action_id = ""
 	confirmation_layer.hide()
-	if action_dock:
-		action_dock.visible = visual_mode == "location"
+	_sync_action_canvas_visibility()
 
 
 func _render_feedback_evidence_into(parent: VBoxContainer, feedback: Dictionary) -> void:
@@ -3447,6 +3661,7 @@ func _render_ending(ending: Dictionary) -> void:
 	return_button.add_theme_font_size_override("font_size", 16)
 	ending_actions.add_child(return_button)
 	ending_layer.show()
+	_sync_action_canvas_visibility()
 
 
 func _toggle_ending_annex() -> void:
