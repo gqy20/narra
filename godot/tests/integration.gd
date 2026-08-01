@@ -35,9 +35,12 @@ func _run() -> void:
 	for scene_key in ["market", "qinglan", "apothecary", "valley_edge", "inner_valley"]:
 		if not app.presentation_registry.has_location(scene_key):
 			return _fail("missing production location profile: " + scene_key)
-	for actor_id in ["N01", "N02", "N03"]:
+	for actor_id in ["N01", "N02", "N03", "N04", "N05", "N06", "N07", "N08", "N09", "N10"]:
 		if not app.presentation_registry.has_actor(actor_id):
-			return _fail("missing core actor profile: " + actor_id)
+			return _fail("missing production actor profile: " + actor_id)
+		var actor_profile = app.presentation_registry.actor_profile(actor_id)
+		if actor_profile == null or actor_profile.portrait() == null:
+			return _fail("actor profile has no loadable portrait: " + actor_id)
 	if not app.actor_portrait.visible or app.actor_portrait.texture == null:
 		return _fail("initial core actor did not load its registered portrait")
 	for bus_name in ["Ambient", "Event", "UI"]:

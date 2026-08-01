@@ -11,6 +11,13 @@ const ACTOR_PROFILES := {
 	"N01": preload("res://assets/characters/N01/profile.tres"),
 	"N02": preload("res://assets/characters/N02/profile.tres"),
 	"N03": preload("res://assets/characters/N03/profile.tres"),
+	"N04": preload("res://assets/characters/N04/profile.tres"),
+	"N05": preload("res://assets/characters/N05/profile.tres"),
+	"N06": preload("res://assets/characters/N06/profile.tres"),
+	"N07": preload("res://assets/characters/N07/profile.tres"),
+	"N08": preload("res://assets/characters/N08/profile.tres"),
+	"N09": preload("res://assets/characters/N09/profile.tres"),
+	"N10": preload("res://assets/characters/N10/profile.tres"),
 }
 
 

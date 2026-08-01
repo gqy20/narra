@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ActorVisualProfile" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/actor_visual_profile.gd" id="1_profile"]
+[ext_resource type="Texture2D" path="res://assets/characters/N09/neutral.png" id="2_neutral"]
+
+[resource]
+script = ExtResource("1_profile")
+actor_id = "N09"
+neutral = ExtResource("2_neutral")
+accent_color = Color(0.37, 0.5, 0.55, 1)
