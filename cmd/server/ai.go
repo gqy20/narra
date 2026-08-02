@@ -28,7 +28,7 @@ func registerAIFlags() aiFlags {
 		model:      flag.String("ai-model", aiconfig.EnvironmentOrDefault("ANTHROPIC_MODEL", "claude-haiku-4-5"), "Anthropic-compatible model used for NPC dialogue"),
 		baseURL:    flag.String("ai-base-url", os.Getenv("ANTHROPIC_BASE_URL"), "optional Anthropic-compatible API base URL"),
 		maxTokens:  flag.Int("ai-max-tokens", 4096, "maximum output tokens for NPC dialogue, including model reasoning"),
-		timeout:    flag.Duration("ai-timeout", 30*time.Second, "maximum duration of an NPC dialogue generation"),
+		timeout:    flag.Duration("ai-timeout", 60*time.Second, "maximum duration of an NPC dialogue generation"),
 		maxRetries: flag.Int("ai-max-retries", 1, "maximum Anthropic SDK retries per dialogue request"),
 		settings:   flag.String("ai-settings", "", "JSON AI settings file; keeps credentials out of process arguments"),
 	}

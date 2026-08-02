@@ -28,7 +28,7 @@ var ErrUnavailable = errors.New("AI dialogue is not enabled")
 
 func NewService(provider Provider, options ServiceOptions) *Service {
 	if options.Timeout <= 0 {
-		options.Timeout = 12 * time.Second
+		options.Timeout = 60 * time.Second
 	}
 	if options.CacheSize <= 0 {
 		options.CacheSize = 128
@@ -59,7 +59,12 @@ func (s *Service) GenerateConversationTurn(ctx context.Context, snapshot app.Dia
 		History       []app.DialogueExchange `json:"history,omitempty"`
 		PlayerMessage string                 `json:"player_message,omitempty"`
 		Opening       bool                   `json:"opening"`
-	}{Snapshot: snapshot, History: history, PlayerMessage: playerText, Opening: playerText == ""}
+		Resume        bool                   `json:"resume"`
+	}{
+		Snapshot: snapshot, History: history, PlayerMessage: playerText,
+		Opening: playerText == "" && len(history) == 0,
+		Resume:  playerText == "" && len(history) > 0,
+	}
 	input, err := json.Marshal(payload)
 	if err != nil {
 		return Dialogue{}, fmt.Errorf("encode dialogue snapshot: %w", err)

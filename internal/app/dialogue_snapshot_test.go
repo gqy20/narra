@@ -25,7 +25,7 @@ func TestDialogueSnapshotRedactsPrivateBeliefsAndWorldInternals(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(encoded)
-	for _, forbidden := range []string{"world_flags", "actor_flags", "strategy_id", "F10"} {
+	for _, forbidden := range []string{"world_flags", "actor_flags", "strategy_id", "F10", "青髓芝将在第24天成熟"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("dialogue snapshot leaked %q: %s", forbidden, text)
 		}

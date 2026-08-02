@@ -186,7 +186,13 @@ func renderDialogueContext(output io.Writer, session *app.Session, conversation 
 		fmt.Fprintln(output, "公开动向："+snapshot.PublicPlan)
 	}
 	history := session.DialogueHistory(conversation.actor.ID, conversation.revision, 8)
-	fmt.Fprintf(output, "已保留最近 %d 轮对话。\n", len(history))
+	fmt.Fprintf(output, "最近 %d 轮对话：\n", len(history))
+	for _, exchange := range history {
+		if exchange.PlayerText != "" {
+			fmt.Fprintf(output, "  你：%s\n", exchange.PlayerText)
+		}
+		fmt.Fprintf(output, "  %s：%s\n", conversation.actor.Name, exchange.NPCText)
+	}
 }
 
 func resolveActor(selector string, actors []app.VisibleActor, debug bool) (app.VisibleActor, error) {

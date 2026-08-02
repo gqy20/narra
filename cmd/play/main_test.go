@@ -214,7 +214,7 @@ func TestTerminalSupportsPersistentMultiTurnNPCDialogue(t *testing.T) {
 	if got := restored.DialogueHistory("N04", restored.DialogueRevision("N04"), 8); len(got) != 2 {
 		t.Fatalf("restored dialogue history = %+v", got)
 	}
-	for _, want := range []string{"已进入对话", "已保留最近 2 轮对话", "你结束了与魏无咎的对话"} {
+	for _, want := range []string{"已进入对话", "最近 2 轮对话", "这条消息若是真的", "你结束了与魏无咎的对话"} {
 		if !strings.Contains(output.String(), want) {
 			t.Errorf("output missing %q:\n%s", want, output.String())
 		}

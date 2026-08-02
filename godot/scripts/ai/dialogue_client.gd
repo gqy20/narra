@@ -32,7 +32,7 @@ func _request_dialogue(actor_id: String, player_message: String) -> void:
 	request_generation += 1
 	var generation := request_generation
 	http = HTTPRequest.new()
-	http.timeout = 32.0
+	http.timeout = 65.0
 	add_child(http)
 	http.request_completed.connect(_on_request_completed.bind(actor_id, generation))
 	var payload := JSON.stringify({"actor_id": actor_id, "situation": "focus", "player_message": player_message})

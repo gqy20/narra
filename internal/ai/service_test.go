@@ -38,7 +38,7 @@ func dialogueTestSnapshot() app.DialogueSnapshot {
 		Actor:            app.DialogueActor{ID: "N01", Name: "李玄", SpeechGuidance: []string{"保持克制"}},
 		Player:           app.DialoguePlayer{ID: "P00", Name: "测试玩家"},
 		AllowedClaims:    []app.DialogueClaim{{FactID: "F02", Claim: "一条传闻", Confidence: "只是听说"}},
-		AvailableActions: []app.DialogueAction{{ID: "tell:N01:F02", Name: "告知线索", Description: "分享传闻"}},
+		AvailableActions: []app.DialogueAction{{ID: "tell:N01:F02", Name: "告知线索"}},
 	}
 }
 
@@ -72,9 +72,54 @@ func TestConversationRejectsUnavailableSuggestedAction(t *testing.T) {
 	}
 }
 
+func TestConversationResumeIsDistinctFromFreshOpening(t *testing.T) {
+	provider := &fakeProvider{draft: aiTestDraft{value: DialogueDraft{
+		Utterance: "方才说到那条消息，我们接着谈。", Emotion: "neutral", DialogueAct: "acknowledge",
+		ReferencedFacts: []string{}, SuggestedActions: []string{},
+	}}}
+	history := []app.DialogueExchange{{
+		ActorID: "N01", Revision: "blackwind:0:0:N01", PlayerText: "先记下此事。",
+		NPCText: "我记下了。", Emotion: "neutral", DialogueAct: "acknowledge",
+	}}
+	if _, err := NewService(provider, ServiceOptions{}).GenerateConversationTurn(context.Background(), dialogueTestSnapshot(), history, ""); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(provider.lastRequest.Input, `"resume":true`) || !strings.Contains(provider.lastRequest.Input, `"opening":false`) {
+		t.Fatalf("resume request flags are wrong: %s", provider.lastRequest.Input)
+	}
+}
+
+func TestDialogueRequiresUncertaintyForRumoredFacts(t *testing.T) {
+	snapshot := dialogueTestSnapshot()
+	definite := DialogueDraft{
+		Utterance: "青髓芝会在那一日成熟。", Emotion: "neutral", DialogueAct: "acknowledge",
+		ReferencedFacts: []string{"F02"}, SuggestedActions: []string{},
+	}
+	if err := validateDialogue(snapshot, &definite); err == nil {
+		t.Fatal("rumored fact was stated as certain")
+	}
+	qualified := DialogueDraft{
+		Utterance: "传闻说青髓芝会在那一日成熟，真假仍需核验。", Emotion: "neutral", DialogueAct: "acknowledge",
+		ReferencedFacts: []string{"F02"}, SuggestedActions: []string{},
+	}
+	if err := validateDialogue(snapshot, &qualified); err != nil {
+		t.Fatalf("qualified rumor was rejected: %v", err)
+	}
+}
+
+func TestDialogueRejectsUnsupportedSelfAddress(t *testing.T) {
+	draft := DialogueDraft{
+		Utterance: "小老儿这里自有办法。", Emotion: "neutral", DialogueAct: "acknowledge",
+		ReferencedFacts: []string{}, SuggestedActions: []string{},
+	}
+	if err := validateDialogue(dialogueTestSnapshot(), &draft); err == nil {
+		t.Fatal("unsupported self-address was accepted")
+	}
+}
+
 func TestServiceValidatesAndCachesProviderDialogue(t *testing.T) {
 	provider := &fakeProvider{draft: aiTestDraft{value: DialogueDraft{
-		Utterance: "这条消息，你是从哪里听来的？", Emotion: "alert", DialogueAct: "question",
+		Utterance: "听说的这条消息，你是从哪里得来的？", Emotion: "alert", DialogueAct: "question",
 		ReferencedFacts: []string{"F02"},
 	}}}
 	service := NewService(provider, ServiceOptions{Timeout: time.Second, CacheSize: 4})
