@@ -87,6 +87,15 @@ func _run() -> void:
 	await process_frame
 	if app.stage_actor_id != "N04" or app.focused_actor_id != "N04":
 		return _fail("actor selection did not synchronize stage and action focus")
+	if app.pending_operation != "":
+		return _fail("NPC dialogue reused the authoritative gameplay request channel")
+	if not await _wait_for_dialogue("N04"):
+		return _fail("NPC dialogue request timed out")
+	var npc_dialogue: Dictionary = app.actor_dialogue_by_id.get("N04", {})
+	if str(npc_dialogue.get("actor_id", "")) != "N04" or str(npc_dialogue.get("utterance", "")) == "":
+		return _fail("NPC dialogue did not return a displayable typed response")
+	if str(npc_dialogue.get("source", "")) not in ["anthropic", "cache", "fallback"]:
+		return _fail("NPC dialogue did not identify its generation source")
 	if app.actor_portrait.texture != app.presentation_registry.actor_profile("N04").portrait():
 		return _fail("actor selection did not switch the production portrait")
 	if app.actor_portrait_name.text != "魏无咎" or not app.location_panel.visible:
@@ -253,6 +262,15 @@ func _wait_until_idle(timeout_ms := 8000) -> bool:
 			await process_frame
 			if app.pending_operation == "" and not app.presentation_busy:
 				return true
+	return false
+
+
+func _wait_for_dialogue(actor_id: String, timeout_ms := 16000) -> bool:
+	var deadline := Time.get_ticks_msec() + timeout_ms
+	while Time.get_ticks_msec() < deadline:
+		await process_frame
+		if app.actor_dialogue_loading_id == "" and app.actor_dialogue_by_id.has(actor_id):
+			return true
 	return false
 
 

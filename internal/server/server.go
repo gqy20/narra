@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"sync"
 
+	"fantu/internal/ai"
 	"fantu/internal/app"
 	"fantu/internal/domain"
 )
@@ -28,18 +29,26 @@ type GameServer struct {
 	session       *app.Session
 	shutdownToken string
 	shutdown      func()
+	dialogue      *ai.Service
 }
 
 // Options configures process-level capabilities that are disabled in tests and embedded uses by default.
 type Options struct {
 	ShutdownToken string
 	Shutdown      func()
+	Dialogue      *ai.Service
 }
 
 type Response struct {
-	APIVersion string          `json:"api_version"`
-	View       *app.PlayerView `json:"view,omitempty"`
-	Error      *APIError       `json:"error,omitempty"`
+	APIVersion   string          `json:"api_version"`
+	View         *app.PlayerView `json:"view,omitempty"`
+	Dialogue     *ai.Dialogue    `json:"dialogue,omitempty"`
+	Capabilities *Capabilities   `json:"capabilities,omitempty"`
+	Error        *APIError       `json:"error,omitempty"`
+}
+
+type Capabilities struct {
+	AIDialogue bool `json:"ai_dialogue"`
 }
 
 type APIError struct {
@@ -53,6 +62,11 @@ type newRequest struct {
 
 type actionRequest struct {
 	ActionID string `json:"action_id"`
+}
+
+type dialogueRequest struct {
+	ActorID   string `json:"actor_id"`
+	Situation string `json:"situation,omitempty"`
 }
 
 type slotRequest struct {
@@ -74,6 +88,7 @@ func NewWithOptions(bundle domain.Bundle, saveDir string, options Options) *Game
 		saveDir:       saveDir,
 		shutdownToken: options.ShutdownToken,
 		shutdown:      options.Shutdown,
+		dialogue:      options.Dialogue,
 	}
 }
 
@@ -83,6 +98,7 @@ func (s *GameServer) Handler() http.Handler {
 	mux.HandleFunc("/api/v1/game", s.game)
 	mux.HandleFunc("/api/v1/game/new", s.newGame)
 	mux.HandleFunc("/api/v1/game/action", s.action)
+	mux.HandleFunc("/api/v1/game/dialogue", s.generateDialogue)
 	mux.HandleFunc("/api/v1/game/save", s.save)
 	mux.HandleFunc("/api/v1/game/load", s.load)
 	mux.HandleFunc("/api/v1/game/quit", s.quit)
@@ -115,7 +131,10 @@ func (s *GameServer) health(writer http.ResponseWriter, request *http.Request) {
 		writeError(writer, http.StatusMethodNotAllowed, "method_not_allowed", "仅支持 GET")
 		return
 	}
-	writeJSON(writer, http.StatusOK, Response{APIVersion: APIVersion})
+	writeJSON(writer, http.StatusOK, Response{
+		APIVersion:   APIVersion,
+		Capabilities: &Capabilities{AIDialogue: s.dialogue != nil && s.dialogue.Enabled()},
+	})
 }
 
 func (s *GameServer) game(writer http.ResponseWriter, request *http.Request) {

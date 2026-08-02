@@ -26,6 +26,11 @@ import (
 )
 
 func main() {
+	if err := loadDotEnv(".env"); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	aiConfig := registerAIFlags()
 	address := flag.String("addr", "127.0.0.1:8787", "loopback listen address")
 	dataDir := flag.String("data", filepath.FromSlash("data/blackwind"), "scenario data directory")
 	saveDir := flag.String("saves", filepath.FromSlash("saves"), "save slot directory")
@@ -72,6 +77,11 @@ func main() {
 		failWithContext(logger, fmt.Errorf("load scenario data: %w", err))
 	}
 	logger.Event(diagnosticlog.Info, "scenario_loaded", "scenario data loaded")
+	dialogueService, dialogueMode, err := buildDialogueService(aiConfig)
+	if err != nil {
+		failWithContext(logger, err)
+	}
+	logger.Event(diagnosticlog.Info, "ai_configured", "optional NPC dialogue configured", "mode", dialogueMode)
 	shutdownReasons := make(chan string, 1)
 	requestShutdown := func(reason string) {
 		select {
@@ -81,6 +91,7 @@ func main() {
 	}
 	handler := gameserver.NewWithOptions(bundle, *saveDir, gameserver.Options{
 		ShutdownToken: *shutdownToken,
+		Dialogue:      dialogueService,
 		Shutdown: func() {
 			requestShutdown("client_request")
 		},

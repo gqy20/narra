@@ -92,6 +92,16 @@ Godot 控件 ──动作 ID──> /api/v1 ──> app.Session ──> engine
 Godot 地图/场景/行动视图 <── PlayerView <─────────┘
 ```
 
+可选 AI 对话是这条权威链路旁边的只读表现支路：`internal/app` 先从当前 Session 构造不可变的 `DialogueSnapshot`，仅包含同地人物的公开资料、玩家已经获知或亲自告知的说法、抽象化动机和公开事件；`internal/ai` 再通过 Anthropic 官方 Go SDK 请求受 JSON Schema 约束的短台词。服务不会把 `WorldState`、事实真值、秘密认知、策略评分或内部标记交给模型。模型调用不持有 Session 锁，返回时若局势 revision 已变化则丢弃旧结果；超时、网络错误、越权事实引用或格式错误都会走本地降级台词。
+
+```text
+app.Session ──脱敏快照──> internal/ai ──> Anthropic Messages API
+     │                         │
+     └──权威规则与存档         └──仅 Dialogue 表现数据──> Godot 人物聚焦区
+```
+
+结构化输出使用官方 SDK 的稳定 `OutputConfig` 和 JSON Schema，响应解码使用 Go 标准库 `encoding/json`，并在应用侧再次校验枚举、长度和 `referenced_fact_ids` 白名单。Godot 为对话使用独立 `HTTPRequest`，不会占用动作、存档和读取视图的请求通道。
+
 人物公开资料和动作语义元数据都由应用层生成。每个可见行动将已满足条件、仍未知项、不可逆性、公开代价和预期结果分开返回；Godot 只负责按层级展示。Godot 可折叠“人物 × 线索”组合，但不会自行决定哪些组合合法。所有写操作在服务端串行完成，行动成功后客户端再发起自动存档。
 
 `PlayerView.preparation` 只汇总玩家自己的争夺准备来源与公开条件，用于在结算前解释“战力、助力、行装和位置”分别处于什么状态；它不返回 NPC 分数、胜率或隐藏策略。`TurnFeedback.stop_reason` 则说明自动推进为何在此刻停下，让客户端可以把“新选择出现”与普通经过事件分开呈现。

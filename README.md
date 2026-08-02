@@ -82,6 +82,8 @@ go run ./cmd/server
 
 服务默认监听 `127.0.0.1:8787`，存档写入 `saves/`。它只接受固定存档槽名，不接受客户端文件路径。可用 `-addr`、`-data` 和 `-saves` 覆盖开发配置。
 
+NPC 聚焦对话可选使用 Anthropic 官方 Go SDK。服务启动时会读取仓库根目录下受 Git 忽略的 `.env`，也接受已有的进程环境变量；可通过 `ANTHROPIC_API_KEY`、`ANTHROPIC_BASE_URL` 和 `ANTHROPIC_MODEL` 接入 Anthropic Messages 兼容服务。仓库提供不含密钥的 `.env.example`。未配置密钥、调用超时或输出校验失败时自动返回本地降级台词，不影响规则推进。可用 `-ai-enabled=false` 关闭模型调用，或通过 `-ai-model`、`-ai-base-url`、`-ai-max-tokens`、`-ai-timeout`、`-ai-max-retries` 调整运行参数。AI 只生成表现文本，不能修改存档或裁定游戏规则。
+
 当前稳定协议为 `/api/v1`：
 
 | 方法 | 路径 | 用途 |
@@ -90,6 +92,7 @@ go run ./cmd/server
 | `GET` | `/api/v1/game` | 获取当前玩家视图 |
 | `POST` | `/api/v1/game/new` | 新游戏，正文为 `{"player_name":"名字"}` |
 | `POST` | `/api/v1/game/action` | 执行动作，正文为 `{"action_id":"..."}` |
+| `POST` | `/api/v1/game/dialogue` | 生成同地人物聚焦台词，正文为 `{"actor_id":"N04","situation":"focus"}` |
 | `POST` | `/api/v1/game/save` | 原子保存，正文为 `{"slot":"autosave"}` |
 | `POST` | `/api/v1/game/load` | 读取存档槽 |
 | `POST` | `/api/v1/game/quit` | 清除服务内的当前 Session |

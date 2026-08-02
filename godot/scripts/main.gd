@@ -13,6 +13,7 @@ const SourceHanSansFont = preload("res://assets/fonts/SourceHanSansCN-Regular.ot
 const SourceHanSansMediumFont = preload("res://assets/fonts/SourceHanSansCN-Medium.otf")
 const SourceHanSerifFont = preload("res://assets/fonts/SourceHanSerifCN-SemiBold.otf")
 const WenKaiFont = preload("res://assets/fonts/LXGWWenKaiLite-Regular.ttf")
+const AIDialogueClientScript = preload("res://scripts/ai/dialogue_client.gd")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
 const BUNDLED_SERVER_NAME := "fantu-server.exe"
@@ -71,6 +72,9 @@ const COLORS := {
 @onready var http: HTTPRequest = $HTTPRequest
 
 var current_view: Dictionary = {}
+var dialogue_client
+var actor_dialogue_by_id := {}
+var actor_dialogue_loading_id := ""
 var pending_operation := ""
 var autosave_after_action := false
 var selected_action: Dictionary = {}
@@ -235,6 +239,10 @@ func _ready() -> void:
 	_apply_display_settings(false)
 	audio_director = AudioDirectorScript.new()
 	add_child(audio_director)
+	dialogue_client = AIDialogueClientScript.new()
+	add_child(dialogue_client)
+	dialogue_client.dialogue_ready.connect(_on_ai_dialogue_ready)
+	dialogue_client.dialogue_failed.connect(_on_ai_dialogue_failed)
 	http.request_completed.connect(_on_request_completed)
 	_build_interface()
 	if runtime_warning != "":
@@ -3455,6 +3463,7 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 	var state_names := {"neutral": "平静", "alert": "正在留意你", "troubled": "正在权衡消息", "decisive": "已经形成决断"}
 	var expression := str(actor_expression_by_id.get(focused_actor_id, "alert"))
 	objective_label.text = "%s · %s · %s" % [actor.get("public_role", "可交谈人物"), actor.get("faction", "散修"), state_names.get(expression, expression)]
+	_render_actor_dialogue_line(actor)
 	var has_terms := false
 	var has_route_response := false
 	for action in focused_actions:
@@ -3742,8 +3751,52 @@ func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
 	stage_actor_id = actor_id
 	stage_actor_name = actor_name
 	_focus_portrait(actor_id)
+	actor_dialogue_by_id.erase(actor_id)
+	actor_dialogue_loading_id = actor_id
+	dialogue_client.request_focus(actor_id)
 	_render_stage_people(current_view.get("known_actors", []), available_actions_cache)
 	_render_actions(available_actions_cache)
+
+
+func _render_actor_dialogue_line(actor: Dictionary) -> void:
+	var panel := PanelContainer.new()
+	var style := _panel_style(Color(COLORS.panel_alt, 0.42), 0, 2, Color.TRANSPARENT, 14, 10)
+	style.border_width_left = 2
+	style.border_color = Color(COLORS.accent, 0.68)
+	panel.add_theme_stylebox_override("panel", style)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 5)
+	panel.add_child(content)
+	var speaker := _text(content, str(actor.get("name", focused_actor_name)), true, 13)
+	speaker.add_theme_color_override("font_color", COLORS.accent)
+	var utterance := "他正在斟酌该如何回应。"
+	if actor_dialogue_by_id.has(focused_actor_id):
+		utterance = str(actor_dialogue_by_id[focused_actor_id].get("utterance", utterance))
+	elif actor_dialogue_loading_id != focused_actor_id:
+		utterance = "他看了你一眼，等你说明来意。"
+	var line := _text(content, "“%s”" % utterance, false, 17)
+	line.add_theme_font_override("font", narrative_font)
+	actor_focus_message_list.add_child(panel)
+
+
+func _on_ai_dialogue_ready(actor_id: String, dialogue: Dictionary) -> void:
+	actor_dialogue_by_id[actor_id] = dialogue
+	if actor_dialogue_loading_id == actor_id:
+		actor_dialogue_loading_id = ""
+	if actor_id != focused_actor_id:
+		return
+	var emotion := str(dialogue.get("emotion", ""))
+	if emotion in ["neutral", "alert", "troubled", "decisive"]:
+		actor_expression_by_id[actor_id] = emotion
+		_focus_portrait(actor_id)
+	_render_actions(available_actions_cache)
+
+
+func _on_ai_dialogue_failed(actor_id: String) -> void:
+	if actor_dialogue_loading_id == actor_id:
+		actor_dialogue_loading_id = ""
+	if actor_id == focused_actor_id:
+		_render_actions(available_actions_cache)
 
 
 func _action_has_visible_entry(action: Dictionary) -> bool:
@@ -3775,6 +3828,9 @@ func _clear_action_focus() -> void:
 
 
 func _reset_action_focus() -> void:
+	if dialogue_client != null:
+		dialogue_client.cancel()
+	actor_dialogue_loading_id = ""
 	focused_actor_id = ""
 	focused_actor_name = ""
 	focused_actor_action_id = ""

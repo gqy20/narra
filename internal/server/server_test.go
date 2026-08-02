@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"fantu/internal/ai"
 	"fantu/internal/app"
 	"fantu/internal/scenario"
 )
@@ -58,6 +59,29 @@ func TestGameLifecycleAndSlotPersistence(t *testing.T) {
 	response, status = request(t, service.URL, http.MethodPost, "/api/v1/game/load", map[string]string{"slot": "slot-1"})
 	if status != http.StatusOK || response.View == nil || response.View.Day != savedDay {
 		t.Fatalf("load = %d %+v", status, response)
+	}
+}
+
+func TestDialogueEndpointUsesFallbackWithoutChangingSession(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	gameServer := NewWithOptions(bundle, t.TempDir(), Options{
+		Dialogue: ai.NewService(nil, ai.ServiceOptions{}),
+	})
+	service := httptest.NewServer(gameServer.Handler())
+	defer service.Close()
+	request(t, service.URL, http.MethodPost, "/api/v1/game/new", map[string]string{"player_name": "对话测试"})
+
+	before := gameServer.session.View()
+	response, status := request(t, service.URL, http.MethodPost, "/api/v1/game/dialogue", map[string]string{"actor_id": "N04"})
+	after := gameServer.session.View()
+	if status != http.StatusOK || response.Dialogue == nil || response.Dialogue.ActorID != "N04" || response.Dialogue.Source != "fallback" {
+		t.Fatalf("dialogue = %d %+v", status, response)
+	}
+	if before.Day != after.Day || len(gameServer.session.History()) != 0 {
+		t.Fatalf("dialogue changed authoritative session: before=%d after=%d history=%v", before.Day, after.Day, gameServer.session.History())
 	}
 }
 
