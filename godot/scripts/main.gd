@@ -169,7 +169,7 @@ var confirmation_box: VBoxContainer
 var confirmation_details_box: VBoxContainer
 var confirmation_details_button: Button
 var visual_stack: Control
-var map_panel: VBoxContainer
+var map_panel: HBoxContainer
 var location_panel: VBoxContainer
 var map_detail_box: VBoxContainer
 var location_detail_box: VBoxContainer
@@ -945,19 +945,29 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	visual_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stage_frame.add_child(visual_stack)
 
-	map_panel = VBoxContainer.new()
+	map_panel = HBoxContainer.new()
 	map_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	map_panel.add_theme_constant_override("separation", 8)
+	map_panel.add_theme_constant_override("separation", 0)
 	visual_stack.add_child(map_panel)
 	world_map_view = WorldMapViewScript.new()
+	world_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	world_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	world_map_view.size_flags_stretch_ratio = 1.0
 	world_map_view.location_selected.connect(_on_map_location_selected)
 	world_map_view.travel_day_changed.connect(_on_travel_day_changed)
 	map_panel.add_child(world_map_view)
+	var map_detail_frame := PanelContainer.new()
+	map_detail_frame.custom_minimum_size.x = 310
+	map_detail_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var map_detail_style := _panel_style(Color("08100be8"), 0, 0, Color.TRANSPARENT, 18, 18)
+	map_detail_style.border_width_left = 1
+	map_detail_style.border_color = Color(COLORS.accent, 0.42)
+	map_detail_frame.add_theme_stylebox_override("panel", map_detail_style)
+	map_panel.add_child(map_detail_frame)
 	map_detail_box = VBoxContainer.new()
-	map_detail_box.custom_minimum_size.y = 88
-	map_detail_box.add_theme_constant_override("separation", 5)
-	map_panel.add_child(map_detail_box)
+	map_detail_box.custom_minimum_size = Vector2(274, 88)
+	map_detail_box.add_theme_constant_override("separation", 9)
+	map_detail_frame.add_child(map_detail_box)
 
 	location_panel = VBoxContainer.new()
 	location_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -2255,7 +2265,7 @@ func _render_view() -> void:
 	_render_clues(known_facts, available_actions_cache)
 	_render_scene(current_view.get("recent_events", []), guidance.slice(1), travel, current_view.get("last_turn", null), current_view.get("causal_threads", []), str(player.get("name", "旅人")))
 	_render_people(known_actors, available_actions_cache)
-	_render_travel_readiness(travel, current_view.get("preparation", {}))
+	_render_travel_readiness(travel, current_view.get("preparation", {}), current_view.get("route_progress", null))
 	_render_journal_tab_states(known_facts, known_actors, travel, current_view.get("last_turn", null), available_actions_cache)
 	_render_actions(available_actions_cache)
 	_render_world_map(current_view.get("world_map", {}), location, available_actions_cache)
@@ -2324,12 +2334,22 @@ func _on_map_location_selected(location_id: String) -> void:
 
 func _render_map_detail(world_map: Dictionary, current_location: Dictionary, actions: Array) -> void:
 	_clear(map_detail_box)
+	var eyebrow := _text(map_detail_box, "黑风谷 · 立体路线沙盘", true, 12)
+	eyebrow.add_theme_color_override("font_color", COLORS.accent)
+	var guidance := _text(map_detail_box, "点击地点或发光路径，查看目的地、耗时与阻碍。", true, 12)
+	guidance.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var map_separator := HSeparator.new()
+	map_separator.add_theme_color_override("separator", Color(COLORS.accent, 0.24))
+	map_detail_box.add_child(map_separator)
 	var selected := _map_location(world_map.get("locations", []), selected_map_location_id)
 	if selected.is_empty():
-		_text(map_detail_box, "选择地点查看路线", true, 14)
+		_text(map_detail_box, "选择地点查看路线", false, 18)
 		return
-	var title_line := _text(map_detail_box, "%s · %s" % [selected.get("name", "未知地点"), "安全落脚点" if bool(selected.get("safe", false)) else "危险区域"], false, 16)
+	var title_line := _text(map_detail_box, str(selected.get("name", "未知地点")), false, 22)
 	title_line.add_theme_color_override("font_color", COLORS.accent if bool(selected.get("current", false)) else COLORS.ink)
+	var place_state := "当前据点" if bool(selected.get("current", false)) else ("安全落脚点" if bool(selected.get("safe", false)) else "危险区域")
+	var state_line := _text(map_detail_box, place_state, false, 13)
+	state_line.add_theme_color_override("font_color", COLORS.success if bool(selected.get("safe", false)) else COLORS.danger)
 	_text(map_detail_box, str(selected.get("description", "尚无公开地点资料")), true, 13)
 	if bool(selected.get("contest", false)):
 		var contest_line := _text(map_detail_box, "核心目标 · 青髓芝争夺将在这里落定", false, 13)
@@ -2340,9 +2360,12 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 		"inner_valley":
 			_text(map_detail_box, "推进阶段 · 第二段：核心争夺", true, 13)
 	if bool(selected.get("current", false)):
+		_render_route_progress(map_detail_box, current_view.get("route_progress", null), true)
+		var hint := _text(map_detail_box, "沙盘上的金色道路当前可以通行。", true, 12)
+		hint.add_theme_color_override("font_color", COLORS.muted)
 		var enter_button := _utility_button("回到眼前", _set_visual_mode.bind("location"))
 		enter_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		enter_button.custom_minimum_size.y = 38
+		enter_button.custom_minimum_size.y = 42
 		map_detail_box.add_child(enter_button)
 		return
 	var route := _current_map_route(world_map.get("routes", []), str(current_location.get("id", "")), selected_map_location_id)
@@ -2350,11 +2373,15 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 		_text(map_detail_box, "这里不与当前位置直接相连，需要从相邻地点转进。", true, 13)
 		return
 	var route_status := str(route.get("status", "known"))
+	var route_labels := {"available": "可以通行", "blocked": "道路受阻", "known": "尚未打通"}
+	var route_line := _text(map_detail_box, "道路状态 · %s" % route_labels.get(route_status, "尚不明确"), false, 13)
+	route_line.add_theme_color_override("font_color", COLORS.accent if route_status == "available" else (COLORS.danger if route_status == "blocked" else COLORS.muted))
+	_text(map_detail_box, "耗时 %d 日 · 危险 %d" % [int(route.get("duration", 1)), int(route.get("danger", 0))], true, 13)
 	if route_status == "available":
 		var action := _action_by_id(actions, str(route.get("action_id", "")))
 		if not action.is_empty():
 			var move_button := _button("前往%s · %d 日" % [selected.get("name", "目的地"), int(route.get("duration", 1))], _consider_action.bind(action), false)
-			move_button.custom_minimum_size.y = 40
+			move_button.custom_minimum_size.y = 46
 			move_button.tooltip_text = "危险 %d · 途中局势会继续推进" % int(route.get("danger", 0))
 			map_detail_box.add_child(move_button)
 	elif route_status == "blocked":
@@ -2778,8 +2805,9 @@ func _feedback_signature(feedback) -> String:
 	return "%s|%s|%s" % [feedback.get("day", ""), feedback.get("action_id", ""), feedback.get("status", "")]
 
 
-func _render_travel_readiness(travel, preparation = {}) -> void:
+func _render_travel_readiness(travel, preparation = {}, route_progress = null) -> void:
 	_clear(travel_box)
+	_render_route_progress(travel_box, route_progress, false)
 	if not travel is Dictionary:
 		_text(travel_box, "还没有明确的远行目标。", true)
 		return
@@ -2816,10 +2844,16 @@ func _render_travel_readiness(travel, preparation = {}) -> void:
 		if not score_sources.is_empty():
 			var preparation_heading := _text(travel_box, "你的争夺准备", true, TYPE_SCALE.meta)
 			preparation_heading.add_theme_color_override("font_color", COLORS.accent)
+			var rating := str(preparation.get("rating", "尚未判断"))
+			var total_score := int(preparation.get("total_score", 0))
+			var target_score := int(preparation.get("target_score", 0))
+			var rating_line := _text(travel_box, "综合准备 %d / 基线 %d · %s" % [total_score, target_score, rating], false, 18)
+			rating_line.add_theme_color_override("font_color", COLORS.success if total_score >= target_score else COLORS.danger)
+			_text(travel_box, str(preparation.get("rating_detail", "")), true, 13)
 			for factor in score_sources:
 				var factor_line := _text(travel_box, "%s %d · %s" % [factor.get("label", "准备"), int(factor.get("value", 0)), factor.get("status", "")], false, 14)
 				factor_line.add_theme_color_override("font_color", COLORS.success if bool(factor.get("ready", false)) else COLORS.muted)
-			_text(travel_box, "这里只说明你自己的准备，不代表其他争夺者的实力。", true, 13)
+			_text(travel_box, "基线来自已知主要争夺者的公开实力，只用于判断是否值得正面入局。", true, 13)
 	var timing := str(travel.get("timing", ""))
 	if timing != "":
 		var timing_line := _text(travel_box, timing, true, 13)
@@ -2838,6 +2872,26 @@ func _render_travel_readiness(travel, preparation = {}) -> void:
 		ready_line.add_theme_color_override("font_color", COLORS.success)
 	if ready_checks.is_empty():
 		_text(journal_travel_details_box, "尚无已经满足的准备项。", true, 13)
+
+
+func _render_route_progress(parent: VBoxContainer, route_progress, compact: bool) -> void:
+	if not route_progress is Dictionary or route_progress.is_empty():
+		return
+	var heading := _text(parent, "当前路线 · %s" % route_progress.get("label", "未命名路线"), true, TYPE_SCALE.meta)
+	heading.add_theme_color_override("font_color", COLORS.accent)
+	var status := str(route_progress.get("status", "推进中"))
+	var next_step := str(route_progress.get("next_step", "等待下一次变化"))
+	var status_line := _text(parent, "%s · %s" % [status, next_step], false, 14 if compact else 15)
+	status_line.add_theme_color_override("font_color", COLORS.danger if bool(route_progress.get("urgent", false)) else (COLORS.success if bool(route_progress.get("complete", false)) else COLORS.ink))
+	if compact:
+		return
+	var window := str(route_progress.get("window", ""))
+	var location := str(route_progress.get("location", ""))
+	if window != "" or location != "":
+		_text(parent, "窗口 · %s%s" % [window, (" · " + location) if location != "" else ""], true, 13)
+	var personal_return := str(route_progress.get("personal_return", ""))
+	if personal_return != "":
+		_text(parent, "个人收益 · %s" % personal_return, true, 13)
 
 
 func _toggle_journal_travel_details() -> void:
@@ -2991,6 +3045,7 @@ func _render_actions(actions: Array) -> void:
 	if eligible.is_empty():
 		_text(overview_actions_box, "想赶路就翻开地图；想传话就先选中一个人。", true, 14)
 		return
+	_render_route_progress(overview_actions_box, current_view.get("route_progress", null), true)
 	_render_first_day_route_compass(eligible, overview_actions_box)
 	var visible_count := eligible.size() if show_all_actions else mini(3, eligible.size())
 	for index in visible_count:
@@ -3094,6 +3149,10 @@ func _resolve_focused_actor_action(actions: Array) -> Dictionary:
 	for action in actions:
 		if str(action.get("id", "")) == focused_actor_action_id:
 			return action
+	for action in actions:
+		if str(action.get("kind", "")) == "route":
+			focused_actor_action_id = ""
+			return {}
 	var first: Dictionary = actions[0]
 	focused_actor_action_id = str(first.get("id", ""))
 	return first
@@ -3106,6 +3165,11 @@ func _select_focused_actor_action(action_id: String) -> void:
 
 
 func _render_actor_focus_detail(action: Dictionary) -> void:
+	if action.is_empty():
+		var prompt := _text(actor_focus_detail_box, "先选择一种回应", false, 22)
+		prompt.add_theme_color_override("font_color", COLORS.accent)
+		_text(actor_focus_detail_box, "这些选择会改变路线与人物关系。系统不会替你预选不可撤回的决定。", true, 15)
+		return
 	var claim := str(action.get("fact_claim", action.get("name", "一条消息")))
 	if action.get("kind", "") == "route":
 		claim = str(action.get("name", "回应眼前局势"))
@@ -3138,7 +3202,7 @@ func _render_actor_focus_detail(action: Dictionary) -> void:
 	if action.get("kind", "") == "escort":
 		primary_label = "按约随队出发"
 	elif action.get("kind", "") == "route":
-		primary_label = "做出这个决定"
+		primary_label = "%s · 确认" % action.get("name", "确认路线选择")
 	var primary := _ornate_button(primary_label, _consider_action.bind(action))
 	primary.custom_minimum_size = Vector2(300, 54)
 	actor_focus_footer.add_child(primary)
@@ -3654,6 +3718,11 @@ func _render_ending(ending: Dictionary) -> void:
 		gain_heading.add_theme_color_override("font_color", COLORS.accent)
 		for consequence in consequences:
 			_text(ending_box, str(consequence), false, 17)
+	var review: Array = ending.get("review", [])
+	if not review.is_empty():
+		var review_heading := _text(ending_box, "为什么是这个结果", true, 16)
+		review_heading.add_theme_color_override("font_color", COLORS.accent)
+		_text(ending_box, str(review[0]), false, 16)
 	if not influences.is_empty():
 		var impact_heading := _text(ending_box, "你的介入留下了这些痕迹", true, 16)
 		impact_heading.add_theme_color_override("font_color", COLORS.accent)
@@ -3685,6 +3754,8 @@ func _render_ending(ending: Dictionary) -> void:
 	ending_box.add_child(ending_annex_box)
 	var record_heading := _text(ending_annex_box, "你的路线与余波记录", true, 16)
 	record_heading.add_theme_color_override("font_color", COLORS.accent)
+	for index in range(1, review.size()):
+		_text(ending_annex_box, "· %s" % review[index], true, 15)
 	for highlight in ending.get("highlights", []):
 		if str(highlight).begins_with("你传递的消息改变了"):
 			continue

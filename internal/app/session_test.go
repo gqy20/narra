@@ -221,6 +221,10 @@ func TestShenDateTermsProduceDistinctPersonalAndRelationshipEffects(t *testing.T
 			if !state.ActorFlag(state.Player.ID, test.wantFlag) {
 				t.Fatalf("term flag %s was not recorded", test.wantFlag)
 			}
+			progress := session.View().RouteProgress
+			if progress == nil || progress.ID != test.term || progress.NextStep == "" || progress.PersonalReturn == "" {
+				t.Fatalf("route %s has no persistent progress summary: %+v", test.term, progress)
+			}
 		})
 	}
 }
@@ -277,6 +281,21 @@ func TestEscortPromiseReturnsAsLateGameRouteChoice(t *testing.T) {
 	state := session.engine.State()
 	if !state.ActorFlag(state.Player.ID, "qinglan_escort_fulfilled") {
 		t.Fatal("escort fulfillment was not recorded")
+	}
+	if actionWithID(view.AvailableActions, "route:escort:vanguard") == nil || actionWithID(view.AvailableActions, "route:escort:quartermaster") == nil {
+		t.Fatalf("escort fulfillment did not create a personal role choice: %v", actionIDs(view.AvailableActions))
+	}
+	view, err = session.Execute("route:escort:vanguard")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Preparation.TotalScore != 7 || view.Preparation.Rating != "优势明显" || view.Player.Resources["support"] != 4 {
+		t.Fatalf("vanguard role did not create a competitive route: player=%+v preparation=%+v", view.Player, view.Preparation)
+	}
+	executeMany(t, session, []string{"move:L04", "move:L05", "wait:next"})
+	view = session.View()
+	if !view.Resolved || !strings.Contains(view.Outcome, view.Player.Name) {
+		t.Fatalf("fulfilled vanguard route did not support a player victory: %q", view.Outcome)
 	}
 }
 
@@ -336,6 +355,17 @@ func TestRouteMidgameAlternativesCarryTheirCosts(t *testing.T) {
 		}
 		if !containsMessage(session.playerConsequences(state), "保留独自决定") {
 			t.Fatalf("independent antidote consequence is not explained: %v", session.playerConsequences(state))
+		}
+		view = advanceToAction(t, session, "route:antidote:scout", 16)
+		if actionWithID(view.AvailableActions, "route:antidote:liquidate") == nil {
+			t.Fatalf("kept antidote has no profit alternative: %v", actionIDs(view.AvailableActions))
+		}
+		view, err = session.Execute("route:antidote:scout")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if view.Player.Resources["support"] != 2 || view.Preparation.TotalScore != 5 || view.RouteProgress == nil || !view.RouteProgress.Complete {
+			t.Fatalf("antidote scouting did not create usable preparation: player=%+v preparation=%+v route=%+v", view.Player, view.Preparation, view.RouteProgress)
 		}
 	})
 
@@ -477,7 +507,7 @@ func TestInitialGuidanceExplainsCoreDecisionWithoutLeakingTrueDate(t *testing.T)
 	if len(view.Travel.Route) < 2 || !containsMessage(view.Travel.Route, "黑风谷") || !travelCheckReady(view.Travel.Checks, "可用路线", true) || !travelCheckReady(view.Travel.Checks, "携带解瘴丹", false) || !travelCheckReady(view.Travel.Checks, "入口开放", false) {
 		t.Fatalf("initial travel route/checks = %+v", view.Travel)
 	}
-	if !preparationFactorReady(view.Preparation.ScoreSources, "combat", true) || !preparationFactorReady(view.Preparation.ScoreSources, "support", false) || !preparationFactorReady(view.Preparation.Conditions, "required_item", false) || !preparationFactorReady(view.Preparation.Conditions, "location", false) {
+	if !preparationFactorReady(view.Preparation.ScoreSources, "combat", true) || !preparationFactorReady(view.Preparation.ScoreSources, "support", false) || !preparationFactorReady(view.Preparation.Conditions, "required_item", false) || !preparationFactorReady(view.Preparation.Conditions, "location", false) || view.Preparation.TotalScore != 2 || view.Preparation.TargetScore != 6 || view.Preparation.Rating != "明显不足" || view.Preparation.Eligible {
 		t.Fatalf("initial preparation summary = %+v", view.Preparation)
 	}
 }
@@ -665,6 +695,9 @@ func TestDemoObserverJourneyReachesExplainedEnding(t *testing.T) {
 	if !containsMessage(view.Ending.Highlights, "21 次决策") || !containsMessage(view.Ending.Highlights, "推进时间 21 次") {
 		t.Fatalf("observer highlights = %v", view.Ending.Highlights)
 	}
+	if !containsMessage(view.Ending.Review, "没有解瘴丹") || !containsMessage(view.Ending.Review, "没有进行主动行动") || !containsMessage(view.Ending.Review, "下一局") {
+		t.Fatalf("observer ending has no actionable loss review: %v", view.Ending.Review)
+	}
 	if view.Metrics.CoreResultDay != 21 || view.Metrics.PostResultInputs != 0 || view.Metrics.DecisionInputs != 21 {
 		t.Fatalf("observer metrics = %+v", view.Metrics)
 	}
@@ -800,6 +833,20 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	if view.Player.Resources["credit"] != 4 || session.engine.State().RelationBetween("N03", view.Player.ID).Trust != 3 {
 		t.Fatalf("public vouch did not change credit and trust: player=%+v relation=%+v", view.Player, session.engine.State().RelationBetween("N03", view.Player.ID))
 	}
+	view, err = session.Execute("wait:next")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Day != 14 || actionWithID(view.AvailableActions, "route:trust:join") == nil || actionWithID(view.AvailableActions, "route:trust:commission") == nil {
+		t.Fatalf("day 14 did not surface the trust payoff choice: day=%d actions=%v", view.Day, actionIDs(view.AvailableActions))
+	}
+	view, err = session.Execute("route:trust:join")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !preparationFactorReady(view.Preparation.Conditions, "required_item", true) || view.Player.Resources["support"] != 2 || view.Preparation.TotalScore != 5 {
+		t.Fatalf("trust action seat did not create usable preparation: player=%+v preparation=%+v", view.Player, view.Preparation)
+	}
 	for _, wantDay := range []int{17, 19, 21} {
 		view, err = session.Execute("wait:next")
 		if err != nil {
@@ -808,20 +855,20 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 		if view.Day != wantDay {
 			t.Fatalf("advance stopped on day %d, want %d", view.Day, wantDay)
 		}
-		if wantDay == 17 && !containsMessage(view.LastTurn.Messages, "入口封锁出现松动迹象") {
+		if wantDay == 17 && !containsMessage(view.LastTurn.Messages, "第一批参与者开始向黑风谷移动") {
 			t.Fatalf("day 17 feedback omitted route signal: %+v", view.LastTurn)
 		}
 	}
 	if view.Ending == nil || !strings.Contains(view.Outcome, "沈砚秋") || !hasDecisionChange(view.Ending.Influence, "沈砚秋", "F01", 5) {
 		t.Fatalf("messenger influence = %+v", view.Ending)
 	}
-	if !containsMessage(view.Ending.PlayerConsequences, "2 点信用") || view.Player.Resources["credit"] != 6 || view.Player.Resources["support"] != 1 {
+	if !containsMessage(view.Ending.PlayerConsequences, "行动席位") || view.Player.Resources["credit"] != 6 || view.Player.Resources["support"] != 3 {
 		t.Fatalf("trusted intelligence produced no personal return: ending=%+v player=%+v", view.Ending.PlayerConsequences, view.Player)
 	}
 	if !containsMessage(view.Ending.Highlights, "改变了 3 个关键选择") {
 		t.Fatalf("messenger ending omitted causal summary: %+v", view.Ending.Highlights)
 	}
-	if view.Metrics.VisibleDecisionChanges < 1 || view.Metrics.CoreResultDay != 21 || view.Metrics.DecisionInputs != 11 || view.Metrics.AutoAdvancedDays != 17 {
+	if view.Metrics.VisibleDecisionChanges < 1 || view.Metrics.CoreResultDay != 21 || view.Metrics.DecisionInputs != 13 || view.Metrics.AutoAdvancedDays != 16 {
 		t.Fatalf("messenger metrics = %+v", view.Metrics)
 	}
 }

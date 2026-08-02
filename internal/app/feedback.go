@@ -215,6 +215,7 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 	ending := &EndingSummary{Outcome: visibleOutcome(state.Outcome)}
 	ending.PlayerConsequences = s.playerConsequences(state)
+	ending.Review = s.endingReview(state)
 	counts := make(map[string]int)
 	for _, actionID := range s.history {
 		if strings.HasPrefix(actionID, "wait") {
@@ -249,6 +250,69 @@ func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 	return ending
 }
 
+func (s *Session) endingReview(state *domain.WorldState) []string {
+	contest := s.bundle.Scenario.Contest
+	player := state.Player
+	result := make([]string, 0, 4)
+	owner := state.Items[contest.ItemID]
+	playerScore := 0
+	for _, resource := range contest.ScoreResources {
+		playerScore += player.Resources[resource]
+	}
+	if contest.PreparationFlag != "" && state.ActorFlag(player.ID, contest.PreparationFlag) {
+		playerScore++
+	}
+	if owner == player.ID {
+		result = append(result, fmt.Sprintf("你满足了丹药与抵达条件，并以 %d 点综合准备赢得正面争夺。", playerScore))
+	} else {
+		if contest.RequiredItemID != "" && player.Items[contest.RequiredItemID] <= 0 {
+			result = append(result, "你在结算时没有解瘴丹，因此没有取得核心争夺资格。")
+		}
+		if player.Location != contest.LocationID {
+			result = append(result, "你没有在第 21 日前抵达黑风谷内谷，因此没有进入最终候选。")
+		}
+		if len(result) == 0 {
+			winnerScore := s.actorContestScore(state, owner)
+			if winnerScore > playerScore {
+				result = append(result, fmt.Sprintf("你具备争夺资格，但综合准备为 %d；胜者%s达到 %d，领先 %d 点。", playerScore, s.actorName(state, owner), winnerScore, winnerScore-playerScore))
+			} else {
+				result = append(result, fmt.Sprintf("你具备争夺资格，综合准备为 %d；同分时先完成局势占位的争夺者取得归属。", playerScore))
+			}
+		}
+	}
+	if s.metrics.ActiveActions == 0 {
+		result = append(result, "本局没有进行主动行动；等待让你跳过了平静日，也同时放弃了核验、备药、交涉和修炼窗口。")
+		result = append(result, "下一局可先核验成熟日期或购买解瘴丹，再决定亲自争夺、扶持盟友或锁定交易收益。")
+	}
+	return result
+}
+
+func (s *Session) actorContestScore(state *domain.WorldState, actorID string) int {
+	contest := s.bundle.Scenario.Contest
+	if actorID == state.Player.ID {
+		score := 0
+		for _, resource := range contest.ScoreResources {
+			score += state.Player.Resources[resource]
+		}
+		if contest.PreparationFlag != "" && state.ActorFlag(actorID, contest.PreparationFlag) {
+			score++
+		}
+		return score
+	}
+	actor, ok := state.NPCs[actorID]
+	if !ok {
+		return 0
+	}
+	score := -actor.Injury
+	for _, resource := range contest.ScoreResources {
+		score += actor.Resources[resource]
+	}
+	if contest.PreparationFlag != "" && state.ActorFlag(actorID, contest.PreparationFlag) {
+		score++
+	}
+	return score
+}
+
 func (s *Session) playerConsequences(state *domain.WorldState) []string {
 	result := make([]string, 0, 4)
 	playerID := state.Player.ID
@@ -264,6 +328,11 @@ func (s *Session) playerConsequences(state *domain.WorldState) []string {
 		default:
 			result = append(result, fmt.Sprintf("你最初无偿帮助沈砚秋，却没有回应赵鹤鸣的公开质疑；关系停留在 %d 点信任，未形成宗门记功。", trust))
 		}
+		if state.ActorFlag(playerID, "qinglan_trust_operation_joined") {
+			result = append(result, "你把公开担保兑现为行动席位，取得解瘴丹、2 点支援与额外筹备，获得亲自争夺的完整条件。")
+		} else if state.ActorFlag(playerID, "qinglan_trust_commissioned") {
+			result = append(result, "你没有占用青岚门行动席位，而是把情报与担保结算为 30 灵石和 1 点信用。")
+		}
 	}
 	if state.ActorFlag(playerID, "qinglan_intel_term_antidote") {
 		switch {
@@ -273,6 +342,11 @@ func (s *Session) playerConsequences(state *domain.WorldState) []string {
 			result = append(result, "你拒绝归还交易所得的解瘴丹，保留独自决定入谷时机的自由，也失去了苏晚照的信任。")
 		default:
 			result = append(result, "你用成熟日期换得解瘴丹，但没有正面回应苏晚照的借丹请求；丹药仍是你的独行筹码。")
+		}
+		if state.ActorFlag(playerID, "qinglan_antidote_scouted") {
+			result = append(result, "你用稀缺解瘴丹提前踩点，保留丹药并取得 2 点支援与额外筹备。")
+		} else if state.ActorFlag(playerID, "qinglan_antidote_liquidated") {
+			result = append(result, "你主动放弃核心争夺，把解瘴丹与独行路线转售为 60 灵石，锁定了个人交易收益。")
 		}
 	}
 	if state.ActorFlag(playerID, "qinglan_intel_term_escort") {
@@ -285,6 +359,11 @@ func (s *Session) playerConsequences(state *domain.WorldState) []string {
 			result = append(result, "你通过了青岚门审核，却没有在开谷前返回驻地集结，同行承诺最终失效。")
 		default:
 			result = append(result, "你换得同行承诺，却没有完成宗门审核，因而失去了第16日的集结资格。")
+		}
+		if state.ActorFlag(playerID, "qinglan_escort_vanguard") {
+			result = append(result, "你在集结后接下先锋分工，取得 3 点支援、额外筹备与独立指挥权。")
+		} else if state.ActorFlag(playerID, "qinglan_escort_quartermaster") {
+			result = append(result, "你选择负责随队后勤，获得 30 灵石、2 点信用与 1 点支援。")
 		}
 		if state.WorldFlag("chen_treats_player_as_qinglan") && !state.WorldFlag("player_declared_independent") {
 			result = append(result, "陈青山已经把你视为青岚门行动的一员，陈氏后续合作将以阵营关系重新评估。")

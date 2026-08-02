@@ -130,10 +130,20 @@ func _run() -> void:
 		return _fail("trust route does not expose both midgame responses")
 	app._focus_actor_actions("N09", "赵鹤鸣")
 	var route_text := _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + _descendant_text(app.actor_focus_footer)
-	if "回应路线考验" not in route_text or "公开担保" not in route_text or "转交计划" not in route_text or "你的回应" not in route_text:
+	if "回应路线考验" not in route_text or "公开担保" not in route_text or "转交计划" not in route_text or "先选择一种回应" not in route_text or "做出这个决定" in route_text:
+		return _fail("route response workspace preselected an irreversible response")
+	app._select_focused_actor_action("route:trust:vouch")
+	route_text = _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + _descendant_text(app.actor_focus_footer)
+	if "你的回应" not in route_text or "为情报来源担保 · 确认" not in route_text:
 		return _fail("route response workspace lacks the trust test and its stakes")
 	app._clear_action_focus()
 	if not await _execute("route:trust:vouch"):
+		return
+	if not await _execute("wait:next"):
+		return
+	if int(app.current_view.get("day", 0)) != 14 or _find_action("route:trust:commission").is_empty():
+		return _fail("trust route did not return with a personal payoff choice")
+	if not await _execute("route:trust:commission"):
 		return
 	for index in 3:
 		if not await _execute("wait:next"):

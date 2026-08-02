@@ -23,6 +23,7 @@ type PlayerView struct {
 	Metrics          PlayMetrics        `json:"metrics"`
 	Travel           *TravelGuidance    `json:"travel,omitempty"`
 	Preparation      PreparationSummary `json:"preparation"`
+	RouteProgress    *RouteProgress     `json:"route_progress,omitempty"`
 }
 
 type TurnFeedback struct {
@@ -41,6 +42,24 @@ type TurnFeedback struct {
 type PreparationSummary struct {
 	ScoreSources []PreparationFactor `json:"score_sources"`
 	Conditions   []PreparationFactor `json:"conditions"`
+	TotalScore   int                 `json:"total_score"`
+	TargetScore  int                 `json:"target_score"`
+	Rating       string              `json:"rating"`
+	RatingDetail string              `json:"rating_detail"`
+	Eligible     bool                `json:"eligible"`
+}
+
+type RouteProgress struct {
+	ID             string `json:"id"`
+	Label          string `json:"label"`
+	Status         string `json:"status"`
+	NextStep       string `json:"next_step"`
+	Window         string `json:"window,omitempty"`
+	DeadlineDay    int    `json:"deadline_day,omitempty"`
+	Location       string `json:"location,omitempty"`
+	PersonalReturn string `json:"personal_return,omitempty"`
+	Urgent         bool   `json:"urgent"`
+	Complete       bool   `json:"complete"`
 }
 
 type PreparationFactor struct {
@@ -60,6 +79,7 @@ type PresentationCue struct {
 type EndingSummary struct {
 	Outcome            string             `json:"outcome"`
 	PlayerConsequences []string           `json:"player_consequences,omitempty"`
+	Review             []string           `json:"review,omitempty"`
 	Highlights         []string           `json:"highlights"`
 	Influence          []VisibleInfluence `json:"influence,omitempty"`
 }

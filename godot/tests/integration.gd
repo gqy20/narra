@@ -36,9 +36,21 @@ func _run() -> void:
 	if world_map.get("locations", []).size() != 5 or world_map.get("routes", []).is_empty():
 		return _fail("new game returned no public world map")
 	if app.world_map_view.locations.size() != 5:
-		return _fail("2D world map did not consume the player view")
+		return _fail("dimensional world map did not consume the player view")
 	if not app.world_map_view.has_formal_assets():
 		return _fail("world map does not use the registered scenic assets")
+	var direct_route := {}
+	for candidate in app.world_map_view.routes:
+		if str(candidate.get("from_id", "")) == "L01" and str(candidate.get("to_id", "")) == "L02":
+			direct_route = candidate
+			break
+	if direct_route.is_empty() or app.world_map_view._route_destination(direct_route) != "L02":
+		return _fail("raised map routes are not selectable navigation targets")
+	app._set_visual_mode("map")
+	var map_text := _descendant_text(app.map_detail_box)
+	if not (app.map_panel is HBoxContainer) or "立体路线沙盘" not in map_text or "点击地点或发光路径" not in map_text:
+		return _fail("world map did not expose the 2.5D sandbox and fixed route detail panel")
+	app._set_visual_mode("location")
 	var action_text := _descendant_text(app.overview_actions_box)
 	if "核验" not in action_text or "起手任选" not in action_text or "保留入谷" not in action_text or "查证与探索" in action_text or app.active_action_category != "":
 		return _fail("compact contextual action dock fell back to dashboard categories")

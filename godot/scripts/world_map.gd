@@ -23,8 +23,11 @@ var map_data: Dictionary = {}
 var locations: Array = []
 var routes: Array = []
 var hovered_id := ""
+var hovered_route_key := ""
 var selected_id := ""
 var pulse := 0.0
+var parallax_target := Vector2.ZERO
+var parallax_offset := Vector2.ZERO
 var motion_enabled := true
 var travel_active := false
 var travel_from_id := ""
@@ -40,6 +43,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	custom_minimum_size = Vector2(640, 350)
+	mouse_exited.connect(_reset_parallax)
 	set_process(true)
 
 
@@ -58,6 +62,9 @@ func set_map(value: Dictionary, selection := "") -> void:
 
 func set_motion_enabled(value: bool) -> void:
 	motion_enabled = value
+	if not motion_enabled:
+		parallax_target = Vector2.ZERO
+		parallax_offset = Vector2.ZERO
 	queue_redraw()
 
 
@@ -96,6 +103,8 @@ func animate_travel(from_id: String, to_id: String, start_day: int, end_day: int
 
 
 func _process(delta: float) -> void:
+	var smoothing := minf(1.0, delta * 5.0)
+	parallax_offset = parallax_offset.lerp(parallax_target, smoothing)
 	if motion_enabled:
 		pulse = fmod(pulse + delta, TAU)
 	if travel_active:
@@ -114,21 +123,42 @@ func _notification(what: int) -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
+		var center := size * 0.5
+		parallax_target = Vector2(
+			clampf((event.position.x - center.x) / maxf(1.0, center.x), -1.0, 1.0),
+			clampf((event.position.y - center.y) / maxf(1.0, center.y), -1.0, 1.0)
+		) if motion_enabled else Vector2.ZERO
 		var next_hover := _location_at(event.position)
-		if next_hover != hovered_id:
+		var next_route := _route_at(event.position) if next_hover == "" else {}
+		var next_route_key := _route_key(next_route) if not next_route.is_empty() else ""
+		if next_hover != hovered_id or next_route_key != hovered_route_key:
 			hovered_id = next_hover
-			mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if hovered_id != "" else Control.CURSOR_ARROW
+			hovered_route_key = next_route_key
+			mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if hovered_id != "" or hovered_route_key != "" else Control.CURSOR_ARROW
 			queue_redraw()
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var location_id := _location_at(event.position)
+		if location_id == "":
+			var route := _route_at(event.position)
+			if not route.is_empty():
+				location_id = _route_destination(route)
 		if location_id != "":
 			selected_id = location_id
 			queue_redraw()
 			location_selected.emit(location_id)
 
 
+func _reset_parallax() -> void:
+	parallax_target = Vector2.ZERO
+	hovered_id = ""
+	hovered_route_key = ""
+	mouse_default_cursor_shape = Control.CURSOR_ARROW
+	queue_redraw()
+
+
 func _draw() -> void:
 	var bounds := _map_bounds()
+	var route_labels: Array = []
 	_draw_terrain()
 	for route in _display_routes():
 		var from := _location_by_id(str(route.get("from_id", "")))
@@ -139,16 +169,33 @@ func _draw() -> void:
 		var to_position := _location_position(to, bounds)
 		var status := str(route.get("status", "known"))
 		var color := LINE
-		var width := 1.5
+		var width := 2.0
 		if status == "available":
 			color = Color(ACCENT, 0.92)
-			width = 2.5
+			width = 4.0
 		elif status == "blocked":
 			color = Color(DANGER, 0.78)
 		var curve := _route_curve(from_position, to_position)
-		draw_polyline(curve, Color("050706b8"), width + 4.0, true)
+		var hovered := _route_key(route) == hovered_route_key
+		if hovered:
+			color = color.lightened(0.22)
+			width += 2.0
+		var shadow_curve := PackedVector2Array()
+		for point in curve:
+			shadow_curve.append(point + Vector2(3, 9))
+		draw_polyline(shadow_curve, Color("020403a8"), width + 8.0, true)
+		draw_polyline(curve, Color(color, 0.24), width + 7.0, true)
 		draw_polyline(curve, color, width, true)
-		_draw_route_mark(curve[int(curve.size() / 2)], route, color)
+		draw_polyline(curve, Color(color.lightened(0.28), 0.72), 1.0, true)
+		if status == "available":
+			_draw_route_flow(curve, color)
+		elif status == "blocked":
+			_draw_blocked_route(curve, color)
+		route_labels.append({"curve": curve, "route": route, "color": color})
+
+	# Draw duration plaques after every road so another route can never cross over them.
+	for label_data in route_labels:
+		_draw_route_mark(label_data.get("curve", PackedVector2Array()), label_data.get("route", {}), label_data.get("color", LINE))
 
 	for location in locations:
 		_draw_location(location, bounds)
@@ -159,19 +206,69 @@ func _draw() -> void:
 func _draw_terrain() -> void:
 	var target := Rect2(Vector2.ZERO, size)
 	var source := _cover_source_rect(TERRAIN_TEXTURE.get_size(), size)
-	draw_texture_rect_region(TERRAIN_TEXTURE, target, source, Color(0.72, 0.68, 0.58, 0.82))
+	var max_shift := Vector2(maxf(0.0, (TERRAIN_TEXTURE.get_size().x - source.size.x) * 0.5), maxf(0.0, (TERRAIN_TEXTURE.get_size().y - source.size.y) * 0.5))
+	source.position += Vector2(parallax_offset.x * max_shift.x * 0.16, parallax_offset.y * max_shift.y * 0.10)
+	draw_texture_rect_region(TERRAIN_TEXTURE, target, source, Color(0.70, 0.66, 0.57, 0.88))
 	draw_rect(target, Color("08100b94"), true)
+	_draw_depth_plane()
 	draw_rect(Rect2(Vector2(18, 18), size - Vector2(36, 36)), Color(ACCENT, 0.16), false, 1.0, true)
 	draw_rect(Rect2(Vector2(27, 27), size - Vector2(54, 54)), Color("05080678"), false, 7.0, true)
 
 
-func _draw_route_mark(position: Vector2, route: Dictionary, color: Color) -> void:
+func _draw_depth_plane() -> void:
+	var horizon_y := size.y * 0.24
+	draw_rect(Rect2(0, 0, size.x, horizon_y + 42), Color("0b130f30"), true)
+	for index in 6:
+		var t := float(index + 1) / 7.0
+		var y := lerpf(horizon_y, size.y - 22.0, pow(t, 1.35))
+		var inset := lerpf(size.x * 0.31, 24.0, t)
+		draw_line(Vector2(inset, y), Vector2(size.x - inset, y), Color(ACCENT, 0.045 + t * 0.025), 1.0, true)
+	for side in [-1.0, 1.0]:
+		var near_x: float = 24.0 if side < 0.0 else size.x - 24.0
+		var far_x: float = size.x * 0.5 + side * size.x * 0.19
+		draw_line(Vector2(far_x, horizon_y), Vector2(near_x, size.y - 22.0), Color(ACCENT, 0.08), 1.0, true)
+	var fog_height := maxf(34.0, size.y * 0.10)
+	for band in 5:
+		var alpha := 0.09 * (1.0 - float(band) / 5.0)
+		draw_rect(Rect2(0, horizon_y + band * fog_height / 5.0, size.x, fog_height / 5.0 + 1.0), Color(INK, alpha), true)
+
+
+func _draw_route_mark(curve: PackedVector2Array, route: Dictionary, color: Color) -> void:
+	if curve.size() < 3:
+		return
 	var duration := int(route.get("duration", 1))
 	var font := get_theme_default_font()
 	var text := "%d日" % duration
-	draw_circle(position, 3.0, color)
-	draw_string(font, position + Vector2(-15, -8), text, HORIZONTAL_ALIGNMENT_CENTER, 30, 12, Color("050706"))
-	draw_string(font, position + Vector2(-16, -9), text, HORIZONTAL_ALIGNMENT_CENTER, 30, 12, color)
+	var middle := int(curve.size() / 2)
+	var anchor := curve[middle]
+	var tangent := (curve[mini(middle + 2, curve.size() - 1)] - curve[maxi(middle - 2, 0)]).normalized()
+	var normal := Vector2(-tangent.y, tangent.x)
+	var outward := anchor - Vector2(size.x * 0.5, size.y * 0.52)
+	if normal.dot(outward) < 0.0:
+		normal = -normal
+	var label_center := anchor + normal * 27.0
+	label_center.x = clampf(label_center.x, 28.0, size.x - 28.0)
+	label_center.y = clampf(label_center.y, 34.0, size.y - 36.0)
+	var plaque := Rect2(label_center + Vector2(-20, -11), Vector2(40, 22))
+	draw_rect(Rect2(plaque.position + Vector2(3, 5), plaque.size), Color("020403a6"), true)
+	draw_rect(plaque, Color("0c130ff4"), true)
+	draw_rect(plaque, Color(color, 0.76), false, 1.0, true)
+	draw_string(font, plaque.position + Vector2(5, 16), text, HORIZONTAL_ALIGNMENT_CENTER, 30, 12, color)
+
+
+func _draw_route_flow(curve: PackedVector2Array, color: Color) -> void:
+	var phase := fmod(pulse * 0.22, 1.0) if motion_enabled else 0.42
+	for index in 4:
+		var t := fmod(phase + float(index) * 0.25, 1.0)
+		var position := _sample_curve(curve, t)
+		draw_circle(position + Vector2(2, 5), 5.0, Color("02040388"))
+		draw_circle(position, 3.0, color.lightened(0.28))
+
+
+func _draw_blocked_route(curve: PackedVector2Array, color: Color) -> void:
+	var center := _sample_curve(curve, 0.5)
+	draw_line(center - Vector2(7, 7), center + Vector2(7, 7), color, 2.0, true)
+	draw_line(center + Vector2(7, -7), center - Vector2(7, -7), color, 2.0, true)
 
 
 func _draw_location(location: Dictionary, bounds: Rect2) -> void:
@@ -184,28 +281,33 @@ func _draw_location(location: Dictionary, bounds: Rect2) -> void:
 	var state_color := SAFE if bool(location.get("safe", false)) else DANGER
 	var border_color := ACCENT if current or selected or hovered else Color(state_color, 0.82)
 	var radius := 11.0 if selected or hovered else 8.0
-	draw_circle(position, radius + 6.0, Color("050706c8"))
-	draw_circle(position, radius + 2.0, Color(border_color, 0.34))
-	draw_circle(position, radius, Color("111812"))
-	draw_circle(position, radius, border_color, false, 2.0, true)
-	draw_circle(position, 3.0, border_color)
+	var beacon := position - Vector2(0, 15.0 if selected or hovered else 11.0)
+	var pedestal := _ellipse_points(position + Vector2(4, 12), Vector2(radius + 16, 7))
+	draw_colored_polygon(pedestal, Color("020403b5"))
+	draw_polyline(pedestal, Color(border_color, 0.34), 1.0, true)
+	draw_line(position + Vector2(0, 7), beacon, Color(border_color, 0.72), 2.0, true)
+	draw_circle(beacon + Vector2(3, 7), radius + 6.0, Color("050706c8"))
+	draw_circle(beacon, radius + 3.0, Color(border_color, 0.30))
+	draw_circle(beacon, radius, Color("111812"))
+	draw_circle(beacon, radius, border_color, false, 2.0, true)
+	draw_circle(beacon, 3.0, border_color)
 	if current and not travel_active:
 		var halo_radius := radius + 13.0 + (sin(pulse * 2.0) * 2.0 if motion_enabled else 0.0)
-		draw_circle(position, halo_radius, Color(ACCENT, 0.44), false, 1.5, true)
+		draw_circle(beacon, halo_radius, Color(ACCENT, 0.44), false, 1.5, true)
 	if contest:
-		draw_arc(position, radius + 18.0, -PI * 0.85, PI * 0.75, 28, Color(DANGER, 0.72), 2.0, true)
+		draw_arc(beacon, radius + 18.0, -PI * 0.85, PI * 0.75, 28, Color(DANGER, 0.72), 2.0, true)
 
 	var font := get_theme_default_font()
 	var name := str(location.get("name", "未知地点"))
 	var label_color := ACCENT if current or selected else INK
 	var label_width := 132.0
-	var label_position := position + Vector2(-label_width * 0.5, 34)
+	var label_position := position + Vector2(-label_width * 0.5, 32)
 	draw_string(font, label_position + Vector2(1, 1), name, HORIZONTAL_ALIGNMENT_CENTER, label_width, 15, Color("030504"))
 	draw_string(font, label_position, name, HORIZONTAL_ALIGNMENT_CENTER, label_width, 15, label_color)
 	if current and not travel_active:
-		draw_string(font, position + Vector2(-26, -25), "此刻", HORIZONTAL_ALIGNMENT_CENTER, 52, 12, ACCENT)
+		draw_string(font, beacon + Vector2(-26, -25), "此刻", HORIZONTAL_ALIGNMENT_CENTER, 52, 12, ACCENT)
 	elif contest:
-		draw_string(font, position + Vector2(-30, -25), "争夺地", HORIZONTAL_ALIGNMENT_CENTER, 60, 12, Color("d87761"))
+		draw_string(font, beacon + Vector2(-30, -25), "争夺地", HORIZONTAL_ALIGNMENT_CENTER, 60, 12, Color("d87761"))
 	var actor_count := int(location.get("actor_count", 0))
 	if actor_count > 0 and not travel_active:
 		draw_string(font, position + Vector2(-36, 51), "%d 人在场" % actor_count, HORIZONTAL_ALIGNMENT_CENTER, 72, 11, MUTED)
@@ -258,7 +360,14 @@ func _map_bounds() -> Rect2:
 
 
 func _location_position(location: Dictionary, bounds: Rect2) -> Vector2:
-	return bounds.position + Vector2(float(location.get("x", 0.5)) * bounds.size.x, float(location.get("y", 0.5)) * bounds.size.y)
+	var raw := bounds.position + Vector2(float(location.get("x", 0.5)) * bounds.size.x, float(location.get("y", 0.5)) * bounds.size.y)
+	var depth := clampf(float(location.get("y", 0.5)), 0.0, 1.0)
+	var center_x := bounds.get_center().x
+	var perspective_scale := lerpf(0.78, 1.06, depth)
+	raw.x = center_x + (raw.x - center_x) * perspective_scale
+	raw.y = bounds.position.y + pow(depth, 1.12) * bounds.size.y
+	var drift_strength := lerpf(12.0, 3.0, depth)
+	return raw + Vector2(parallax_offset.x * drift_strength, parallax_offset.y * drift_strength * 0.42)
 
 
 func _location_at(position: Vector2) -> String:
@@ -268,6 +377,56 @@ func _location_at(position: Vector2) -> String:
 		if tile.has_point(position):
 			return str(location.get("id", ""))
 	return ""
+
+
+func _route_at(position: Vector2) -> Dictionary:
+	var bounds := _map_bounds()
+	for route in _display_routes():
+		var from := _location_by_id(str(route.get("from_id", "")))
+		var to := _location_by_id(str(route.get("to_id", "")))
+		if from.is_empty() or to.is_empty():
+			continue
+		var curve := _route_curve(_location_position(from, bounds), _location_position(to, bounds))
+		for index in curve.size() - 1:
+			var closest := Geometry2D.get_closest_point_to_segment(position, curve[index], curve[index + 1])
+			if closest.distance_to(position) <= 13.0:
+				return route
+	return {}
+
+
+func _route_key(route: Dictionary) -> String:
+	if route.is_empty():
+		return ""
+	return "%s:%s" % [route.get("from_id", ""), route.get("to_id", "")]
+
+
+func _route_destination(route: Dictionary) -> String:
+	var current_id := ""
+	for location in locations:
+		if bool(location.get("current", false)):
+			current_id = str(location.get("id", ""))
+			break
+	var from_id := str(route.get("from_id", ""))
+	var to_id := str(route.get("to_id", ""))
+	return to_id if from_id == current_id else from_id if to_id == current_id else to_id
+
+
+func _sample_curve(curve: PackedVector2Array, t: float) -> Vector2:
+	if curve.is_empty():
+		return Vector2.ZERO
+	var scaled := clampf(t, 0.0, 1.0) * float(curve.size() - 1)
+	var index := mini(int(floor(scaled)), curve.size() - 1)
+	var next_index := mini(index + 1, curve.size() - 1)
+	return curve[index].lerp(curve[next_index], scaled - float(index))
+
+
+func _ellipse_points(center: Vector2, radii: Vector2) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for index in 24:
+		var angle := TAU * float(index) / 24.0
+		points.append(center + Vector2(cos(angle) * radii.x, sin(angle) * radii.y))
+	points.append(points[0])
+	return points
 
 
 func _location_by_id(location_id: String) -> Dictionary:
