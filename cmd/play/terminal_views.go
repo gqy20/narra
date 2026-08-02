@@ -6,6 +6,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"time"
 
 	"fantu/internal/ai"
 	"fantu/internal/app"
@@ -50,30 +51,53 @@ func renderPeople(output io.Writer, view app.PlayerView, debug bool) {
 	fmt.Fprintln(output, "输入 talk <人物编号或姓名> 与人物交谈。")
 }
 
-func renderTalk(output io.Writer, session *app.Session, dialogueService *ai.Service, view app.PlayerView, selector string, debug bool) {
+func renderTalk(output io.Writer, session *app.Session, dialogueService *ai.Service, view app.PlayerView, selector string, debug bool) []app.AvailableAction {
 	if selector == "" {
 		renderPeople(output, view, debug)
-		return
+		return nil
 	}
 	actor, err := resolveActor(selector, view.KnownActors, debug)
 	if err != nil {
 		fmt.Fprintf(output, "无法交谈：%v\n", err)
-		return
+		return nil
 	}
 	snapshot, err := session.DialogueSnapshotFor(actor.ID, "focus")
 	if err != nil {
 		fmt.Fprintf(output, "无法交谈：%v\n", err)
-		return
+		return nil
 	}
 	if dialogueService == nil {
 		fmt.Fprintln(output, "人物对话未启用。请配置模型后重新启动，或继续使用规则行动。")
-		return
+		return nil
 	}
-	fmt.Fprintf(output, "\n%s正在斟酌……\n", actor.Name)
-	line, generationErr := dialogueService.GenerateDialogueDetailed(context.Background(), snapshot)
+	fmt.Fprintf(output, "\n%s正在生成一次人物回应；这不是自由对话，也不会推进游戏时间。\n", actor.Name)
+	type dialogueResult struct {
+		line ai.Dialogue
+		err  error
+	}
+	result := make(chan dialogueResult, 1)
+	go func() {
+		line, generationErr := dialogueService.GenerateDialogueDetailed(context.Background(), snapshot)
+		result <- dialogueResult{line: line, err: generationErr}
+	}()
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	started := time.Now()
+	var line ai.Dialogue
+	var generationErr error
+	waiting := true
+	for waiting {
+		select {
+		case generated := <-result:
+			line, generationErr = generated.line, generated.err
+			waiting = false
+		case <-ticker.C:
+			fmt.Fprintf(output, "  已等待 %d 秒，仍在等待模型返回……\n", int(time.Since(started).Seconds()))
+		}
+	}
 	if generationErr != nil {
 		fmt.Fprintf(output, "对话生成失败：%v\n", generationErr)
-		return
+		return nil
 	}
 	fmt.Fprintf(output, "%s：“%s”\n", actor.Name, line.Utterance)
 	fmt.Fprintf(output, "态度：%s\n", snapshot.Relation.Attitude)
@@ -83,7 +107,9 @@ func renderTalk(output io.Writer, session *app.Session, dialogueService *ai.Serv
 	if debug {
 		fmt.Fprintf(output, "对话来源：%s；状态版本：%s\n", line.Source, line.Revision)
 	}
-	renderActorActions(output, view.AvailableActions, actor.ID)
+	actions := renderActorActions(output, view.AvailableActions, actor.ID)
+	fmt.Fprintln(output, "如需改变关系或局势，请选择上方规则行动；自然语言输入不会被当作对话内容。")
+	return actions
 }
 
 func resolveActor(selector string, actors []app.VisibleActor, debug bool) (app.VisibleActor, error) {
@@ -101,12 +127,15 @@ func resolveActor(selector string, actors []app.VisibleActor, debug bool) (app.V
 	return app.VisibleActor{}, fmt.Errorf("当前地点没有人物 %q", selector)
 }
 
-func renderActorActions(output io.Writer, actions []app.AvailableAction, actorID string) {
-	found := false
-	for index, action := range actions {
-		if action.TargetID != actorID {
-			continue
+func renderActorActions(output io.Writer, actions []app.AvailableAction, actorID string) []app.AvailableAction {
+	actorActions := make([]app.AvailableAction, 0)
+	for _, action := range terminalSelectableActions(actions) {
+		if action.TargetID == actorID {
+			actorActions = append(actorActions, action)
 		}
+	}
+	found := false
+	for index, action := range actorActions {
 		if !found {
 			fmt.Fprintln(output, "可选交涉：")
 			found = true
@@ -118,9 +147,14 @@ func renderActorActions(output io.Writer, actions []app.AvailableAction, actorID
 	} else {
 		fmt.Fprintln(output, "输入 do <编号> 执行交涉。")
 	}
+	return actorActions
 }
 
 func renderMap(output io.Writer, view app.PlayerView, debug bool) {
+	renderMapMode(output, view, debug, false)
+}
+
+func renderMapMode(output io.Writer, view app.PlayerView, debug, showAll bool) {
 	fmt.Fprintln(output, "\n【黑风谷周边地图】")
 	for index, location := range view.WorldMap.Locations {
 		marker := " "
@@ -133,11 +167,20 @@ func renderMap(output io.Writer, view app.PlayerView, debug bool) {
 		}
 		fmt.Fprintf(output, " %s %d. %s%s · 可见人物 %d\n", marker, index+1, location.Name, id, location.ActorCount)
 	}
-	fmt.Fprintln(output, "路线：")
+	if showAll {
+		fmt.Fprintln(output, "全部已知路线：")
+	} else {
+		fmt.Fprintln(output, "当前位置可用路线：")
+	}
+	routeCount := 0
 	for _, route := range view.WorldMap.Routes {
+		if !showAll && route.FromID != view.Location.ID {
+			continue
+		}
+		routeCount++
 		from := mapLocationName(view, route.FromID)
 		to := mapLocationName(view, route.ToID)
-		status := route.Status
+		status := mapRouteStatusLabel(route.Status)
 		if route.ActionID != "" {
 			status = "可前往"
 		} else if len(route.Blockers) > 0 {
@@ -145,7 +188,27 @@ func renderMap(output io.Writer, view app.PlayerView, debug bool) {
 		}
 		fmt.Fprintf(output, "  - %s → %s：%d 天，危险 %d，%s\n", from, to, route.Duration, route.Danger, status)
 	}
-	fmt.Fprintln(output, "输入 go <地点名或地点编号> 移动。")
+	if routeCount == 0 {
+		fmt.Fprintln(output, "  当前没有已知路线。")
+	}
+	if showAll {
+		fmt.Fprintln(output, "输入 go <地点名或地点编号> 移动。")
+	} else {
+		fmt.Fprintln(output, "输入 go <地点名或地点编号> 移动；输入 map all 查看全部已知路线。")
+	}
+}
+
+func mapRouteStatusLabel(status string) string {
+	switch status {
+	case "known":
+		return "已知路线"
+	case "blocked":
+		return "尚未开放"
+	case "available":
+		return "可前往"
+	default:
+		return status
+	}
 }
 
 func mapLocationName(view app.PlayerView, id string) string {
@@ -159,8 +222,16 @@ func mapLocationName(view app.PlayerView, id string) string {
 
 func renderJournal(output io.Writer, view app.PlayerView, debug bool) {
 	fmt.Fprintln(output, "\n【行旅卷宗】")
-	fmt.Fprintf(output, "争夺准备：%s（%d/%d）\n", view.Preparation.Rating, view.Preparation.TotalScore, view.Preparation.TargetScore)
-	for _, factor := range append(append([]app.PreparationFactor{}, view.Preparation.ScoreSources...), view.Preparation.Conditions...) {
+	fmt.Fprintf(output, "综合准备分：%d / 胜算基线 %d · %s\n", view.Preparation.TotalScore, view.Preparation.TargetScore, view.Preparation.Rating)
+	if view.Preparation.RatingDetail != "" {
+		fmt.Fprintf(output, "  %s\n", view.Preparation.RatingDetail)
+	}
+	fmt.Fprintln(output, "计分来源：")
+	for _, factor := range view.Preparation.ScoreSources {
+		fmt.Fprintf(output, "  - %s：%d（%s）\n", factor.Label, factor.Value, factor.Status)
+	}
+	fmt.Fprintln(output, "参赛条件：")
+	for _, factor := range view.Preparation.Conditions {
 		mark := "未满足"
 		if factor.Ready {
 			mark = "已满足"
@@ -210,7 +281,7 @@ func resolveTravel(selector string, view app.PlayerView, debug bool) (string, er
 		}
 	}
 	if locationID == "" {
-		return "", fmt.Errorf("地图上没有地点 %q", selector)
+		return "", fmt.Errorf("地图上没有地点 %q；输入 map 查看地点编号", selector)
 	}
 	if locationID == view.Location.ID {
 		return "", fmt.Errorf("你已经在%s", view.Location.Name)

@@ -205,9 +205,9 @@ func TestTerminalCanCompleteAndReplayAFullJourney(t *testing.T) {
 	}
 	savePath := filepath.Join(t.TempDir(), "terminal-complete.json")
 	commands := strings.Join([]string{
-		"do 1", "wait", "do 14", "go 青岚门驻地",
-		"do 3", "wait", "do 3", "wait",
-		"do 3", "wait", "wait", "wait",
+		"actions", "do 1", "wait complete", "actions", "do 14", "go 青岚门驻地",
+		"actions", "do 3", "wait next", "actions", "do 3", "wait next",
+		"actions", "do 3", "wait next", "wait next", "wait next",
 	}, "\n") + "\n"
 	var output bytes.Buffer
 	if err := runGame(bytes.NewBufferString(commands), &output, session, nil, savePath, true); err != nil {
@@ -262,7 +262,98 @@ func TestBareNumbersAndInternalActionIDsAreNotCommands(t *testing.T) {
 	if err := runGame(bytes.NewBufferString("1\nverify:F02\nquit\n"), &output, session, nil, "", false); err != nil {
 		t.Fatal(err)
 	}
-	if session.View().Day != 0 || strings.Count(output.String(), "未知命令") != 2 {
+	if session.View().Day != 0 || !strings.Contains(output.String(), "不能直接输入编号") || strings.Count(output.String(), "未知命令") != 1 {
 		t.Fatalf("non-command input was not rejected:\n%s", output.String())
+	}
+}
+
+func TestWaitAdvancesOneDayAndWaitNextIsExplicit(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		command string
+		day     int
+	}{{"wait\nquit\n", 1}, {"wait next\nquit\n", 8}} {
+		session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("等待测试"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var output bytes.Buffer
+		if err := runGame(bytes.NewBufferString(test.command), &output, session, nil, "", false); err != nil {
+			t.Fatal(err)
+		}
+		if session.View().Day != test.day {
+			t.Fatalf("command %q reached day %d, want %d\n%s", test.command, session.View().Day, test.day, output.String())
+		}
+	}
+}
+
+func TestTerminalPresentationExplainsPreparationAndLoss(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("复盘测试"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	renderJournal(&output, session.View(), false)
+	if !strings.Contains(output.String(), "综合准备分：2 / 胜算基线 6") || !strings.Contains(output.String(), "计分来源") || !strings.Contains(output.String(), "参赛条件") {
+		t.Fatalf("preparation remains opaque:\n%s", output.String())
+	}
+	output.Reset()
+	for !session.View().Resolved {
+		if _, err := session.Execute("wait"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	renderView(&output, session.View(), false)
+	if !strings.Contains(output.String(), "胜负复盘") || !strings.Contains(output.String(), "没有解瘴丹") {
+		t.Fatalf("ending omitted actionable review:\n%s", output.String())
+	}
+}
+
+func TestActionCategoriesUseScopedDoNumbersAndHideTimeActions(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("分类测试"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	renderActionsCategory(&output, session.View().AvailableActions, "出行", false)
+	text := output.String()
+	if !strings.Contains(text, "前往青岚门驻地") || strings.Contains(text, "等待局势变化") || !strings.Contains(text, "1. 前往青岚门驻地") {
+		t.Fatalf("travel category output is not actionable:\n%s", text)
+	}
+	output.Reset()
+	if err := runGame(bytes.NewBufferString("actions travel\ndo 1\nquit\n"), &output, session, nil, "", false); err != nil {
+		t.Fatal(err)
+	}
+	if session.View().Location.ID != "L02" {
+		t.Fatalf("filtered action number did not execute displayed travel action: %+v\n%s", session.View(), output.String())
+	}
+}
+
+func TestDoRequiresFreshActionMenu(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("编号测试"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := runGame(bytes.NewBufferString("do 1\nactions\ndo 1\ndo 1\nquit\n"), &output, session, nil, "", false); err != nil {
+		t.Fatal(err)
+	}
+	if session.View().Day != 1 || strings.Count(output.String(), "行动目录尚未显示或已经变化") != 2 {
+		t.Fatalf("stale action menu was accepted:\n%s", output.String())
 	}
 }

@@ -20,7 +20,7 @@
 | `testdata` | T01～T07 验收玩家计划 |
 | `docs` | PRD、架构、M0 规格与验证结果 |
 
-完整依赖边界和扩展约束见 [架构说明](docs/ARCHITECTURE.md)。产品与验证入口分别见 [PRD](docs/PRD.md)、[M0 验收结果](docs/M0_RESULTS.md) 和 [30 项验证清单](docs/VALIDATION_OPTIMIZATION_BACKLOG.md)。
+完整依赖边界和扩展约束见 [架构说明](docs/ARCHITECTURE.md)。产品与验证入口分别见 [PRD](docs/PRD.md)、[M0 验收结果](docs/M0_RESULTS.md)、[CLI 玩家风格与试玩测试手册](docs/PLAYER_PERSONAS_CLI_PLAYTEST.md) 和 [30 项验证清单](docs/VALIDATION_OPTIMIZATION_BACKLOG.md)。
 
 交互版本当前采用冻结范围开发，核心假设、明确不做的内容和完成门禁见 [交互 Demo 范围](docs/DEMO_SCOPE.md)。
 
@@ -47,7 +47,7 @@ make release-windows VERSION=0.1.0
 go run ./cmd/play
 ```
 
-CLI 是可完整通关的正式客户端，根据当前地点、资源、物品、认知和忙碌状态生成权威行动。忙碌时可以直接推进到行动完成，空闲时可以推进到下一次需要决策的变化；底层仍逐日结算，并合并展示期间发生的公开事件。
+CLI 是可完整通关的正式客户端，根据当前地点、资源、物品、认知和忙碌状态生成权威行动。`wait` 只推进一天；`wait complete` 明确推进到当前持续行动完成；`wait next` 才会快进到下一次需要决策的变化。底层始终逐日结算，并合并展示期间发生的公开事件。
 
 除行动编号外，还可以使用分层浏览和人物交谈命令：
 
@@ -58,14 +58,19 @@ CLI 是可完整通关的正式客户端，根据当前地点、资源、物品�
 选择> map
 选择> journal
 选择> actions
+选择> actions 交涉
 选择> do 1
 选择> wait
+选择> wait complete
+选择> wait next
 选择> go 青岚门驻地
 选择> save saves/blackwind.json
 选择> quit
 ```
 
-`talk <人物编号或姓名>` 使用与 Godot 相同的脱敏快照和 StepFun/Anthropic 兼容对话服务。AI 交谈本身不推进天数，也不会修改关系、物品、存档或世界状态；产生游戏效果的交涉仍必须选择终端列出的权威行动。模型未启用时会明确显示不可用；模型已经启用后，超时、网络错误、空响应或输出校验失败都会明确报错，不会伪造本地台词。
+`actions` 可按“调查、交涉、准备、出行”筛选；每次世界状态变化后必须重新显示行动目录，避免旧编号误触其他行动。`map` 默认只显示当前位置的路线，`map all` 展示完整路网。
+
+`talk <人物编号或姓名>` 使用与 Godot 相同的脱敏快照和 StepFun/Anthropic 兼容对话服务。它生成基于当前局势的一次人物回应，不接收后续自然语言，也不推进天数或修改关系、物品、存档和世界状态；产生游戏效果的交涉仍必须选择终端列出的权威行动。等待期间会周期性显示耗时。模型未启用时会明确显示不可用；模型已经启用后，超时、网络错误、空响应或输出校验失败都会明确报错，不会伪造本地台词。
 
 继续已有存档，或让每回合自动保存：
 

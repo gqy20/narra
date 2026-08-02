@@ -61,6 +61,8 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 	fmt.Fprintln(output, "凡途 · 黑风谷局势")
 	fmt.Fprintln(output, "输入 help 查看命令；输入 actions 查看当前选择。")
 	view := session.View()
+	actionMenuCurrent := false
+	var displayedActions []app.AvailableAction
 	renderView(output, view, debug)
 
 	for {
@@ -93,19 +95,22 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 			renderPeople(output, view, debug)
 			continue
 		case line == "talk" || strings.HasPrefix(line, "talk "):
-			renderTalk(output, session, dialogue, view, commandArgument(line), debug)
+			displayedActions = renderTalk(output, session, dialogue, view, commandArgument(line), debug)
+			actionMenuCurrent = len(displayedActions) > 0
 			continue
-		case line == "actions":
-			renderActions(output, view.AvailableActions, debug)
+		case line == "actions" || strings.HasPrefix(line, "actions "):
+			var valid bool
+			displayedActions, valid = renderActionsCategory(output, view.AvailableActions, commandArgument(line), debug)
+			actionMenuCurrent = valid && len(displayedActions) > 0
 			continue
-		case line == "map":
-			renderMap(output, view, debug)
+		case line == "map" || line == "map all":
+			renderMapMode(output, view, debug, line == "map all")
 			continue
 		case line == "journal":
 			renderJournal(output, view, debug)
 			continue
-		case line == "wait":
-			actionID, err := waitAction(view.AvailableActions, view.Player.Busy)
+		case line == "wait" || line == "wait next" || line == "wait complete":
+			actionID, err := waitCommand(line, view.AvailableActions)
 			if err != nil {
 				fmt.Fprintf(output, "无法等待：%v\n", err)
 				continue
@@ -114,6 +119,8 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 			if err != nil {
 				return err
 			}
+			actionMenuCurrent = false
+			displayedActions = nil
 			continue
 		case line == "go" || strings.HasPrefix(line, "go "):
 			actionID, err := resolveTravel(commandArgument(line), view, debug)
@@ -125,6 +132,8 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 			if err != nil {
 				return err
 			}
+			actionMenuCurrent = false
+			displayedActions = nil
 			continue
 		case line == "save" || strings.HasPrefix(line, "save "):
 			path := commandArgument(line)
@@ -138,7 +147,11 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 			}
 			continue
 		case line == "do" || strings.HasPrefix(line, "do "):
-			actionID, err := resolveActionNumber(commandArgument(line), view.AvailableActions)
+			if !actionMenuCurrent {
+				fmt.Fprintln(output, "行动目录尚未显示或已经变化；请先输入 actions，再使用 do <编号>。")
+				continue
+			}
+			actionID, err := resolveActionNumber(commandArgument(line), displayedActions)
 			if err != nil {
 				fmt.Fprintf(output, "无法执行：%v\n", err)
 				continue
@@ -147,6 +160,12 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 			if err != nil {
 				return err
 			}
+			actionMenuCurrent = false
+			displayedActions = nil
+			continue
+		}
+		if _, err := strconv.Atoi(line); err == nil {
+			fmt.Fprintf(output, "不能直接输入编号 %q；请先输入 actions，再使用 do %s。\n", line, line)
 			continue
 		}
 		fmt.Fprintf(output, "未知命令 %q；输入 help 查看命令。\n", line)
@@ -161,14 +180,17 @@ func commandArgument(line string) string {
 func resolveActionNumber(input string, actions []app.AvailableAction) (string, error) {
 	number, err := strconv.Atoi(input)
 	if err != nil || number < 1 || number > len(actions) {
-		return "", fmt.Errorf("请提供 1 到 %d 之间的行动编号", len(actions))
+		return "", fmt.Errorf("行动编号不可用；请输入 actions 刷新目录，再选择 1 到 %d", len(actions))
 	}
 	return actions[number-1].ID, nil
 }
 
-func waitAction(actions []app.AvailableAction, busy bool) (string, error) {
+func waitCommand(command string, actions []app.AvailableAction) (string, error) {
+	if command == "wait" {
+		return "wait", nil
+	}
 	wanted := "wait:next"
-	if busy {
+	if command == "wait complete" {
 		wanted = "wait:complete"
 	}
 	for _, action := range actions {
@@ -176,7 +198,10 @@ func waitAction(actions []app.AvailableAction, busy bool) (string, error) {
 			return action.ID, nil
 		}
 	}
-	return "", errors.New("当前没有可用的时间推进选项")
+	if wanted == "wait:complete" {
+		return "", errors.New("当前没有正在进行的行动；使用 wait 等待一天，或 wait next 快进到下一变化")
+	}
+	return "", errors.New("当前不能快进到下一变化")
 }
 
 func executeTerminalAction(output io.Writer, session *app.Session, actionID, autosavePath string, debug bool) (app.PlayerView, error) {
@@ -191,6 +216,9 @@ func executeTerminalAction(output io.Writer, session *app.Session, actionID, aut
 		}
 	}
 	renderView(output, view, debug)
+	if !view.Resolved && !view.Ended {
+		renderActionRefresh(output, view.AvailableActions)
+	}
 	return view, nil
 }
 
@@ -214,6 +242,18 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 				fmt.Fprintf(output, "  - %s\n", highlight)
 			}
 			renderInfluences(output, view.Ending.Influence, debug, "关键影响")
+			if len(view.Ending.PlayerConsequences) > 0 {
+				fmt.Fprintln(output, "个人结果：")
+				for _, consequence := range view.Ending.PlayerConsequences {
+					fmt.Fprintf(output, "  - %s\n", consequence)
+				}
+			}
+			if len(view.Ending.Review) > 0 {
+				fmt.Fprintln(output, "胜负复盘：")
+				for _, review := range view.Ending.Review {
+					fmt.Fprintf(output, "  - %s\n", review)
+				}
+			}
 		}
 		fmt.Fprintf(output, "试玩记录：%d 次决策输入，%d 次主动行动，%d 次推进；自动略过 %d 天，核心结果产生于第 %d 天。\n",
 			view.Metrics.DecisionInputs, view.Metrics.ActiveActions, view.Metrics.WaitActions, view.Metrics.AutoAdvancedDays, view.Metrics.CoreResultDay)
@@ -283,8 +323,32 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 }
 
 func renderActions(output io.Writer, actions []app.AvailableAction, debug bool) {
+	renderActionsCategory(output, actions, "", debug)
+}
+
+func renderActionsCategory(output io.Writer, actions []app.AvailableAction, requested string, debug bool) ([]app.AvailableAction, bool) {
+	selectable := terminalSelectableActions(actions)
+	category, valid := normalizeActionCategory(requested)
+	if !valid {
+		fmt.Fprintf(output, "未知行动类别 %q；可用类别：调查、交涉、准备、出行。\n", requested)
+		return nil, false
+	}
+	displayed := make([]app.AvailableAction, 0, len(selectable))
+	for _, action := range selectable {
+		if category == "" || terminalActionCategory(action) == category {
+			displayed = append(displayed, action)
+		}
+	}
 	fmt.Fprintln(output, "可用行动：")
-	for index, action := range actions {
+	found := false
+	lastCategory := ""
+	for index, action := range displayed {
+		currentCategory := terminalActionCategory(action)
+		found = true
+		if currentCategory != lastCategory {
+			fmt.Fprintf(output, " [%s]\n", terminalActionCategoryLabel(currentCategory))
+			lastCategory = currentCategory
+		}
 		cost := ""
 		if len(action.Costs) > 0 {
 			parts := make([]string, 0, len(action.Costs))
@@ -299,13 +363,87 @@ func renderActions(output io.Writer, actions []app.AvailableAction, debug bool) 
 			id = " [" + action.ID + "]"
 		}
 		duration := fmt.Sprintf("%d 天", action.Duration)
-		if action.ID == "wait:next" {
-			duration = "到下一变化"
-		} else if action.ID == "wait:complete" {
-			duration = fmt.Sprintf("最多 %d 天", action.Duration)
-		}
 		fmt.Fprintf(output, "  %d. %s%s — %s（%s%s）\n", index+1, action.Name, id, action.Description, duration, cost)
 	}
+	if !found {
+		fmt.Fprintln(output, "  当前没有该类别的可执行行动。")
+	}
+	if len(actions) != len(selectable) {
+		fmt.Fprintln(output, "时间推进：wait 等待一天；wait complete 完成当前行动；wait next 快进到下一重要变化。")
+	}
+	return displayed, true
+}
+
+func terminalSelectableActions(actions []app.AvailableAction) []app.AvailableAction {
+	result := make([]app.AvailableAction, 0, len(actions))
+	for _, action := range actions {
+		if action.Kind != "advance" {
+			result = append(result, action)
+		}
+	}
+	return result
+}
+
+func normalizeActionCategory(value string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "":
+		return "", true
+	case "调查", "investigate", "investigation":
+		return "investigate", true
+	case "交涉", "talk", "social", "information":
+		return "interact", true
+	case "准备", "prepare", "preparation":
+		return "prepare", true
+	case "出行", "travel", "move":
+		return "travel", true
+	default:
+		return "", false
+	}
+}
+
+func terminalActionCategory(action app.AvailableAction) string {
+	switch action.Kind {
+	case "verify":
+		return "investigate"
+	case "tell", "route":
+		return "interact"
+	case "move":
+		return "travel"
+	default:
+		return "prepare"
+	}
+}
+
+func terminalActionCategoryLabel(category string) string {
+	switch category {
+	case "investigate":
+		return "调查"
+	case "interact":
+		return "交涉"
+	case "travel":
+		return "出行"
+	default:
+		return "准备"
+	}
+}
+
+func renderActionRefresh(output io.Writer, actions []app.AvailableAction) {
+	selectable := terminalSelectableActions(actions)
+	counts := make(map[string]int)
+	for _, action := range selectable {
+		counts[terminalActionCategory(action)]++
+	}
+	parts := make([]string, 0, 4)
+	for _, category := range []string{"investigate", "interact", "prepare", "travel"} {
+		if counts[category] > 0 {
+			parts = append(parts, fmt.Sprintf("%s %d", terminalActionCategoryLabel(category), counts[category]))
+		}
+	}
+	if len(parts) == 0 {
+		fmt.Fprintln(output, "行动目录已刷新：当前只能推进时间。")
+		return
+	}
+	fmt.Fprintf(output, "行动目录已刷新：%d 项（%s）。旧编号已失效，请重新输入 actions 或 actions <类别>。\n", len(selectable), strings.Join(parts, "、"))
 }
 
 func renderInfluences(output io.Writer, influences []app.VisibleInfluence, debug bool, title string) {
@@ -389,10 +527,10 @@ func confidenceLabel(value int) string {
 
 func renderHelp(output io.Writer, debug bool) {
 	if debug {
-		fmt.Fprintln(output, "命令：look；people；talk <编号|人物ID|姓名>；actions；do <行动编号>；map；go <地点>；journal；wait；save [文件]；quit。")
+		fmt.Fprintln(output, "命令：look；people；talk <编号|人物ID|姓名>（一次回应）；actions [调查|交涉|准备|出行]；do <行动编号>；map [all]；go <地点>；journal；wait；wait complete；wait next；save [文件]；quit。")
 		return
 	}
-	fmt.Fprintln(output, "命令：look；people；talk <人物编号或姓名>；actions；do <行动编号>；map；go <地点>；journal；wait；save [文件]；quit。")
+	fmt.Fprintln(output, "命令：look；people；talk <人物编号或姓名>（一次回应）；actions [调查|交涉|准备|出行]；do <行动编号>；map [all]；go <地点>；journal；wait；wait complete；wait next；save [文件]；quit。")
 }
 
 func saveSession(path string, session *app.Session) error {
