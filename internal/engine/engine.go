@@ -3,6 +3,8 @@ package engine
 import (
 	"fmt"
 	"sort"
+	"strconv"
+	"strings"
 
 	"fantu/internal/domain"
 )
@@ -675,9 +677,10 @@ func (e *Engine) resolveContest() error {
 	contest := e.bundle.Scenario.Contest
 	if owner := e.state.Items[contest.ItemID]; owner != contest.LocationID && owner != "" {
 		if e.state.Outcome == "" {
-			e.state.Outcome = fmt.Sprintf("%s 已在成熟日前取得青髓芝", displayName(e.state, owner))
+			e.state.Outcome = renderContestText(contest.EarlyOutcome, displayName(e.state, owner), 0)
 		}
-		e.state.Events = append(e.state.Events, e.newEvent("contest", owner, contest.ItemID, "成熟日争夺取消："+e.state.Outcome, "contest", nil))
+		cancelled := strings.ReplaceAll(contest.CancelledOutcome, "{outcome}", e.state.Outcome)
+		e.state.Events = append(e.state.Events, e.newEvent("contest", owner, contest.ItemID, cancelled, "contest", nil))
 		return nil
 	}
 	type candidate struct {
@@ -720,7 +723,7 @@ func (e *Engine) resolveContest() error {
 		return candidates[i].id < candidates[j].id
 	})
 	if len(candidates) == 0 {
-		e.state.Outcome = "无人满足进入内谷并采摘青髓芝的条件"
+		e.state.Outcome = contest.NoWinnerOutcome
 		e.state.Events = append(e.state.Events, e.newEvent("contest", "world", "", e.state.Outcome, "contest", nil))
 		return nil
 	}
@@ -731,21 +734,93 @@ func (e *Engine) resolveContest() error {
 	} else {
 		e.state.NPCs[winner.id].Items[contest.ItemID]++
 	}
-	if winner.id == "N02" && e.state.WorldFlag("caravan_protected") && e.state.WorldFlag("betrayal_exposed") {
-		e.state.Outcome = fmt.Sprintf("陈氏在玩家保护下避开伏击，由%s以准备值 %d 取得青髓芝", displayName(e.state, winner.id), winner.score)
-	} else if winner.id == "N03" && e.state.WorldFlag("qinglan_chen_alliance") {
-		e.state.Outcome = fmt.Sprintf("青岚门与陈氏合作，由%s以准备值 %d 取得青髓芝", displayName(e.state, winner.id), winner.score)
-	} else {
-		e.state.Outcome = fmt.Sprintf("%s 以准备值 %d 取得青髓芝", displayName(e.state, winner.id), winner.score)
+	e.state.Outcome = e.contestOutcome(contest, winner.id, winner.score)
+	effects := []domain.Effect{{Type: "transfer_unique", TargetID: winner.id, Key: contest.ItemID}}
+	event := e.newEvent("contest", winner.id, contest.ItemID, e.state.Outcome, "contest", effects)
+	for _, rule := range sortedContestRules(contest.RewardRules) {
+		if !e.contestRuleMatches(rule, winner.id) {
+			continue
+		}
+		rewardEffects := e.materializeContestEffects(rule.Effects, winner.id)
+		if err := e.applyEffects(event, rewardEffects, winner.id); err != nil {
+			return fmt.Errorf("apply contest reward %s: %w", rule.ID, err)
+		}
+		effects = append(effects, rewardEffects...)
+		e.state.Outcome += renderContestText(rule.Suffix, displayName(e.state, winner.id), winner.score)
 	}
-	if player := e.state.Player; winner.id == "N03" && player != nil && e.state.ActorFlag(player.ID, "qinglan_trust_vouched") && e.state.RelationBetween("N03", player.ID).Trust >= 2 {
-		player.Resources["credit"] += 2
-		player.Resources["support"]++
-		e.state.SetActorFlag(player.ID, "qinglan_trust_rewarded", true)
-		e.state.Outcome += "；沈砚秋依约为你在青岚门记功"
-	}
-	e.state.Events = append(e.state.Events, e.newEvent("contest", winner.id, contest.ItemID, e.state.Outcome, "contest", []domain.Effect{{Type: "transfer_unique", TargetID: winner.id, Key: contest.ItemID}}))
+	event.Description = e.state.Outcome
+	event.Effects = effects
+	e.state.Events = append(e.state.Events, event)
 	return nil
+}
+
+func (e *Engine) contestOutcome(contest domain.Contest, winnerID string, score int) string {
+	template := contest.DefaultOutcome
+	for _, rule := range sortedContestRules(contest.OutcomeRules) {
+		if e.contestRuleMatches(rule, winnerID) {
+			template = rule.Template
+			break
+		}
+	}
+	return renderContestText(template, displayName(e.state, winnerID), score)
+}
+
+func (e *Engine) contestRuleMatches(rule domain.ContestOutcomeRule, winnerID string) bool {
+	if rule.WinnerID != "" && rule.WinnerID != winnerID {
+		return false
+	}
+	for _, flag := range rule.RequiredWorldFlags {
+		if !e.state.WorldFlag(flag) {
+			return false
+		}
+	}
+	if len(rule.RequiredPlayerFlags) > 0 || rule.MinWinnerTrust > 0 {
+		if e.state.Player == nil {
+			return false
+		}
+		for _, flag := range rule.RequiredPlayerFlags {
+			if !e.state.ActorFlag(e.state.Player.ID, flag) {
+				return false
+			}
+		}
+		if e.state.RelationBetween(winnerID, e.state.Player.ID).Trust < rule.MinWinnerTrust {
+			return false
+		}
+	}
+	return true
+}
+
+func (e *Engine) materializeContestEffects(source []domain.Effect, winnerID string) []domain.Effect {
+	effects := append([]domain.Effect(nil), source...)
+	for index := range effects {
+		if effects[index].TargetID == "player" && e.state.Player != nil {
+			effects[index].TargetID = e.state.Player.ID
+		} else if effects[index].TargetID == "winner" {
+			effects[index].TargetID = winnerID
+		}
+		if effects[index].FromID == "player" && e.state.Player != nil {
+			effects[index].FromID = e.state.Player.ID
+		} else if effects[index].FromID == "winner" {
+			effects[index].FromID = winnerID
+		}
+	}
+	return effects
+}
+
+func sortedContestRules(source []domain.ContestOutcomeRule) []domain.ContestOutcomeRule {
+	rules := append([]domain.ContestOutcomeRule(nil), source...)
+	sort.Slice(rules, func(i, j int) bool {
+		if rules[i].Priority != rules[j].Priority {
+			return rules[i].Priority > rules[j].Priority
+		}
+		return rules[i].ID < rules[j].ID
+	})
+	return rules
+}
+
+func renderContestText(template, winnerName string, score int) string {
+	result := strings.ReplaceAll(template, "{winner}", winnerName)
+	return strings.ReplaceAll(result, "{score}", strconv.Itoa(score))
 }
 
 func (e *Engine) newEvent(kind, actor, target, description, cause string, effects []domain.Effect) domain.WorldEvent {

@@ -121,6 +121,9 @@ func Validate(bundle domain.Bundle) error {
 	if _, ok := bundle.Locations[bundle.Scenario.Contest.LocationID]; !ok {
 		return fmt.Errorf("contest references unknown location %s", bundle.Scenario.Contest.LocationID)
 	}
+	if err := validateContestRules(bundle); err != nil {
+		return err
+	}
 	for id, location := range bundle.Locations {
 		seenRoutes := make(map[string]bool)
 		for _, route := range location.Routes {
@@ -139,6 +142,55 @@ func Validate(bundle domain.Bundle) error {
 					return fmt.Errorf("location %s route to %s requires unknown item %s", id, route.To, route.RequiredItem)
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func validateContestRules(bundle domain.Bundle) error {
+	contest := bundle.Scenario.Contest
+	if contest.DefaultOutcome == "" || contest.EarlyOutcome == "" || contest.CancelledOutcome == "" || contest.NoWinnerOutcome == "" {
+		return fmt.Errorf("contest requires all outcome templates")
+	}
+	actors := map[string]bool{"": true, "player": true, "winner": true, "world": true}
+	for _, npc := range bundle.NPCs {
+		actors[npc.ID] = true
+	}
+	seen := make(map[string]bool)
+	validate := func(kind string, rule domain.ContestOutcomeRule) error {
+		if rule.ID == "" || seen[rule.ID] || !actors[rule.WinnerID] || rule.MinWinnerTrust < 0 || rule.MinWinnerTrust > 5 {
+			return fmt.Errorf("contest has invalid or duplicate %s rule %q", kind, rule.ID)
+		}
+		seen[rule.ID] = true
+		if kind == "outcome" && rule.Template == "" {
+			return fmt.Errorf("contest outcome rule %s requires template", rule.ID)
+		}
+		if kind == "reward" && rule.Suffix == "" && len(rule.Effects) == 0 {
+			return fmt.Errorf("contest reward rule %s has no result", rule.ID)
+		}
+		for _, flag := range append(append([]string(nil), rule.RequiredWorldFlags...), rule.RequiredPlayerFlags...) {
+			if flag == "" {
+				return fmt.Errorf("contest rule %s has empty required flag", rule.ID)
+			}
+		}
+		for _, effect := range rule.Effects {
+			if !actors[effect.TargetID] || !actors[effect.FromID] {
+				return fmt.Errorf("contest rule %s has invalid actor reference", rule.ID)
+			}
+		}
+		if err := validateConditionsAndEffects(nil, nil, rule.Effects, bundle); err != nil {
+			return fmt.Errorf("contest rule %s: %w", rule.ID, err)
+		}
+		return nil
+	}
+	for _, rule := range contest.OutcomeRules {
+		if err := validate("outcome", rule); err != nil {
+			return err
+		}
+	}
+	for _, rule := range contest.RewardRules {
+		if err := validate("reward", rule); err != nil {
+			return err
 		}
 	}
 	return nil

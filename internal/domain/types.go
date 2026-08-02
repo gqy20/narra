@@ -129,12 +129,30 @@ type FixedEvent struct {
 }
 
 type Contest struct {
-	Day             int      `json:"day"`
-	ItemID          string   `json:"item_id"`
-	LocationID      string   `json:"location_id"`
-	RequiredItemID  string   `json:"required_item_id"`
-	ScoreResources  []string `json:"score_resources"`
-	PreparationFlag string   `json:"preparation_flag"`
+	Day              int                  `json:"day"`
+	ItemID           string               `json:"item_id"`
+	LocationID       string               `json:"location_id"`
+	RequiredItemID   string               `json:"required_item_id"`
+	ScoreResources   []string             `json:"score_resources"`
+	PreparationFlag  string               `json:"preparation_flag"`
+	EarlyOutcome     string               `json:"early_outcome"`
+	CancelledOutcome string               `json:"cancelled_outcome"`
+	NoWinnerOutcome  string               `json:"no_winner_outcome"`
+	DefaultOutcome   string               `json:"default_outcome"`
+	OutcomeRules     []ContestOutcomeRule `json:"outcome_rules,omitempty"`
+	RewardRules      []ContestOutcomeRule `json:"reward_rules,omitempty"`
+}
+
+type ContestOutcomeRule struct {
+	ID                  string   `json:"id"`
+	Priority            int      `json:"priority"`
+	WinnerID            string   `json:"winner_id,omitempty"`
+	RequiredWorldFlags  []string `json:"required_world_flags,omitempty"`
+	RequiredPlayerFlags []string `json:"required_player_flags,omitempty"`
+	MinWinnerTrust      int      `json:"min_winner_trust,omitempty"`
+	Template            string   `json:"template,omitempty"`
+	Suffix              string   `json:"suffix,omitempty"`
+	Effects             []Effect `json:"effects,omitempty"`
 }
 
 type ActionDefinition struct {

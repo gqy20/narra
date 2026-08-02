@@ -196,3 +196,42 @@ contest:
   - combat
   - support
   preparation_flag: prepared
+  early_outcome: "{winner} 已在成熟日前取得青髓芝"
+  cancelled_outcome: "成熟日争夺取消：{outcome}"
+  no_winner_outcome: 无人满足进入内谷并采摘青髓芝的条件
+  default_outcome: "{winner} 以准备值 {score} 取得青髓芝"
+  outcome_rules:
+  - id: chen-caravan-protected
+    priority: 100
+    winner_id: N02
+    required_world_flags:
+    - caravan_protected
+    - betrayal_exposed
+    template: "陈氏在玩家保护下避开伏击，由{winner}以准备值 {score} 取得青髓芝"
+  - id: qinglan-chen-alliance
+    priority: 90
+    winner_id: N03
+    required_world_flags:
+    - qinglan_chen_alliance
+    template: "青岚门与陈氏合作，由{winner}以准备值 {score} 取得青髓芝"
+  reward_rules:
+  - id: qinglan-player-credit
+    priority: 100
+    winner_id: N03
+    required_player_flags:
+    - qinglan_trust_vouched
+    min_winner_trust: 2
+    suffix: "；沈砚秋依约为你在青岚门记功"
+    effects:
+    - type: adjust_resource
+      target_id: player
+      key: credit
+      amount: 2
+    - type: adjust_resource
+      target_id: player
+      key: support
+      amount: 1
+    - type: set_flag
+      target_id: player
+      key: qinglan_trust_rewarded
+      value: "true"

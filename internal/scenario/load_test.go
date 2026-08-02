@@ -28,11 +28,14 @@ func TestLoadBlackwindBundle(t *testing.T) {
 	if got, want := len(bundle.Scenario.Opportunities), 1; got != want {
 		t.Fatalf("opportunity action count = %d, want %d", got, want)
 	}
-	if bundle.Content.SchemaVersion != 1 || bundle.Content.Version != "1.2.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
+	if bundle.Content.SchemaVersion != 1 || bundle.Content.Version != "1.3.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
 		t.Fatalf("content metadata = %+v", bundle.Content)
 	}
 	if arc, ok := bundle.StoryArcs["qinglan_intel"]; !ok || arc.InitialState != "uncommitted" || len(arc.Nodes) != 1 || len(arc.Nodes[0].Choices) != 3 {
 		t.Fatalf("qinglan story arc = %+v", arc)
+	}
+	if len(bundle.Scenario.Contest.OutcomeRules) != 2 || len(bundle.Scenario.Contest.RewardRules) != 1 {
+		t.Fatalf("contest content rules = %+v / %+v", bundle.Scenario.Contest.OutcomeRules, bundle.Scenario.Contest.RewardRules)
 	}
 	if bundle.DefaultPlayer.ID != "P00" || bundle.DefaultPlayer.Name != "无名散修" || bundle.DefaultPlayer.Location != "L01" {
 		t.Fatalf("default player = %+v", bundle.DefaultPlayer)
@@ -378,5 +381,16 @@ func TestValidateRejectsInvalidStoryTransition(t *testing.T) {
 	bundle.StoryArcs[arc.ID] = arc
 	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "invalid choice") {
 		t.Fatalf("invalid story transition error = %v", err)
+	}
+}
+
+func TestValidateRejectsInvalidContestContentRule(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	bundle.Scenario.Contest.OutcomeRules[0].WinnerID = "missing"
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "outcome rule") {
+		t.Fatalf("invalid contest rule error = %v", err)
 	}
 }
