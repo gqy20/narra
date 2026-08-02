@@ -14,6 +14,7 @@ const SourceHanSansMediumFont = preload("res://assets/fonts/SourceHanSansCN-Medi
 const SourceHanSerifFont = preload("res://assets/fonts/SourceHanSerifCN-SemiBold.otf")
 const WenKaiFont = preload("res://assets/fonts/LXGWWenKaiLite-Regular.ttf")
 const AIDialogueClientScript = preload("res://scripts/ai/dialogue_client.gd")
+const APIResponseAdapterScript = preload("res://scripts/api_response_adapter.gd")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
 const BUNDLED_SERVER_NAME := "fantu-server.exe"
@@ -74,6 +75,7 @@ const COLORS := {
 
 var current_view: Dictionary = {}
 var dialogue_client
+var api_response_adapter = APIResponseAdapterScript.new()
 var actor_dialogue_by_id := {}
 var actor_dialogue_error_by_id := {}
 var actor_dialogue_history_by_id := {}
@@ -2245,10 +2247,9 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 	pending_request_path = ""
 	pending_request_method = ""
 	_set_buttons_disabled(self, presentation_busy)
-	var parsed = JSON.parse_string(body.get_string_from_utf8())
-	var error_code := ""
-	if parsed is Dictionary and parsed.get("error", {}) is Dictionary:
-		error_code = str(parsed.get("error", {}).get("code", ""))
+	var adapted: Dictionary = api_response_adapter.decode(response_code, body)
+	var parsed: Dictionary = adapted.get("payload", {})
+	var error_code := str(adapted.get("error_code", ""))
 	_log_event("INFO" if response_code >= 200 and response_code < 300 else "ERROR", "http_response", "request completed", {
 		"duration_ms": duration_msec,
 		"error_code": error_code,
@@ -2258,11 +2259,9 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		"result": result,
 		"status": response_code,
 	})
-	if response_code < 200 or response_code >= 300 or not parsed is Dictionary:
+	if not adapted.get("ok", false):
 		queued_followup_action_id = ""
-		var message := "本地服务无响应，请先运行项目启动脚本。"
-		if parsed is Dictionary and parsed.get("error", {}) is Dictionary:
-			message = str(parsed.get("error", {}).get("message", message))
+		var message := str(adapted.get("message", "本地服务无响应，请先运行项目启动脚本。"))
 		if operation == "ai_settings" and ai_status_label:
 			ai_status_label.text = "应用失败：%s" % message
 			ai_status_label.add_theme_color_override("font_color", COLORS.danger)
