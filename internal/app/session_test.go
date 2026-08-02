@@ -476,6 +476,40 @@ func TestAtomicSaveFileCanReplaceAndReload(t *testing.T) {
 	}
 }
 
+func TestSaveBindsReplayToContentHash(t *testing.T) {
+	session := testSession(t)
+	var encoded bytes.Buffer
+	if err := session.Save(&encoded); err != nil {
+		t.Fatal(err)
+	}
+	var saved SaveData
+	if err := json.Unmarshal(encoded.Bytes(), &saved); err != nil {
+		t.Fatal(err)
+	}
+	if saved.Version != 2 || saved.ContentVersion != session.bundle.Content.Version || saved.ContentHash != session.bundle.Content.Hash {
+		t.Fatalf("save metadata = %+v, bundle = %+v", saved, session.bundle.Content)
+	}
+
+	changed := session.bundle
+	changed.Content.Hash = "sha256:changed"
+	if _, err := LoadSession(changed, bytes.NewReader(encoded.Bytes())); err == nil || !strings.Contains(err.Error(), "does not match loaded content") {
+		t.Fatalf("content mismatch error = %v", err)
+	}
+}
+
+func TestLoadSessionAcceptsLegacyVersionOneSave(t *testing.T) {
+	session := testSession(t)
+	legacy, err := json.Marshal(SaveData{
+		Version: 1, ScenarioID: session.bundle.Scenario.ID, Player: clonePlayerConfig(session.initial),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadSession(session.bundle, bytes.NewReader(legacy)); err != nil {
+		t.Fatalf("load legacy save: %v", err)
+	}
+}
+
 func TestBuyAndInvestigationUseAuthoritativeEngine(t *testing.T) {
 	session := testSession(t)
 	view, err := session.Execute("buy:M01:antidote")

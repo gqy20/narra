@@ -1,58 +1,118 @@
 package scenario
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"fantu/internal/domain"
+	"go.yaml.in/yaml/v4"
 )
+
+const supportedSchemaVersion = 1
+
+type manifest struct {
+	SchemaVersion       int    `json:"schema_version"`
+	ContentVersion      string `json:"content_version"`
+	EngineCompatibility string `json:"engine_compatibility,omitempty"`
+}
 
 func Load(dir string) (domain.Bundle, error) {
 	var bundle domain.Bundle
-	if err := readJSON(filepath.Join(dir, "scenario.json"), &bundle.Scenario); err != nil {
+	loadedFiles := make([]string, 0, 7)
+	var metadata manifest
+	manifestPath, err := readDataFile(dir, "manifest", &metadata)
+	if err != nil {
 		return bundle, err
 	}
+	if metadata.SchemaVersion != supportedSchemaVersion {
+		return bundle, fmt.Errorf("manifest uses unsupported schema version %d", metadata.SchemaVersion)
+	}
+	if strings.TrimSpace(metadata.ContentVersion) == "" {
+		return bundle, fmt.Errorf("manifest requires content_version")
+	}
+	loadedFiles = append(loadedFiles, manifestPath)
+
+	path, err := readDataFile(dir, "scenario", &bundle.Scenario)
+	if err != nil {
+		return bundle, err
+	}
+	loadedFiles = append(loadedFiles, path)
 
 	var actions []domain.ActionDefinition
-	if err := readJSON(filepath.Join(dir, "actions.json"), &actions); err != nil {
+	path, err = readDataFile(dir, "actions", &actions)
+	if err != nil {
 		return bundle, err
 	}
+	loadedFiles = append(loadedFiles, path)
 	bundle.Actions = make(map[string]domain.ActionDefinition, len(actions))
 	for _, action := range actions {
+		if _, exists := bundle.Actions[action.ID]; exists {
+			return bundle, fmt.Errorf("duplicate action id %q", action.ID)
+		}
 		bundle.Actions[action.ID] = action
 	}
 
 	var facts []domain.Fact
-	if err := readJSON(filepath.Join(dir, "facts.json"), &facts); err != nil {
+	path, err = readDataFile(dir, "facts", &facts)
+	if err != nil {
 		return bundle, err
 	}
+	loadedFiles = append(loadedFiles, path)
 	bundle.Facts = make(map[string]domain.Fact, len(facts))
 	for _, fact := range facts {
+		if _, exists := bundle.Facts[fact.ID]; exists {
+			return bundle, fmt.Errorf("duplicate fact id %q", fact.ID)
+		}
 		bundle.Facts[fact.ID] = fact
 	}
 
-	if err := readJSON(filepath.Join(dir, "npcs.json"), &bundle.NPCs); err != nil {
+	path, err = readDataFile(dir, "npcs", &bundle.NPCs)
+	if err != nil {
 		return bundle, err
 	}
+	loadedFiles = append(loadedFiles, path)
 
 	var items []domain.ItemDefinition
-	if err := readJSON(filepath.Join(dir, "items.json"), &items); err != nil {
+	path, err = readDataFile(dir, "items", &items)
+	if err != nil {
 		return bundle, err
 	}
+	loadedFiles = append(loadedFiles, path)
 	bundle.Items = make(map[string]domain.ItemDefinition, len(items))
 	for _, item := range items {
+		if _, exists := bundle.Items[item.ID]; exists {
+			return bundle, fmt.Errorf("duplicate item id %q", item.ID)
+		}
 		bundle.Items[item.ID] = item
 	}
 
 	var locations []domain.Location
-	if err := readJSON(filepath.Join(dir, "locations.json"), &locations); err != nil {
+	path, err = readDataFile(dir, "locations", &locations)
+	if err != nil {
 		return bundle, err
 	}
+	loadedFiles = append(loadedFiles, path)
 	bundle.Locations = make(map[string]domain.Location, len(locations))
 	for _, location := range locations {
+		if _, exists := bundle.Locations[location.ID]; exists {
+			return bundle, fmt.Errorf("duplicate location id %q", location.ID)
+		}
 		bundle.Locations[location.ID] = location
+	}
+	hash, err := contentHash(dir, loadedFiles)
+	if err != nil {
+		return bundle, err
+	}
+	bundle.Content = domain.ContentMetadata{
+		SchemaVersion: metadata.SchemaVersion, Version: metadata.ContentVersion,
+		Hash: hash, EngineCompatibility: metadata.EngineCompatibility,
 	}
 
 	if err := Validate(bundle); err != nil {
@@ -63,7 +123,7 @@ func Load(dir string) (domain.Bundle, error) {
 
 func LoadPlan(path string, bundle domain.Bundle) (domain.RunPlan, error) {
 	var plan domain.RunPlan
-	if err := readJSON(path, &plan); err != nil {
+	if err := decodeFile(path, &plan); err != nil {
 		return plan, err
 	}
 	if plan.ID == "" || plan.Player.ID == "" {
@@ -130,13 +190,94 @@ func validateCommand(command domain.PlayerCommand, scheduledDay int, actorID str
 	return nil
 }
 
-func readJSON(path string, target any) error {
+func readDataFile(dir, base string, target any) (string, error) {
+	for _, extension := range []string{".yml", ".yaml", ".json"} {
+		path := filepath.Join(dir, base+extension)
+		if _, err := os.Stat(path); err == nil {
+			if err := decodeFile(path, target); err != nil {
+				return "", err
+			}
+			return path, nil
+		} else if !os.IsNotExist(err) {
+			return "", fmt.Errorf("stat %s: %w", path, err)
+		}
+	}
+	return "", fmt.Errorf("read %s: no .yml, .yaml, or .json content file", filepath.Join(dir, base))
+}
+
+func decodeFile(path string, target any) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("read %s: %w", path, err)
 	}
-	if err := json.Unmarshal(data, target); err != nil {
-		return fmt.Errorf("decode %s: %w", path, err)
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".yml", ".yaml":
+		if err := decodeYAML(data, target); err != nil {
+			return fmt.Errorf("decode %s: %w", path, err)
+		}
+	case ".json":
+		if err := decodeJSON(data, target); err != nil {
+			return fmt.Errorf("decode %s: %w", path, err)
+		}
+	default:
+		return fmt.Errorf("decode %s: unsupported extension", path)
 	}
 	return nil
+}
+
+func decodeJSON(data []byte, target any) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("multiple documents are not allowed")
+		}
+		return err
+	}
+	return nil
+}
+
+func decodeYAML(data []byte, target any) error {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return err
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("multiple documents are not allowed")
+		}
+		return err
+	}
+	normalized, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("normalize YAML: %w", err)
+	}
+	if err := decodeJSON(normalized, target); err != nil {
+		return err
+	}
+	return nil
+}
+
+func contentHash(root string, paths []string) (string, error) {
+	sort.Strings(paths)
+	hash := sha256.New()
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("hash %s: %w", path, err)
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return "", fmt.Errorf("hash path %s: %w", path, err)
+		}
+		hash.Write([]byte(filepath.ToSlash(relative)))
+		hash.Write([]byte{0})
+		hash.Write(data)
+		hash.Write([]byte{0})
+	}
+	return fmt.Sprintf("sha256:%x", hash.Sum(nil)), nil
 }

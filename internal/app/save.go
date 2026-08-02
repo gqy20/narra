@@ -9,19 +9,22 @@ import (
 	"fantu/internal/domain"
 )
 
-const saveVersion = 1
+const saveVersion = 2
 
 type SaveData struct {
-	Version    int                 `json:"version"`
-	ScenarioID string              `json:"scenario_id"`
-	Player     domain.PlayerConfig `json:"player"`
-	History    []string            `json:"history"`
-	Dialogues  []DialogueExchange  `json:"dialogues,omitempty"`
+	Version        int                 `json:"version"`
+	ScenarioID     string              `json:"scenario_id"`
+	ContentVersion string              `json:"content_version,omitempty"`
+	ContentHash    string              `json:"content_hash,omitempty"`
+	Player         domain.PlayerConfig `json:"player"`
+	History        []string            `json:"history"`
+	Dialogues      []DialogueExchange  `json:"dialogues,omitempty"`
 }
 
 func (s *Session) Save(writer io.Writer) error {
 	data := SaveData{
 		Version: saveVersion, ScenarioID: s.bundle.Scenario.ID,
+		ContentVersion: s.bundle.Content.Version, ContentHash: s.bundle.Content.Hash,
 		Player: clonePlayerConfig(s.initial), History: s.History(), Dialogues: s.dialogueHistory(),
 	}
 	encoder := json.NewEncoder(writer)
@@ -34,11 +37,19 @@ func LoadSession(bundle domain.Bundle, reader io.Reader) (*Session, error) {
 	if err := json.NewDecoder(reader).Decode(&data); err != nil {
 		return nil, fmt.Errorf("decode save: %w", err)
 	}
-	if data.Version != saveVersion {
+	if data.Version != 1 && data.Version != saveVersion {
 		return nil, fmt.Errorf("unsupported save version %d", data.Version)
 	}
 	if data.ScenarioID != bundle.Scenario.ID {
 		return nil, fmt.Errorf("save scenario %s does not match %s", data.ScenarioID, bundle.Scenario.ID)
+	}
+	if data.Version >= 2 {
+		if data.ContentVersion == "" || data.ContentHash == "" {
+			return nil, fmt.Errorf("save is missing content version metadata")
+		}
+		if data.ContentHash != bundle.Content.Hash {
+			return nil, fmt.Errorf("save content %s (%s) does not match loaded content %s (%s)", data.ContentVersion, data.ContentHash, bundle.Content.Version, bundle.Content.Hash)
+		}
 	}
 	session, err := NewSession(bundle, data.Player)
 	if err != nil {

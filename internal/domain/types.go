@@ -275,6 +275,7 @@ type Route struct {
 }
 
 type Bundle struct {
+	Content   ContentMetadata
 	Scenario  Scenario
 	Actions   map[string]ActionDefinition
 	Facts     map[string]Fact
@@ -284,6 +285,13 @@ type Bundle struct {
 	// InitialRelations allows deterministic simulations and parameter sweeps to
 	// start from explicit directional relationship state.
 	InitialRelations []Relation
+}
+
+type ContentMetadata struct {
+	SchemaVersion       int    `json:"schema_version"`
+	Version             string `json:"content_version"`
+	Hash                string `json:"content_hash"`
+	EngineCompatibility string `json:"engine_compatibility,omitempty"`
 }
 
 type RunPlan struct {

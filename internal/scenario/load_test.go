@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"fantu/internal/domain"
@@ -27,10 +28,36 @@ func TestLoadBlackwindBundle(t *testing.T) {
 	if got, want := len(bundle.Scenario.Opportunities), 1; got != want {
 		t.Fatalf("opportunity action count = %d, want %d", got, want)
 	}
+	if bundle.Content.SchemaVersion != 1 || bundle.Content.Version != "1.0.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
+		t.Fatalf("content metadata = %+v", bundle.Content)
+	}
 	for _, npc := range bundle.NPCs {
 		if npc.PublicProfile == "" || npc.PublicRole == "" || len(npc.PublicInterests) == 0 || npc.PublicRisk == "" {
 			t.Fatalf("NPC %s lacks complete public decision context", npc.ID)
 		}
+	}
+}
+
+func TestDecodeYAMLUsesJSONFieldNamesAndRejectsUnknownFields(t *testing.T) {
+	var scenario domain.Scenario
+	if err := decodeYAML([]byte("id: sample\nplanning_mode: unified_score\nduration: 2\n"), &scenario); err != nil {
+		t.Fatalf("decode valid YAML: %v", err)
+	}
+	if scenario.ID != "sample" || scenario.PlanningMode != "unified_score" || scenario.Duration != 2 {
+		t.Fatalf("decoded scenario = %+v", scenario)
+	}
+	if err := decodeYAML([]byte("id: sample\nunknown_field: true\n"), &scenario); err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("unknown YAML field error = %v", err)
+	}
+}
+
+func TestDecodeYAMLRejectsDuplicateKeysAndDocuments(t *testing.T) {
+	var scenario domain.Scenario
+	if err := decodeYAML([]byte("id: one\nid: two\n"), &scenario); err == nil {
+		t.Fatal("duplicate YAML key was accepted")
+	}
+	if err := decodeYAML([]byte("id: one\n---\nid: two\n"), &scenario); err == nil || !strings.Contains(err.Error(), "multiple documents") {
+		t.Fatalf("multiple YAML document error = %v", err)
 	}
 }
 
