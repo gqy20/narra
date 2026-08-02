@@ -219,11 +219,26 @@ func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, 
 		case "close_opportunity":
 			delete(e.state.Opportunities, effect.Key)
 			delete(e.state.OpportunitySources, effect.Key)
+		case "set_story_state":
+			arc, ok := e.bundle.StoryArcs[effect.Key]
+			if !ok || !storyStateDeclared(arc, effect.Value) {
+				return fmt.Errorf("unknown story state %s:%s", effect.Key, effect.Value)
+			}
+			e.state.StoryStates[effect.Key] = effect.Value
 		default:
 			return fmt.Errorf("unknown effect type %s", effect.Type)
 		}
 	}
 	return nil
+}
+
+func storyStateDeclared(arc domain.StoryArc, stateID string) bool {
+	for _, candidate := range arc.States {
+		if candidate == stateID {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *Engine) isPlayer(id string) bool {

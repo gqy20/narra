@@ -312,8 +312,7 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 			if s.hasDeliveredFact(state, actor.ID, factID) {
 				continue
 			}
-			if actor.ID == "N03" && factID == "F01" && belief.Confidence >= 3 {
-				s.addShenDateTermActions(options, state, actor, belief, action)
+			if s.addStoryInformationActions(options, state, actor, belief, action) {
 				continue
 			}
 			id := fmt.Sprintf("tell:%s:%s", actor.ID, factID)
@@ -339,56 +338,6 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 					Effects:    []domain.Effect{{Type: "set_belief", TargetID: actor.ID, FactID: factID, Claim: claim, Confidence: belief.Confidence, EvidenceStrength: belief.EvidenceStrength, Source: state.Player.ID, Propagation: "private", Secrecy: belief.Secrecy}},
 				},
 			}
-		}
-	}
-}
-
-func (s *Session) addShenDateTermActions(options map[string]actionOption, state *domain.WorldState, actor VisibleActor, belief domain.Belief, action domain.ActionDefinition) {
-	claim := belief.Claim
-	if claim == "" {
-		claim = "青髓芝将在第24天成熟"
-	}
-	beliefEffect := domain.Effect{Type: "set_belief", TargetID: actor.ID, FactID: "F01", Claim: claim, Confidence: belief.Confidence, EvidenceStrength: belief.EvidenceStrength, Source: state.Player.ID, Propagation: "private", Secrecy: belief.Secrecy}
-	conditions := []domain.Condition{{Type: "belief", Key: "F01", MinConfidence: 3}, {Type: "location", Value: state.Player.Location}}
-	relevance, risk := s.publicInformationContext(actor.ID, s.bundle.Facts["F01"])
-	terms := []struct {
-		id, label, name, description, personal string
-		outcomes                               []string
-		effects                                []domain.Effect
-	}{
-		{
-			id: "trust", label: "无偿相助", name: "无偿告知沈砚秋", description: "不索取眼前回报，以可靠消息换取沈砚秋对你的长期信任。",
-			personal: "沈砚秋对你的信任提高；若他凭此取得青髓芝，你会获得青岚门声望。",
-			outcomes: []string{"沈砚秋获得已核实日期", "信任 +2，并可能直接采用你的消息提前备战"},
-			effects:  []domain.Effect{{Type: "adjust_relation", FromID: "N03", TargetID: state.Player.ID, Key: "trust", Amount: 2}, {Type: "set_flag", TargetID: state.Player.ID, Key: "qinglan_intel_term_trust", Value: "true"}, {Type: "set_flag", TargetID: "world", Key: "player_backed_shen", Value: "true"}},
-		},
-		{
-			id: "antidote", label: "交换解瘴丹", name: "以日期换取解瘴丹", description: "把已核实日期作为交易筹码，立即换取一枚解瘴丹，保留独自入谷的自由。",
-			personal: "立即获得 1 枚解瘴丹，重新打开亲自入谷路线。",
-			outcomes: []string{"获得沈砚秋持有的 1 枚解瘴丹", "青岚队伍失去这份入谷物资；沈砚秋会把消息视为一次对价交易"},
-			effects:  []domain.Effect{{Type: "remove_item", TargetID: "N03", Key: "antidote", Amount: 1}, {Type: "add_item", TargetID: state.Player.ID, Key: "antidote", Amount: 1}, {Type: "set_flag", TargetID: state.Player.ID, Key: "qinglan_intel_term_antidote", Value: "true"}, {Type: "set_flag", TargetID: "world", Key: "player_took_shen_antidote", Value: "true"}},
-		},
-		{
-			id: "escort", label: "换取同行名额", name: "以日期换取同行承诺", description: "暂不拿走物资，要求沈砚秋在开谷时把你编入青岚队伍。",
-			personal: "获得第17日随青岚队伍出发的承诺；届时可取得随队药与 1 点支援。",
-			outcomes: []string{"沈砚秋获得已核实日期", "取得开谷时随队出发的承诺，信任 +1"},
-			effects:  []domain.Effect{{Type: "adjust_relation", FromID: "N03", TargetID: state.Player.ID, Key: "trust", Amount: 1}, {Type: "set_flag", TargetID: state.Player.ID, Key: "qinglan_escort_promised", Value: "true"}, {Type: "set_flag", TargetID: state.Player.ID, Key: "qinglan_intel_term_escort", Value: "true"}, {Type: "set_flag", TargetID: "world", Key: "player_joining_qinglan", Value: "true"}},
-		},
-	}
-	for _, term := range terms {
-		if term.id == "antidote" && state.Player.Items["antidote"] > 0 {
-			continue
-		}
-		id := fmt.Sprintf("tell:%s:F01:%s", actor.ID, term.id)
-		effects := append([]domain.Effect{beliefEffect}, term.effects...)
-		options[id] = actionOption{
-			view: AvailableAction{
-				ID: id, Kind: "tell", Category: "information", Name: term.name, Description: term.description, Duration: action.Duration,
-				TargetID: actor.ID, TargetName: actor.Name, TargetRole: actor.PublicRole, FactID: "F01", FactClaim: claim,
-				TermID: term.id, TermLabel: term.label, PersonalOutcome: term.personal, Relevance: relevance, Risk: risk,
-				ExpectedOutcomes: term.outcomes, Warnings: []string{"条件一旦提出，情报与承诺都不可撤回。"}, Irreversible: true,
-			},
-			command: &domain.PlayerCommand{ActionID: "spread", TargetID: actor.ID, Description: "玩家以“" + term.label + "”为条件向沈砚秋交付成熟日期", Conditions: conditions, Effects: effects},
 		}
 	}
 }

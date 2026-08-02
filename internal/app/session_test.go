@@ -239,10 +239,11 @@ func TestShenDateTermsProduceDistinctPersonalAndRelationshipEffects(t *testing.T
 		wantTrust    int
 		wantAntidote int
 		wantFlag     string
+		wantState    string
 	}{
-		{term: "trust", wantTrust: 2, wantFlag: "qinglan_intel_term_trust"},
-		{term: "antidote", wantAntidote: 1, wantFlag: "qinglan_intel_term_antidote"},
-		{term: "escort", wantTrust: 1, wantFlag: "qinglan_escort_promised"},
+		{term: "trust", wantTrust: 2, wantFlag: "qinglan_intel_term_trust", wantState: "trust_committed"},
+		{term: "antidote", wantAntidote: 1, wantFlag: "qinglan_intel_term_antidote", wantState: "antidote_committed"},
+		{term: "escort", wantTrust: 1, wantFlag: "qinglan_escort_promised", wantState: "escort_committed"},
 	}
 	for _, test := range tests {
 		t.Run(test.term, func(t *testing.T) {
@@ -260,6 +261,9 @@ func TestShenDateTermsProduceDistinctPersonalAndRelationshipEffects(t *testing.T
 			}
 			if !state.ActorFlag(state.Player.ID, test.wantFlag) {
 				t.Fatalf("term flag %s was not recorded", test.wantFlag)
+			}
+			if got := state.StoryStates["qinglan_intel"]; got != test.wantState {
+				t.Fatalf("story state = %s, want %s", got, test.wantState)
 			}
 			progress := session.View().RouteProgress
 			if progress == nil || progress.ID != test.term || progress.NextStep == "" || progress.PersonalReturn == "" {

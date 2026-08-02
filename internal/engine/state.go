@@ -20,6 +20,7 @@ func cloneWorld(source *domain.WorldState) *domain.WorldState {
 		Relations:          make(map[string]domain.Relation, len(source.Relations)),
 		Opportunities:      make(map[string]string, len(source.Opportunities)),
 		OpportunitySources: make(map[string]string, len(source.OpportunitySources)),
+		StoryStates:        make(map[string]string, len(source.StoryStates)),
 		Events:             append([]domain.WorldEvent(nil), source.Events...),
 		Decisions:          append([]domain.DecisionRecord(nil), source.Decisions...),
 		Director: domain.WorldDirectorState{
@@ -82,6 +83,9 @@ func cloneWorld(source *domain.WorldState) *domain.WorldState {
 	}
 	for key, value := range source.WorldFlags {
 		clone.WorldFlags[key] = value
+	}
+	for arcID, stateID := range source.StoryStates {
+		clone.StoryStates[arcID] = stateID
 	}
 	for actorID, flags := range source.ActorFlags {
 		clone.ActorFlags[actorID] = make(map[string]bool, len(flags))
@@ -168,6 +172,14 @@ func copyPending(source *domain.PendingAction) *domain.PendingAction {
 }
 
 func ValidateState(state *domain.WorldState, bundle domain.Bundle) error {
+	if len(state.StoryStates) != len(bundle.StoryArcs) {
+		return fmt.Errorf("story state count does not match content")
+	}
+	for arcID, arc := range bundle.StoryArcs {
+		if !storyStateDeclared(arc, state.StoryStates[arcID]) {
+			return fmt.Errorf("story arc %s has invalid state %q", arcID, state.StoryStates[arcID])
+		}
+	}
 	knownDirectives := make(map[string]bool, len(bundle.Scenario.Directives))
 	for _, definition := range bundle.Scenario.Directives {
 		knownDirectives[definition.ID] = true

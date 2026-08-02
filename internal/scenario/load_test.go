@@ -28,8 +28,11 @@ func TestLoadBlackwindBundle(t *testing.T) {
 	if got, want := len(bundle.Scenario.Opportunities), 1; got != want {
 		t.Fatalf("opportunity action count = %d, want %d", got, want)
 	}
-	if bundle.Content.SchemaVersion != 1 || bundle.Content.Version != "1.1.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
+	if bundle.Content.SchemaVersion != 1 || bundle.Content.Version != "1.2.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
 		t.Fatalf("content metadata = %+v", bundle.Content)
+	}
+	if arc, ok := bundle.StoryArcs["qinglan_intel"]; !ok || arc.InitialState != "uncommitted" || len(arc.Nodes) != 1 || len(arc.Nodes[0].Choices) != 3 {
+		t.Fatalf("qinglan story arc = %+v", arc)
 	}
 	if bundle.DefaultPlayer.ID != "P00" || bundle.DefaultPlayer.Name != "无名散修" || bundle.DefaultPlayer.Location != "L01" {
 		t.Fatalf("default player = %+v", bundle.DefaultPlayer)
@@ -362,5 +365,18 @@ func TestValidateRejectsUnboundedWorldDirective(t *testing.T) {
 	bundle.Scenario.Directives[1].TargetID = "missing-market"
 	if err := Validate(bundle); err == nil {
 		t.Fatal("Validate() accepted a director trigger with an unknown market")
+	}
+}
+
+func TestValidateRejectsInvalidStoryTransition(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	arc := bundle.StoryArcs["qinglan_intel"]
+	arc.Nodes[0].Choices[0].ToState = "missing"
+	bundle.StoryArcs[arc.ID] = arc
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "invalid choice") {
+		t.Fatalf("invalid story transition error = %v", err)
 	}
 }

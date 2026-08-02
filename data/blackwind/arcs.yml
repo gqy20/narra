@@ -1,0 +1,109 @@
+- id: qinglan_intel
+  title: 青岚情报路线
+  initial_state: uncommitted
+  states:
+    - uncommitted
+    - trust_committed
+    - antidote_committed
+    - escort_committed
+  nodes:
+    - id: deliver_verified_date
+      from_state: uncommitted
+      target_id: N03
+      fact_id: F01
+      min_confidence: 3
+      action_id: spread
+      choices:
+        - id: tell:N03:F01:trust
+          term_id: trust
+          term_label: 无偿相助
+          name: 无偿告知沈砚秋
+          description: 不索取眼前回报，以可靠消息换取沈砚秋对你的长期信任。
+          personal_outcome: 沈砚秋对你的信任提高；若他凭此取得青髓芝，你会获得青岚门声望。
+          expected_outcomes:
+            - 沈砚秋获得已核实日期
+            - 信任 +2，并可能直接采用你的消息提前备战
+          warnings:
+            - 条件一旦提出，情报与承诺都不可撤回。
+          irreversible: true
+          effects:
+            - type: adjust_relation
+              from_id: target
+              target_id: player
+              key: trust
+              amount: 2
+            - type: set_flag
+              target_id: player
+              key: qinglan_intel_term_trust
+              value: "true"
+            - type: set_flag
+              target_id: world
+              key: player_backed_shen
+              value: "true"
+          to_state: trust_committed
+
+        - id: tell:N03:F01:antidote
+          term_id: antidote
+          term_label: 交换解瘴丹
+          name: 以日期换取解瘴丹
+          description: 把已核实日期作为交易筹码，立即换取一枚解瘴丹，保留独自入谷的自由。
+          personal_outcome: 立即获得 1 枚解瘴丹，重新打开亲自入谷路线。
+          expected_outcomes:
+            - 获得沈砚秋持有的 1 枚解瘴丹
+            - 青岚队伍失去这份入谷物资；沈砚秋会把消息视为一次对价交易
+          warnings:
+            - 条件一旦提出，情报与承诺都不可撤回。
+          irreversible: true
+          conditions:
+            - type: missing_item
+              key: antidote
+          effects:
+            - type: remove_item
+              target_id: target
+              key: antidote
+              amount: 1
+            - type: add_item
+              target_id: player
+              key: antidote
+              amount: 1
+            - type: set_flag
+              target_id: player
+              key: qinglan_intel_term_antidote
+              value: "true"
+            - type: set_flag
+              target_id: world
+              key: player_took_shen_antidote
+              value: "true"
+          to_state: antidote_committed
+
+        - id: tell:N03:F01:escort
+          term_id: escort
+          term_label: 换取同行名额
+          name: 以日期换取同行承诺
+          description: 暂不拿走物资，要求沈砚秋在开谷时把你编入青岚队伍。
+          personal_outcome: 获得第17日随青岚队伍出发的承诺；届时可取得随队药与 1 点支援。
+          expected_outcomes:
+            - 沈砚秋获得已核实日期
+            - 取得开谷时随队出发的承诺，信任 +1
+          warnings:
+            - 条件一旦提出，情报与承诺都不可撤回。
+          irreversible: true
+          effects:
+            - type: adjust_relation
+              from_id: target
+              target_id: player
+              key: trust
+              amount: 1
+            - type: set_flag
+              target_id: player
+              key: qinglan_escort_promised
+              value: "true"
+            - type: set_flag
+              target_id: player
+              key: qinglan_intel_term_escort
+              value: "true"
+            - type: set_flag
+              target_id: world
+              key: player_joining_qinglan
+              value: "true"
+          to_state: escort_committed

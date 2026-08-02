@@ -26,6 +26,39 @@ type Scenario struct {
 	Contest       Contest                       `json:"contest"`
 }
 
+type StoryArc struct {
+	ID           string      `json:"id"`
+	Title        string      `json:"title"`
+	InitialState string      `json:"initial_state"`
+	States       []string    `json:"states"`
+	Nodes        []StoryNode `json:"nodes"`
+}
+
+type StoryNode struct {
+	ID            string        `json:"id"`
+	FromState     string        `json:"from_state"`
+	TargetID      string        `json:"target_id"`
+	FactID        string        `json:"fact_id"`
+	MinConfidence int           `json:"min_confidence"`
+	ActionID      string        `json:"action_id"`
+	Choices       []StoryChoice `json:"choices"`
+}
+
+type StoryChoice struct {
+	ID               string      `json:"id"`
+	TermID           string      `json:"term_id"`
+	TermLabel        string      `json:"term_label"`
+	Name             string      `json:"name"`
+	Description      string      `json:"description"`
+	PersonalOutcome  string      `json:"personal_outcome"`
+	ExpectedOutcomes []string    `json:"expected_outcomes,omitempty"`
+	Warnings         []string    `json:"warnings,omitempty"`
+	Irreversible     bool        `json:"irreversible,omitempty"`
+	Conditions       []Condition `json:"conditions,omitempty"`
+	Effects          []Effect    `json:"effects"`
+	ToState          string      `json:"to_state"`
+}
+
 // OpportunityActionDefinition maps an open world opportunity to a normal
 // authoritative player action. The world director may open the opportunity,
 // but only the player can choose whether to execute its effects.
@@ -277,6 +310,7 @@ type Route struct {
 type Bundle struct {
 	Content       ContentMetadata
 	Scenario      Scenario
+	StoryArcs     map[string]StoryArc
 	Actions       map[string]ActionDefinition
 	Facts         map[string]Fact
 	NPCs          []NPCConfig
@@ -391,6 +425,7 @@ type WorldState struct {
 	Relations          map[string]Relation
 	Opportunities      map[string]string
 	OpportunitySources map[string]string
+	StoryStates        map[string]string
 	PendingInformation []InformationDelivery
 	Markets            map[string]*MarketState
 	Debts              map[string]*Debt

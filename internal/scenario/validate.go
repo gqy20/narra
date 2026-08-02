@@ -20,6 +20,9 @@ func Validate(bundle domain.Bundle) error {
 	if err := validateDefaultPlayer(bundle); err != nil {
 		return err
 	}
+	if err := validateStoryArcs(bundle); err != nil {
+		return err
+	}
 	seenMarkets := make(map[string]bool)
 	for _, market := range bundle.Scenario.Markets {
 		if market.ID == "" || seenMarkets[market.ID] || market.PriceStep < 0 {
@@ -168,6 +171,66 @@ func validateDefaultPlayer(bundle domain.Bundle) error {
 		}
 	}
 	return nil
+}
+
+func validateStoryArcs(bundle domain.Bundle) error {
+	npcs := make(map[string]bool, len(bundle.NPCs))
+	for _, npc := range bundle.NPCs {
+		npcs[npc.ID] = true
+	}
+	choiceIDs := make(map[string]bool)
+	for arcID, arc := range bundle.StoryArcs {
+		if arc.ID == "" || arc.ID != arcID || arc.Title == "" || arc.InitialState == "" {
+			return fmt.Errorf("invalid story arc %q", arcID)
+		}
+		states := make(map[string]bool, len(arc.States))
+		for _, stateID := range arc.States {
+			if stateID == "" || states[stateID] {
+				return fmt.Errorf("story arc %s has invalid or duplicate state %q", arcID, stateID)
+			}
+			states[stateID] = true
+		}
+		if !states[arc.InitialState] {
+			return fmt.Errorf("story arc %s initial state %s is not declared", arcID, arc.InitialState)
+		}
+		nodes := make(map[string]bool, len(arc.Nodes))
+		for _, node := range arc.Nodes {
+			if node.ID == "" || nodes[node.ID] || !states[node.FromState] || node.MinConfidence < 1 || node.MinConfidence > 3 || len(node.Choices) == 0 {
+				return fmt.Errorf("story arc %s has invalid node %q", arcID, node.ID)
+			}
+			nodes[node.ID] = true
+			if !npcs[node.TargetID] {
+				return fmt.Errorf("story arc %s node %s references unknown target %s", arcID, node.ID, node.TargetID)
+			}
+			if _, ok := bundle.Facts[node.FactID]; !ok {
+				return fmt.Errorf("story arc %s node %s references unknown fact %s", arcID, node.ID, node.FactID)
+			}
+			if _, ok := bundle.Actions[node.ActionID]; !ok {
+				return fmt.Errorf("story arc %s node %s references unknown action %s", arcID, node.ID, node.ActionID)
+			}
+			choices := make(map[string]bool, len(node.Choices))
+			for _, choice := range node.Choices {
+				if choice.ID == "" || choices[choice.ID] || choiceIDs[choice.ID] || choice.Name == "" || choice.TermID == "" || !states[choice.ToState] {
+					return fmt.Errorf("story arc %s node %s has invalid choice %q", arcID, node.ID, choice.ID)
+				}
+				choices[choice.ID] = true
+				choiceIDs[choice.ID] = true
+				for _, effect := range choice.Effects {
+					if !validStoryActorReference(effect.TargetID, npcs) || !validStoryActorReference(effect.FromID, npcs) {
+						return fmt.Errorf("story arc %s node %s choice %s has invalid actor reference", arcID, node.ID, choice.ID)
+					}
+				}
+				if err := validateConditionsAndEffects(choice.Conditions, nil, choice.Effects, bundle); err != nil {
+					return fmt.Errorf("story arc %s node %s choice %s: %w", arcID, node.ID, choice.ID, err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validStoryActorReference(actorID string, npcs map[string]bool) bool {
+	return actorID == "" || actorID == "player" || actorID == "target" || actorID == "world" || npcs[actorID]
 }
 
 func validateWorldDirectives(bundle domain.Bundle) error {

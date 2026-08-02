@@ -41,6 +41,7 @@ func newEngine(bundle domain.Bundle, plan *domain.RunPlan) *Engine {
 		Relations:          make(map[string]domain.Relation),
 		Opportunities:      make(map[string]string),
 		OpportunitySources: make(map[string]string),
+		StoryStates:        make(map[string]string, len(bundle.StoryArcs)),
 		Markets:            make(map[string]*domain.MarketState),
 		Debts:              make(map[string]*domain.Debt),
 		Alliances:          make(map[string]*domain.Alliance),
@@ -48,6 +49,9 @@ func newEngine(bundle domain.Bundle, plan *domain.RunPlan) *Engine {
 		Director: domain.WorldDirectorState{
 			Uses: make(map[string]int), LastUsedDay: make(map[string]int),
 		},
+	}
+	for id, arc := range bundle.StoryArcs {
+		state.StoryStates[id] = arc.InitialState
 	}
 	for _, market := range bundle.Scenario.Markets {
 		state.Markets[market.ID] = &domain.MarketState{

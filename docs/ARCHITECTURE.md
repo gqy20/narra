@@ -18,7 +18,7 @@ internal/
   scenario/          YAML/JSON 严格加载、内容版本与静态校验
   batch/             批量运行、扰动和统计
   report/            单次运行报告适配器
-data/blackwind/      黑风谷正式场景数据
+data/blackwind/      黑风谷正式 YAML 内容包（含人物、世界与剧情线）
 godot/               只消费 PlayerView 的 2D 场景化桌面客户端
 testdata/            Go 工具自动忽略的验收玩家计划
 docs/                产品、架构、规格和验收文档
@@ -46,6 +46,7 @@ domain ────> 标准库
 - `domain` 不依赖其他项目包，避免领域协议被基础设施反向控制。
 - `engine` 不读取文件、不解析命令行、不写报告，只处理已经校验的 `domain.Bundle` 和命令。
 - `scenario` 负责输入边界；无效引用、枚举、市场、路线和策略配置必须在这里失败。
+- 剧情线由内容包中的 `arcs.yml` 声明；应用层把当前剧情状态投影成玩家行动，引擎只原子提交通用效果与状态转换。
 - `report` 与 `batch` 只读取引擎快照，不修改世界状态。
 - `app` 将完整世界状态裁剪成玩家可见视图，并把动态行动 ID 转译为玩家命令；它不直接修改 `WorldState`。
 - `server` 只管理单个 Session、请求校验和命名存档槽；它不解释动作 ID，也不暴露任意文件路径。
