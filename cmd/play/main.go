@@ -47,7 +47,7 @@ func main() {
 	if *loadSlot != "" {
 		session, err = store.load(*loadSlot)
 	} else {
-		session, err = app.NewSession(bundle, app.DefaultBlackwindPlayer(*playerName))
+		session, err = app.NewSession(bundle, app.DefaultPlayer(bundle, *playerName))
 	}
 	if err != nil {
 		fail(err)

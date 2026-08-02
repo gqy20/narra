@@ -219,7 +219,7 @@ func (s *GameServer) newGame(writer http.ResponseWriter, request *http.Request) 
 		writeError(writer, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	session, err := app.NewSession(s.bundle, app.DefaultBlackwindPlayer(input.PlayerName))
+	session, err := app.NewSession(s.bundle, app.DefaultPlayer(s.bundle, input.PlayerName))
 	if err != nil {
 		writeError(writer, http.StatusInternalServerError, "new_game_failed", err.Error())
 		return

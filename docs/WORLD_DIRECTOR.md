@@ -8,7 +8,7 @@
 
 - `internal/director` 从只读快照提取信号并选择指令；
 - `internal/engine` 负责应用效果、生成事件和写入审计记录；
-- 场景作者通过 `scenario.json` 的 `directives` 声明导演能力；
+- 场景作者通过 `scenario.yml` 的 `directives` 声明导演能力；
 - `opportunity_actions` 将导演打开的机会映射为普通权威玩家行动；
 - 每天最多选择一项，同分时按指令 ID 稳定排序；
 - 任何错误都会使整个 `Engine.Step` 回滚。

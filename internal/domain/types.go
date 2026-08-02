@@ -275,13 +275,14 @@ type Route struct {
 }
 
 type Bundle struct {
-	Content   ContentMetadata
-	Scenario  Scenario
-	Actions   map[string]ActionDefinition
-	Facts     map[string]Fact
-	NPCs      []NPCConfig
-	Items     map[string]ItemDefinition
-	Locations map[string]Location
+	Content       ContentMetadata
+	Scenario      Scenario
+	Actions       map[string]ActionDefinition
+	Facts         map[string]Fact
+	NPCs          []NPCConfig
+	Items         map[string]ItemDefinition
+	Locations     map[string]Location
+	DefaultPlayer PlayerConfig
 	// InitialRelations allows deterministic simulations and parameter sweeps to
 	// start from explicit directional relationship state.
 	InitialRelations []Relation

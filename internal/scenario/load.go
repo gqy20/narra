@@ -25,7 +25,7 @@ type manifest struct {
 
 func Load(dir string) (domain.Bundle, error) {
 	var bundle domain.Bundle
-	loadedFiles := make([]string, 0, 7)
+	loadedFiles := make([]string, 0, 8)
 	var metadata manifest
 	manifestPath, err := readDataFile(dir, "manifest", &metadata)
 	if err != nil {
@@ -106,6 +106,12 @@ func Load(dir string) (domain.Bundle, error) {
 		}
 		bundle.Locations[location.ID] = location
 	}
+
+	path, err = readDataFile(dir, "player", &bundle.DefaultPlayer)
+	if err != nil {
+		return bundle, err
+	}
+	loadedFiles = append(loadedFiles, path)
 	hash, err := contentHash(dir, loadedFiles)
 	if err != nil {
 		return bundle, err

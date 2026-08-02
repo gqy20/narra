@@ -63,7 +63,7 @@ func TestRunUsesExplicitActionsAndDoCommands(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("终端玩家"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "终端玩家"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestRunAcceptsPowerShellBOM(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("终端玩家"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "终端玩家"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestDefaultViewLocalizesTermsAndHidesStableIDs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("终端玩家"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "终端玩家"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestDefaultViewLocalizesStatusAndInvestigationSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("终端玩家"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "终端玩家"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestTerminalNavigationAndDialogueDoNotAdvanceWorld(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("终端玩家"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "终端玩家"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +196,7 @@ func TestTerminalCanFindAndUseWorldDirectorOpportunity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("世界机会玩家"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "世界机会玩家"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func TestTerminalSupportsPersistentMultiTurnNPCDialogue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("多轮对话玩家"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "多轮对话玩家"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +274,7 @@ func TestTerminalReportsModelFailureWithoutInventingDialogue(t *testing.T) {
 		"failed":   ai.NewService(failingTerminalDialogueProvider{}, ai.ServiceOptions{Timeout: time.Second}),
 	} {
 		t.Run(name, func(t *testing.T) {
-			session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("终端玩家"))
+			session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "终端玩家"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -298,7 +298,7 @@ func TestTerminalCanInspectCancelAndRetryDialogueGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("取消测试玩家"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "取消测试玩家"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -353,7 +353,7 @@ func TestTerminalCanCompleteAndReplayAFullJourney(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("完整通关玩家"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "完整通关玩家"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +397,7 @@ func TestTerminalTravelUsesMapNumberOrPublicName(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("终端玩家"))
+		session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "终端玩家"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -416,7 +416,7 @@ func TestBareNumbersAndInternalActionIDsAreNotCommands(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("终端玩家"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "终端玩家"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,7 +438,7 @@ func TestWaitAdvancesOneDayAndWaitNextIsExplicit(t *testing.T) {
 		command string
 		day     int
 	}{{"wait\nquit\n", 1}, {"wait next\nwait next confirm\nquit\n", 3}} {
-		session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("等待测试"))
+		session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "等待测试"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -457,7 +457,7 @@ func TestTerminalPresentationExplainsPreparationAndLoss(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("复盘测试"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "复盘测试"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -483,7 +483,7 @@ func TestActionCategoriesUseScopedDoNumbersAndHideTimeActions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("分类测试"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "分类测试"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -507,7 +507,7 @@ func TestDoRequiresFreshActionMenu(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("编号测试"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "编号测试"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -525,7 +525,7 @@ func TestNamedSaveSlotsCanSaveListAndLoadInGame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("存档测试"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "存档测试"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -560,7 +560,7 @@ func TestLoadRequiresConfirmationWhenAutosaveIsOff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("读取确认测试"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "读取确认测试"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -586,7 +586,7 @@ func TestActionQuerySupportsSearchAndPagination(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("目录测试"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "目录测试"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -607,7 +607,7 @@ func TestWaitNextOnlyAdvancesAfterConfirmation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("快进确认测试"))
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "快进确认测试"))
 	if err != nil {
 		t.Fatal(err)
 	}

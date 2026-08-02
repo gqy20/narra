@@ -127,7 +127,7 @@
 * `internal/app/feedback.go`
 * `internal/app/catalog.go`
 * `internal/app/session_test.go`
-* `data/blackwind/locations.json`
+* `data/blackwind/locations.yml`
 
 ### PT-03 压缩无决策等待
 
@@ -201,7 +201,7 @@
 * `internal/engine/competition.go`
 * `internal/engine/costs.go`
 * `internal/batch/report.go`
-* `data/blackwind/actions.json`
+* `data/blackwind/actions.yml`
 
 ## 5. P1：信息组织与表达
 

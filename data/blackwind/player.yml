@@ -1,0 +1,18 @@
+id: P00
+name: 无名散修
+location: L01
+injury: 0
+resources:
+  combat: 2
+  support: 0
+  spirit_stones: 100
+  credit: 3
+items:
+  - healing_pill
+beliefs:
+  - fact_id: F02
+    claim: 青髓芝将在第24天成熟
+    confidence: 1
+    source: 坊市传言
+    learned_on: 0
+    secrecy: 0

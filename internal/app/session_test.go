@@ -32,6 +32,19 @@ func testSession(t *testing.T) *Session {
 	return session
 }
 
+func TestDefaultPlayerComesFromContentAndIsCloned(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	player := DefaultPlayer(bundle, "自定义姓名")
+	player.Resources["combat"] = 99
+	player.Items[0] = "changed"
+	if player.Name != "自定义姓名" || bundle.DefaultPlayer.Name != "无名散修" || bundle.DefaultPlayer.Resources["combat"] != 2 || bundle.DefaultPlayer.Items[0] != "healing_pill" {
+		t.Fatalf("default player was not independently cloned: player=%+v template=%+v", player, bundle.DefaultPlayer)
+	}
+}
+
 func TestViewOnlyExposesPlayerKnowledge(t *testing.T) {
 	session := testSession(t)
 	view := session.View()

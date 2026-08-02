@@ -17,6 +17,9 @@ func Validate(bundle domain.Bundle) error {
 	if err := validateTopics(bundle); err != nil {
 		return err
 	}
+	if err := validateDefaultPlayer(bundle); err != nil {
+		return err
+	}
 	seenMarkets := make(map[string]bool)
 	for _, market := range bundle.Scenario.Markets {
 		if market.ID == "" || seenMarkets[market.ID] || market.PriceStep < 0 {
@@ -133,6 +136,35 @@ func Validate(bundle domain.Bundle) error {
 					return fmt.Errorf("location %s route to %s requires unknown item %s", id, route.To, route.RequiredItem)
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func validateDefaultPlayer(bundle domain.Bundle) error {
+	player := bundle.DefaultPlayer
+	if player.ID == "" || player.Name == "" {
+		return fmt.Errorf("default player requires id and name")
+	}
+	if _, ok := bundle.Locations[player.Location]; !ok {
+		return fmt.Errorf("default player references unknown location %s", player.Location)
+	}
+	if player.Injury < 0 || player.Injury > 3 {
+		return fmt.Errorf("default player injury must be between 0 and 3")
+	}
+	for resource, amount := range player.Resources {
+		if resource == "" || amount < 0 {
+			return fmt.Errorf("default player has invalid resource %q=%d", resource, amount)
+		}
+	}
+	for _, itemID := range player.Items {
+		if _, ok := bundle.Items[itemID]; !ok {
+			return fmt.Errorf("default player references unknown item %s", itemID)
+		}
+	}
+	for _, belief := range player.Beliefs {
+		if _, ok := bundle.Facts[belief.FactID]; !ok {
+			return fmt.Errorf("default player references unknown fact %s", belief.FactID)
 		}
 	}
 	return nil

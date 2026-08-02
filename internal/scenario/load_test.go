@@ -28,8 +28,11 @@ func TestLoadBlackwindBundle(t *testing.T) {
 	if got, want := len(bundle.Scenario.Opportunities), 1; got != want {
 		t.Fatalf("opportunity action count = %d, want %d", got, want)
 	}
-	if bundle.Content.SchemaVersion != 1 || bundle.Content.Version != "1.0.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
+	if bundle.Content.SchemaVersion != 1 || bundle.Content.Version != "1.1.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
 		t.Fatalf("content metadata = %+v", bundle.Content)
+	}
+	if bundle.DefaultPlayer.ID != "P00" || bundle.DefaultPlayer.Name != "无名散修" || bundle.DefaultPlayer.Location != "L01" {
+		t.Fatalf("default player = %+v", bundle.DefaultPlayer)
 	}
 	for _, npc := range bundle.NPCs {
 		if npc.PublicProfile == "" || npc.PublicRole == "" || len(npc.PublicInterests) == 0 || npc.PublicRisk == "" {
