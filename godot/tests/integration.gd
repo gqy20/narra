@@ -92,10 +92,13 @@ func _run() -> void:
 	if not await _wait_for_dialogue("N04"):
 		return _fail("NPC dialogue request timed out")
 	var npc_dialogue: Dictionary = app.actor_dialogue_by_id.get("N04", {})
-	if str(npc_dialogue.get("actor_id", "")) != "N04" or str(npc_dialogue.get("utterance", "")) == "":
-		return _fail("NPC dialogue did not return a displayable typed response")
-	if str(npc_dialogue.get("source", "")) not in ["anthropic", "cache", "fallback"]:
-		return _fail("NPC dialogue did not identify its generation source")
+	if not npc_dialogue.is_empty():
+		if str(npc_dialogue.get("actor_id", "")) != "N04" or str(npc_dialogue.get("utterance", "")) == "":
+			return _fail("NPC dialogue did not return a displayable typed response")
+		if str(npc_dialogue.get("source", "")) not in ["anthropic", "cache"]:
+			return _fail("NPC dialogue did not identify its model generation source")
+	elif str(app.actor_dialogue_error_by_id.get("N04", "")) == "":
+		return _fail("NPC dialogue failure was hidden instead of reported")
 	if app.actor_portrait.texture != app.presentation_registry.actor_profile("N04").portrait():
 		return _fail("actor selection did not switch the production portrait")
 	if app.actor_portrait_name.text != "魏无咎" or not app.location_panel.visible:
@@ -114,6 +117,10 @@ func _run() -> void:
 	var settings_text := _descendant_text(app.settings_box)
 	if "窗口模式" not in settings_text or "输出分辨率" not in settings_text or "界面缩放" not in settings_text:
 		return _fail("display settings do not expose mode, resolution, and UI scale")
+	if "大模型" not in settings_text or "模型" not in settings_text or "接口地址" not in settings_text or "API Key" not in settings_text:
+		return _fail("AI settings do not expose enablement, model, endpoint, and API key")
+	if not app.ai_api_key_input.secret:
+		return _fail("AI API key input is not masked")
 	if "4K" not in app._resolution_label(Vector2i(3840, 2160)):
 		return _fail("display settings do not expose a 4K output preset")
 	var original_display_mode: String = app.display_mode
@@ -265,11 +272,11 @@ func _wait_until_idle(timeout_ms := 8000) -> bool:
 	return false
 
 
-func _wait_for_dialogue(actor_id: String, timeout_ms := 16000) -> bool:
+func _wait_for_dialogue(actor_id: String, timeout_ms := 34000) -> bool:
 	var deadline := Time.get_ticks_msec() + timeout_ms
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
-		if app.actor_dialogue_loading_id == "" and app.actor_dialogue_by_id.has(actor_id):
+		if app.actor_dialogue_loading_id == "" and (app.actor_dialogue_by_id.has(actor_id) or app.actor_dialogue_error_by_id.has(actor_id)):
 			return true
 	return false
 

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net/http"
 )
@@ -18,7 +19,10 @@ func (s *GameServer) generateDialogue(writer http.ResponseWriter, request *http.
 		writeError(writer, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	if s.dialogue == nil {
+	s.mu.Lock()
+	dialogueService := s.dialogue
+	s.mu.Unlock()
+	if dialogueService == nil || !dialogueService.Enabled() {
 		writeError(writer, http.StatusServiceUnavailable, "ai_unavailable", "动态对话当前未启用")
 		return
 	}
@@ -38,7 +42,15 @@ func (s *GameServer) generateDialogue(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	dialogue := s.dialogue.GenerateDialogue(request.Context(), snapshot)
+	dialogue, err := dialogueService.GenerateDialogueDetailed(request.Context(), snapshot)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			writeError(writer, http.StatusGatewayTimeout, "ai_timeout", "人物回应生成超时，请重试")
+			return
+		}
+		writeError(writer, http.StatusBadGateway, "ai_generation_failed", "人物回应生成失败，请重试")
+		return
+	}
 
 	// A dedicated AI request may finish after the player acts or changes scene.
 	// Never attach that stale presentation to the new authoritative revision.

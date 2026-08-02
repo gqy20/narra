@@ -30,6 +30,8 @@ type GameServer struct {
 	shutdownToken string
 	shutdown      func()
 	dialogue      *ai.Service
+	dialogueMode  string
+	configureAI   func(AISettings) (*ai.Service, string, error)
 }
 
 // Options configures process-level capabilities that are disabled in tests and embedded uses by default.
@@ -37,6 +39,8 @@ type Options struct {
 	ShutdownToken string
 	Shutdown      func()
 	Dialogue      *ai.Service
+	DialogueMode  string
+	ConfigureAI   func(AISettings) (*ai.Service, string, error)
 }
 
 type Response struct {
@@ -44,11 +48,25 @@ type Response struct {
 	View         *app.PlayerView `json:"view,omitempty"`
 	Dialogue     *ai.Dialogue    `json:"dialogue,omitempty"`
 	Capabilities *Capabilities   `json:"capabilities,omitempty"`
+	AISettings   *AISettingsView `json:"ai_settings,omitempty"`
 	Error        *APIError       `json:"error,omitempty"`
 }
 
 type Capabilities struct {
-	AIDialogue bool `json:"ai_dialogue"`
+	AIDialogue      bool `json:"ai_dialogue"`
+	AIConfiguration bool `json:"ai_configuration"`
+}
+
+type AISettings struct {
+	Enabled bool   `json:"enabled"`
+	APIKey  string `json:"api_key"`
+	Model   string `json:"model"`
+	BaseURL string `json:"base_url"`
+}
+
+type AISettingsView struct {
+	Enabled bool   `json:"enabled"`
+	Mode    string `json:"mode"`
 }
 
 type APIError struct {
@@ -89,6 +107,8 @@ func NewWithOptions(bundle domain.Bundle, saveDir string, options Options) *Game
 		shutdownToken: options.ShutdownToken,
 		shutdown:      options.Shutdown,
 		dialogue:      options.Dialogue,
+		dialogueMode:  options.DialogueMode,
+		configureAI:   options.ConfigureAI,
 	}
 }
 
@@ -99,6 +119,7 @@ func (s *GameServer) Handler() http.Handler {
 	mux.HandleFunc("/api/v1/game/new", s.newGame)
 	mux.HandleFunc("/api/v1/game/action", s.action)
 	mux.HandleFunc("/api/v1/game/dialogue", s.generateDialogue)
+	mux.HandleFunc("/api/v1/settings/ai", s.configureAISettings)
 	mux.HandleFunc("/api/v1/game/save", s.save)
 	mux.HandleFunc("/api/v1/game/load", s.load)
 	mux.HandleFunc("/api/v1/game/quit", s.quit)
@@ -131,9 +152,44 @@ func (s *GameServer) health(writer http.ResponseWriter, request *http.Request) {
 		writeError(writer, http.StatusMethodNotAllowed, "method_not_allowed", "仅支持 GET")
 		return
 	}
-	writeJSON(writer, http.StatusOK, Response{
-		APIVersion:   APIVersion,
-		Capabilities: &Capabilities{AIDialogue: s.dialogue != nil && s.dialogue.Enabled()},
+	s.mu.Lock()
+	enabled := s.dialogue != nil && s.dialogue.Enabled()
+	mode := s.dialogueMode
+	configurable := s.configureAI != nil
+	s.mu.Unlock()
+	writeJSON(writer, http.StatusOK, Response{APIVersion: APIVersion,
+		Capabilities: &Capabilities{AIDialogue: enabled, AIConfiguration: configurable},
+		AISettings:   &AISettingsView{Enabled: enabled, Mode: mode},
+	})
+}
+
+func (s *GameServer) configureAISettings(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodPut {
+		writeError(writer, http.StatusMethodNotAllowed, "method_not_allowed", "仅支持 PUT")
+		return
+	}
+	if s.configureAI == nil {
+		writeError(writer, http.StatusNotImplemented, "ai_configuration_unavailable", "当前服务不支持运行时配置大模型")
+		return
+	}
+	var input AISettings
+	if err := decodeJSON(request, &input); err != nil {
+		writeError(writer, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	dialogue, mode, err := s.configureAI(input)
+	if err != nil {
+		writeError(writer, http.StatusBadRequest, "invalid_ai_configuration", err.Error())
+		return
+	}
+	s.mu.Lock()
+	s.dialogue = dialogue
+	s.dialogueMode = mode
+	s.mu.Unlock()
+	enabled := dialogue != nil && dialogue.Enabled()
+	writeJSON(writer, http.StatusOK, Response{APIVersion: APIVersion,
+		Capabilities: &Capabilities{AIDialogue: enabled, AIConfiguration: true},
+		AISettings:   &AISettingsView{Enabled: enabled, Mode: mode},
 	})
 }
 

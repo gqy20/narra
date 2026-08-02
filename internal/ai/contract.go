@@ -22,8 +22,9 @@ type DialogueDraft struct {
 }
 
 type GenerationRequest struct {
-	System string
-	Input  string
+	System         string
+	Input          string
+	AllowedFactIDs []string
 }
 
 type GenerationMetadata struct {

@@ -47,13 +47,25 @@ make release-windows VERSION=0.1.0
 go run ./cmd/play
 ```
 
-CLI 根据当前地点、资源、物品、认知和忙碌状态生成可用行动。忙碌时可以直接推进到行动完成，空闲时可以推进到下一次需要决策的变化；底层仍逐日结算，并合并展示期间发生的公开事件。输入行动编号即可执行，输入 `save [文件]` 保存，输入 `quit` 退出。
+CLI 是可完整通关的正式客户端，根据当前地点、资源、物品、认知和忙碌状态生成权威行动。忙碌时可以直接推进到行动完成，空闲时可以推进到下一次需要决策的变化；底层仍逐日结算，并合并展示期间发生的公开事件。
+
+除行动编号外，还可以使用分层浏览和人物交谈命令：
 
 ```text
-选择> 1
+选择> look
+选择> people
+选择> talk 2
+选择> map
+选择> journal
+选择> actions
+选择> do 1
+选择> wait
+选择> go 青岚门驻地
 选择> save saves/blackwind.json
 选择> quit
 ```
+
+`talk <人物编号或姓名>` 使用与 Godot 相同的脱敏快照和 StepFun/Anthropic 兼容对话服务。AI 交谈本身不推进天数，也不会修改关系、物品、存档或世界状态；产生游戏效果的交涉仍必须选择终端列出的权威行动。模型未启用时会明确显示不可用；模型已经启用后，超时、网络错误、空响应或输出校验失败都会明确报错，不会伪造本地台词。
 
 继续已有存档，或让每回合自动保存：
 
@@ -62,7 +74,7 @@ go run ./cmd/play -load saves/blackwind.json
 go run ./cmd/play -autosave saves/autosave.json
 ```
 
-默认界面只显示玩家术语；需要复现测试或查看稳定事实、行动 ID 时使用：
+默认界面只显示玩家术语；需要诊断数据时可以使用 `-debug` 查看稳定事实和行动 ID，但调试 ID 不再作为玩家命令接受：
 
 ```powershell
 go run ./cmd/play -debug
@@ -82,7 +94,9 @@ go run ./cmd/server
 
 服务默认监听 `127.0.0.1:8787`，存档写入 `saves/`。它只接受固定存档槽名，不接受客户端文件路径。可用 `-addr`、`-data` 和 `-saves` 覆盖开发配置。
 
-NPC 聚焦对话可选使用 Anthropic 官方 Go SDK。服务启动时会读取仓库根目录下受 Git 忽略的 `.env`，也接受已有的进程环境变量；可通过 `ANTHROPIC_API_KEY`、`ANTHROPIC_BASE_URL` 和 `ANTHROPIC_MODEL` 接入 Anthropic Messages 兼容服务。仓库提供不含密钥的 `.env.example`。未配置密钥、调用超时或输出校验失败时自动返回本地降级台词，不影响规则推进。可用 `-ai-enabled=false` 关闭模型调用，或通过 `-ai-model`、`-ai-base-url`、`-ai-max-tokens`、`-ai-timeout`、`-ai-max-retries` 调整运行参数。AI 只生成表现文本，不能修改存档或裁定游戏规则。
+NPC 聚焦对话可选使用 Anthropic 官方 Go SDK。服务启动时会读取仓库根目录下受 Git 忽略的 `.env`，也接受已有的进程环境变量；可通过 `ANTHROPIC_API_KEY`、`ANTHROPIC_BASE_URL` 和 `ANTHROPIC_MODEL` 接入 Anthropic Messages 兼容服务。仓库提供不含密钥的 `.env.example`。未配置密钥或使用 `-ai-enabled=false` 时不启动模型；一旦启用，模型调用必须返回并通过结构化校验，否则接口返回明确错误。可通过 `-ai-model`、`-ai-base-url`、`-ai-max-tokens`、`-ai-timeout`、`-ai-max-retries` 调整运行参数。AI 只生成表现文本，不能修改存档或裁定游戏规则。
+
+Godot 的开始页和游戏内都可以打开“体验设置 → 大模型”，直接启用或关闭人物对话，并配置模型、Anthropic Messages 兼容接口地址和 API Key。“保存并立即应用”会在不退出游戏、不重置当前进度的情况下切换服务；“清除密钥并关闭”会立即停止模型调用。密钥使用遮罩输入，保存在当前用户运行目录的 `ai-settings.json`，不会进入命令行或日志；该配置文件不会被纳入诊断包。打包服务启动时通过 `-ai-settings` 读取该文件。
 
 当前稳定协议为 `/api/v1`：
 
@@ -93,6 +107,7 @@ NPC 聚焦对话可选使用 Anthropic 官方 Go SDK。服务启动时会读取�
 | `POST` | `/api/v1/game/new` | 新游戏，正文为 `{"player_name":"名字"}` |
 | `POST` | `/api/v1/game/action` | 执行动作，正文为 `{"action_id":"..."}` |
 | `POST` | `/api/v1/game/dialogue` | 生成同地人物聚焦台词，正文为 `{"actor_id":"N04","situation":"focus"}` |
+| `PUT` | `/api/v1/settings/ai` | 立即启用、切换或关闭人物对话模型 |
 | `POST` | `/api/v1/game/save` | 原子保存，正文为 `{"slot":"autosave"}` |
 | `POST` | `/api/v1/game/load` | 读取存档槽 |
 | `POST` | `/api/v1/game/quit` | 清除服务内的当前 Session |

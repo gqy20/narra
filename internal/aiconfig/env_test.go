@@ -1,4 +1,4 @@
-package main
+package aiconfig
 
 import (
 	"os"
@@ -15,7 +15,7 @@ func TestLoadDotEnvLoadsValuesAndPreservesProcessEnvironment(t *testing.T) {
 	t.Setenv("FANTU_ENV_TEST_EXISTING", "process")
 	os.Unsetenv("FANTU_ENV_TEST_NEW")
 	t.Cleanup(func() { os.Unsetenv("FANTU_ENV_TEST_NEW") })
-	if err := loadDotEnv(path); err != nil {
+	if err := LoadDotEnv(path); err != nil {
 		t.Fatal(err)
 	}
 	if got := os.Getenv("FANTU_ENV_TEST_NEW"); got != "loaded" {
@@ -27,7 +27,7 @@ func TestLoadDotEnvLoadsValuesAndPreservesProcessEnvironment(t *testing.T) {
 }
 
 func TestLoadDotEnvAllowsMissingFile(t *testing.T) {
-	if err := loadDotEnv(filepath.Join(t.TempDir(), "missing.env")); err != nil {
+	if err := LoadDotEnv(filepath.Join(t.TempDir(), "missing.env")); err != nil {
 		t.Fatal(err)
 	}
 }

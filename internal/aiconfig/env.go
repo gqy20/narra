@@ -1,4 +1,4 @@
-package main
+package aiconfig
 
 import (
 	"bufio"
@@ -8,9 +8,8 @@ import (
 	"strings"
 )
 
-// loadDotEnv loads local development settings without overriding values that
-// were explicitly provided by the process environment.
-func loadDotEnv(path string) error {
+// LoadDotEnv loads local settings without overriding process environment.
+func LoadDotEnv(path string) error {
 	file, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -49,7 +48,7 @@ func loadDotEnv(path string) error {
 	return nil
 }
 
-func environmentOrDefault(key, fallback string) string {
+func EnvironmentOrDefault(key, fallback string) string {
 	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
 		return value
 	}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,14 @@ import (
 	"fantu/internal/app"
 	"fantu/internal/scenario"
 )
+
+type serverDialogueProvider struct{}
+
+func (serverDialogueProvider) GenerateDialogue(context.Context, ai.GenerationRequest) (ai.DialogueDraft, ai.GenerationMetadata, error) {
+	return ai.DialogueDraft{
+		Utterance: "先说说你的来意。", Emotion: "alert", DialogueAct: "question", ReferencedFacts: []string{},
+	}, ai.GenerationMetadata{Model: "test"}, nil
+}
 
 func TestGameLifecycleAndSlotPersistence(t *testing.T) {
 	bundle, err := scenario.Load("../../data/blackwind")
@@ -62,13 +71,13 @@ func TestGameLifecycleAndSlotPersistence(t *testing.T) {
 	}
 }
 
-func TestDialogueEndpointUsesFallbackWithoutChangingSession(t *testing.T) {
+func TestDialogueEndpointUsesModelWithoutChangingSession(t *testing.T) {
 	bundle, err := scenario.Load("../../data/blackwind")
 	if err != nil {
 		t.Fatal(err)
 	}
 	gameServer := NewWithOptions(bundle, t.TempDir(), Options{
-		Dialogue: ai.NewService(nil, ai.ServiceOptions{}),
+		Dialogue: ai.NewService(serverDialogueProvider{}, ai.ServiceOptions{}),
 	})
 	service := httptest.NewServer(gameServer.Handler())
 	defer service.Close()
@@ -77,11 +86,65 @@ func TestDialogueEndpointUsesFallbackWithoutChangingSession(t *testing.T) {
 	before := gameServer.session.View()
 	response, status := request(t, service.URL, http.MethodPost, "/api/v1/game/dialogue", map[string]string{"actor_id": "N04"})
 	after := gameServer.session.View()
-	if status != http.StatusOK || response.Dialogue == nil || response.Dialogue.ActorID != "N04" || response.Dialogue.Source != "fallback" {
+	if status != http.StatusOK || response.Dialogue == nil || response.Dialogue.ActorID != "N04" || response.Dialogue.Source != "anthropic" {
 		t.Fatalf("dialogue = %d %+v", status, response)
 	}
 	if before.Day != after.Day || len(gameServer.session.History()) != 0 {
 		t.Fatalf("dialogue changed authoritative session: before=%d after=%d history=%v", before.Day, after.Day, gameServer.session.History())
+	}
+}
+
+func TestDialogueEndpointReportsUnavailableWithoutModel(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	gameServer := New(bundle, t.TempDir())
+	service := httptest.NewServer(gameServer.Handler())
+	defer service.Close()
+	request(t, service.URL, http.MethodPost, "/api/v1/game/new", map[string]string{"player_name": "对话测试"})
+	response, status := request(t, service.URL, http.MethodPost, "/api/v1/game/dialogue", map[string]string{"actor_id": "N04"})
+	if status != http.StatusServiceUnavailable || response.Error == nil || response.Error.Code != "ai_unavailable" {
+		t.Fatalf("unavailable dialogue = %d %+v", status, response)
+	}
+}
+
+func TestAISettingsEndpointReconfiguresDialogueWithoutRestartingGame(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var received AISettings
+	gameServer := NewWithOptions(bundle, t.TempDir(), Options{
+		ConfigureAI: func(settings AISettings) (*ai.Service, string, error) {
+			received = settings
+			if !settings.Enabled {
+				return nil, "disabled", nil
+			}
+			return ai.NewService(serverDialogueProvider{}, ai.ServiceOptions{}), "anthropic:" + settings.Model, nil
+		},
+	})
+	service := httptest.NewServer(gameServer.Handler())
+	defer service.Close()
+	request(t, service.URL, http.MethodPost, "/api/v1/game/new", map[string]string{"player_name": "配置测试"})
+
+	response, status := request(t, service.URL, http.MethodPut, "/api/v1/settings/ai", AISettings{
+		Enabled: true, APIKey: "test-key", Model: "step-3.7-flash", BaseURL: "https://example.com/v1/messages",
+	})
+	if status != http.StatusOK || response.Capabilities == nil || !response.Capabilities.AIDialogue || response.AISettings == nil || !response.AISettings.Enabled {
+		t.Fatalf("configure AI = %d %+v", status, response)
+	}
+	if received.APIKey != "test-key" || received.Model != "step-3.7-flash" {
+		t.Fatalf("configurator received %+v", received)
+	}
+	response, status = request(t, service.URL, http.MethodPost, "/api/v1/game/dialogue", map[string]string{"actor_id": "N04"})
+	if status != http.StatusOK || response.Dialogue == nil {
+		t.Fatalf("dialogue after runtime configuration = %d %+v", status, response)
+	}
+
+	response, status = request(t, service.URL, http.MethodPut, "/api/v1/settings/ai", AISettings{Enabled: false})
+	if status != http.StatusOK || response.Capabilities == nil || response.Capabilities.AIDialogue {
+		t.Fatalf("disable AI = %d %+v", status, response)
 	}
 }
 

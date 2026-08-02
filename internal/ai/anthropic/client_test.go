@@ -20,12 +20,27 @@ func TestNewRequiresCredentialsAndModel(t *testing.T) {
 }
 
 func TestDialogueSchemaIsClosedAndComplete(t *testing.T) {
+	dialogueSchema := dialogueSchemaFor([]string{"F01"})
 	if dialogueSchema["additionalProperties"] != false {
 		t.Fatalf("dialogue schema is not closed: %+v", dialogueSchema)
 	}
 	required, ok := dialogueSchema["required"].([]string)
 	if !ok || len(required) != 4 {
 		t.Fatalf("dialogue schema required fields = %#v", dialogueSchema["required"])
+	}
+}
+
+func TestDialogueSchemaRestrictsFactReferences(t *testing.T) {
+	schema := dialogueSchemaFor([]string{"F01", "F02"})
+	properties := schema["properties"].(map[string]any)
+	facts := properties["referenced_fact_ids"].(map[string]any)
+	items := facts["items"].(map[string]any)
+	if got := items["enum"].([]string); len(got) != 2 || got[0] != "F01" || got[1] != "F02" {
+		t.Fatalf("fact enum = %#v", got)
+	}
+	empty := dialogueSchemaFor(nil)["properties"].(map[string]any)["referenced_fact_ids"].(map[string]any)
+	if empty["maxItems"] != 0 {
+		t.Fatalf("empty fact list = %#v", empty)
 	}
 }
 
@@ -57,6 +72,9 @@ func TestGenerateDialogueUsesStructuredOutputAndDecodesResponse(t *testing.T) {
 	outputConfig, ok := received["output_config"].(map[string]any)
 	if !ok {
 		t.Fatalf("request has no output_config: %#v", received)
+	}
+	if outputConfig["effort"] != "low" {
+		t.Fatalf("output effort = %#v", outputConfig["effort"])
 	}
 	format, ok := outputConfig["format"].(map[string]any)
 	if !ok || format["type"] != "json_schema" || format["schema"] == nil {

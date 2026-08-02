@@ -17,6 +17,7 @@ const AIDialogueClientScript = preload("res://scripts/ai/dialogue_client.gd")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
 const BUNDLED_SERVER_NAME := "fantu-server.exe"
+const AI_SETTINGS_FILE := "ai-settings.json"
 const BUNDLED_SERVER_STARTUP_DELAY := 0.4
 const PORTABLE_USER_ARG := "--portable"
 const LOG_MAX_MIB := 5
@@ -74,6 +75,7 @@ const COLORS := {
 var current_view: Dictionary = {}
 var dialogue_client
 var actor_dialogue_by_id := {}
+var actor_dialogue_error_by_id := {}
 var actor_dialogue_loading_id := ""
 var pending_operation := ""
 var autosave_after_action := false
@@ -99,6 +101,12 @@ var motion_enabled := true
 var display_mode := "windowed"
 var display_resolution := Vector2i(1280, 800)
 var ui_scale := 1.0
+var ai_enabled := false
+var ai_server_enabled := false
+var ai_server_mode := "disabled"
+var ai_model := "step-3.7-flash"
+var ai_base_url := "https://api.stepfun.com/step_plan/v1/messages"
+var ai_api_key := ""
 var presentation_busy := false
 var active_action_category := ""
 var show_all_actions := false
@@ -219,6 +227,11 @@ var display_mode_option: OptionButton
 var display_resolution_option: OptionButton
 var ui_scale_option: OptionButton
 var display_status_label: Label
+var ai_enabled_check: CheckButton
+var ai_model_input: LineEdit
+var ai_base_url_input: LineEdit
+var ai_api_key_input: LineEdit
+var ai_status_label: Label
 var body_font: Font
 var medium_font: Font
 var display_font: Font
@@ -323,6 +336,7 @@ func _start_bundled_server() -> void:
 			"-version", build_version,
 			"-session-id", session_id,
 			"-shutdown-token", shutdown_token,
+			"-ai-settings", runtime_root.path_join(AI_SETTINGS_FILE),
 		]),
 		false
 	)
@@ -518,6 +532,36 @@ func _load_user_settings() -> void:
 			if is_equal_approx(configured_scale, preset):
 				ui_scale = preset
 				break
+	_load_ai_settings()
+
+
+func _load_ai_settings() -> void:
+	var path := runtime_root.path_join(AI_SETTINGS_FILE)
+	if not FileAccess.file_exists(path):
+		return
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if not parsed is Dictionary:
+		_log_event("ERROR", "ai_settings_load_failed", "AI settings file is not valid JSON", {"path": path})
+		return
+	ai_enabled = bool(parsed.get("enabled", false))
+	ai_model = str(parsed.get("model", ai_model)).strip_edges()
+	ai_base_url = str(parsed.get("base_url", ai_base_url)).strip_edges()
+	ai_api_key = str(parsed.get("api_key", "")).strip_edges()
+
+
+func _save_ai_settings() -> Error:
+	var path := runtime_root.path_join(AI_SETTINGS_FILE)
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return FileAccess.get_open_error()
+	file.store_string(JSON.stringify({
+		"enabled": ai_enabled,
+		"api_key": ai_api_key,
+		"model": ai_model,
+		"base_url": ai_base_url,
+	}, "\t"))
+	file.flush()
+	return OK
 
 
 func _save_user_settings() -> void:
@@ -1180,6 +1224,9 @@ func _build_start_layer() -> void:
 	var continue_button := _utility_button("翻开旧卷", _load_game)
 	continue_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	content.add_child(continue_button)
+	var start_settings_button := _utility_button("大模型与体验设置", _open_audio_settings)
+	start_settings_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	content.add_child(start_settings_button)
 	retry_button = _action_button("重新连接本地服务", _retry_connection)
 	retry_button.hide()
 	content.add_child(retry_button)
@@ -1291,18 +1338,27 @@ func _build_settings_layer() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	settings_layer.add_child(center)
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(820, 650)
+	card.custom_minimum_size = Vector2(900, 690)
 	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 14, COLORS.accent_pressed, 28, 24))
 	center.add_child(card)
 	settings_box = VBoxContainer.new()
 	settings_box.add_theme_constant_override("separation", 12)
 	card.add_child(settings_box)
 	_text(settings_box, "体验设置", false, 25)
-	_text(settings_box, "显示、声音与动态效果只影响呈现，不会改变推演结果。", true, 14)
+	_text(settings_box, "管理显示、声音、诊断与人物大模型对话。", true, 14)
+	var tabs := TabContainer.new()
+	tabs.custom_minimum_size.y = 500
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tabs.add_theme_font_override("font", medium_font)
+	settings_box.add_child(tabs)
+	var presentation_tab := VBoxContainer.new()
+	presentation_tab.name = "显示与声音"
+	presentation_tab.add_theme_constant_override("separation", 12)
+	tabs.add_child(presentation_tab)
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 34)
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	settings_box.add_child(columns)
+	presentation_tab.add_child(columns)
 	var display_box := VBoxContainer.new()
 	display_box.custom_minimum_size.x = 350
 	display_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1339,10 +1395,10 @@ func _build_settings_layer() -> void:
 
 	var rule := HSeparator.new()
 	rule.modulate = Color(COLORS.accent, 0.30)
-	settings_box.add_child(rule)
+	presentation_tab.add_child(rule)
 	var diagnostic_row := HBoxContainer.new()
 	diagnostic_row.add_theme_constant_override("separation", 8)
-	settings_box.add_child(diagnostic_row)
+	presentation_tab.add_child(diagnostic_row)
 	log_level_button = _action_button("日志等级 · %s" % log_level, _cycle_log_level)
 	log_level_button.tooltip_text = "DEBUG 记录更多诊断信息；INFO 适合正式版。服务端会在下次启动时应用新等级。"
 	log_level_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1353,6 +1409,36 @@ func _build_settings_layer() -> void:
 	var diagnostics_button := _action_button("导出诊断包", _export_diagnostics)
 	diagnostics_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	diagnostic_row.add_child(diagnostics_button)
+
+	var ai_tab := VBoxContainer.new()
+	ai_tab.name = "大模型"
+	ai_tab.add_theme_constant_override("separation", 12)
+	tabs.add_child(ai_tab)
+	var ai_intro := _text(ai_tab, "人物对话使用 Anthropic Messages 兼容接口。关闭时完全不调用模型；开启后任何生成失败都会直接报错。", true, TYPE_SCALE.detail)
+	ai_intro.custom_minimum_size.y = 42
+	ai_enabled_check = CheckButton.new()
+	ai_enabled_check.text = "启用人物大模型对话"
+	ai_enabled_check.button_pressed = ai_enabled
+	ai_enabled_check.add_theme_font_override("font", medium_font)
+	ai_enabled_check.add_theme_font_size_override("font_size", TYPE_SCALE.body)
+	ai_tab.add_child(ai_enabled_check)
+	ai_model_input = _ai_settings_input(ai_tab, "模型", ai_model, "例如 step-3.7-flash")
+	ai_base_url_input = _ai_settings_input(ai_tab, "接口地址", ai_base_url, "Anthropic Messages 兼容地址")
+	ai_api_key_input = _ai_settings_input(ai_tab, "API Key", ai_api_key, "密钥仅保存在本机运行目录")
+	ai_api_key_input.secret = true
+	ai_api_key_input.secret_character = "●"
+	var ai_actions := HBoxContainer.new()
+	ai_actions.add_theme_constant_override("separation", 10)
+	ai_tab.add_child(ai_actions)
+	var apply_ai_button := _button("保存并立即应用", _apply_ai_settings, false)
+	apply_ai_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ai_actions.add_child(apply_ai_button)
+	var clear_ai_button := _button("清除密钥并关闭", _clear_ai_settings, true)
+	clear_ai_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ai_actions.add_child(clear_ai_button)
+	ai_status_label = _text(ai_tab, "", true, TYPE_SCALE.detail)
+	ai_status_label.add_theme_color_override("font_color", COLORS.muted)
+	_refresh_ai_settings_status()
 	settings_box.add_child(_button("返回游戏", _close_audio_settings, false))
 	_refresh_display_controls()
 
@@ -1376,6 +1462,31 @@ func _display_option(parent: VBoxContainer, label_text: String, tooltip: String)
 	option.tooltip_text = tooltip
 	row.add_child(option)
 	return option
+
+
+func _ai_settings_input(parent: VBoxContainer, label_text: String, value: String, tooltip: String) -> LineEdit:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	parent.add_child(row)
+	var label := Label.new()
+	label.text = label_text
+	label.custom_minimum_size.x = 92
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_override("font", medium_font)
+	label.add_theme_color_override("font_color", COLORS.ink)
+	row.add_child(label)
+	var input := LineEdit.new()
+	input.text = value
+	input.placeholder_text = tooltip
+	input.tooltip_text = tooltip
+	input.custom_minimum_size = Vector2(560, 42)
+	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	input.add_theme_font_override("font", medium_font)
+	input.add_theme_font_size_override("font_size", TYPE_SCALE.detail)
+	input.add_theme_stylebox_override("normal", _input_style(COLORS.panel_alt, COLORS.line))
+	input.add_theme_stylebox_override("focus", _input_style(COLORS.bg_lift, COLORS.accent))
+	row.add_child(input)
+	return input
 
 
 func _on_display_mode_selected(index: int) -> void:
@@ -2067,6 +2178,7 @@ func _operation_label(operation: String) -> String:
 		"autosave": "正在自动保存",
 		"action": "正在推演行动结果",
 		"quit": "正在返回",
+		"ai_settings": "正在应用大模型配置",
 	}
 	return str(labels.get(operation, "处理中"))
 
@@ -2150,6 +2262,9 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		var message := "本地服务无响应，请先运行项目启动脚本。"
 		if parsed is Dictionary and parsed.get("error", {}) is Dictionary:
 			message = str(parsed.get("error", {}).get("message", message))
+		if operation == "ai_settings" and ai_status_label:
+			ai_status_label.text = "应用失败：%s" % message
+			ai_status_label.add_theme_color_override("font_color", COLORS.danger)
 		_show_error(message)
 		return
 
@@ -2158,8 +2273,25 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		connection_label.add_theme_color_override("font_color", COLORS.success)
 		retry_button.hide()
 	if operation == "health":
+		var capabilities: Dictionary = parsed.get("capabilities", {})
+		ai_server_enabled = bool(capabilities.get("ai_dialogue", false))
+		var server_ai_settings: Dictionary = parsed.get("ai_settings", {})
+		ai_server_mode = str(server_ai_settings.get("mode", "disabled"))
+		_refresh_ai_settings_status()
 		if footer_label:
 			footer_label.text = ""
+		return
+	if operation == "ai_settings":
+		var ai_capabilities: Dictionary = parsed.get("capabilities", {})
+		ai_server_enabled = bool(ai_capabilities.get("ai_dialogue", false))
+		var applied_ai_settings: Dictionary = parsed.get("ai_settings", {})
+		ai_server_mode = str(applied_ai_settings.get("mode", "disabled"))
+		var save_error := _save_ai_settings()
+		if save_error != OK:
+			ai_status_label.text = "模型已应用，但本地配置保存失败（%s）" % save_error
+			ai_status_label.add_theme_color_override("font_color", COLORS.danger)
+			return
+		_refresh_ai_settings_status("配置已保存并立即生效")
 		return
 	if operation == "quit":
 		_show_start()
@@ -2397,6 +2529,7 @@ func _toggle_motion() -> void:
 
 func _open_audio_settings() -> void:
 	audio_director.play_ui()
+	_sync_ai_settings_controls()
 	settings_layer.show()
 	_sync_action_canvas_visibility()
 
@@ -2405,6 +2538,67 @@ func _close_audio_settings() -> void:
 	audio_director.play_ui()
 	settings_layer.hide()
 	_sync_action_canvas_visibility()
+
+
+func _sync_ai_settings_controls() -> void:
+	if not ai_enabled_check:
+		return
+	ai_enabled_check.button_pressed = ai_enabled
+	ai_model_input.text = ai_model
+	ai_base_url_input.text = ai_base_url
+	ai_api_key_input.text = ai_api_key
+	_refresh_ai_settings_status()
+
+
+func _apply_ai_settings() -> void:
+	ai_enabled = ai_enabled_check.button_pressed
+	ai_model = ai_model_input.text.strip_edges()
+	ai_base_url = ai_base_url_input.text.strip_edges()
+	ai_api_key = ai_api_key_input.text.strip_edges()
+	if ai_enabled and ai_model == "":
+		ai_status_label.text = "启用大模型时必须填写模型名称"
+		ai_status_label.add_theme_color_override("font_color", COLORS.danger)
+		return
+	if ai_enabled and ai_api_key == "":
+		ai_status_label.text = "启用大模型时必须填写 API Key"
+		ai_status_label.add_theme_color_override("font_color", COLORS.danger)
+		return
+	if ai_base_url != "" and not (ai_base_url.begins_with("https://") or ai_base_url.begins_with("http://")):
+		ai_status_label.text = "接口地址必须以 https:// 或 http:// 开头"
+		ai_status_label.add_theme_color_override("font_color", COLORS.danger)
+		return
+	ai_status_label.text = "正在应用大模型配置……"
+	ai_status_label.add_theme_color_override("font_color", COLORS.accent)
+	_request("ai_settings", HTTPClient.METHOD_PUT, "/settings/ai", {
+		"enabled": ai_enabled,
+		"api_key": ai_api_key,
+		"model": ai_model,
+		"base_url": ai_base_url,
+	})
+
+
+func _clear_ai_settings() -> void:
+	ai_enabled_check.button_pressed = false
+	ai_api_key_input.text = ""
+	_apply_ai_settings()
+
+
+func _refresh_ai_settings_status(message := "") -> void:
+	if not ai_status_label:
+		return
+	if message != "":
+		ai_status_label.text = message
+		ai_status_label.add_theme_color_override("font_color", COLORS.success)
+	elif ai_server_enabled:
+		var active_model := ai_server_mode.trim_prefix("anthropic:")
+		ai_status_label.text = "运行状态：大模型对话已启用 · %s" % active_model
+		ai_status_label.add_theme_color_override("font_color", COLORS.success)
+	elif ai_enabled:
+		ai_status_label.text = "运行状态：配置已保存，但当前服务尚未启用模型"
+		ai_status_label.add_theme_color_override("font_color", COLORS.muted)
+	else:
+		ai_status_label.text = "运行状态：大模型对话未启用"
+		ai_status_label.add_theme_color_override("font_color", COLORS.muted)
 
 
 func _open_journal() -> void:
@@ -3752,6 +3946,7 @@ func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
 	stage_actor_name = actor_name
 	_focus_portrait(actor_id)
 	actor_dialogue_by_id.erase(actor_id)
+	actor_dialogue_error_by_id.erase(actor_id)
 	actor_dialogue_loading_id = actor_id
 	dialogue_client.request_focus(actor_id)
 	_render_stage_people(current_view.get("known_actors", []), available_actions_cache)
@@ -3769,18 +3964,21 @@ func _render_actor_dialogue_line(actor: Dictionary) -> void:
 	panel.add_child(content)
 	var speaker := _text(content, str(actor.get("name", focused_actor_name)), true, 13)
 	speaker.add_theme_color_override("font_color", COLORS.accent)
-	var utterance := "他正在斟酌该如何回应。"
+	var utterance := "正在等待人物回应……"
+	var quote_line := false
 	if actor_dialogue_by_id.has(focused_actor_id):
 		utterance = str(actor_dialogue_by_id[focused_actor_id].get("utterance", utterance))
-	elif actor_dialogue_loading_id != focused_actor_id:
-		utterance = "他看了你一眼，等你说明来意。"
-	var line := _text(content, "“%s”" % utterance, false, 17)
+		quote_line = true
+	elif actor_dialogue_error_by_id.has(focused_actor_id):
+		utterance = "对话生成失败：%s" % str(actor_dialogue_error_by_id[focused_actor_id])
+	var line := _text(content, "“%s”" % utterance if quote_line else utterance, false, 17)
 	line.add_theme_font_override("font", narrative_font)
 	actor_focus_message_list.add_child(panel)
 
 
 func _on_ai_dialogue_ready(actor_id: String, dialogue: Dictionary) -> void:
 	actor_dialogue_by_id[actor_id] = dialogue
+	actor_dialogue_error_by_id.erase(actor_id)
 	if actor_dialogue_loading_id == actor_id:
 		actor_dialogue_loading_id = ""
 	if actor_id != focused_actor_id:
@@ -3792,7 +3990,8 @@ func _on_ai_dialogue_ready(actor_id: String, dialogue: Dictionary) -> void:
 	_render_actions(available_actions_cache)
 
 
-func _on_ai_dialogue_failed(actor_id: String) -> void:
+func _on_ai_dialogue_failed(actor_id: String, message: String) -> void:
+	actor_dialogue_error_by_id[actor_id] = message
 	if actor_dialogue_loading_id == actor_id:
 		actor_dialogue_loading_id = ""
 	if actor_id == focused_actor_id:

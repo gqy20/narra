@@ -1,0 +1,242 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"strconv"
+	"strings"
+
+	"fantu/internal/ai"
+	"fantu/internal/app"
+)
+
+func renderLocation(output io.Writer, view app.PlayerView) {
+	fmt.Fprintf(output, "\n【%s】\n%s\n", view.Location.Name, view.Location.Description)
+	if view.Location.Atmosphere != "" {
+		fmt.Fprintln(output, view.Location.Atmosphere)
+	}
+	if len(view.RecentEvents) > 0 {
+		fmt.Fprintln(output, "近日动向：")
+		for _, event := range view.RecentEvents {
+			fmt.Fprintf(output, "  - 第 %d 天：%s\n", event.Day, event.Description)
+		}
+	}
+}
+
+func renderPeople(output io.Writer, view app.PlayerView, debug bool) {
+	fmt.Fprintf(output, "\n【%s · 同地人物】\n", view.Location.Name)
+	if len(view.KnownActors) == 0 {
+		fmt.Fprintln(output, "此地目前没有可交谈人物。")
+		return
+	}
+	for index, actor := range view.KnownActors {
+		id := ""
+		if debug {
+			id = " [" + actor.ID + "]"
+		}
+		role := actor.PublicRole
+		if role == "" {
+			role = actor.Faction
+		}
+		fmt.Fprintf(output, "  %d. %s%s · %s\n", index+1, actor.Name, id, role)
+		if actor.PublicProfile != "" {
+			fmt.Fprintf(output, "     %s\n", actor.PublicProfile)
+		}
+		if actor.Plan != nil && actor.Plan.Plan != "" {
+			fmt.Fprintf(output, "     公开动向：%s\n", actor.Plan.Plan)
+		}
+	}
+	fmt.Fprintln(output, "输入 talk <人物编号或姓名> 与人物交谈。")
+}
+
+func renderTalk(output io.Writer, session *app.Session, dialogueService *ai.Service, view app.PlayerView, selector string, debug bool) {
+	if selector == "" {
+		renderPeople(output, view, debug)
+		return
+	}
+	actor, err := resolveActor(selector, view.KnownActors, debug)
+	if err != nil {
+		fmt.Fprintf(output, "无法交谈：%v\n", err)
+		return
+	}
+	snapshot, err := session.DialogueSnapshotFor(actor.ID, "focus")
+	if err != nil {
+		fmt.Fprintf(output, "无法交谈：%v\n", err)
+		return
+	}
+	if dialogueService == nil {
+		fmt.Fprintln(output, "人物对话未启用。请配置模型后重新启动，或继续使用规则行动。")
+		return
+	}
+	fmt.Fprintf(output, "\n%s正在斟酌……\n", actor.Name)
+	line, generationErr := dialogueService.GenerateDialogueDetailed(context.Background(), snapshot)
+	if generationErr != nil {
+		fmt.Fprintf(output, "对话生成失败：%v\n", generationErr)
+		return
+	}
+	fmt.Fprintf(output, "%s：“%s”\n", actor.Name, line.Utterance)
+	fmt.Fprintf(output, "态度：%s\n", snapshot.Relation.Attitude)
+	if snapshot.PublicPlan != "" {
+		fmt.Fprintf(output, "公开动向：%s\n", snapshot.PublicPlan)
+	}
+	if debug {
+		fmt.Fprintf(output, "对话来源：%s；状态版本：%s\n", line.Source, line.Revision)
+	}
+	renderActorActions(output, view.AvailableActions, actor.ID)
+}
+
+func resolveActor(selector string, actors []app.VisibleActor, debug bool) (app.VisibleActor, error) {
+	if number, err := strconv.Atoi(selector); err == nil {
+		if number < 1 || number > len(actors) {
+			return app.VisibleActor{}, fmt.Errorf("人物编号应在 1 到 %d 之间", len(actors))
+		}
+		return actors[number-1], nil
+	}
+	for _, actor := range actors {
+		if selector == actor.Name || (debug && selector == actor.ID) {
+			return actor, nil
+		}
+	}
+	return app.VisibleActor{}, fmt.Errorf("当前地点没有人物 %q", selector)
+}
+
+func renderActorActions(output io.Writer, actions []app.AvailableAction, actorID string) {
+	found := false
+	for index, action := range actions {
+		if action.TargetID != actorID {
+			continue
+		}
+		if !found {
+			fmt.Fprintln(output, "可选交涉：")
+			found = true
+		}
+		fmt.Fprintf(output, "  %d. %s — %s\n", index+1, action.Name, action.Description)
+	}
+	if !found {
+		fmt.Fprintln(output, "当前没有需要通过规则结算的交涉选项。")
+	} else {
+		fmt.Fprintln(output, "输入 do <编号> 执行交涉。")
+	}
+}
+
+func renderMap(output io.Writer, view app.PlayerView, debug bool) {
+	fmt.Fprintln(output, "\n【黑风谷周边地图】")
+	for index, location := range view.WorldMap.Locations {
+		marker := " "
+		if location.Current {
+			marker = "*"
+		}
+		id := ""
+		if debug {
+			id = " [" + location.ID + "]"
+		}
+		fmt.Fprintf(output, " %s %d. %s%s · 可见人物 %d\n", marker, index+1, location.Name, id, location.ActorCount)
+	}
+	fmt.Fprintln(output, "路线：")
+	for _, route := range view.WorldMap.Routes {
+		from := mapLocationName(view, route.FromID)
+		to := mapLocationName(view, route.ToID)
+		status := route.Status
+		if route.ActionID != "" {
+			status = "可前往"
+		} else if len(route.Blockers) > 0 {
+			status = "受阻：" + strings.Join(route.Blockers, "、")
+		}
+		fmt.Fprintf(output, "  - %s → %s：%d 天，危险 %d，%s\n", from, to, route.Duration, route.Danger, status)
+	}
+	fmt.Fprintln(output, "输入 go <地点名或地点编号> 移动。")
+}
+
+func mapLocationName(view app.PlayerView, id string) string {
+	for _, location := range view.WorldMap.Locations {
+		if location.ID == id {
+			return location.Name
+		}
+	}
+	return id
+}
+
+func renderJournal(output io.Writer, view app.PlayerView, debug bool) {
+	fmt.Fprintln(output, "\n【行旅卷宗】")
+	fmt.Fprintf(output, "争夺准备：%s（%d/%d）\n", view.Preparation.Rating, view.Preparation.TotalScore, view.Preparation.TargetScore)
+	for _, factor := range append(append([]app.PreparationFactor{}, view.Preparation.ScoreSources...), view.Preparation.Conditions...) {
+		mark := "未满足"
+		if factor.Ready {
+			mark = "已满足"
+		}
+		fmt.Fprintf(output, "  - %s：%s\n", factor.Label, mark)
+	}
+	if view.RouteProgress != nil {
+		fmt.Fprintf(output, "个人路线：%s · %s\n", view.RouteProgress.Label, view.RouteProgress.Status)
+		if view.RouteProgress.NextStep != "" {
+			fmt.Fprintf(output, "  下一步：%s\n", view.RouteProgress.NextStep)
+		}
+	}
+	if len(view.KnownFacts) > 0 {
+		fmt.Fprintln(output, "已知线索：")
+		for _, fact := range view.KnownFacts {
+			id := ""
+			if debug {
+				id = " [" + fact.FactID + "]"
+			}
+			fmt.Fprintf(output, "  - %s%s（%s）\n", fact.Claim, id, confidenceLabel(fact.Confidence))
+		}
+	}
+	if len(view.CausalThreads) > 0 {
+		fmt.Fprintln(output, "你的影响：")
+		for _, thread := range view.CausalThreads {
+			fmt.Fprintf(output, "  - %s：%s\n", thread.ActorName, thread.Summary)
+		}
+	}
+}
+
+func resolveTravel(selector string, view app.PlayerView, debug bool) (string, error) {
+	if selector == "" {
+		return "", fmt.Errorf("请提供地点名或地图编号")
+	}
+	locationID := ""
+	if number, err := strconv.Atoi(selector); err == nil {
+		if number < 1 || number > len(view.WorldMap.Locations) {
+			return "", fmt.Errorf("地点编号应在 1 到 %d 之间", len(view.WorldMap.Locations))
+		}
+		locationID = view.WorldMap.Locations[number-1].ID
+	} else {
+		for _, location := range view.WorldMap.Locations {
+			if selector == location.Name || (debug && selector == location.ID) {
+				locationID = location.ID
+				break
+			}
+		}
+	}
+	if locationID == "" {
+		return "", fmt.Errorf("地图上没有地点 %q", selector)
+	}
+	if locationID == view.Location.ID {
+		return "", fmt.Errorf("你已经在%s", view.Location.Name)
+	}
+	for _, action := range view.AvailableActions {
+		if action.Kind == "move" && action.TargetID == locationID {
+			return action.ID, nil
+		}
+	}
+	for _, route := range view.WorldMap.Routes {
+		if route.ToID == locationID || route.FromID == locationID {
+			if len(route.Blockers) > 0 {
+				return "", fmt.Errorf("路线尚未开放：%s", strings.Join(route.Blockers, "、"))
+			}
+		}
+	}
+	return "", fmt.Errorf("当前无法直接前往%s", mapLocationName(view, locationID))
+}
+
+func renderDialogueMode(output io.Writer, mode string) {
+	switch {
+	case strings.HasPrefix(mode, "anthropic:"):
+		fmt.Fprintf(output, "人物对话：AI 已启用（%s）\n", strings.TrimPrefix(mode, "anthropic:"))
+	case strings.HasPrefix(mode, "disabled"):
+		fmt.Fprintln(output, "人物对话：未启用")
+	default:
+		fmt.Fprintln(output, "人物对话：配置异常")
+	}
+}

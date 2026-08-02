@@ -13,12 +13,17 @@ import (
 	"strconv"
 	"strings"
 
+	"fantu/internal/ai"
+	"fantu/internal/aiconfig"
 	"fantu/internal/app"
-	"fantu/internal/domain"
 	"fantu/internal/scenario"
 )
 
 func main() {
+	if err := aiconfig.LoadDotEnv(".env"); err != nil {
+		fail(err)
+	}
+	aiConfig := registerPlayAIFlags()
 	dataDir := flag.String("data", filepath.FromSlash("data/blackwind"), "scenario data directory")
 	playerName := flag.String("name", "无名散修", "new-game player name")
 	loadPath := flag.String("load", "", "load an existing save file")
@@ -35,34 +40,35 @@ func main() {
 	if *loadPath != "" {
 		session, err = app.LoadFile(bundle, *loadPath)
 	} else {
-		session, err = app.NewSession(bundle, defaultPlayer(*playerName))
+		session, err = app.NewSession(bundle, app.DefaultBlackwindPlayer(*playerName))
 	}
 	if err != nil {
 		fail(err)
 	}
+	dialogue, dialogueMode, err := buildPlayDialogueService(aiConfig)
+	if err != nil {
+		fail(err)
+	}
+	renderDialogueMode(os.Stdout, dialogueMode)
 
-	if err := run(os.Stdin, os.Stdout, session, *autosavePath, *debug); err != nil {
+	if err := runGame(os.Stdin, os.Stdout, session, dialogue, *autosavePath, *debug); err != nil {
 		fail(err)
 	}
 }
 
-func defaultPlayer(name string) domain.PlayerConfig {
-	return app.DefaultBlackwindPlayer(name)
-}
-
-func run(input io.Reader, output io.Writer, session *app.Session, autosavePath string, debug bool) error {
+func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *ai.Service, autosavePath string, debug bool) error {
 	scanner := bufio.NewScanner(input)
 	fmt.Fprintln(output, "凡途 · 黑风谷局势")
-	fmt.Fprintln(output, "输入行动编号推进局势；输入 help 查看命令。")
+	fmt.Fprintln(output, "输入 help 查看命令；输入 actions 查看当前选择。")
+	view := session.View()
+	renderView(output, view, debug)
 
 	for {
-		view := session.View()
-		renderView(output, view, debug)
 		if view.Resolved || view.Ended {
 			return nil
 		}
 
-		fmt.Fprint(output, "\n选择> ")
+		fmt.Fprintf(output, "\n凡途[%s·第%d天]> ", view.Location.Name, view.Day)
 		if !scanner.Scan() {
 			if err := scanner.Err(); err != nil {
 				return fmt.Errorf("read command: %w", err)
@@ -80,8 +86,48 @@ func run(input io.Reader, output io.Writer, session *app.Session, autosavePath s
 		case line == "help" || line == "?":
 			renderHelp(output, debug)
 			continue
+		case line == "look":
+			renderLocation(output, view)
+			continue
+		case line == "people":
+			renderPeople(output, view, debug)
+			continue
+		case line == "talk" || strings.HasPrefix(line, "talk "):
+			renderTalk(output, session, dialogue, view, commandArgument(line), debug)
+			continue
+		case line == "actions":
+			renderActions(output, view.AvailableActions, debug)
+			continue
+		case line == "map":
+			renderMap(output, view, debug)
+			continue
+		case line == "journal":
+			renderJournal(output, view, debug)
+			continue
+		case line == "wait":
+			actionID, err := waitAction(view.AvailableActions, view.Player.Busy)
+			if err != nil {
+				fmt.Fprintf(output, "无法等待：%v\n", err)
+				continue
+			}
+			view, err = executeTerminalAction(output, session, actionID, autosavePath, debug)
+			if err != nil {
+				return err
+			}
+			continue
+		case line == "go" || strings.HasPrefix(line, "go "):
+			actionID, err := resolveTravel(commandArgument(line), view, debug)
+			if err != nil {
+				fmt.Fprintf(output, "无法前往：%v\n", err)
+				continue
+			}
+			view, err = executeTerminalAction(output, session, actionID, autosavePath, debug)
+			if err != nil {
+				return err
+			}
+			continue
 		case line == "save" || strings.HasPrefix(line, "save "):
-			path := strings.TrimSpace(strings.TrimPrefix(line, "save"))
+			path := commandArgument(line)
 			if path == "" {
 				path = "save.json"
 			}
@@ -91,38 +137,61 @@ func run(input io.Reader, output io.Writer, session *app.Session, autosavePath s
 				fmt.Fprintf(output, "已保存到 %s\n", path)
 			}
 			continue
-		}
-
-		actionID, err := resolveAction(line, view.AvailableActions)
-		if err != nil {
-			fmt.Fprintf(output, "无法执行：%v\n", err)
-			continue
-		}
-		if _, err := session.Execute(actionID); err != nil {
-			fmt.Fprintf(output, "行动失败：%v\n", err)
-			continue
-		}
-		if autosavePath != "" {
-			if err := saveSession(autosavePath, session); err != nil {
-				return fmt.Errorf("autosave: %w", err)
+		case line == "do" || strings.HasPrefix(line, "do "):
+			actionID, err := resolveActionNumber(commandArgument(line), view.AvailableActions)
+			if err != nil {
+				fmt.Fprintf(output, "无法执行：%v\n", err)
+				continue
 			}
+			view, err = executeTerminalAction(output, session, actionID, autosavePath, debug)
+			if err != nil {
+				return err
+			}
+			continue
 		}
+		fmt.Fprintf(output, "未知命令 %q；输入 help 查看命令。\n", line)
 	}
 }
 
-func resolveAction(input string, actions []app.AvailableAction) (string, error) {
-	if number, err := strconv.Atoi(input); err == nil {
-		if number < 1 || number > len(actions) {
-			return "", fmt.Errorf("编号应在 1 到 %d 之间", len(actions))
-		}
-		return actions[number-1].ID, nil
+func commandArgument(line string) string {
+	_, argument, _ := strings.Cut(line, " ")
+	return strings.TrimSpace(argument)
+}
+
+func resolveActionNumber(input string, actions []app.AvailableAction) (string, error) {
+	number, err := strconv.Atoi(input)
+	if err != nil || number < 1 || number > len(actions) {
+		return "", fmt.Errorf("请提供 1 到 %d 之间的行动编号", len(actions))
+	}
+	return actions[number-1].ID, nil
+}
+
+func waitAction(actions []app.AvailableAction, busy bool) (string, error) {
+	wanted := "wait:next"
+	if busy {
+		wanted = "wait:complete"
 	}
 	for _, action := range actions {
-		if input == action.ID {
+		if action.ID == wanted {
 			return action.ID, nil
 		}
 	}
-	return "", fmt.Errorf("未知行动 %q", input)
+	return "", errors.New("当前没有可用的时间推进选项")
+}
+
+func executeTerminalAction(output io.Writer, session *app.Session, actionID, autosavePath string, debug bool) (app.PlayerView, error) {
+	view, err := session.Execute(actionID)
+	if err != nil {
+		fmt.Fprintf(output, "行动失败：%v\n", err)
+		return session.View(), nil
+	}
+	if autosavePath != "" {
+		if err := saveSession(autosavePath, session); err != nil {
+			return app.PlayerView{}, fmt.Errorf("autosave: %w", err)
+		}
+	}
+	renderView(output, view, debug)
+	return view, nil
 }
 
 func renderView(output io.Writer, view app.PlayerView, debug bool) {
@@ -211,8 +280,11 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 			fmt.Fprintln(output, "  - "+view.Travel.Timing)
 		}
 	}
+}
+
+func renderActions(output io.Writer, actions []app.AvailableAction, debug bool) {
 	fmt.Fprintln(output, "可用行动：")
-	for index, action := range view.AvailableActions {
+	for index, action := range actions {
 		cost := ""
 		if len(action.Costs) > 0 {
 			parts := make([]string, 0, len(action.Costs))
@@ -317,10 +389,10 @@ func confidenceLabel(value int) string {
 
 func renderHelp(output io.Writer, debug bool) {
 	if debug {
-		fmt.Fprintln(output, "命令：<编号> 或 <行动ID> 执行动作；wait 逐日推进；save [文件] 保存；quit 退出。")
+		fmt.Fprintln(output, "命令：look；people；talk <编号|人物ID|姓名>；actions；do <行动编号>；map；go <地点>；journal；wait；save [文件]；quit。")
 		return
 	}
-	fmt.Fprintln(output, "命令：输入行动编号；save [文件] 保存；quit 退出。")
+	fmt.Fprintln(output, "命令：look；people；talk <人物编号或姓名>；actions；do <行动编号>；map；go <地点>；journal；wait；save [文件]；quit。")
 }
 
 func saveSession(path string, session *app.Session) error {

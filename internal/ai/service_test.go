@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -43,9 +44,9 @@ func TestServiceValidatesAndCachesProviderDialogue(t *testing.T) {
 		ReferencedFacts: []string{"F02"},
 	}}}
 	service := NewService(provider, ServiceOptions{Timeout: time.Second, CacheSize: 4})
-	first := service.GenerateDialogue(context.Background(), dialogueTestSnapshot())
-	second := service.GenerateDialogue(context.Background(), dialogueTestSnapshot())
-	if first.Source != "anthropic" || second.Source != "cache" || provider.calls != 1 {
+	first, firstErr := service.GenerateDialogueDetailed(context.Background(), dialogueTestSnapshot())
+	second, secondErr := service.GenerateDialogueDetailed(context.Background(), dialogueTestSnapshot())
+	if firstErr != nil || secondErr != nil || first.Source != "anthropic" || second.Source != "cache" || provider.calls != 1 {
 		t.Fatalf("dialogue/cache = %+v / %+v, calls=%d", first, second, provider.calls)
 	}
 }
@@ -58,8 +59,12 @@ func TestServiceCacheSeparatesSnapshotsWithSameRevision(t *testing.T) {
 	first := dialogueTestSnapshot()
 	second := dialogueTestSnapshot()
 	second.Player.Name = "另一位玩家"
-	service.GenerateDialogue(context.Background(), first)
-	service.GenerateDialogue(context.Background(), second)
+	if _, err := service.GenerateDialogueDetailed(context.Background(), first); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.GenerateDialogueDetailed(context.Background(), second); err != nil {
+		t.Fatal(err)
+	}
 	if provider.calls != 2 {
 		t.Fatalf("different snapshots shared one cache entry, calls=%d", provider.calls)
 	}
@@ -70,17 +75,24 @@ func TestServiceFallsBackOnUnauthorizedFact(t *testing.T) {
 		Utterance: "我知道那个秘密。", Emotion: "alert", DialogueAct: "warn",
 		ReferencedFacts: []string{"F99"},
 	}}}
-	result := NewService(provider, ServiceOptions{}).GenerateDialogue(context.Background(), dialogueTestSnapshot())
-	if result.Source != "fallback" || len(result.ReferencedFacts) != 0 {
-		t.Fatalf("unauthorized dialogue was not rejected: %+v", result)
+	result, err := NewService(provider, ServiceOptions{}).GenerateDialogueDetailed(context.Background(), dialogueTestSnapshot())
+	if result.Source != "" || result.Utterance != "" || err == nil {
+		t.Fatalf("unauthorized dialogue was not rejected: %+v, err=%v", result, err)
 	}
 }
 
 func TestServiceFallsBackOnTimeout(t *testing.T) {
 	provider := &fakeProvider{wait: true}
 	service := NewService(provider, ServiceOptions{Timeout: time.Millisecond, CacheSize: 2})
-	result := service.GenerateDialogue(context.Background(), dialogueTestSnapshot())
-	if result.Source != "fallback" || provider.calls != 1 {
+	result, err := service.GenerateDialogueDetailed(context.Background(), dialogueTestSnapshot())
+	if result.Source != "" || result.Utterance != "" || err == nil || provider.calls != 1 {
 		t.Fatalf("timeout dialogue = %+v, calls=%d", result, provider.calls)
+	}
+}
+
+func TestServiceReturnsUnavailableWithoutProvider(t *testing.T) {
+	result, err := NewService(nil, ServiceOptions{}).GenerateDialogueDetailed(context.Background(), dialogueTestSnapshot())
+	if result.Source != "" || result.Utterance != "" || !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("disabled dialogue = %+v, err=%v", result, err)
 	}
 }

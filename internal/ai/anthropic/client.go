@@ -62,7 +62,8 @@ func (c *Client) GenerateDialogue(ctx context.Context, request ai.GenerationRequ
 			anthropicsdk.NewUserMessage(anthropicsdk.NewTextBlock(request.Input)),
 		},
 		OutputConfig: anthropicsdk.OutputConfigParam{
-			Format: anthropicsdk.JSONOutputFormatParam{Schema: dialogueSchema},
+			Effort: anthropicsdk.OutputConfigEffortLow,
+			Format: anthropicsdk.JSONOutputFormatParam{Schema: dialogueSchemaFor(request.AllowedFactIDs)},
 		},
 	})
 	if err != nil {

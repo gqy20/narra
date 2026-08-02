@@ -18,6 +18,8 @@ import (
 	"syscall"
 	"time"
 
+	"fantu/internal/ai"
+	"fantu/internal/aiconfig"
 	"fantu/internal/crashreport"
 	"fantu/internal/diagnosticlog"
 	"fantu/internal/logfile"
@@ -26,7 +28,7 @@ import (
 )
 
 func main() {
-	if err := loadDotEnv(".env"); err != nil {
+	if err := aiconfig.LoadDotEnv(".env"); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
@@ -92,6 +94,10 @@ func main() {
 	handler := gameserver.NewWithOptions(bundle, *saveDir, gameserver.Options{
 		ShutdownToken: *shutdownToken,
 		Dialogue:      dialogueService,
+		DialogueMode:  dialogueMode,
+		ConfigureAI: func(settings gameserver.AISettings) (*ai.Service, string, error) {
+			return buildRuntimeDialogueService(aiConfig, settings)
+		},
 		Shutdown: func() {
 			requestShutdown("client_request")
 		},
