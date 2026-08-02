@@ -27,11 +27,30 @@ type Scenario struct {
 }
 
 type StoryArc struct {
-	ID           string      `json:"id"`
-	Title        string      `json:"title"`
-	InitialState string      `json:"initial_state"`
-	States       []string    `json:"states"`
-	Nodes        []StoryNode `json:"nodes"`
+	ID            string              `json:"id"`
+	Title         string              `json:"title"`
+	InitialState  string              `json:"initial_state"`
+	States        []string            `json:"states"`
+	Nodes         []StoryNode         `json:"nodes"`
+	ProgressRules []StoryProgressRule `json:"progress_rules,omitempty"`
+}
+
+type StoryProgressRule struct {
+	ID             string      `json:"id"`
+	Priority       int         `json:"priority"`
+	FromDay        int         `json:"from_day,omitempty"`
+	UntilDay       int         `json:"until_day,omitempty"`
+	Conditions     []Condition `json:"conditions"`
+	RouteID        string      `json:"route_id"`
+	Label          string      `json:"label"`
+	Status         string      `json:"status"`
+	NextStep       string      `json:"next_step"`
+	Window         string      `json:"window,omitempty"`
+	DeadlineDay    int         `json:"deadline_day,omitempty"`
+	LocationID     string      `json:"location_id,omitempty"`
+	PersonalReturn string      `json:"personal_return,omitempty"`
+	Urgent         bool        `json:"urgent,omitempty"`
+	Complete       bool        `json:"complete,omitempty"`
 }
 
 type StoryNode struct {

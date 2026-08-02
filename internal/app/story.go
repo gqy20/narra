@@ -44,6 +44,35 @@ func (s *Session) addStoryInformationActions(options map[string]actionOption, st
 	return added
 }
 
+func (s *Session) storyRouteProgress(state *domain.WorldState) *RouteProgress {
+	var selected *domain.StoryProgressRule
+	selectedArcID := ""
+	for arcID, arc := range s.bundle.StoryArcs {
+		for index := range arc.ProgressRules {
+			rule := &arc.ProgressRules[index]
+			if rule.FromDay > 0 && state.Day < rule.FromDay || rule.UntilDay > 0 && state.Day > rule.UntilDay || !storyConditionsMet(state, rule.Conditions) {
+				continue
+			}
+			if selected == nil || rule.Priority > selected.Priority || rule.Priority == selected.Priority && (arcID < selectedArcID || arcID == selectedArcID && rule.ID < selected.ID) {
+				selected = rule
+				selectedArcID = arcID
+			}
+		}
+	}
+	if selected == nil {
+		return nil
+	}
+	location := ""
+	if selected.LocationID != "" {
+		location = s.visibleLocation(selected.LocationID).Name
+	}
+	return &RouteProgress{
+		ID: selected.RouteID, Label: selected.Label, Status: selected.Status, NextStep: selected.NextStep,
+		Window: selected.Window, DeadlineDay: selected.DeadlineDay, Location: location,
+		PersonalReturn: selected.PersonalReturn, Urgent: selected.Urgent, Complete: selected.Complete,
+	}
+}
+
 func storyConditionsMet(state *domain.WorldState, conditions []domain.Condition) bool {
 	for _, condition := range conditions {
 		switch condition.Type {

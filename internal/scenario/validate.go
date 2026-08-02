@@ -277,8 +277,37 @@ func validateStoryArcs(bundle domain.Bundle) error {
 				}
 			}
 		}
+		progressIDs := make(map[string]bool, len(arc.ProgressRules))
+		for _, rule := range arc.ProgressRules {
+			if rule.ID == "" || progressIDs[rule.ID] || rule.Priority < 0 || rule.FromDay < 0 || rule.UntilDay < 0 || rule.FromDay > 0 && rule.UntilDay > 0 && rule.FromDay > rule.UntilDay || rule.RouteID == "" || rule.Label == "" || rule.Status == "" || rule.NextStep == "" {
+				return fmt.Errorf("story arc %s has invalid progress rule %q", arcID, rule.ID)
+			}
+			progressIDs[rule.ID] = true
+			if rule.LocationID != "" {
+				if _, ok := bundle.Locations[rule.LocationID]; !ok {
+					return fmt.Errorf("story arc %s progress rule %s references unknown location %s", arcID, rule.ID, rule.LocationID)
+				}
+			}
+			for _, condition := range rule.Conditions {
+				if !validStoryCondition(condition) {
+					return fmt.Errorf("story arc %s progress rule %s has unsupported condition %s", arcID, rule.ID, condition.Type)
+				}
+			}
+			if err := validateConditionsAndEffects(rule.Conditions, nil, nil, bundle); err != nil {
+				return fmt.Errorf("story arc %s progress rule %s: %w", arcID, rule.ID, err)
+			}
+		}
 	}
 	return nil
+}
+
+func validStoryCondition(condition domain.Condition) bool {
+	switch condition.Type {
+	case "has_item", "missing_item", "flag", "missing_flag":
+		return condition.Key != ""
+	default:
+		return false
+	}
 }
 
 func validStoryActorReference(actorID string, npcs map[string]bool) bool {

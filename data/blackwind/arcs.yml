@@ -107,3 +107,367 @@
               key: player_joining_qinglan
               value: "true"
           to_state: escort_committed
+
+  progress_rules:
+    - id: trust-operation-joined
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: qinglan_trust_operation_joined}]
+      route_id: trust
+      label: 信任担保
+      status: 已转为亲自行动
+      next_step: 带着宗门物资准备入谷
+      location_id: L02
+      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      complete: true
+    - id: trust-commissioned
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: qinglan_trust_commissioned}]
+      route_id: trust
+      label: 信任担保
+      status: 已结算报酬
+      next_step: 观察沈砚秋能否兑现后续记功
+      location_id: L02
+      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      complete: true
+    - id: trust-betrayed
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: qinglan_trust_betrayed}]
+      route_id: trust
+      label: 信任担保
+      status: 已经背约
+      next_step: 赵鹤鸣已取得计划，无法恢复担保
+      location_id: L02
+      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      complete: true
+    - id: trust-rewarded
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: qinglan_trust_rewarded}]
+      route_id: trust
+      label: 信任担保
+      status: 承诺已经兑现
+      next_step: 沈砚秋已为你记功
+      location_id: L02
+      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      complete: true
+    - id: trust-vouched-waiting
+      priority: 200
+      until_day: 13
+      conditions: [{type: flag, scope: actor, key: qinglan_trust_vouched}]
+      route_id: trust
+      label: 信任担保
+      status: 等待兑现
+      next_step: 第14日起向沈砚秋选择：领取行动物资，或领取情报报酬
+      window: 第14—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+    - id: trust-vouched-open
+      priority: 200
+      from_day: 14
+      until_day: 16
+      conditions: [{type: flag, scope: actor, key: qinglan_trust_vouched}]
+      route_id: trust
+      label: 信任担保
+      status: 可以兑现
+      next_step: 返回青岚门驻地，决定担保带来的个人收益
+      window: 第14—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      urgent: true
+    - id: trust-vouched-missed
+      priority: 200
+      from_day: 17
+      conditions: [{type: flag, scope: actor, key: qinglan_trust_vouched}]
+      route_id: trust
+      label: 信任担保
+      status: 兑现窗口已错过
+      next_step: 担保仍会影响沈砚秋，但你没有领取中期回报
+      window: 第14—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      complete: true
+    - id: trust-review-waiting
+      priority: 100
+      until_day: 9
+      conditions: [{type: flag, scope: actor, key: qinglan_intel_term_trust}]
+      route_id: trust
+      label: 信任担保
+      status: 等待审核
+      next_step: 第10日起回到青岚门驻地，回应赵鹤鸣的公开质疑
+      window: 第10—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+    - id: trust-review-open
+      priority: 100
+      from_day: 10
+      until_day: 12
+      conditions: [{type: flag, scope: actor, key: qinglan_intel_term_trust}]
+      route_id: trust
+      label: 信任担保
+      status: 必须回应
+      next_step: 在驻地公开担保，或把计划转交赵鹤鸣
+      window: 第10—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      urgent: true
+    - id: trust-review-missed
+      priority: 100
+      from_day: 13
+      conditions: [{type: flag, scope: actor, key: qinglan_intel_term_trust}]
+      route_id: trust
+      label: 信任担保
+      status: 审核窗口已错过
+      next_step: 本次担保没有形成宗门记功
+      window: 第10—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      complete: true
+
+    - id: antidote-scouted
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: qinglan_antidote_scouted}]
+      route_id: antidote
+      label: 解瘴丹交易
+      status: 独行踩点完成
+      next_step: 综合准备已经提高，按时进入内谷
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      complete: true
+    - id: antidote-liquidated
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: qinglan_antidote_liquidated}]
+      route_id: antidote
+      label: 解瘴丹交易
+      status: 入谷资格已变现
+      next_step: 你已卖出丹药与路线，不再参与核心争夺
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      complete: true
+    - id: antidote-lent
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: qinglan_antidote_lent}]
+      route_id: antidote
+      label: 解瘴丹交易
+      status: 已经借丹援队
+      next_step: 独行路线关闭，支援与关系收益已到账
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      complete: true
+    - id: antidote-kept-waiting
+      priority: 200
+      until_day: 12
+      conditions: [{type: flag, scope: actor, key: qinglan_antidote_kept}]
+      route_id: antidote
+      label: 解瘴丹交易
+      status: 保留独行资格
+      next_step: 第13日起决定：提前踩点提高准备，或转售丹药与路线
+      window: 第13—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+    - id: antidote-kept-open
+      priority: 200
+      from_day: 13
+      until_day: 16
+      conditions: [{type: flag, scope: actor, key: qinglan_antidote_kept}]
+      route_id: antidote
+      label: 解瘴丹交易
+      status: 可以兑现
+      next_step: 在青岚门驻地选择独行收益出口
+      window: 第13—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      urgent: true
+    - id: antidote-kept-missed
+      priority: 200
+      from_day: 17
+      conditions: [{type: flag, scope: actor, key: qinglan_antidote_kept}]
+      route_id: antidote
+      label: 解瘴丹交易
+      status: 兑现窗口已错过
+      next_step: 仍可持丹入谷，但没有取得踩点或交易收益
+      window: 第13—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      complete: true
+    - id: antidote-request-waiting
+      priority: 100
+      until_day: 7
+      conditions: [{type: flag, scope: actor, key: qinglan_intel_term_antidote}]
+      route_id: antidote
+      label: 解瘴丹交易
+      status: 等待药物缺口
+      next_step: 第8日起回应苏晚照的借丹请求
+      window: 第8—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+    - id: antidote-request-open
+      priority: 100
+      from_day: 8
+      until_day: 12
+      conditions: [{type: flag, scope: actor, key: qinglan_intel_term_antidote}]
+      route_id: antidote
+      label: 解瘴丹交易
+      status: 必须回应
+      next_step: 在驻地决定借丹援队，或确认独行
+      window: 第8—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      urgent: true
+    - id: antidote-request-missed
+      priority: 100
+      from_day: 13
+      conditions: [{type: flag, scope: actor, key: qinglan_intel_term_antidote}]
+      route_id: antidote
+      label: 解瘴丹交易
+      status: 回应窗口已错过
+      next_step: 丹药仍在手中，但苏晚照的请求已经失效
+      window: 第8—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      complete: true
+
+    - id: escort-vanguard
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: qinglan_escort_vanguard}]
+      route_id: escort
+      label: 青岚同行
+      status: 先锋分工已确定
+      next_step: 带领人手按时进入内谷
+      location_id: L02
+      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      complete: true
+    - id: escort-quartermaster
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: qinglan_escort_quartermaster}]
+      route_id: escort
+      label: 青岚同行
+      status: 后勤分工已确定
+      next_step: 个人报酬已到账，可继续决定是否入谷
+      location_id: L02
+      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      complete: true
+    - id: escort-fulfilled-open
+      priority: 250
+      until_day: 18
+      conditions: [{type: flag, scope: actor, key: qinglan_escort_fulfilled}]
+      route_id: escort
+      label: 青岚同行
+      status: 等待分工
+      next_step: 出发前选择担任先锋，或负责后勤领取报酬
+      window: 第17—18日
+      deadline_day: 18
+      location_id: L02
+      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      urgent: true
+    - id: escort-fulfilled-missed
+      priority: 250
+      from_day: 19
+      conditions: [{type: flag, scope: actor, key: qinglan_escort_fulfilled}]
+      route_id: escort
+      label: 青岚同行
+      status: 分工窗口已错过
+      next_step: 你仍保留随队丹药与基础支援
+      window: 第17—18日
+      deadline_day: 18
+      location_id: L02
+      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      complete: true
+    - id: escort-refused
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: qinglan_escort_refused}]
+      route_id: escort
+      label: 青岚同行
+      status: 已经退出同行
+      next_step: 保持散修身份，自行寻找入谷条件
+      location_id: L02
+      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      complete: true
+    - id: escort-approved-waiting
+      priority: 200
+      until_day: 15
+      conditions: [{type: flag, scope: actor, key: qinglan_escort_approved}]
+      route_id: escort
+      label: 青岚同行
+      status: 审核通过
+      next_step: 第16日回到青岚门驻地兑现同行承诺
+      window: 仅第16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+    - id: escort-approved-open
+      priority: 200
+      from_day: 16
+      until_day: 16
+      conditions: [{type: flag, scope: actor, key: qinglan_escort_approved}]
+      route_id: escort
+      label: 青岚同行
+      status: 立即集结
+      next_step: 今天在驻地领取随队丹药与人手
+      window: 仅第16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      urgent: true
+    - id: escort-approved-missed
+      priority: 200
+      from_day: 17
+      conditions: [{type: flag, scope: actor, key: qinglan_escort_approved}]
+      route_id: escort
+      label: 青岚同行
+      status: 集结已经错过
+      next_step: 同行承诺失效
+      window: 仅第16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      complete: true
+    - id: escort-review-waiting
+      priority: 100
+      until_day: 9
+      conditions: [{type: flag, scope: actor, key: qinglan_intel_term_escort}]
+      route_id: escort
+      label: 青岚同行
+      status: 等待宗门审核
+      next_step: 第10日起回驻地确认同行身份
+      window: 第10—13日
+      deadline_day: 13
+      location_id: L02
+      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+    - id: escort-review-open
+      priority: 100
+      from_day: 10
+      until_day: 13
+      conditions: [{type: flag, scope: actor, key: qinglan_intel_term_escort}]
+      route_id: escort
+      label: 青岚同行
+      status: 必须审核
+      next_step: 接受审核保留同行，或退出名单
+      window: 第10—13日
+      deadline_day: 13
+      location_id: L02
+      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      urgent: true
+    - id: escort-review-missed
+      priority: 100
+      from_day: 14
+      conditions: [{type: flag, scope: actor, key: qinglan_intel_term_escort}]
+      route_id: escort
+      label: 青岚同行
+      status: 审核窗口已错过
+      next_step: 第16日不再获得集结资格
+      window: 第10—13日
+      deadline_day: 13
+      location_id: L02
+      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      complete: true
