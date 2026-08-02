@@ -45,6 +45,9 @@ func newEngine(bundle domain.Bundle, plan *domain.RunPlan) *Engine {
 		Debts:              make(map[string]*domain.Debt),
 		Alliances:          make(map[string]*domain.Alliance),
 		Agreements:         make(map[string]*domain.Agreement),
+		Director: domain.WorldDirectorState{
+			Uses: make(map[string]int), LastUsedDay: make(map[string]int),
+		},
 	}
 	for _, market := range bundle.Scenario.Markets {
 		state.Markets[market.ID] = &domain.MarketState{
@@ -137,6 +140,9 @@ func (e *Engine) step(commands []domain.PlayerCommand) (*domain.WorldState, erro
 		return nil, err
 	}
 	if err := e.deliverInformation(day); err != nil {
+		return nil, err
+	}
+	if err := e.runWorldDirector(); err != nil {
 		return nil, err
 	}
 

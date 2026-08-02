@@ -862,7 +862,7 @@ func normalizeActionCategory(value string) (string, bool) {
 
 func terminalActionCategory(action app.AvailableAction) string {
 	switch action.Kind {
-	case "verify":
+	case "verify", "opportunity":
 		return "investigate"
 	case "tell", "route":
 		return "interact"

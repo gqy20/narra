@@ -32,6 +32,12 @@ func Validate(bundle domain.Bundle) error {
 			}
 		}
 	}
+	if err := validateWorldDirectives(bundle); err != nil {
+		return err
+	}
+	if err := validateOpportunityActions(bundle); err != nil {
+		return err
+	}
 	if len(bundle.NPCs) == 0 {
 		return fmt.Errorf("scenario has no NPCs")
 	}
@@ -127,6 +133,129 @@ func Validate(bundle domain.Bundle) error {
 					return fmt.Errorf("location %s route to %s requires unknown item %s", id, route.To, route.RequiredItem)
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func validateWorldDirectives(bundle domain.Bundle) error {
+	seen := make(map[string]bool, len(bundle.Scenario.Directives))
+	phases := make(map[string]bool, len(bundle.Scenario.Phases))
+	for _, phase := range bundle.Scenario.Phases {
+		phases[phase.Name] = true
+	}
+	markets := make(map[string]domain.MarketDefinition, len(bundle.Scenario.Markets))
+	for _, market := range bundle.Scenario.Markets {
+		markets[market.ID] = market
+	}
+	for _, directive := range bundle.Scenario.Directives {
+		if directive.ID == "" || seen[directive.ID] {
+			return fmt.Errorf("scenario has invalid or duplicate world directive %q", directive.ID)
+		}
+		seen[directive.ID] = true
+		if directive.Description == "" || directive.Priority < 0 || directive.CooldownDays < 0 || directive.MaxUses < 0 {
+			return fmt.Errorf("world directive %s has invalid description, priority, cooldown, or max uses", directive.ID)
+		}
+		if directive.FromDay < 0 || directive.UntilDay < 0 || directive.FromDay > bundle.Scenario.Duration || directive.UntilDay > bundle.Scenario.Duration || (directive.UntilDay > 0 && directive.FromDay > directive.UntilDay) {
+			return fmt.Errorf("world directive %s has invalid day window", directive.ID)
+		}
+		if directive.Phase != "" && !phases[directive.Phase] {
+			return fmt.Errorf("world directive %s references unknown phase %s", directive.ID, directive.Phase)
+		}
+		switch directive.Trigger {
+		case "phase_entered":
+			if directive.Phase == "" {
+				return fmt.Errorf("world directive %s phase_entered requires phase", directive.ID)
+			}
+		case "quiet_days":
+			if directive.MinQuietDays <= 0 {
+				return fmt.Errorf("world directive %s quiet_days requires positive min_quiet_days", directive.ID)
+			}
+		case "market_stock_at_most":
+			market, ok := markets[directive.TargetID]
+			if !ok {
+				return fmt.Errorf("world directive %s references unknown market %s", directive.ID, directive.TargetID)
+			}
+			if _, ok := market.Stock[directive.Key]; !ok || directive.MinValue < 0 {
+				return fmt.Errorf("world directive %s references invalid market item %s", directive.ID, directive.Key)
+			}
+		case "actors_at_location_at_least":
+			if _, ok := bundle.Locations[directive.TargetID]; !ok || directive.MinValue <= 0 {
+				return fmt.Errorf("world directive %s requires a valid location and positive min_value", directive.ID)
+			}
+		default:
+			return fmt.Errorf("world directive %s has unknown trigger %q", directive.ID, directive.Trigger)
+		}
+		for _, effect := range directive.Effects {
+			switch effect.Type {
+			case "set_flag":
+				if effect.Scope != "world" && effect.TargetID != "world" {
+					return fmt.Errorf("world directive %s may only set world-scoped flags", directive.ID)
+				}
+			case "open_opportunity", "close_opportunity":
+				if effect.Key == "" {
+					return fmt.Errorf("world directive %s has opportunity effect without key", directive.ID)
+				}
+			default:
+				return fmt.Errorf("world directive %s may not use effect %s", directive.ID, effect.Type)
+			}
+		}
+		if err := validateConditionsAndEffects(nil, nil, directive.Effects, bundle); err != nil {
+			return fmt.Errorf("world directive %s: %w", directive.ID, err)
+		}
+	}
+	return nil
+}
+
+func validateOpportunityActions(bundle domain.Bundle) error {
+	opened := make(map[string]bool)
+	for _, directive := range bundle.Scenario.Directives {
+		for _, effect := range directive.Effects {
+			if effect.Type == "open_opportunity" {
+				opened[effect.Key] = true
+			}
+		}
+	}
+	seenIDs := make(map[string]bool, len(bundle.Scenario.Opportunities))
+	seenKeys := make(map[string]bool, len(bundle.Scenario.Opportunities))
+	for _, opportunity := range bundle.Scenario.Opportunities {
+		if opportunity.ID == "" || opportunity.Key == "" || seenIDs[opportunity.ID] || seenKeys[opportunity.Key] {
+			return fmt.Errorf("scenario has invalid or duplicate opportunity action %q", opportunity.ID)
+		}
+		seenIDs[opportunity.ID], seenKeys[opportunity.Key] = true, true
+		if !opened[opportunity.Key] {
+			return fmt.Errorf("opportunity action %s references key %s that no directive opens", opportunity.ID, opportunity.Key)
+		}
+		action, ok := bundle.Actions[opportunity.ActionID]
+		if !ok || opportunity.Name == "" || opportunity.Description == "" {
+			return fmt.Errorf("opportunity action %s has invalid action or presentation", opportunity.ID)
+		}
+		if _, ok := bundle.Locations[opportunity.LocationID]; !ok || opportunity.Duration < 0 {
+			return fmt.Errorf("opportunity action %s has invalid location or duration", opportunity.ID)
+		}
+		if err := validateCosts(opportunity.Costs); err != nil {
+			return fmt.Errorf("opportunity action %s: %w", opportunity.ID, err)
+		}
+		conditions := []domain.Condition{{Type: "opportunity", Key: opportunity.Key}, {Type: "location", Value: opportunity.LocationID}}
+		if err := validateStaticMovement(action.Duration, opportunity.Duration, conditions, opportunity.Effects, "player", bundle); err != nil {
+			return fmt.Errorf("opportunity action %s: %w", opportunity.ID, err)
+		}
+		if err := validateConditionsAndEffects(conditions, nil, opportunity.Effects, bundle); err != nil {
+			return fmt.Errorf("opportunity action %s: %w", opportunity.ID, err)
+		}
+		closesSelf := false
+		for _, effect := range opportunity.Effects {
+			if effect.Type == "close_opportunity" && effect.Key == opportunity.Key {
+				closesSelf = true
+			}
+			if effect.Type == "set_belief" {
+				if _, ok := bundle.Facts[effect.FactID]; !ok {
+					return fmt.Errorf("opportunity action %s references unknown fact %s", opportunity.ID, effect.FactID)
+				}
+			}
+		}
+		if !closesSelf {
+			return fmt.Errorf("opportunity action %s must close its own opportunity", opportunity.ID)
 		}
 	}
 	return nil

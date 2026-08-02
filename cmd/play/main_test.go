@@ -191,6 +191,34 @@ func TestTerminalNavigationAndDialogueDoNotAdvanceWorld(t *testing.T) {
 	}
 }
 
+func TestTerminalCanFindAndUseWorldDirectorOpportunity(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("世界机会玩家"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	commands := "wait\nwait\nwait\nactions find 游商\ndo 1\nquit\n"
+	if err := runGame(bytes.NewBufferString(commands), &output, testTerminalGame(session), nil, false); err != nil {
+		t.Fatal(err)
+	}
+	if session.View().Day != 4 || !strings.Contains(output.String(), "向短暂停留的游商打听消息") {
+		t.Fatalf("terminal did not execute director opportunity: view=%+v\n%s", session.View(), output.String())
+	}
+	found := false
+	for _, belief := range session.View().KnownFacts {
+		if belief.FactID == "F09" && belief.Confidence == 2 {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("director opportunity did not add its clue: %+v", session.View().KnownFacts)
+	}
+}
+
 func TestTerminalSupportsPersistentMultiTurnNPCDialogue(t *testing.T) {
 	bundle, err := scenario.Load("../../data/blackwind")
 	if err != nil {
@@ -409,7 +437,7 @@ func TestWaitAdvancesOneDayAndWaitNextIsExplicit(t *testing.T) {
 	for _, test := range []struct {
 		command string
 		day     int
-	}{{"wait\nquit\n", 1}, {"wait next\nwait next confirm\nquit\n", 8}} {
+	}{{"wait\nquit\n", 1}, {"wait next\nwait next confirm\nquit\n", 3}} {
 		session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("等待测试"))
 		if err != nil {
 			t.Fatal(err)

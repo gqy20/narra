@@ -22,11 +22,25 @@ func cloneWorld(source *domain.WorldState) *domain.WorldState {
 		OpportunitySources: make(map[string]string, len(source.OpportunitySources)),
 		Events:             append([]domain.WorldEvent(nil), source.Events...),
 		Decisions:          append([]domain.DecisionRecord(nil), source.Decisions...),
+		Director: domain.WorldDirectorState{
+			LastPhase: source.Director.LastPhase, LastDirectiveDay: source.Director.LastDirectiveDay,
+			Uses: make(map[string]int, len(source.Director.Uses)), LastUsedDay: make(map[string]int, len(source.Director.LastUsedDay)),
+		},
+		DirectorDecisions:  append([]domain.DirectorDecision(nil), source.DirectorDecisions...),
 		PendingInformation: append([]domain.InformationDelivery(nil), source.PendingInformation...),
 		Markets:            make(map[string]*domain.MarketState, len(source.Markets)),
 		Debts:              make(map[string]*domain.Debt, len(source.Debts)),
 		Alliances:          make(map[string]*domain.Alliance, len(source.Alliances)),
 		Agreements:         make(map[string]*domain.Agreement, len(source.Agreements)),
+	}
+	for id, uses := range source.Director.Uses {
+		clone.Director.Uses[id] = uses
+	}
+	for id, lastDay := range source.Director.LastUsedDay {
+		clone.Director.LastUsedDay[id] = lastDay
+	}
+	for i := range clone.DirectorDecisions {
+		clone.DirectorDecisions[i].Signals = append([]domain.WorldSignal(nil), source.DirectorDecisions[i].Signals...)
 	}
 	for i := range clone.Decisions {
 		clone.Decisions[i].Choices = append([]domain.RankedChoice(nil), source.Decisions[i].Choices...)
@@ -154,6 +168,30 @@ func copyPending(source *domain.PendingAction) *domain.PendingAction {
 }
 
 func ValidateState(state *domain.WorldState, bundle domain.Bundle) error {
+	knownDirectives := make(map[string]bool, len(bundle.Scenario.Directives))
+	for _, definition := range bundle.Scenario.Directives {
+		knownDirectives[definition.ID] = true
+	}
+	for directiveID, uses := range state.Director.Uses {
+		if !knownDirectives[directiveID] || uses < 0 {
+			return fmt.Errorf("director has invalid use count for %s", directiveID)
+		}
+	}
+	for directiveID, lastDay := range state.Director.LastUsedDay {
+		if !knownDirectives[directiveID] || lastDay < 1 || lastDay > state.Day || state.Director.Uses[directiveID] <= 0 {
+			return fmt.Errorf("director has invalid last-used day for %s", directiveID)
+		}
+	}
+	eventsByID := make(map[string]domain.WorldEvent, len(state.Events))
+	for _, event := range state.Events {
+		eventsByID[event.ID] = event
+	}
+	for _, decision := range state.DirectorDecisions {
+		event, ok := eventsByID[decision.EventID]
+		if !knownDirectives[decision.DirectiveID] || decision.Day < 1 || decision.Day > state.Day || decision.Source == "" || !ok || event.Type != "director" || event.CauseID != decision.DirectiveID {
+			return fmt.Errorf("invalid director decision %s on day %d", decision.DirectiveID, decision.Day)
+		}
+	}
 	for key := range state.WorldFlags {
 		if key == "" {
 			return fmt.Errorf("world flag has empty key")

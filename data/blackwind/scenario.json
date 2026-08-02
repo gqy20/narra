@@ -4,6 +4,59 @@
   "duration": 30,
   "topics": ["qingsuizhi","blackwind","combat","chen_family","succession","qinglan","intrigue","intel","market","blackwater","ambush","debt","medicine","route"],
   "markets": [{"id":"M01","location_id":"L01","stock":{"antidote":30},"base_prices":{"antidote":20},"price_step":5,"blockade_flag":"antidote_blockade"}],
+  "directives": [
+    {
+      "id": "quiet-broker-arrival",
+      "description": "坊市数日没有新的公开变化，一名游商趁平静短暂停留，带来额外打听渠道",
+      "trigger": "quiet_days",
+      "from_day": 3,
+      "until_day": 12,
+      "min_quiet_days": 3,
+      "priority": 30,
+      "max_uses": 1,
+      "effects": [{"type":"open_opportunity","target_id":"world","key":"wandering_broker","value":"游商正在白石坊市短暂停留"}]
+    },
+    {
+      "id": "antidote-demand-visible",
+      "description": "解瘴丹库存持续下降，坊市开始公开议论黑风谷行装需求",
+      "trigger": "market_stock_at_most",
+      "target_id": "M01",
+      "key": "antidote",
+      "from_day": 2,
+      "until_day": 16,
+      "min_value": 28,
+      "priority": 60,
+      "max_uses": 1,
+      "effects": [{"type":"set_flag","scope":"world","target_id":"world","key":"antidote_demand_visible","value":"true"}]
+    },
+    {
+      "id": "outer-valley-crowding",
+      "description": "黑风谷外围聚集人数上升，路线上的竞争与戒备开始明显加剧",
+      "trigger": "actors_at_location_at_least",
+      "target_id": "L04",
+      "from_day": 10,
+      "until_day": 21,
+      "min_value": 3,
+      "priority": 80,
+      "max_uses": 1,
+      "effects": [{"type":"set_flag","scope":"world","target_id":"world","key":"outer_valley_crowded","value":"true"}]
+    }
+  ],
+  "opportunity_actions": [
+    {
+      "id": "opportunity:wandering_broker",
+      "key": "wandering_broker",
+      "action_id": "inquire",
+      "name": "向短暂停留的游商打听消息",
+      "description": "游商只停留一段时间；询问他最近替谁在坊市制造声势",
+      "location_id": "L01",
+      "duration": 1,
+      "effects": [
+        {"type":"set_belief","fact_id":"F09","confidence":2,"evidence_strength":2,"source":"wandering-broker"},
+        {"type":"close_opportunity","target_id":"world","key":"wandering_broker"}
+      ]
+    }
+  ],
   "phases": [
     {"id":"germination","name":"萌芽","from_day":1,"to_day":4},
     {"id":"spread","name":"扩散","from_day":5,"to_day":9},

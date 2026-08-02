@@ -18,7 +18,7 @@ func Markdown(writer io.Writer, state *domain.WorldState, bundle domain.Bundle) 
 	if outcome == "" {
 		outcome = "尚未结算"
 	}
-	if _, err := fmt.Fprintf(writer, "- 模拟天数：%d\n- 最终阶段：%s\n- 结局：%s\n- 世界事件：%d\n- 决策记录：%d\n\n", state.Day, state.Phase, outcome, len(state.Events), len(state.Decisions)); err != nil {
+	if _, err := fmt.Fprintf(writer, "- 模拟天数：%d\n- 最终阶段：%s\n- 结局：%s\n- 世界事件：%d\n- NPC 决策记录：%d\n- 世界导演决策：%d\n\n", state.Day, state.Phase, outcome, len(state.Events), len(state.Decisions), len(state.DirectorDecisions)); err != nil {
 		return err
 	}
 	if state.Player != nil {
@@ -121,7 +121,23 @@ func Markdown(writer io.Writer, state *domain.WorldState, bundle domain.Bundle) 
 		}
 	}
 
-	if _, err := fmt.Fprint(writer, "\n## 决策审计\n\n"); err != nil {
+	if len(state.DirectorDecisions) > 0 {
+		if _, err := fmt.Fprint(writer, "\n## 世界导演审计\n\n"); err != nil {
+			return err
+		}
+		for _, decision := range state.DirectorDecisions {
+			if _, err := fmt.Fprintf(writer, "- 第 %d 天：**%s**（`%s`，%d 分，%s）\n", decision.Day, decision.Description, decision.DirectiveID, decision.Score, decision.Source); err != nil {
+				return err
+			}
+			for _, signal := range decision.Signals {
+				if _, err := fmt.Fprintf(writer, "  - 信号 `%s:%s=%d`：%s\n", signal.Type, signal.SubjectID, signal.Value, signal.Description); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if _, err := fmt.Fprint(writer, "\n## NPC 决策审计\n\n"); err != nil {
 		return err
 	}
 	if _, err := fmt.Fprint(writer, "每条记录保留当日最高三个合法候选，用于确认角色没有读取未知事实。\n\n"); err != nil {

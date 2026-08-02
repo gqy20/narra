@@ -13,15 +13,52 @@ const (
 )
 
 type Scenario struct {
-	ID           string             `json:"id"`
-	Title        string             `json:"title"`
-	Duration     int                `json:"duration"`
-	PlanningMode string             `json:"planning_mode,omitempty"`
-	Topics       []string           `json:"topics,omitempty"`
-	Markets      []MarketDefinition `json:"markets,omitempty"`
-	Phases       []SituationPhase   `json:"phases"`
-	FixedEvents  []FixedEvent       `json:"fixed_events"`
-	Contest      Contest            `json:"contest"`
+	ID            string                        `json:"id"`
+	Title         string                        `json:"title"`
+	Duration      int                           `json:"duration"`
+	PlanningMode  string                        `json:"planning_mode,omitempty"`
+	Topics        []string                      `json:"topics,omitempty"`
+	Markets       []MarketDefinition            `json:"markets,omitempty"`
+	Directives    []WorldDirectiveDefinition    `json:"directives,omitempty"`
+	Opportunities []OpportunityActionDefinition `json:"opportunity_actions,omitempty"`
+	Phases        []SituationPhase              `json:"phases"`
+	FixedEvents   []FixedEvent                  `json:"fixed_events"`
+	Contest       Contest                       `json:"contest"`
+}
+
+// OpportunityActionDefinition maps an open world opportunity to a normal
+// authoritative player action. The world director may open the opportunity,
+// but only the player can choose whether to execute its effects.
+type OpportunityActionDefinition struct {
+	ID          string         `json:"id"`
+	Key         string         `json:"key"`
+	ActionID    string         `json:"action_id"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	LocationID  string         `json:"location_id"`
+	Duration    int            `json:"duration,omitempty"`
+	Costs       map[string]int `json:"costs,omitempty"`
+	Effects     []Effect       `json:"effects"`
+}
+
+// WorldDirectiveDefinition is a scenario-authored capability that the world
+// director may select. The director can only choose these definitions; the
+// engine remains responsible for validating and applying their effects.
+type WorldDirectiveDefinition struct {
+	ID           string   `json:"id"`
+	Description  string   `json:"description"`
+	Trigger      string   `json:"trigger"`
+	TargetID     string   `json:"target_id,omitempty"`
+	Key          string   `json:"key,omitempty"`
+	Phase        string   `json:"phase,omitempty"`
+	FromDay      int      `json:"from_day,omitempty"`
+	UntilDay     int      `json:"until_day,omitempty"`
+	MinValue     int      `json:"min_value,omitempty"`
+	MinQuietDays int      `json:"min_quiet_days,omitempty"`
+	Priority     int      `json:"priority"`
+	CooldownDays int      `json:"cooldown_days,omitempty"`
+	MaxUses      int      `json:"max_uses,omitempty"`
+	Effects      []Effect `json:"effects"`
 }
 
 type MarketDefinition struct {
@@ -352,7 +389,34 @@ type WorldState struct {
 	Agreements         map[string]*Agreement
 	Events             []WorldEvent
 	Decisions          []DecisionRecord
+	Director           WorldDirectorState
+	DirectorDecisions  []DirectorDecision
 	Outcome            string
+}
+
+type WorldDirectorState struct {
+	LastPhase        string
+	LastDirectiveDay int
+	Uses             map[string]int
+	LastUsedDay      map[string]int
+}
+
+type WorldSignal struct {
+	Type        string
+	SubjectID   string
+	Value       int
+	Description string
+}
+
+type DirectorDecision struct {
+	Day         int
+	DirectiveID string
+	Trigger     string
+	Description string
+	Score       int
+	Source      string
+	Signals     []WorldSignal
+	EventID     string
 }
 
 type Debt struct {

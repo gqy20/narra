@@ -21,6 +21,12 @@ func TestLoadBlackwindBundle(t *testing.T) {
 	if got, want := len(bundle.Facts), 10; got != want {
 		t.Fatalf("fact count = %d, want %d", got, want)
 	}
+	if got, want := len(bundle.Scenario.Directives), 3; got != want {
+		t.Fatalf("world directive count = %d, want %d", got, want)
+	}
+	if got, want := len(bundle.Scenario.Opportunities), 1; got != want {
+		t.Fatalf("opportunity action count = %d, want %d", got, want)
+	}
 	for _, npc := range bundle.NPCs {
 		if npc.PublicProfile == "" || npc.PublicRole == "" || len(npc.PublicInterests) == 0 || npc.PublicRisk == "" {
 			t.Fatalf("NPC %s lacks complete public decision context", npc.ID)
@@ -306,5 +312,25 @@ func TestValidateRejectsInvalidMarketDefinition(t *testing.T) {
 	bundle.Scenario.Markets[0].Stock["antidote"] = -1
 	if err := Validate(bundle); err == nil {
 		t.Fatal("Validate() accepted negative market stock")
+	}
+}
+
+func TestValidateRejectsUnboundedWorldDirective(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	bundle.Scenario.Directives[0].Effects = []domain.Effect{{Type: "adjust_resource", TargetID: "N01", Key: "combat", Amount: 10}}
+	if err := Validate(bundle); err == nil {
+		t.Fatal("Validate() accepted a director effect that directly changes an actor")
+	}
+
+	bundle, err = Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("reload bundle: %v", err)
+	}
+	bundle.Scenario.Directives[1].TargetID = "missing-market"
+	if err := Validate(bundle); err == nil {
+		t.Fatal("Validate() accepted a director trigger with an unknown market")
 	}
 }

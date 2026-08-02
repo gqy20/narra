@@ -624,6 +624,39 @@ func TestTravelGuidanceSeparatesItemRouteAndKnownDeadline(t *testing.T) {
 	}
 }
 
+func TestWorldDirectorOpportunityBecomesAuthoritativePlayerAction(t *testing.T) {
+	session := testSession(t)
+	for day := 0; day < 3; day++ {
+		if _, err := session.Execute("wait"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	view := session.View()
+	action := actionWithID(view.AvailableActions, "opportunity:wandering_broker")
+	if action.ID == "" || action.Kind != "opportunity" || action.Category != "investigate" {
+		t.Fatalf("director opportunity action = %+v", action)
+	}
+	view, err := session.Execute(action.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actionWithID(view.AvailableActions, action.ID) != nil {
+		t.Fatalf("consumed opportunity remained available: %+v", view.AvailableActions)
+	}
+	found := false
+	for _, belief := range view.KnownFacts {
+		if belief.FactID == "F09" && belief.Confidence == 2 {
+			if belief.Source != "路过游商" {
+				t.Fatalf("opportunity source was not localized: %+v", belief)
+			}
+			found = true
+		}
+	}
+	if !found || view.Day != 4 {
+		t.Fatalf("opportunity did not produce its authoritative result: %+v", view)
+	}
+}
+
 func TestInvalidActionDoesNotAdvanceSession(t *testing.T) {
 	session := testSession(t)
 	if _, err := session.Execute("not-an-action"); err == nil {

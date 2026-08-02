@@ -43,6 +43,11 @@ func (s *Session) withDecisionContext(state *domain.WorldState, action Available
 		action.ExpectedOutcomes = []string{"把这条线索核验为可靠结论，并整理关联线索"}
 		action.Resolves = []string{"这条线索尚未核实"}
 		action.KnownConditions = []string{"你持有这条线索", "线索仍待核实"}
+	case "opportunity":
+		action.ExpectedOutcomes = []string{"消耗这次短暂机会，获得一条新的可追查消息"}
+		action.KnownConditions = []string{"该世界机会仍然开放", "你正在机会所在地"}
+		action.Unknowns = []string{"新消息可能仍需要进一步核验"}
+		action.Irreversible = true
 	case "buy":
 		action.ExpectedOutcomes = []string{"获得 1 件" + action.TargetName}
 		action.KnownConditions = []string{"当前仍有库存", "灵石足够支付"}
@@ -135,6 +140,7 @@ func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOptio
 		return options
 	}
 	s.addInvestigationActions(options, state)
+	s.addOpportunityActions(options, state)
 	s.addMarketActions(options, state)
 	s.addMovementActions(options, state)
 	s.addInformationActions(options, state)
@@ -147,6 +153,47 @@ func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOptio
 		advanceMode: "next",
 	}
 	return options
+}
+
+func (s *Session) addOpportunityActions(options map[string]actionOption, state *domain.WorldState) {
+	definitions := append([]domain.OpportunityActionDefinition(nil), s.bundle.Scenario.Opportunities...)
+	sort.Slice(definitions, func(i, j int) bool { return definitions[i].ID < definitions[j].ID })
+	for _, definition := range definitions {
+		if _, open := state.Opportunities[definition.Key]; !open || state.Player.Location != definition.LocationID {
+			continue
+		}
+		action, ok := s.bundle.Actions[definition.ActionID]
+		if !ok {
+			continue
+		}
+		duration := definition.Duration
+		if duration <= 0 {
+			duration = action.Duration
+		}
+		if !fitsHorizon(state.Day, duration, s.bundle.Scenario.Duration) || !canPayVisibleCosts(state.Player.Resources, definition.Costs) {
+			continue
+		}
+		conditions := []domain.Condition{{Type: "opportunity", Key: definition.Key}, {Type: "location", Value: definition.LocationID}}
+		options[definition.ID] = actionOption{
+			view: AvailableAction{
+				ID: definition.ID, Kind: "opportunity", Category: "investigate", Name: definition.Name,
+				Description: definition.Description, Duration: duration, Costs: copyIntMap(definition.Costs),
+			},
+			command: &domain.PlayerCommand{
+				ActionID: action.ID, Duration: duration, Description: definition.Name,
+				Conditions: conditions, Effects: append([]domain.Effect(nil), definition.Effects...), Costs: copyIntMap(definition.Costs),
+			},
+		}
+	}
+}
+
+func canPayVisibleCosts(resources, costs map[string]int) bool {
+	for resource, amount := range costs {
+		if resources[resource] < amount {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Session) addInvestigationActions(options map[string]actionOption, state *domain.WorldState) {

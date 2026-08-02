@@ -238,6 +238,8 @@ func (s *Session) visibleSource(state *domain.WorldState, source string) string 
 		return "亲自核验"
 	case "player-investigation-lead":
 		return "核验所得线索"
+	case "wandering-broker":
+		return "路过游商"
 	case state.Player.ID:
 		return "你"
 	}

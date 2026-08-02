@@ -87,6 +87,8 @@ CLI 是可完整通关的正式客户端，根据当前地点、资源、物品�
 
 真实模型的五类玩家试玩、发现的问题与修复记录见 [`docs/NPC_DIALOGUE_PLAYTEST.md`](docs/NPC_DIALOGUE_PLAYTEST.md)。
 
+世界推进已加入纯确定性的受限导演层：它根据局势沉寂、市场库存和地点聚集人数从场景白名单中选择环境指令，但不能直接修改角色资源、物品、关系、行动或胜负。设计与审计协议见 [`docs/WORLD_DIRECTOR.md`](docs/WORLD_DIRECTOR.md)。
+
 存档使用 `saves` 目录下的命名槽。自动存档默认开启，每次成功行动后覆盖 `autosave` 槽；手动覆盖已有槽需要追加 `confirm`：
 
 ```powershell
