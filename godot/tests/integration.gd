@@ -15,6 +15,14 @@ func _run() -> void:
 		return _fail("health request timed out")
 	if app.connection_label.text != "":
 		return _fail("healthy start screen leaks local-service diagnostics")
+	if app.body_font.resource_path != "res://assets/fonts/SourceHanSansCN-Regular.otf":
+		return _fail("body copy is not using the bundled Source Han Sans font")
+	if app.medium_font.resource_path != "res://assets/fonts/SourceHanSansCN-Medium.otf":
+		return _fail("control typography is not using bundled Source Han Sans Medium")
+	if app.display_font.resource_path != "res://assets/fonts/SourceHanSerifCN-SemiBold.otf":
+		return _fail("display typography is not using bundled Source Han Serif")
+	if app.narrative_font.resource_path != "res://assets/fonts/LXGWWenKaiLite-Regular.ttf":
+		return _fail("narrative typography is not using LXGW WenKai Lite")
 	if "从白石坊市入局" not in _descendant_text(app.start_layer):
 		return _fail("start call to action does not match the actual opening location")
 
@@ -37,6 +45,8 @@ func _run() -> void:
 		return _fail("new game returned no public world map")
 	if app.world_map_view.locations.size() != 5:
 		return _fail("dimensional world map did not consume the player view")
+	if world_map.get("actors", []).size() != 3 or app.world_map_view.actors.size() != 3 or not app.world_map_view.has_actor_plan_presentation():
+		return _fail("world map did not expose the three core actor plans")
 	if not app.world_map_view.has_formal_assets():
 		return _fail("world map does not use the registered scenic assets")
 	var direct_route := {}
@@ -92,6 +102,18 @@ func _run() -> void:
 	app._open_audio_settings()
 	if not app.settings_layer.visible or app.action_canvas.visible:
 		return _fail("audio settings entry did not open")
+	var settings_text := _descendant_text(app.settings_box)
+	if "窗口模式" not in settings_text or "输出分辨率" not in settings_text or "界面缩放" not in settings_text:
+		return _fail("display settings do not expose mode, resolution, and UI scale")
+	if "4K" not in app._resolution_label(Vector2i(3840, 2160)):
+		return _fail("display settings do not expose a 4K output preset")
+	var original_display_mode: String = app.display_mode
+	app.display_mode = "borderless"
+	app._apply_display_settings(false)
+	if not app.display_resolution_option.disabled or "原生" not in app.display_resolution_option.get_item_text(0):
+		return _fail("fullscreen display mode does not use the monitor's native resolution")
+	app.display_mode = original_display_mode
+	app._apply_display_settings(false)
 	app._toggle_motion()
 	if app.motion_enabled or app.world_map_view.motion_enabled or app.presentation_director.motion_enabled:
 		return _fail("reduced-motion preference did not propagate to presentation components")
@@ -102,19 +124,22 @@ func _run() -> void:
 	app._on_map_location_selected("L02")
 	if app.selected_map_location_id != "L02" or app.map_detail_box.get_child_count() == 0:
 		return _fail("map location selection has no detail state")
-	if "前往青岚门驻地" not in _descendant_text(app.map_detail_box):
+	var qinglan_map_text := _descendant_text(app.map_detail_box)
+	if "前往青岚门驻地" not in qinglan_map_text:
 		return _fail("map travel call to action does not name its destination")
+	if "此地人物动向" not in qinglan_map_text or "沈砚秋" not in qinglan_map_text or "当前" not in qinglan_map_text:
+		return _fail("map detail does not explain who is acting at the selected place")
 	app._set_visual_mode("location")
 	if not app.location_panel.visible or app.map_panel.visible or not app.action_dock.visible:
 		return _fail("location scene mode did not replace the map")
 	app._set_visual_mode("map")
 	if app.action_dock.visible:
 		return _fail("map mode keeps the narrative action dock open")
-	if app.map_mode_button.text != "地图" or app.location_mode_button.text != "当前地点":
+	if app.map_mode_button.text != "◇ 地图" or app.location_mode_button.text != "◉ 当前地点":
 		return _fail("map and location modes still rely on unexplained poetic labels")
-	if app.day_label.text != "第 1 / 30 日":
+	if app.day_label.text != "◷ 1 / 30":
 		return _fail("initial day is not player-facing day one")
-	if app.phase_label.text != "筹备期":
+	if app.place_label.text != "◆ 白石坊市" or app.phase_label.text != "◌ 筹备":
 		return _fail("initial phase does not explain the preparation stage")
 	if app.timing_label.text != "第24天 · 传闻":
 		return _fail("initial known timing is not visible")
@@ -123,6 +148,10 @@ func _run() -> void:
 		return _fail("travel dossier does not expose the player summary")
 	if app.journal_tabs.get_tab_count() != 4 or app.journal_travel_button.text != "行装 !2":
 		return _fail("travel dossier does not expose four layered sections with blocking gear status")
+	app._select_journal_tab(2)
+	var people_text := _descendant_text(app.people_box)
+	if "局势追踪" not in people_text or "核心人物 3" not in people_text or "目标" not in people_text or "计划" not in people_text or "缘由" not in people_text:
+		return _fail("people dossier does not explain autonomous actor goals and plans")
 	var player_metrics := _descendant_text(app.player_resources_box)
 	if "战力 2" not in player_metrics or "灵石 100" not in player_metrics or "助力 0" in player_metrics or "伤势 0" in player_metrics:
 		return _fail("player summary did not hide zero-value secondary metrics")

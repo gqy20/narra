@@ -82,6 +82,7 @@ type EndingSummary struct {
 	Review             []string           `json:"review,omitempty"`
 	Highlights         []string           `json:"highlights"`
 	Influence          []VisibleInfluence `json:"influence,omitempty"`
+	ActorPlanChanges   []string           `json:"actor_plan_changes,omitempty"`
 }
 
 type VisibleInfluence struct {
@@ -153,6 +154,25 @@ type VisibleLocation struct {
 type VisibleWorldMap struct {
 	Locations []VisibleMapLocation `json:"locations"`
 	Routes    []VisibleMapRoute    `json:"routes"`
+	Actors    []VisibleActorPlan   `json:"actors,omitempty"`
+}
+
+type VisibleActorPlan struct {
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	Faction            string `json:"faction"`
+	LocationID         string `json:"location_id"`
+	LocationName       string `json:"location_name"`
+	PublicGoal         string `json:"public_goal"`
+	Plan               string `json:"plan"`
+	Reason             string `json:"reason"`
+	Status             string `json:"status"`
+	DestinationID      string `json:"destination_id,omitempty"`
+	DestinationName    string `json:"destination_name,omitempty"`
+	ExpectedDay        int    `json:"expected_day,omitempty"`
+	InfluencedByPlayer bool   `json:"influenced_by_player"`
+	ChangedByPlayer    bool   `json:"changed_by_player"`
+	PreviousPlan       string `json:"previous_plan,omitempty"`
 }
 
 type VisibleMapLocation struct {
@@ -180,13 +200,14 @@ type VisibleMapRoute struct {
 }
 
 type VisibleActor struct {
-	ID            string   `json:"id"`
-	Name          string   `json:"name"`
-	Faction       string   `json:"faction"`
-	PublicProfile string   `json:"public_profile"`
-	PublicRole    string   `json:"public_role,omitempty"`
-	PublicFocus   []string `json:"public_focus,omitempty"`
-	PublicRisk    string   `json:"public_risk,omitempty"`
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	Faction       string            `json:"faction"`
+	PublicProfile string            `json:"public_profile"`
+	PublicRole    string            `json:"public_role,omitempty"`
+	PublicFocus   []string          `json:"public_focus,omitempty"`
+	PublicRisk    string            `json:"public_risk,omitempty"`
+	Plan          *VisibleActorPlan `json:"plan,omitempty"`
 }
 
 type VisibleBelief struct {

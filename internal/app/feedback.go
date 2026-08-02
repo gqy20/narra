@@ -243,7 +243,14 @@ func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 	changedDecisions := 0
 	for _, influence := range ending.Influence {
 		changedDecisions += len(influence.Changes)
+		for _, change := range influence.Changes {
+			ending.ActorPlanChanges = append(ending.ActorPlanChanges, fmt.Sprintf(
+				"第 %d 日，%s原本准备%s，后来改为%s。",
+				change.Day, influence.ActorName, change.WithoutInformation, change.WithInformation,
+			))
+		}
 	}
+	ending.ActorPlanChanges = uniqueStrings(ending.ActorPlanChanges)
 	if changedDecisions > 0 {
 		ending.Highlights = append([]string{fmt.Sprintf("你传递的消息改变了 %d 个关键选择，并影响了最终归属。", changedDecisions)}, ending.Highlights...)
 	}

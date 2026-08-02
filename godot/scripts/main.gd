@@ -9,6 +9,10 @@ const CausalSealTexture = preload("res://assets/ui/causal/causal-seal.png")
 const DecisionFrameTexture = preload("res://assets/ui/causal/decision-frame.png")
 const TimelineArrowTexture = preload("res://assets/ui/causal/timeline-arrow.png")
 const StartBackgroundTexture = preload("res://assets/locations/market/background.png")
+const SourceHanSansFont = preload("res://assets/fonts/SourceHanSansCN-Regular.otf")
+const SourceHanSansMediumFont = preload("res://assets/fonts/SourceHanSansCN-Medium.otf")
+const SourceHanSerifFont = preload("res://assets/fonts/SourceHanSerifCN-SemiBold.otf")
+const WenKaiFont = preload("res://assets/fonts/LXGWWenKaiLite-Regular.ttf")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
 const BUNDLED_SERVER_NAME := "fantu-server.exe"
@@ -18,6 +22,21 @@ const LOG_MAX_MIB := 5
 const LOG_BACKUPS := 5
 const LOG_LEVELS: Array[String] = ["DEBUG", "INFO", "WARN", "ERROR"]
 const LOG_LEVEL_RANK := {"DEBUG": 0, "INFO": 1, "WARN": 2, "ERROR": 3}
+const DISPLAY_MODE_KEYS: Array[String] = ["windowed", "borderless", "exclusive"]
+const DISPLAY_MODE_LABELS := {
+	"windowed": "窗口",
+	"borderless": "无边框全屏",
+	"exclusive": "独占全屏",
+}
+const DISPLAY_RESOLUTION_PRESETS: Array[Vector2i] = [
+	Vector2i(1280, 800),
+	Vector2i(1600, 900),
+	Vector2i(1920, 1080),
+	Vector2i(2560, 1440),
+	Vector2i(3840, 2160),
+]
+const UI_SCALE_PRESETS: Array[float] = [1.0, 1.25, 1.5, 1.75]
+const MINIMUM_UI_CANVAS := Vector2i(1100, 700)
 const DIAGNOSTIC_FILE_MAX_BYTES := 25 * 1024 * 1024
 const TYPE_SCALE := {
 	"display": 60,
@@ -73,6 +92,9 @@ var view_before_action: Dictionary = {}
 var presentation_registry = PresentationRegistryScript.new()
 var sound_enabled := true
 var motion_enabled := true
+var display_mode := "windowed"
+var display_resolution := Vector2i(1280, 800)
+var ui_scale := 1.0
 var presentation_busy := false
 var active_action_category := ""
 var show_all_actions := false
@@ -189,9 +211,14 @@ var motion_button: Button
 var settings_layer: Control
 var settings_box: VBoxContainer
 var log_level_button: Button
-var body_font: SystemFont
-var medium_font: SystemFont
-var display_font: SystemFont
+var display_mode_option: OptionButton
+var display_resolution_option: OptionButton
+var ui_scale_option: OptionButton
+var display_status_label: Label
+var body_font: Font
+var medium_font: Font
+var display_font: Font
+var narrative_font: Font
 
 
 func _ready() -> void:
@@ -205,6 +232,7 @@ func _ready() -> void:
 		"portable": portable_mode,
 	})
 	_configure_theme()
+	_apply_display_settings(false)
 	audio_director = AudioDirectorScript.new()
 	add_child(audio_director)
 	http.request_completed.connect(_on_request_completed)
@@ -337,7 +365,7 @@ func _configure_runtime_identity() -> void:
 	session_id = crypto.generate_random_bytes(16).hex_encode()
 	shutdown_token = crypto.generate_random_bytes(24).hex_encode()
 	build_version = str(ProjectSettings.get_setting("application/config/version", "dev"))
-	_load_diagnostic_settings()
+	_load_user_settings()
 	if not OS.has_feature("editor"):
 		var build_info_path := OS.get_executable_path().get_base_dir().path_join("build-info.json")
 		if FileAccess.file_exists(build_info_path):
@@ -465,22 +493,36 @@ func _prune_log_archives(prefix: String) -> void:
 		DirAccess.remove_absolute(archived_logs_dir.path_join(archives.pop_front()))
 
 
-func _load_diagnostic_settings() -> void:
+func _load_user_settings() -> void:
 	var config := ConfigFile.new()
 	if config.load(runtime_root.path_join("settings.cfg")) == OK:
 		var configured_level := str(config.get_value("diagnostics", "log_level", "INFO")).to_upper()
 		if LOG_LEVELS.has(configured_level):
 			log_level = configured_level
+		var configured_mode := str(config.get_value("display", "mode", "windowed"))
+		if DISPLAY_MODE_KEYS.has(configured_mode):
+			display_mode = configured_mode
+		var configured_resolution = config.get_value("display", "resolution", Vector2i(1280, 800))
+		if configured_resolution is Vector2i and DISPLAY_RESOLUTION_PRESETS.has(configured_resolution):
+			display_resolution = configured_resolution
+		var configured_scale := float(config.get_value("display", "ui_scale", 1.0))
+		for preset in UI_SCALE_PRESETS:
+			if is_equal_approx(configured_scale, preset):
+				ui_scale = preset
+				break
 
 
-func _save_diagnostic_settings() -> void:
+func _save_user_settings() -> void:
 	var config := ConfigFile.new()
 	var settings_path := runtime_root.path_join("settings.cfg")
 	config.load(settings_path)
 	config.set_value("diagnostics", "log_level", log_level)
+	config.set_value("display", "mode", display_mode)
+	config.set_value("display", "resolution", display_resolution)
+	config.set_value("display", "ui_scale", ui_scale)
 	var save_error := config.save(settings_path)
 	if save_error != OK:
-		_log_event("ERROR", "settings_save_failed", "could not save diagnostic settings", {"error": save_error, "path": settings_path})
+		_log_event("ERROR", "settings_save_failed", "could not save user settings", {"error": save_error, "path": settings_path})
 
 
 func _initialize_crash_tracking() -> void:
@@ -653,6 +695,9 @@ func _diagnostic_environment() -> Dictionary:
 		"screen_width": screen_size.x,
 		"screen_height": screen_size.y,
 		"screen_dpi": DisplayServer.screen_get_dpi(),
+		"window_mode": display_mode,
+		"window_resolution": "%dx%d" % [display_resolution.x, display_resolution.y],
+		"ui_scale": ui_scale,
 		"graphics_adapter": RenderingServer.get_video_adapter_name(),
 		"graphics_vendor": RenderingServer.get_video_adapter_vendor(),
 		"graphics_api": RenderingServer.get_video_adapter_api_version(),
@@ -667,15 +712,10 @@ func _diagnostic_environment() -> Dictionary:
 
 
 func _configure_theme() -> void:
-	body_font = SystemFont.new()
-	body_font.font_names = PackedStringArray(["Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC"])
-	body_font.font_weight = 400
-	medium_font = SystemFont.new()
-	medium_font.font_names = body_font.font_names
-	medium_font.font_weight = 500
-	display_font = SystemFont.new()
-	display_font.font_names = PackedStringArray(["STZhongsong", "SimSun", "Noto Serif CJK SC"])
-	display_font.font_weight = 600
+	body_font = SourceHanSansFont
+	medium_font = SourceHanSansMediumFont
+	display_font = SourceHanSerifFont
+	narrative_font = WenKaiFont
 	var app_theme := Theme.new()
 	app_theme.default_font = body_font
 	app_theme.default_font_size = TYPE_SCALE.body
@@ -770,10 +810,18 @@ func _build_header() -> void:
 	var brand := Label.new()
 	brand.text = "凡途"
 	brand.add_theme_font_override("font", display_font)
-	brand.add_theme_font_size_override("font_size", 25)
+	brand.add_theme_font_size_override("font_size", 24)
 	brand.add_theme_color_override("font_color", COLORS.accent)
-	brand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(brand)
+	var world_title := Label.new()
+	world_title.text = "·  黑风谷山川"
+	world_title.add_theme_font_override("font", display_font)
+	world_title.add_theme_font_size_override("font_size", 16)
+	world_title.add_theme_color_override("font_color", Color(COLORS.accent, 0.78))
+	row.add_child(world_title)
+	var header_spacer := Control.new()
+	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(header_spacer)
 
 	day_label = _hud_label(row, COLORS.accent)
 	place_label = _hud_label(row, COLORS.ink)
@@ -781,17 +829,26 @@ func _build_header() -> void:
 	timing_label = Label.new()
 	timing_label.hide()
 	header.add_child(timing_label)
-	var journal_button := _utility_button("卷宗", _open_journal)
-	journal_button.custom_minimum_size = Vector2(64, 34)
+	var journal_button := _utility_button("卷", _open_journal)
+	journal_button.tooltip_text = "随身卷宗"
+	journal_button.custom_minimum_size = Vector2(42, 34)
 	row.add_child(journal_button)
-	sound_button = _utility_button("设置", _open_audio_settings)
-	sound_button.custom_minimum_size = Vector2(64, 34)
-	row.add_child(sound_button)
-	var save_button := _utility_button("留存", _save_game)
-	save_button.custom_minimum_size = Vector2(64, 34)
+	var save_button := _utility_button("存", _save_game)
+	save_button.tooltip_text = "保存当前进度"
+	save_button.custom_minimum_size = Vector2(42, 34)
 	row.add_child(save_button)
-	var return_button := _utility_button("卷首", _return_to_start)
-	return_button.custom_minimum_size = Vector2(64, 34)
+	var tool_divider := Label.new()
+	tool_divider.text = "│"
+	tool_divider.add_theme_color_override("font_color", Color(COLORS.line, 0.72))
+	tool_divider.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(tool_divider)
+	sound_button = _utility_button("⚙", _open_audio_settings)
+	sound_button.tooltip_text = "声音与显示设置"
+	sound_button.custom_minimum_size = Vector2(42, 34)
+	row.add_child(sound_button)
+	var return_button := _utility_button("↩", _return_to_start)
+	return_button.tooltip_text = "返回卷首"
+	return_button.custom_minimum_size = Vector2(42, 34)
 	row.add_child(return_button)
 
 
@@ -920,19 +977,21 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	var mode_row := HBoxContainer.new()
 	mode_row.add_theme_constant_override("separation", 8)
 	parent.add_child(mode_row)
-	var heading := Label.new()
-	heading.text = "黑风谷山川"
-	heading.add_theme_font_override("font", display_font)
-	heading.add_theme_font_size_override("font_size", TYPE_SCALE.section)
-	heading.add_theme_color_override("font_color", COLORS.accent)
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mode_row.add_child(heading)
-	map_mode_button = _mode_button("地图", _set_visual_mode.bind("map"))
-	map_mode_button.custom_minimum_size = Vector2(82, 36)
-	mode_row.add_child(map_mode_button)
-	location_mode_button = _mode_button("当前地点", _set_visual_mode.bind("location"))
-	location_mode_button.custom_minimum_size = Vector2(104, 36)
-	mode_row.add_child(location_mode_button)
+	var mode_spacer := Control.new()
+	mode_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mode_row.add_child(mode_spacer)
+	var mode_switch := PanelContainer.new()
+	mode_switch.add_theme_stylebox_override("panel", _panel_style(Color(COLORS.panel_alt, 0.52), 1, 5, Color(COLORS.line, 0.74), 2, 2))
+	mode_row.add_child(mode_switch)
+	var mode_buttons := HBoxContainer.new()
+	mode_buttons.add_theme_constant_override("separation", 0)
+	mode_switch.add_child(mode_buttons)
+	location_mode_button = _mode_button("◉ 当前地点", _set_visual_mode.bind("location"))
+	location_mode_button.custom_minimum_size = Vector2(118, 34)
+	mode_buttons.add_child(location_mode_button)
+	map_mode_button = _mode_button("◇ 地图", _set_visual_mode.bind("map"))
+	map_mode_button.custom_minimum_size = Vector2(82, 34)
+	mode_buttons.add_child(map_mode_button)
 
 	var stage_frame := PanelContainer.new()
 	stage_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1075,10 +1134,10 @@ func _build_start_layer() -> void:
 	eyebrow.add_theme_font_size_override("font_size", TYPE_SCALE.meta)
 	content.add_child(eyebrow)
 	var title := Label.new()
-	title.text = "凡 途"
+	title.text = "凡途"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	title.add_theme_font_override("font", display_font)
-	title.add_theme_font_size_override("font_size", 68)
+	title.add_theme_font_size_override("font_size", 62)
 	title.add_theme_color_override("font_color", COLORS.ink)
 	content.add_child(title)
 	var subtitle := Label.new()
@@ -1133,7 +1192,7 @@ func _build_journal_layer() -> void:
 	journal_layer.hide()
 	add_child(journal_layer)
 	var shade := ColorRect.new()
-	shade.color = Color("030504b8")
+	shade.color = Color("030504df")
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	journal_layer.add_child(shade)
@@ -1150,7 +1209,7 @@ func _build_journal_layer() -> void:
 	journal_panel.anchor_right = 0.992
 	journal_panel.anchor_top = 0.026
 	journal_panel.anchor_bottom = 0.974
-	journal_panel.add_theme_stylebox_override("panel", _panel_style(Color("101612f5"), 1, 3, Color(COLORS.accent, 0.44), 24, 20))
+	journal_panel.add_theme_stylebox_override("panel", _panel_style(Color("101612ff"), 1, 3, Color(COLORS.accent, 0.44), 24, 20))
 	journal_layer.add_child(journal_panel)
 	var outer := VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 12)
@@ -1224,27 +1283,249 @@ func _build_settings_layer() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	settings_layer.add_child(center)
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(500, 610)
+	card.custom_minimum_size = Vector2(820, 650)
 	card.add_theme_stylebox_override("panel", _panel_style(COLORS.panel, 1, 14, COLORS.accent_pressed, 28, 24))
 	center.add_child(card)
 	settings_box = VBoxContainer.new()
-	settings_box.add_theme_constant_override("separation", 13)
+	settings_box.add_theme_constant_override("separation", 12)
 	card.add_child(settings_box)
 	_text(settings_box, "体验设置", false, 25)
-	_text(settings_box, "声音与动态效果只影响呈现，不会改变推演结果。", true, 14)
-	_audio_slider(settings_box, "主音量", "Master", 82.0)
-	_audio_slider(settings_box, "环境", "Ambient", 64.0)
-	_audio_slider(settings_box, "事件", "Event", 78.0)
-	_audio_slider(settings_box, "界面", "UI", 70.0)
+	_text(settings_box, "显示、声音与动态效果只影响呈现，不会改变推演结果。", true, 14)
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 34)
+	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	settings_box.add_child(columns)
+	var display_box := VBoxContainer.new()
+	display_box.custom_minimum_size.x = 350
+	display_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	display_box.add_theme_constant_override("separation", 12)
+	columns.add_child(display_box)
+	var display_heading := _text(display_box, "显示", false, TYPE_SCALE.section)
+	display_heading.add_theme_font_override("font", display_font)
+	display_heading.add_theme_color_override("font_color", COLORS.accent)
+	display_mode_option = _display_option(display_box, "窗口模式", "无边框全屏会使用当前显示器的原生分辨率。")
+	display_mode_option.item_selected.connect(_on_display_mode_selected)
+	display_resolution_option = _display_option(display_box, "输出分辨率", "窗口模式可选择输出尺寸；全屏模式始终使用显示器原生分辨率。")
+	display_resolution_option.item_selected.connect(_on_display_resolution_selected)
+	ui_scale_option = _display_option(display_box, "界面缩放", "高分辨率下可以放大文字与控件；不适合当前画布的比例会自动隐藏。")
+	ui_scale_option.item_selected.connect(_on_ui_scale_selected)
+	display_status_label = _text(display_box, "", true, TYPE_SCALE.meta)
+	display_status_label.add_theme_color_override("font_color", COLORS.muted)
+	display_status_label.add_theme_constant_override("line_spacing", 4)
 	motion_button = _action_button("动态效果 · 开启", _toggle_motion)
-	settings_box.add_child(motion_button)
-	settings_box.add_child(_action_button("全部静音", _toggle_sound))
+	display_box.add_child(motion_button)
+
+	var audio_box := VBoxContainer.new()
+	audio_box.custom_minimum_size.x = 350
+	audio_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	audio_box.add_theme_constant_override("separation", 10)
+	columns.add_child(audio_box)
+	var audio_heading := _text(audio_box, "声音", false, TYPE_SCALE.section)
+	audio_heading.add_theme_font_override("font", display_font)
+	audio_heading.add_theme_color_override("font_color", COLORS.accent)
+	_audio_slider(audio_box, "主音量", "Master", 82.0)
+	_audio_slider(audio_box, "环境", "Ambient", 64.0)
+	_audio_slider(audio_box, "事件", "Event", 78.0)
+	_audio_slider(audio_box, "界面", "UI", 70.0)
+	audio_box.add_child(_action_button("全部静音", _toggle_sound))
+
+	var rule := HSeparator.new()
+	rule.modulate = Color(COLORS.accent, 0.30)
+	settings_box.add_child(rule)
+	var diagnostic_row := HBoxContainer.new()
+	diagnostic_row.add_theme_constant_override("separation", 8)
+	settings_box.add_child(diagnostic_row)
 	log_level_button = _action_button("日志等级 · %s" % log_level, _cycle_log_level)
 	log_level_button.tooltip_text = "DEBUG 记录更多诊断信息；INFO 适合正式版。服务端会在下次启动时应用新等级。"
-	settings_box.add_child(log_level_button)
-	settings_box.add_child(_action_button("打开日志目录", _open_log_folder))
-	settings_box.add_child(_action_button("导出诊断包", _export_diagnostics))
+	log_level_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	diagnostic_row.add_child(log_level_button)
+	var log_folder_button := _action_button("打开日志", _open_log_folder)
+	log_folder_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	diagnostic_row.add_child(log_folder_button)
+	var diagnostics_button := _action_button("导出诊断包", _export_diagnostics)
+	diagnostics_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	diagnostic_row.add_child(diagnostics_button)
 	settings_box.add_child(_button("返回游戏", _close_audio_settings, false))
+	_refresh_display_controls()
+
+
+func _display_option(parent: VBoxContainer, label_text: String, tooltip: String) -> OptionButton:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	parent.add_child(row)
+	var label := Label.new()
+	label.text = label_text
+	label.custom_minimum_size.x = 92
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_override("font", medium_font)
+	label.add_theme_color_override("font_color", COLORS.ink)
+	row.add_child(label)
+	var option := OptionButton.new()
+	option.custom_minimum_size = Vector2(220, 42)
+	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	option.add_theme_font_override("font", medium_font)
+	option.add_theme_font_size_override("font_size", TYPE_SCALE.detail)
+	option.tooltip_text = tooltip
+	row.add_child(option)
+	return option
+
+
+func _on_display_mode_selected(index: int) -> void:
+	if not display_mode_option or index < 0:
+		return
+	display_mode = str(display_mode_option.get_item_metadata(index))
+	ui_scale = _nearest_available_ui_scale(ui_scale)
+	_apply_display_settings(true)
+
+
+func _on_display_resolution_selected(index: int) -> void:
+	if not display_resolution_option or display_resolution_option.disabled or index < 0:
+		return
+	var selected_resolution = display_resolution_option.get_item_metadata(index)
+	if selected_resolution is Vector2i:
+		display_resolution = selected_resolution
+	ui_scale = _nearest_available_ui_scale(ui_scale)
+	_apply_display_settings(true)
+
+
+func _on_ui_scale_selected(index: int) -> void:
+	if not ui_scale_option or index < 0:
+		return
+	ui_scale = float(ui_scale_option.get_item_metadata(index))
+	_apply_display_settings(true)
+
+
+func _apply_display_settings(persist := true) -> void:
+	if not DISPLAY_MODE_KEYS.has(display_mode):
+		display_mode = "windowed"
+	if not _available_windowed_resolutions().has(display_resolution):
+		display_resolution = _available_windowed_resolutions()[0]
+	ui_scale = _nearest_available_ui_scale(ui_scale)
+	if DisplayServer.get_name() != "headless":
+		var window := get_window()
+		window.content_scale_size = _current_output_size()
+		window.content_scale_factor = ui_scale
+		match display_mode:
+			"borderless":
+				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+			"exclusive":
+				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+			_:
+				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+				DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, false)
+				DisplayServer.window_set_min_size(Vector2i(960, 600))
+				DisplayServer.window_set_size(display_resolution)
+				_center_window_on_current_screen(display_resolution)
+	_refresh_display_controls()
+	if persist:
+		_save_user_settings()
+		_log_event("INFO", "display_settings_changed", "display settings applied", {
+			"mode": display_mode,
+			"resolution": "%dx%d" % [display_resolution.x, display_resolution.y],
+			"ui_scale": ui_scale,
+		})
+
+
+func _center_window_on_current_screen(window_size: Vector2i) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var screen := DisplayServer.window_get_current_screen()
+	var usable := DisplayServer.screen_get_usable_rect(screen)
+	var centered := usable.position + (usable.size - window_size) / 2
+	DisplayServer.window_set_position(Vector2i(maxi(usable.position.x, centered.x), maxi(usable.position.y, centered.y)))
+
+
+func _refresh_display_controls() -> void:
+	if not display_mode_option or not display_resolution_option or not ui_scale_option:
+		return
+	display_mode_option.clear()
+	for key in DISPLAY_MODE_KEYS:
+		var mode_index := display_mode_option.item_count
+		display_mode_option.add_item(str(DISPLAY_MODE_LABELS[key]))
+		display_mode_option.set_item_metadata(mode_index, key)
+		if key == display_mode:
+			display_mode_option.select(mode_index)
+
+	display_resolution_option.clear()
+	if display_mode == "windowed":
+		display_resolution_option.disabled = false
+		for resolution in _available_windowed_resolutions():
+			var resolution_index := display_resolution_option.item_count
+			display_resolution_option.add_item(_resolution_label(resolution))
+			display_resolution_option.set_item_metadata(resolution_index, resolution)
+			if resolution == display_resolution:
+				display_resolution_option.select(resolution_index)
+	else:
+		display_resolution_option.disabled = true
+		display_resolution_option.add_item("原生 · %s" % _resolution_label(_current_screen_size()))
+
+	ui_scale_option.clear()
+	for scale_value in _available_ui_scales():
+		var scale_index := ui_scale_option.item_count
+		ui_scale_option.add_item("%d%%" % int(round(scale_value * 100.0)))
+		ui_scale_option.set_item_metadata(scale_index, scale_value)
+		if is_equal_approx(scale_value, ui_scale):
+			ui_scale_option.select(scale_index)
+	if display_status_label:
+		var screen_size := _current_screen_size()
+		var quality_note := "已支持 4K 原生输出" if screen_size.x >= 3840 and screen_size.y >= 2160 else "4K 选项会在兼容显示器上出现"
+		display_status_label.text = "当前显示器 %d × %d\n%s；场景素材仍按现有清晰度放大。" % [screen_size.x, screen_size.y, quality_note]
+
+
+func _available_windowed_resolutions() -> Array[Vector2i]:
+	var available: Array[Vector2i] = []
+	if DisplayServer.get_name() == "headless":
+		return DISPLAY_RESOLUTION_PRESETS.duplicate()
+	var usable_size := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen()).size
+	for resolution in DISPLAY_RESOLUTION_PRESETS:
+		if resolution.x <= usable_size.x and resolution.y <= usable_size.y:
+			available.append(resolution)
+	if available.is_empty():
+		available.append(Vector2i(1280, 800))
+	return available
+
+
+func _available_ui_scales() -> Array[float]:
+	var available: Array[float] = []
+	var output_size := _current_output_size()
+	for scale_value in UI_SCALE_PRESETS:
+		var virtual_size := Vector2i(roundi(output_size.x / scale_value), roundi(output_size.y / scale_value))
+		if scale_value == 1.0 or (virtual_size.x >= MINIMUM_UI_CANVAS.x and virtual_size.y >= MINIMUM_UI_CANVAS.y):
+			available.append(scale_value)
+	return available
+
+
+func _nearest_available_ui_scale(requested: float) -> float:
+	var result := 1.0
+	for scale_value in _available_ui_scales():
+		if scale_value <= requested or is_equal_approx(scale_value, requested):
+			result = scale_value
+	return result
+
+
+func _current_output_size() -> Vector2i:
+	return display_resolution if display_mode == "windowed" else _current_screen_size()
+
+
+func _current_screen_size() -> Vector2i:
+	var screen_size := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
+	if screen_size.x <= 0 or screen_size.y <= 0:
+		return Vector2i(3840, 2160)
+	return screen_size
+
+
+func _resolution_label(resolution: Vector2i) -> String:
+	var suffix := ""
+	match resolution:
+		Vector2i(1280, 800):
+			suffix = " · 基础"
+		Vector2i(1920, 1080):
+			suffix = " · 1080p"
+		Vector2i(2560, 1440):
+			suffix = " · 1440p"
+		Vector2i(3840, 2160):
+			suffix = " · 4K"
+	return "%d × %d%s" % [resolution.x, resolution.y, suffix]
 
 
 func _cycle_log_level() -> void:
@@ -1252,7 +1533,7 @@ func _cycle_log_level() -> void:
 	log_level = LOG_LEVELS[(level_index + 1) % LOG_LEVELS.size()]
 	if log_level_button:
 		log_level_button.text = "日志等级 · %s" % log_level
-	_save_diagnostic_settings()
+	_save_user_settings()
 	_log_event(log_level, "log_level_changed", "client log level changed", {"new_level": log_level, "server_effect": "next_start"})
 
 
@@ -1361,7 +1642,7 @@ func _build_causal_layer() -> void:
 	causal_actor_meta = _text(content, "一念入局", true, 14)
 	causal_actor_meta.add_theme_color_override("font_color", COLORS.accent)
 	causal_message = _text(content, "你送出的消息改变了一个人的判断", false, 27)
-	causal_message.add_theme_font_override("font", display_font)
+	causal_message.add_theme_font_override("font", narrative_font)
 	causal_message.add_theme_color_override("font_color", Color("ead6a8"))
 	causal_message.add_theme_constant_override("line_spacing", 6)
 
@@ -1644,9 +1925,8 @@ func _mode_button(text_value: String, callback: Callable) -> Button:
 
 func _style_mode_state(button: Button, active: bool) -> void:
 	button.add_theme_color_override("font_color", COLORS.accent if active else COLORS.muted)
-	var normal := _panel_style(Color.TRANSPARENT, 0, 0, Color.TRANSPARENT, 12, 7)
-	normal.border_width_bottom = 2 if active else 0
-	normal.border_color = COLORS.accent
+	button.add_theme_color_override("font_hover_color", COLORS.ink)
+	var normal := _panel_style(Color(COLORS.bg_lift, 0.92) if active else Color.TRANSPARENT, 1 if active else 0, 4, Color(COLORS.accent, 0.62), 11, 6)
 	button.add_theme_stylebox_override("normal", normal)
 
 
@@ -1922,8 +2202,8 @@ func _play_action_presentation(previous_view: Dictionary, next_view: Dictionary)
 		presentation_busy = true
 		_set_buttons_disabled(self, true)
 		_set_visual_mode("map")
-		place_label.text = "%s → %s" % [previous_location.get("name", ""), next_location.get("name", "")]
-		phase_label.text = "赶路中"
+		place_label.text = _header_place("%s → %s" % [previous_location.get("name", ""), next_location.get("name", "")])
+		phase_label.text = _header_phase_label("赶路中")
 		audio_director.play_cue("travel", int(cue.get("intensity", 2)))
 		var callback := _finish_travel_presentation.bind(feedback, previous_location, next_location)
 		world_map_view.travel_finished.connect(callback, CONNECT_ONE_SHOT)
@@ -1940,9 +2220,9 @@ func _finish_travel_presentation(feedback: Dictionary, previous_location: Dictio
 	presentation_busy = false
 	_set_buttons_disabled(self, pending_operation != "")
 	_set_visual_mode("location")
-	day_label.text = "第 %d / %d 日" % [maxi(1, int(current_view.get("day", 0))), int(current_view.get("duration", 0))]
-	place_label.text = str(next_location.get("name", "未知"))
-	phase_label.text = _phase_display(str(current_view.get("phase", "")))
+	day_label.text = _header_day(int(current_view.get("day", 0)), int(current_view.get("duration", 0)))
+	place_label.text = _header_place(str(next_location.get("name", "未知")))
+	phase_label.text = _header_phase_label(_phase_display(str(current_view.get("phase", ""))))
 	location_stage.play_establish()
 	if _has_causal_change(feedback):
 		_present_causal_change(feedback, next_location)
@@ -2046,7 +2326,7 @@ func _apply_feedback_actor_state(feedback: Dictionary) -> void:
 
 
 func _on_travel_day_changed(day: int) -> void:
-	day_label.text = "第 %d / %d 日" % [maxi(1, day), int(current_view.get("duration", 0))]
+	day_label.text = _header_day(day, int(current_view.get("duration", 0)))
 
 
 func _clear_footer_message_later(expected: String) -> void:
@@ -2239,9 +2519,9 @@ func _render_view() -> void:
 	var player: Dictionary = current_view.get("player", {})
 	var location: Dictionary = current_view.get("location", {})
 	var day := int(current_view.get("day", 0))
-	day_label.text = "第 %d / %d 日" % [maxi(1, day), int(current_view.get("duration", 0))]
-	place_label.text = str(location.get("name", "未知"))
-	phase_label.text = _phase_display(str(current_view.get("phase", "")))
+	day_label.text = _header_day(day, int(current_view.get("duration", 0)))
+	place_label.text = _header_place(str(location.get("name", "未知")))
+	phase_label.text = _header_phase_label(_phase_display(str(current_view.get("phase", ""))))
 	var travel = current_view.get("travel", null)
 	footer_label.add_theme_color_override("font_color", COLORS.muted)
 	var available_actions = current_view.get("available_actions", [])
@@ -2289,11 +2569,11 @@ func _set_visual_mode(mode: String) -> void:
 		location_panel.visible = mode == "location"
 	_sync_action_canvas_visibility()
 	if map_mode_button:
-		map_mode_button.text = "地图"
+		map_mode_button.text = "◇ 地图"
 		map_mode_button.tooltip_text = "查看公开地点、路线与行程"
 		_style_mode_state(map_mode_button, mode == "map")
 	if location_mode_button:
-		location_mode_button.text = "当前地点"
+		location_mode_button.text = "◉ 当前地点"
 		location_mode_button.tooltip_text = "返回当前位置、人物与行动"
 		_style_mode_state(location_mode_button, mode == "location")
 	if mode == "location" and previous_mode != "location" and location_stage:
@@ -2359,6 +2639,7 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 			_text(map_detail_box, "推进阶段 · 第一段：谷口判断", true, 13)
 		"inner_valley":
 			_text(map_detail_box, "推进阶段 · 第二段：核心争夺", true, 13)
+	_render_map_actor_plans(map_detail_box, world_map.get("actors", []), selected_map_location_id)
 	if bool(selected.get("current", false)):
 		_render_route_progress(map_detail_box, current_view.get("route_progress", null), true)
 		var hint := _text(map_detail_box, "沙盘上的金色道路当前可以通行。", true, 12)
@@ -2388,6 +2669,30 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 		var blockers := _joined_action_values(route.get("blockers", []))
 		var blocked_line := _text(map_detail_box, "路线受阻 · %s" % blockers, false, 13)
 		blocked_line.add_theme_color_override("font_color", COLORS.danger)
+
+
+func _render_map_actor_plans(parent: VBoxContainer, actor_plans, location_id: String) -> void:
+	var visible: Array = []
+	for plan in actor_plans:
+		if str(plan.get("location_id", "")) == location_id:
+			visible.append(plan)
+	if visible.is_empty():
+		return
+	var separator := HSeparator.new()
+	separator.modulate = Color(COLORS.accent, 0.28)
+	parent.add_child(separator)
+	var heading := _text(parent, "此地人物动向 · %d" % visible.size(), true, 13)
+	heading.add_theme_color_override("font_color", COLORS.accent)
+	for plan in visible:
+		var status_line := _text(parent, "%s · %s" % [plan.get("name", "无名者"), plan.get("status", "观望")], false, 14)
+		status_line.add_theme_color_override("font_color", COLORS.success if str(plan.get("status", "")) == "行动中" else COLORS.ink)
+		_text(parent, str(plan.get("plan", "观察局势")), true, 13)
+		_text(parent, "缘由 · %s" % plan.get("reason", "尚未公开"), true, 12)
+		if str(plan.get("destination_name", "")) != "":
+			_text(parent, "去向 · %s · 预计第 %d 日" % [plan.get("destination_name", "未知地点"), int(plan.get("expected_day", 0))], true, 12)
+		if bool(plan.get("changed_by_player", false)):
+			var changed := _text(parent, "因你改变 · 原本%s" % plan.get("previous_plan", "另有安排"), true, 12)
+			changed.add_theme_color_override("font_color", COLORS.accent)
 
 
 func _render_location_stage(location: Dictionary, actors: Array, actions: Array) -> void:
@@ -2650,6 +2955,18 @@ func _phase_display(phase: String) -> String:
 	return "筹备期" if phase == "" else phase
 
 
+func _header_day(day: int, duration: int) -> String:
+	return "◷ %d / %d" % [maxi(1, day), duration]
+
+
+func _header_place(place_name: String) -> String:
+	return "◆ %s" % place_name
+
+
+func _header_phase_label(phase_name: String) -> String:
+	return "◌ %s" % phase_name.trim_suffix("期")
+
+
 func _render_clues(clues: Array, actions: Array) -> void:
 	_clear(clues_box)
 	if clues.is_empty():
@@ -2750,7 +3067,9 @@ func _render_causal_threads(parent: VBoxContainer, threads: Array) -> void:
 		var stage := str(thread.get("stage", "delivered"))
 		var stage_line := _text(parent, "%s · %s" % [thread.get("actor_name", "有人"), thread.get("stage_label", "已送达")], false, 14)
 		stage_line.add_theme_color_override("font_color", COLORS.success if stage == "changed" else COLORS.accent)
-		_text(parent, "“%s”" % thread.get("fact_claim", "一条消息"), true, 13)
+		var fact_line := _text(parent, "“%s”" % thread.get("fact_claim", "一条消息"), true, 16)
+		fact_line.add_theme_font_override("font", narrative_font)
+		fact_line.add_theme_constant_override("line_spacing", 4)
 		_text(parent, str(thread.get("summary", "尚无公开回响")), true, 13)
 
 
@@ -2969,7 +3288,8 @@ func _travel_ready_text(label_text: String) -> String:
 
 func _render_people(actors: Array, actions: Array) -> void:
 	_clear(people_box)
-	if actors.is_empty():
+	var tracked_plans: Array = current_view.get("world_map", {}).get("actors", [])
+	if actors.is_empty() and tracked_plans.is_empty():
 		_text(people_box, "此地没有可交谈的人。", true)
 		return
 	var talkable_people := 0
@@ -2981,6 +3301,26 @@ func _render_people(actors: Array, actions: Array) -> void:
 		overview += " · %d 人有新话可谈" % talkable_people
 	var overview_label := _text(people_box, overview, true, TYPE_SCALE.meta)
 	overview_label.add_theme_color_override("font_color", COLORS.accent if talkable_people > 0 else COLORS.muted)
+	if not tracked_plans.is_empty():
+		var tracking_heading := _text(people_box, "局势追踪 · 核心人物 %d" % tracked_plans.size(), false, 16)
+		tracking_heading.add_theme_color_override("font_color", COLORS.accent)
+		_text(people_box, "他们会依照自己掌握的消息行动；你的情报可能改变这些安排。", true, 12)
+		for plan in tracked_plans:
+			var title := "%s · %s · %s" % [plan.get("name", "无名者"), plan.get("location_name", "位置不明"), plan.get("status", "观望")]
+			_text(people_box, title, false, 14)
+			_text(people_box, "目标 · %s" % plan.get("public_goal", "尚未公开"), true, 12)
+			_text(people_box, "计划 · %s" % plan.get("plan", "观察局势"), true, 13)
+			_text(people_box, "缘由 · %s" % plan.get("reason", "尚未公开"), true, 12)
+			if str(plan.get("destination_name", "")) != "":
+				_text(people_box, "去向 · %s · 预计第 %d 日" % [plan.get("destination_name", "未知地点"), int(plan.get("expected_day", 0))], true, 12)
+			if bool(plan.get("changed_by_player", false)):
+				var intervention := _text(people_box, "因你改变 · 原本%s" % plan.get("previous_plan", "另有安排"), true, 12)
+				intervention.add_theme_color_override("font_color", COLORS.accent)
+		var divider := HSeparator.new()
+		divider.modulate = Color(COLORS.accent, 0.46)
+		people_box.add_child(divider)
+		var local_heading := _text(people_box, "此地人物", false, 16)
+		local_heading.add_theme_color_override("font_color", COLORS.accent)
 	for index in actors.size():
 		var actor: Dictionary = actors[index]
 		var actor_name := str(actor.get("name", "无名者"))
@@ -2990,6 +3330,10 @@ func _render_people(actors: Array, actions: Array) -> void:
 		if not focus.is_empty():
 			context_parts.append("关注%s" % str(focus[0]))
 		_text(people_box, " · ".join(context_parts), true, 13)
+		var local_plan: Dictionary = actor.get("plan", {}) if actor.get("plan", {}) is Dictionary else {}
+		if not local_plan.is_empty():
+			_text(people_box, "当前计划 · %s" % local_plan.get("plan", "观察局势"), true, 13)
+			_text(people_box, "缘由 · %s" % local_plan.get("reason", "尚未公开"), true, 12)
 		var actor_id := str(actor.get("id", ""))
 		var clue_count := _count_tell_actions(actions, actor_id, "")
 		var link_text := "交谈 · %d 条线索可用" % clue_count if clue_count > 0 else "查看人物"
@@ -3708,6 +4052,7 @@ func _render_ending(ending: Dictionary) -> void:
 	var eyebrow := _text(ending_box, "尘埃落定", true, 16)
 	eyebrow.add_theme_color_override("font_color", COLORS.accent)
 	var title := _text(ending_box, outcome, false, 40)
+	title.add_theme_font_override("font", display_font)
 	title.add_theme_color_override("font_color", Color("ead6a8"))
 	var rule := HSeparator.new()
 	rule.modulate = Color(COLORS.accent, 0.46)
@@ -3760,6 +4105,12 @@ func _render_ending(ending: Dictionary) -> void:
 		if str(highlight).begins_with("你传递的消息改变了"):
 			continue
 		_text(ending_annex_box, "· %s" % highlight, true, 15)
+	var plan_changes: Array = ending.get("actor_plan_changes", [])
+	if not plan_changes.is_empty():
+		var plan_heading := _text(ending_annex_box, "人物计划改写", true, 16)
+		plan_heading.add_theme_color_override("font_color", COLORS.accent)
+		for change in plan_changes:
+			_text(ending_annex_box, "· %s" % change, true, 15)
 	var ending_actions := HBoxContainer.new()
 	ending_actions.add_theme_constant_override("separation", 12)
 	ending_box.add_child(ending_actions)

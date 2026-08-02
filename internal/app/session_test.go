@@ -77,8 +77,12 @@ func TestWorldMapOnlyExposesPublicRouteState(t *testing.T) {
 			if location.ID != "L01" || location.ActorCount != len(view.KnownActors) {
 				t.Fatalf("current map location = %+v", location)
 			}
+		} else if location.ID == "L02" {
+			if location.ActorCount != len(view.WorldMap.Actors) {
+				t.Fatalf("tracked core actor count = %+v", location)
+			}
 		} else if location.ActorCount != 0 {
-			t.Fatalf("map leaked remote actor count: %+v", location)
+			t.Fatalf("map leaked an untracked remote actor count: %+v", location)
 		}
 	}
 	if currentCount != 1 {
@@ -91,6 +95,29 @@ func TestWorldMapOnlyExposesPublicRouteState(t *testing.T) {
 	blocked := mapRoute(view.WorldMap.Routes, "L01", "L04")
 	if blocked == nil || blocked.Status != "blocked" || blocked.ActionID != "" || !containsMessage(blocked.Blockers, "解瘴丹") || !containsMessage(blocked.Blockers, "入口") {
 		t.Fatalf("blocked route = %+v", blocked)
+	}
+}
+
+func TestWorldMapExposesCoreActorPlansWithoutPrivateStrategyData(t *testing.T) {
+	session := testSession(t)
+	view := session.View()
+	if len(view.WorldMap.Actors) != 3 {
+		t.Fatalf("tracked actor plans = %+v", view.WorldMap.Actors)
+	}
+	for _, actorID := range []string{"N03", "N06", "N09"} {
+		plan := mapActorPlan(view.WorldMap.Actors, actorID)
+		if plan == nil || plan.Name == "" || plan.LocationID == "" || plan.PublicGoal == "" || plan.Plan == "" || plan.Reason == "" {
+			t.Fatalf("actor %s lacks a visible plan: %+v", actorID, plan)
+		}
+	}
+	encoded, err := json.Marshal(view.WorldMap.Actors)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"strategies", "score", "counterfactuals"} {
+		if bytes.Contains(encoded, []byte(forbidden)) {
+			t.Fatalf("actor plans leaked private field %s: %s", forbidden, encoded)
+		}
 	}
 }
 
@@ -868,6 +895,9 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	if !containsMessage(view.Ending.Highlights, "改变了 3 个关键选择") {
 		t.Fatalf("messenger ending omitted causal summary: %+v", view.Ending.Highlights)
 	}
+	if len(view.Ending.ActorPlanChanges) == 0 || !containsMessage(view.Ending.ActorPlanChanges, "原本准备") || !containsMessage(view.Ending.ActorPlanChanges, "后来改为") {
+		t.Fatalf("messenger ending omitted actor plan changes: %+v", view.Ending.ActorPlanChanges)
+	}
 	if view.Metrics.VisibleDecisionChanges < 1 || view.Metrics.CoreResultDay != 21 || view.Metrics.DecisionInputs != 13 || view.Metrics.AutoAdvancedDays != 16 {
 		t.Fatalf("messenger metrics = %+v", view.Metrics)
 	}
@@ -879,6 +909,15 @@ func actionIDs(actions []AvailableAction) map[string]bool {
 		result[action.ID] = true
 	}
 	return result
+}
+
+func mapActorPlan(plans []VisibleActorPlan, actorID string) *VisibleActorPlan {
+	for index := range plans {
+		if plans[index].ID == actorID {
+			return &plans[index]
+		}
+	}
+	return nil
 }
 
 func itemAmount(items []VisibleItem, id string) int {

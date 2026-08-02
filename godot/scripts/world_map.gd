@@ -22,6 +22,10 @@ const LOCATION_TEXTURES := {
 var map_data: Dictionary = {}
 var locations: Array = []
 var routes: Array = []
+var actors: Array = []
+var actor_motion_from: Dictionary = {}
+var actor_motion_progress := 1.0
+var actor_motion_tween: Tween
 var hovered_id := ""
 var hovered_route_key := ""
 var selected_id := ""
@@ -48,9 +52,28 @@ func _ready() -> void:
 
 
 func set_map(value: Dictionary, selection := "") -> void:
+	var previous_locations := {}
+	for actor in actors:
+		previous_locations[str(actor.get("id", ""))] = str(actor.get("location_id", ""))
 	map_data = value
 	locations = value.get("locations", []) if value.get("locations", []) is Array else []
 	routes = value.get("routes", []) if value.get("routes", []) is Array else []
+	actors = value.get("actors", []) if value.get("actors", []) is Array else []
+	actor_motion_from.clear()
+	for actor in actors:
+		var actor_id := str(actor.get("id", ""))
+		var old_location := str(previous_locations.get(actor_id, ""))
+		var new_location := str(actor.get("location_id", ""))
+		if old_location != "" and old_location != new_location:
+			actor_motion_from[actor_id] = old_location
+	if actor_motion_tween and actor_motion_tween.is_valid():
+		actor_motion_tween.kill()
+	actor_motion_progress = 1.0
+	if motion_enabled and not actor_motion_from.is_empty():
+		actor_motion_progress = 0.0
+		actor_motion_tween = create_tween()
+		actor_motion_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		actor_motion_tween.tween_property(self, "actor_motion_progress", 1.0, 0.72)
 	selected_id = selection
 	if selected_id == "":
 		for location in locations:
@@ -70,6 +93,10 @@ func set_motion_enabled(value: bool) -> void:
 
 func has_formal_assets() -> bool:
 	return TERRAIN_TEXTURE != null and LOCATION_TEXTURES.size() == 5
+
+
+func has_actor_plan_presentation() -> bool:
+	return not actors.is_empty()
 
 
 func select_location(location_id: String) -> void:
@@ -199,6 +226,8 @@ func _draw() -> void:
 
 	for location in locations:
 		_draw_location(location, bounds)
+	for index in actors.size():
+		_draw_actor_plan(actors[index], bounds, index)
 	if travel_active:
 		_draw_travel_marker(bounds)
 
@@ -301,7 +330,7 @@ func _draw_location(location: Dictionary, bounds: Rect2) -> void:
 	var name := str(location.get("name", "未知地点"))
 	var label_color := ACCENT if current or selected else INK
 	var label_width := 132.0
-	var label_position := position + Vector2(-label_width * 0.5, 32)
+	var label_position := position + Vector2(-label_width * 0.5, 40)
 	draw_string(font, label_position + Vector2(1, 1), name, HORIZONTAL_ALIGNMENT_CENTER, label_width, 15, Color("030504"))
 	draw_string(font, label_position, name, HORIZONTAL_ALIGNMENT_CENTER, label_width, 15, label_color)
 	if current and not travel_active:
@@ -310,7 +339,55 @@ func _draw_location(location: Dictionary, bounds: Rect2) -> void:
 		draw_string(font, beacon + Vector2(-30, -25), "争夺地", HORIZONTAL_ALIGNMENT_CENTER, 60, 12, Color("d87761"))
 	var actor_count := int(location.get("actor_count", 0))
 	if actor_count > 0 and not travel_active:
-		draw_string(font, position + Vector2(-36, 51), "%d 人在场" % actor_count, HORIZONTAL_ALIGNMENT_CENTER, 72, 11, MUTED)
+		draw_string(font, position + Vector2(-36, 59), "%d 人在场" % actor_count, HORIZONTAL_ALIGNMENT_CENTER, 72, 11, MUTED)
+
+
+func _draw_actor_plan(actor: Dictionary, bounds: Rect2, index: int) -> void:
+	if travel_active:
+		return
+	var actor_id := str(actor.get("id", ""))
+	var location := _location_by_id(str(actor.get("location_id", "")))
+	if location.is_empty():
+		return
+	var destination := _location_position(location, bounds)
+	var origin := destination
+	if actor_motion_progress < 1.0 and actor_motion_from.has(actor_id):
+		var old_location := _location_by_id(str(actor_motion_from[actor_id]))
+		if not old_location.is_empty():
+			origin = _location_position(old_location, bounds)
+	var position := origin.lerp(destination, actor_motion_progress)
+	position += _actor_token_offset(actor_id, index)
+	var color := ACCENT
+	if actor_id == "N06":
+		color = SAFE.lightened(0.16)
+	elif actor_id == "N09":
+		color = DANGER.lightened(0.10)
+	var shadow := PackedVector2Array([
+		position + Vector2(-10, 6), position + Vector2(0, 12),
+		position + Vector2(10, 6), position + Vector2(0, 1),
+	])
+	draw_colored_polygon(shadow, Color("020403b8"))
+	draw_circle(position, 11.0, Color("09100ceb"))
+	draw_circle(position, 11.0, color, false, 2.0, true)
+	if bool(actor.get("changed_by_player", false)):
+		var halo := 15.0 + (sin(pulse * 2.2 + index) * 1.5 if motion_enabled else 0.0)
+		draw_circle(position, halo, Color(ACCENT, 0.62), false, 1.5, true)
+	var name := str(actor.get("name", "?"))
+	var mark := name.substr(0, 1) if not name.is_empty() else "?"
+	draw_string(get_theme_default_font(), position + Vector2(-7, 5), mark, HORIZONTAL_ALIGNMENT_CENTER, 14, 12, color.lightened(0.28))
+	if str(actor.get("destination_id", "")) != "" and str(actor.get("destination_id", "")) != str(actor.get("location_id", "")):
+		draw_string(get_theme_default_font(), position + Vector2(11, -8), "↗", HORIZONTAL_ALIGNMENT_LEFT, 18, 13, ACCENT)
+
+
+func _actor_token_offset(actor_id: String, fallback_index: int) -> Vector2:
+	match actor_id:
+		"N03":
+			return Vector2(-29, -42)
+		"N06":
+			return Vector2(0, -52)
+		"N09":
+			return Vector2(29, -42)
+	return Vector2((fallback_index % 3 - 1) * 27, -42 - (fallback_index / 3) * 22)
 
 
 func _route_curve(from_position: Vector2, to_position: Vector2) -> PackedVector2Array:

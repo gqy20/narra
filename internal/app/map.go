@@ -14,7 +14,12 @@ func (s *Session) visibleWorldMap(state *domain.WorldState, actions []AvailableA
 		}
 	}
 
-	actorCount := len(s.visibleActors(state))
+	actorPlans := s.visibleActorPlans(state)
+	actorCounts := make(map[string]int)
+	for _, actor := range actorPlans {
+		actorCounts[actor.LocationID]++
+	}
+	actorCounts[state.Player.Location] = len(s.visibleActors(state))
 	locationIDs := make([]string, 0, len(s.bundle.Locations))
 	for id := range s.bundle.Locations {
 		locationIDs = append(locationIDs, id)
@@ -24,6 +29,7 @@ func (s *Session) visibleWorldMap(state *domain.WorldState, actions []AvailableA
 	worldMap := VisibleWorldMap{
 		Locations: make([]VisibleMapLocation, 0, len(locationIDs)),
 		Routes:    make([]VisibleMapRoute, 0),
+		Actors:    actorPlans,
 	}
 	for _, id := range locationIDs {
 		location := s.bundle.Locations[id]
@@ -32,9 +38,7 @@ func (s *Session) visibleWorldMap(state *domain.WorldState, actions []AvailableA
 			SceneKey: location.SceneKey, Description: location.Description, Atmosphere: location.Atmosphere,
 			Current: id == state.Player.Location, Contest: id == s.bundle.Scenario.Contest.LocationID,
 		}
-		if visible.Current {
-			visible.ActorCount = actorCount
-		}
+		visible.ActorCount = actorCounts[id]
 		worldMap.Locations = append(worldMap.Locations, visible)
 
 		for _, route := range location.Routes {

@@ -176,6 +176,10 @@ func (s *Session) visibleLocation(locationID string) VisibleLocation {
 
 func (s *Session) visibleActors(state *domain.WorldState) []VisibleActor {
 	actors := make([]VisibleActor, 0)
+	plans := make(map[string]VisibleActorPlan)
+	for _, plan := range s.visibleActorPlans(state) {
+		plans[plan.ID] = plan
+	}
 	for _, npc := range state.NPCs {
 		if npc.Location == state.Player.Location {
 			profile := "公开资料尚未收集"
@@ -200,10 +204,15 @@ func (s *Session) visibleActors(state *domain.WorldState) []VisibleActor {
 				}
 				break
 			}
-			actors = append(actors, VisibleActor{
+			visible := VisibleActor{
 				ID: npc.ID, Name: npc.Name, Faction: npc.Faction, PublicProfile: profile,
 				PublicRole: role, PublicFocus: focus, PublicRisk: risk,
-			})
+			}
+			if plan, ok := plans[npc.ID]; ok {
+				copy := plan
+				visible.Plan = &copy
+			}
+			actors = append(actors, visible)
 		}
 	}
 	sort.Slice(actors, func(i, j int) bool { return actors[i].ID < actors[j].ID })
