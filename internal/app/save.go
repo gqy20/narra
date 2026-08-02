@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"fantu/internal/domain"
 )
@@ -15,12 +16,13 @@ type SaveData struct {
 	ScenarioID string              `json:"scenario_id"`
 	Player     domain.PlayerConfig `json:"player"`
 	History    []string            `json:"history"`
+	Dialogues  []DialogueExchange  `json:"dialogues,omitempty"`
 }
 
 func (s *Session) Save(writer io.Writer) error {
 	data := SaveData{
 		Version: saveVersion, ScenarioID: s.bundle.Scenario.ID,
-		Player: clonePlayerConfig(s.initial), History: s.History(),
+		Player: clonePlayerConfig(s.initial), History: s.History(), Dialogues: s.dialogueHistory(),
 	}
 	encoder := json.NewEncoder(writer)
 	encoder.SetIndent("", "  ")
@@ -46,6 +48,15 @@ func LoadSession(bundle domain.Bundle, reader io.Reader) (*Session, error) {
 		if _, err := session.execute(actionID, true); err != nil {
 			return nil, fmt.Errorf("replay turn %d action %s: %w", turn+1, actionID, err)
 		}
+	}
+	if len(data.Dialogues) > 1000 {
+		return nil, fmt.Errorf("save contains too many dialogue exchanges")
+	}
+	for index, exchange := range data.Dialogues {
+		if exchange.ActorID == "" || exchange.Revision == "" || strings.TrimSpace(exchange.NPCText) == "" {
+			return nil, fmt.Errorf("invalid dialogue exchange %d", index+1)
+		}
+		session.dialogues = append(session.dialogues, exchange)
 	}
 	return session, nil
 }

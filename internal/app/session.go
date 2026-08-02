@@ -19,6 +19,7 @@ type Session struct {
 	quietWaitStreak      int
 	lastActiveAction     string
 	repeatedActiveAction int
+	dialogues            []DialogueExchange
 }
 
 func NewSession(bundle domain.Bundle, player domain.PlayerConfig) (*Session, error) {

@@ -15,6 +15,16 @@ func _ready() -> void:
 
 
 func request_focus(actor_id: String) -> void:
+	_request_dialogue(actor_id, "")
+
+
+func request_turn(actor_id: String, player_message: String) -> void:
+	if player_message.strip_edges() == "":
+		return
+	_request_dialogue(actor_id, player_message.strip_edges())
+
+
+func _request_dialogue(actor_id: String, player_message: String) -> void:
 	if actor_id == "":
 		return
 	cancel()
@@ -25,7 +35,7 @@ func request_focus(actor_id: String) -> void:
 	http.timeout = 32.0
 	add_child(http)
 	http.request_completed.connect(_on_request_completed.bind(actor_id, generation))
-	var payload := JSON.stringify({"actor_id": actor_id, "situation": "focus"})
+	var payload := JSON.stringify({"actor_id": actor_id, "situation": "focus", "player_message": player_message})
 	var error := http.request(
 		api_base + "/game/dialogue",
 		PackedStringArray(["Content-Type: application/json"]),

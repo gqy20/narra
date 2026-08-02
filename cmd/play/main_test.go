@@ -15,20 +15,31 @@ import (
 )
 
 type terminalDialogueProvider struct {
-	calls int
+	calls    int
+	requests []ai.GenerationRequest
 }
 
 type failingTerminalDialogueProvider struct{}
+
+func testTerminalGame(session *app.Session) *terminalGame {
+	return &terminalGame{session: session}
+}
 
 func (failingTerminalDialogueProvider) GenerateDialogue(context.Context, ai.GenerationRequest) (ai.DialogueDraft, ai.GenerationMetadata, error) {
 	return ai.DialogueDraft{}, ai.GenerationMetadata{}, errors.New("provider failed")
 }
 
-func (p *terminalDialogueProvider) GenerateDialogue(context.Context, ai.GenerationRequest) (ai.DialogueDraft, ai.GenerationMetadata, error) {
+func (p *terminalDialogueProvider) GenerateDialogue(_ context.Context, request ai.GenerationRequest) (ai.DialogueDraft, ai.GenerationMetadata, error) {
+	return p.generate(request)
+}
+
+func (p *terminalDialogueProvider) generate(request ai.GenerationRequest) (ai.DialogueDraft, ai.GenerationMetadata, error) {
 	p.calls++
+	p.requests = append(p.requests, request)
 	return ai.DialogueDraft{
 		Utterance: "消息可以谈，但我得先知道它从何而来。",
 		Emotion:   "alert", DialogueAct: "question", ReferencedFacts: []string{},
+		SuggestedActions: []string{},
 	}, ai.GenerationMetadata{Model: "test"}, nil
 }
 
@@ -42,7 +53,7 @@ func TestRunUsesExplicitActionsAndDoCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	if err := runGame(bytes.NewBufferString("actions\ndo 1\nquit\n"), &output, session, nil, "", false); err != nil {
+	if err := runGame(bytes.NewBufferString("actions\ndo 1\nquit\n"), &output, testTerminalGame(session), nil, false); err != nil {
 		t.Fatal(err)
 	}
 	if session.View().Day != 1 {
@@ -63,7 +74,7 @@ func TestRunAcceptsPowerShellBOM(t *testing.T) {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	if err := runGame(bytes.NewBufferString("\ufeffquit\n"), &output, session, nil, "", false); err != nil {
+	if err := runGame(bytes.NewBufferString("\ufeffquit\n"), &output, testTerminalGame(session), nil, false); err != nil {
 		t.Fatal(err)
 	}
 	if bytes.Contains(output.Bytes(), []byte("未知行动")) {
@@ -151,7 +162,7 @@ func TestTerminalNavigationAndDialogueDoNotAdvanceWorld(t *testing.T) {
 	dialogue := ai.NewService(provider, ai.ServiceOptions{Timeout: time.Second, CacheSize: 4})
 	var output bytes.Buffer
 	commands := "look\npeople\ntalk 2\nmap\njournal\nquit\n"
-	if err := runGame(bytes.NewBufferString(commands), &output, session, dialogue, "", false); err != nil {
+	if err := runGame(bytes.NewBufferString(commands), &output, testTerminalGame(session), dialogue, false); err != nil {
 		t.Fatal(err)
 	}
 	text := output.String()
@@ -162,6 +173,51 @@ func TestTerminalNavigationAndDialogueDoNotAdvanceWorld(t *testing.T) {
 	}
 	if provider.calls != 1 || session.View().Day != 0 || session.View().Metrics.DecisionInputs != 0 {
 		t.Fatalf("presentation changed world state: calls=%d view=%+v", provider.calls, session.View())
+	}
+}
+
+func TestTerminalSupportsPersistentMultiTurnNPCDialogue(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("多轮对话玩家"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := newTerminalSaveStore(t.TempDir(), bundle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider := &terminalDialogueProvider{}
+	dialogue := ai.NewService(provider, ai.ServiceOptions{Timeout: time.Second, CacheSize: 4})
+	game := &terminalGame{session: session, saves: store, autosave: true}
+	var output bytes.Buffer
+	commands := "talk 2\n这条消息若是真的，你准备如何核验？\ncontext\nleave\nquit\n"
+	if err := runGame(bytes.NewBufferString(commands), &output, game, dialogue, false); err != nil {
+		t.Fatal(err)
+	}
+	if provider.calls != 2 || len(provider.requests) != 2 {
+		t.Fatalf("provider calls = %d, requests=%d", provider.calls, len(provider.requests))
+	}
+	if !strings.Contains(provider.requests[1].Input, "这条消息若是真的") || !strings.Contains(provider.requests[1].Input, "history") {
+		t.Fatalf("second turn omitted player text or history: %s", provider.requests[1].Input)
+	}
+	history := session.DialogueHistory("N04", session.DialogueRevision("N04"), 8)
+	if len(history) != 2 || history[1].PlayerText == "" || session.View().Day != 0 || session.View().Metrics.DecisionInputs != 0 {
+		t.Fatalf("dialogue history/state = %+v / %+v", history, session.View())
+	}
+	restored, err := store.load(autosaveSlot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := restored.DialogueHistory("N04", restored.DialogueRevision("N04"), 8); len(got) != 2 {
+		t.Fatalf("restored dialogue history = %+v", got)
+	}
+	for _, want := range []string{"已进入对话", "已保留最近 2 轮对话", "你结束了与魏无咎的对话"} {
+		if !strings.Contains(output.String(), want) {
+			t.Errorf("output missing %q:\n%s", want, output.String())
+		}
 	}
 }
 
@@ -180,7 +236,7 @@ func TestTerminalReportsModelFailureWithoutInventingDialogue(t *testing.T) {
 				t.Fatal(err)
 			}
 			var output bytes.Buffer
-			if err := runGame(bytes.NewBufferString("talk 2\nquit\n"), &output, session, dialogue, "", false); err != nil {
+			if err := runGame(bytes.NewBufferString("talk 2\nquit\n"), &output, testTerminalGame(session), dialogue, false); err != nil {
 				t.Fatal(err)
 			}
 			text := output.String()
@@ -205,12 +261,20 @@ func TestTerminalCanCompleteAndReplayAFullJourney(t *testing.T) {
 	}
 	savePath := filepath.Join(t.TempDir(), "terminal-complete.json")
 	commands := strings.Join([]string{
-		"actions", "do 1", "wait complete", "actions", "do 14", "go 青岚门驻地",
-		"actions", "do 3", "wait next", "actions", "do 3", "wait next",
-		"actions", "do 3", "wait next", "wait next", "wait next",
+		"actions find 核验线索", "do 1", "wait complete",
+		"actions find 购买解瘴丹", "do 1", "go 青岚门驻地",
+		"actions find 无偿告知沈砚秋", "do 1", "wait next", "wait next confirm",
+		"actions find 为情报来源担保", "do 1", "wait next", "wait next confirm",
+		"actions find 把担保转为行动席位", "do 1",
+		"wait next", "wait next confirm", "wait next", "wait next confirm", "wait next", "wait next confirm",
 	}, "\n") + "\n"
 	var output bytes.Buffer
-	if err := runGame(bytes.NewBufferString(commands), &output, session, nil, savePath, true); err != nil {
+	store, err := newTerminalSaveStore(filepath.Dir(savePath), bundle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	game := &terminalGame{session: session, saves: store, autosave: true}
+	if err := runGame(bytes.NewBufferString(commands), &output, game, nil, true); err != nil {
 		t.Fatal(err)
 	}
 	view := session.View()
@@ -220,7 +284,7 @@ func TestTerminalCanCompleteAndReplayAFullJourney(t *testing.T) {
 	if view.Player.Resources["credit"] != 4 || view.Player.Resources["support"] != 2 || len(view.CausalThreads) == 0 || view.Metrics.VisibleDecisionChanges != 2 {
 		t.Fatalf("terminal journey skipped its intended trust route: view=%+v", view)
 	}
-	replayed, err := app.LoadFile(bundle, savePath)
+	replayed, err := store.load(autosaveSlot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +304,7 @@ func TestTerminalTravelUsesMapNumberOrPublicName(t *testing.T) {
 			t.Fatal(err)
 		}
 		var output bytes.Buffer
-		if err := runGame(bytes.NewBufferString(command), &output, session, nil, "", false); err != nil {
+		if err := runGame(bytes.NewBufferString(command), &output, testTerminalGame(session), nil, false); err != nil {
 			t.Fatal(err)
 		}
 		if session.View().Location.ID != "L02" || session.View().Day != 1 {
@@ -259,7 +323,7 @@ func TestBareNumbersAndInternalActionIDsAreNotCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	if err := runGame(bytes.NewBufferString("1\nverify:F02\nquit\n"), &output, session, nil, "", false); err != nil {
+	if err := runGame(bytes.NewBufferString("1\nverify:F02\nquit\n"), &output, testTerminalGame(session), nil, false); err != nil {
 		t.Fatal(err)
 	}
 	if session.View().Day != 0 || !strings.Contains(output.String(), "不能直接输入编号") || strings.Count(output.String(), "未知命令") != 1 {
@@ -275,13 +339,13 @@ func TestWaitAdvancesOneDayAndWaitNextIsExplicit(t *testing.T) {
 	for _, test := range []struct {
 		command string
 		day     int
-	}{{"wait\nquit\n", 1}, {"wait next\nquit\n", 8}} {
+	}{{"wait\nquit\n", 1}, {"wait next\nwait next confirm\nquit\n", 8}} {
 		session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("等待测试"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		var output bytes.Buffer
-		if err := runGame(bytes.NewBufferString(test.command), &output, session, nil, "", false); err != nil {
+		if err := runGame(bytes.NewBufferString(test.command), &output, testTerminalGame(session), nil, false); err != nil {
 			t.Fatal(err)
 		}
 		if session.View().Day != test.day {
@@ -332,7 +396,7 @@ func TestActionCategoriesUseScopedDoNumbersAndHideTimeActions(t *testing.T) {
 		t.Fatalf("travel category output is not actionable:\n%s", text)
 	}
 	output.Reset()
-	if err := runGame(bytes.NewBufferString("actions travel\ndo 1\nquit\n"), &output, session, nil, "", false); err != nil {
+	if err := runGame(bytes.NewBufferString("actions travel\ndo 1\nquit\n"), &output, testTerminalGame(session), nil, false); err != nil {
 		t.Fatal(err)
 	}
 	if session.View().Location.ID != "L02" {
@@ -350,10 +414,111 @@ func TestDoRequiresFreshActionMenu(t *testing.T) {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	if err := runGame(bytes.NewBufferString("do 1\nactions\ndo 1\ndo 1\nquit\n"), &output, session, nil, "", false); err != nil {
+	if err := runGame(bytes.NewBufferString("do 1\nactions\ndo 1\ndo 1\nquit\n"), &output, testTerminalGame(session), nil, false); err != nil {
 		t.Fatal(err)
 	}
 	if session.View().Day != 1 || strings.Count(output.String(), "行动目录尚未显示或已经变化") != 2 {
 		t.Fatalf("stale action menu was accepted:\n%s", output.String())
+	}
+}
+
+func TestNamedSaveSlotsCanSaveListAndLoadInGame(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("存档测试"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := newTerminalSaveStore(t.TempDir(), bundle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	game := &terminalGame{session: session, saves: store, autosave: true}
+	var output bytes.Buffer
+	commands := "save alpha\nwait\nsave alpha\nsaves\nload alpha\nquit\n"
+	if err := runGame(bytes.NewBufferString(commands), &output, game, nil, false); err != nil {
+		t.Fatal(err)
+	}
+	if game.session.View().Day != 0 {
+		t.Fatalf("loaded day = %d, want 0\n%s", game.session.View().Day, output.String())
+	}
+	for _, want := range []string{"已保存到存档槽 alpha", "确认覆盖", "存档槽：", "已读取存档槽 alpha"} {
+		if !strings.Contains(output.String(), want) {
+			t.Errorf("output missing %q:\n%s", want, output.String())
+		}
+	}
+	if exists, err := store.exists(autosaveSlot); err != nil || !exists {
+		t.Fatalf("autosave slot missing: exists=%v err=%v", exists, err)
+	}
+	if _, err := store.path("../outside"); err == nil {
+		t.Fatal("path traversal was accepted as a save slot")
+	}
+}
+
+func TestLoadRequiresConfirmationWhenAutosaveIsOff(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("读取确认测试"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := newTerminalSaveStore(t.TempDir(), bundle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.save("origin", session); err != nil {
+		t.Fatal(err)
+	}
+	game := &terminalGame{session: session, saves: store, autosave: false}
+	var output bytes.Buffer
+	if err := runGame(bytes.NewBufferString("wait\nload origin\nload origin confirm\nquit\n"), &output, game, nil, false); err != nil {
+		t.Fatal(err)
+	}
+	if game.session.View().Day != 0 || !strings.Contains(output.String(), "确认放弃当前未保存进度") {
+		t.Fatalf("unsafe load was not guarded:\n%s", output.String())
+	}
+}
+
+func TestActionQuerySupportsSearchAndPagination(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("目录测试"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	displayed, valid := renderActionsCategory(&output, session.View().AvailableActions, "page 2", false)
+	if !valid || len(displayed) != 1 || !strings.Contains(output.String(), "第 2/2 页") {
+		t.Fatalf("pagination failed: valid=%v count=%d\n%s", valid, len(displayed), output.String())
+	}
+	output.Reset()
+	displayed, valid = renderActionsCategory(&output, session.View().AvailableActions, "find 解瘴丹", false)
+	if !valid || len(displayed) != 1 || !strings.Contains(displayed[0].Name, "解瘴丹") {
+		t.Fatalf("search failed: valid=%v actions=%+v\n%s", valid, displayed, output.String())
+	}
+}
+
+func TestWaitNextOnlyAdvancesAfterConfirmation(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("快进确认测试"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	game := testTerminalGame(session)
+	var output bytes.Buffer
+	if err := runGame(bytes.NewBufferString("wait next\nquit\n"), &output, game, nil, false); err != nil {
+		t.Fatal(err)
+	}
+	if session.View().Day != 0 || !strings.Contains(output.String(), "wait next confirm") || !strings.Contains(output.String(), "风险：") {
+		t.Fatalf("wait-next preview was not safe or informative:\n%s", output.String())
 	}
 }

@@ -76,6 +76,7 @@ var current_view: Dictionary = {}
 var dialogue_client
 var actor_dialogue_by_id := {}
 var actor_dialogue_error_by_id := {}
+var actor_dialogue_history_by_id := {}
 var actor_dialogue_loading_id := ""
 var pending_operation := ""
 var autosave_after_action := false
@@ -3675,13 +3676,21 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 		_text(actor_focus_detail_box, "已经送达的消息不会重复出现。完整人物档案可在随身卷宗中查看。", true, 14)
 		return
 	var focused_choice := _resolve_focused_actor_action(focused_actions)
+	var suggested_action_ids: Array = []
+	var raw_suggested_action_ids = actor_dialogue_by_id.get(focused_actor_id, {}).get("suggested_action_ids", [])
+	if raw_suggested_action_ids is Array:
+		suggested_action_ids = raw_suggested_action_ids
 	for action in focused_actions:
 		var action_id := str(action.get("id", ""))
 		var claim := str(action.get("term_label", ""))
 		if claim == "":
 			claim = str(action.get("name", "以情报换取解瘴丹")) if action.get("kind", "") in ["recover", "escort"] else str(action.get("fact_claim", action.get("name", "一条消息")))
 		var selected := action_id == str(focused_choice.get("id", ""))
-		var button := _action_button(("◆  " if selected else "　") + claim, _select_focused_actor_action.bind(action_id))
+		var suggested := action_id in suggested_action_ids
+		var prefix := "◆  " if selected else ("✦  " if suggested else "　")
+		var button := _action_button(prefix + claim, _select_focused_actor_action.bind(action_id))
+		if suggested:
+			button.tooltip_text = "模型建议；仍需由你确认执行"
 		button.custom_minimum_size.y = 46
 		if selected:
 			var selected_style := _panel_style(Color(COLORS.panel_hover, 0.72), 0, 2, Color.TRANSPARENT, 12, 8)
@@ -3947,6 +3956,7 @@ func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
 	_focus_portrait(actor_id)
 	actor_dialogue_by_id.erase(actor_id)
 	actor_dialogue_error_by_id.erase(actor_id)
+	actor_dialogue_history_by_id[actor_id] = []
 	actor_dialogue_loading_id = actor_id
 	dialogue_client.request_focus(actor_id)
 	_render_stage_people(current_view.get("known_actors", []), available_actions_cache)
@@ -3954,6 +3964,29 @@ func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
 
 
 func _render_actor_dialogue_line(actor: Dictionary) -> void:
+	var history: Array = actor_dialogue_history_by_id.get(focused_actor_id, [])
+	if history.size() > 8:
+		history = history.slice(history.size() - 8)
+	for exchange in history:
+		var from_player := str(exchange.get("speaker", "")) == "player"
+		var history_panel := PanelContainer.new()
+		var history_color := Color(COLORS.panel_hover, 0.34) if from_player else Color(COLORS.panel_alt, 0.42)
+		var history_style := _panel_style(history_color, 0, 2, Color.TRANSPARENT, 12, 8)
+		history_style.border_width_left = 2
+		history_style.border_color = Color(COLORS.muted, 0.52) if from_player else Color(COLORS.accent, 0.68)
+		history_panel.add_theme_stylebox_override("panel", history_style)
+		var history_content := VBoxContainer.new()
+		history_content.add_theme_constant_override("separation", 4)
+		history_panel.add_child(history_content)
+		var speaker_name: String = str(current_view.get("player", {}).get("name", "你")) if from_player else str(actor.get("name", focused_actor_name))
+		var history_speaker := _text(history_content, speaker_name, true, 13)
+		history_speaker.add_theme_color_override("font_color", COLORS.muted if from_player else COLORS.accent)
+		var history_line := _text(history_content, str(exchange.get("text", "")), false, 16)
+		history_line.add_theme_font_override("font", narrative_font)
+		actor_focus_message_list.add_child(history_panel)
+	if not history.is_empty() and actor_dialogue_loading_id != focused_actor_id and not actor_dialogue_error_by_id.has(focused_actor_id):
+		_render_actor_dialogue_input()
+		return
 	var panel := PanelContainer.new()
 	var style := _panel_style(Color(COLORS.panel_alt, 0.42), 0, 2, Color.TRANSPARENT, 14, 10)
 	style.border_width_left = 2
@@ -3966,7 +3999,9 @@ func _render_actor_dialogue_line(actor: Dictionary) -> void:
 	speaker.add_theme_color_override("font_color", COLORS.accent)
 	var utterance := "正在等待人物回应……"
 	var quote_line := false
-	if actor_dialogue_by_id.has(focused_actor_id):
+	if actor_dialogue_loading_id == focused_actor_id:
+		utterance = "正在等待人物回应……"
+	elif actor_dialogue_by_id.has(focused_actor_id):
 		utterance = str(actor_dialogue_by_id[focused_actor_id].get("utterance", utterance))
 		quote_line = true
 	elif actor_dialogue_error_by_id.has(focused_actor_id):
@@ -3974,10 +4009,53 @@ func _render_actor_dialogue_line(actor: Dictionary) -> void:
 	var line := _text(content, "“%s”" % utterance if quote_line else utterance, false, 17)
 	line.add_theme_font_override("font", narrative_font)
 	actor_focus_message_list.add_child(panel)
+	_render_actor_dialogue_input()
+
+
+func _render_actor_dialogue_input() -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var input := LineEdit.new()
+	input.placeholder_text = "直接回复，最多 500 字"
+	input.max_length = 500
+	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	input.editable = actor_dialogue_loading_id != focused_actor_id
+	input.text_submitted.connect(_submit_actor_dialogue)
+	row.add_child(input)
+	if actor_dialogue_loading_id == focused_actor_id:
+		row.add_child(_utility_button("取消", _cancel_actor_dialogue_generation))
+	else:
+		row.add_child(_utility_button("发送", func(): _submit_actor_dialogue(input.text)))
+	actor_focus_message_list.add_child(row)
+
+
+func _submit_actor_dialogue(message: String) -> void:
+	message = message.strip_edges()
+	if focused_actor_id == "" or message == "" or actor_dialogue_loading_id != "":
+		return
+	var history: Array = actor_dialogue_history_by_id.get(focused_actor_id, [])
+	history.append({"speaker": "player", "text": message})
+	actor_dialogue_history_by_id[focused_actor_id] = history
+	actor_dialogue_error_by_id.erase(focused_actor_id)
+	actor_dialogue_loading_id = focused_actor_id
+	dialogue_client.request_turn(focused_actor_id, message)
+	_render_actions(available_actions_cache)
+
+
+func _cancel_actor_dialogue_generation() -> void:
+	if focused_actor_id == "":
+		return
+	dialogue_client.cancel()
+	actor_dialogue_loading_id = ""
+	actor_dialogue_error_by_id[focused_actor_id] = "本次生成已取消"
+	_render_actions(available_actions_cache)
 
 
 func _on_ai_dialogue_ready(actor_id: String, dialogue: Dictionary) -> void:
 	actor_dialogue_by_id[actor_id] = dialogue
+	var history: Array = actor_dialogue_history_by_id.get(actor_id, [])
+	history.append({"speaker": "npc", "text": str(dialogue.get("utterance", ""))})
+	actor_dialogue_history_by_id[actor_id] = history
 	actor_dialogue_error_by_id.erase(actor_id)
 	if actor_dialogue_loading_id == actor_id:
 		actor_dialogue_loading_id = ""

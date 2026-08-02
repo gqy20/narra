@@ -47,7 +47,7 @@ make release-windows VERSION=0.1.0
 go run ./cmd/play
 ```
 
-CLI 是可完整通关的正式客户端，根据当前地点、资源、物品、认知和忙碌状态生成权威行动。`wait` 只推进一天；`wait complete` 明确推进到当前持续行动完成；`wait next` 才会快进到下一次需要决策的变化。底层始终逐日结算，并合并展示期间发生的公开事件。
+CLI 是可完整通关的正式客户端，根据当前地点、资源、物品、认知和忙碌状态生成权威行动。`wait` 只推进一天；`wait complete` 明确推进到当前持续行动完成；`wait next` 先展示风险，输入 `wait next confirm` 后才会快进到下一次需要决策的变化。底层始终逐日结算，并合并展示期间发生的公开事件。
 
 除行动编号外，还可以使用分层浏览和人物交谈命令：
 
@@ -55,29 +55,43 @@ CLI 是可完整通关的正式客户端，根据当前地点、资源、物品�
 选择> look
 选择> people
 选择> talk 2
+选择> 这条消息你准备如何核验？
+选择> context
+选择> actions
+选择> leave
 选择> map
 选择> journal
 选择> actions
 选择> actions 交涉
+选择> actions page 2
+选择> actions find 解瘴丹
 选择> do 1
 选择> wait
 选择> wait complete
 选择> wait next
+选择> wait next confirm
 选择> go 青岚门驻地
-选择> save saves/blackwind.json
+选择> save blackwind
+选择> saves
+选择> load blackwind
 选择> quit
 ```
 
-`actions` 可按“调查、交涉、准备、出行”筛选；每次世界状态变化后必须重新显示行动目录，避免旧编号误触其他行动。`map` 默认只显示当前位置的路线，`map all` 展示完整路网。
+`actions` 每页最多显示 8 项，可按“调查、交涉、准备、出行”筛选，也可用 `actions find <关键词>` 搜索；每次世界状态变化后必须重新显示行动目录，避免旧编号误触其他行动。`map` 默认只显示当前位置的路线，`map all` 展示完整路网。
 
-`talk <人物编号或姓名>` 使用与 Godot 相同的脱敏快照和 StepFun/Anthropic 兼容对话服务。它生成基于当前局势的一次人物回应，不接收后续自然语言，也不推进天数或修改关系、物品、存档和世界状态；产生游戏效果的交涉仍必须选择终端列出的权威行动。等待期间会周期性显示耗时。模型未启用时会明确显示不可用；模型已经启用后，超时、网络错误、空响应或输出校验失败都会明确报错，不会伪造本地台词。
+`talk <人物编号或姓名>` 使用与 Godot 相同的脱敏快照和 StepFun/Anthropic 兼容对话服务，并进入多轮会话。进入后可直接输入自然语言；`context` 查看当前语境与保留轮数，`actions` 查看该人物对应的权威交涉，`leave` 结束会话。最近 8 轮同一局势下的对话会提供给模型，完整记录随存档保存；世界行动发生后旧会话自动失效。
 
-继续已有存档，或让每回合自动保存：
+模型严格返回台词、情绪、对话行为、引用事实和最多 3 个建议行动。建议只能来自当前规则引擎已经公开的交涉选项，仍需玩家用 `do <编号>` 执行；自然语言本身不推进天数，也不修改关系、物品或世界状态。等待期间会周期性显示耗时，并可用 `Ctrl+C` 取消当次生成。模型未启用时会明确显示不可用；模型已经启用后，取消、超时、网络错误、空响应或输出校验失败都会明确报错，不会伪造本地台词。
+
+存档使用 `saves` 目录下的命名槽。自动存档默认开启，每次成功行动后覆盖 `autosave` 槽；手动覆盖已有槽需要追加 `confirm`：
 
 ```powershell
-go run ./cmd/play -load saves/blackwind.json
-go run ./cmd/play -autosave saves/autosave.json
+go run ./cmd/play -load autosave
+go run ./cmd/play -saves D:\games\fantu-saves -load blackwind
+go run ./cmd/play -autosave=false
 ```
+
+游戏内可用 `autosave on|off` 切换自动存档。自动存档关闭时，读取槽位需要输入 `load <槽位> confirm`，防止未保存进度被无意覆盖。
 
 默认界面只显示玩家术语；需要诊断数据时可以使用 `-debug` 查看稳定事实和行动 ID，但调试 ID 不再作为玩家命令接受：
 
@@ -111,7 +125,7 @@ Godot 的开始页和游戏内都可以打开“体验设置 → 大模型”，
 | `GET` | `/api/v1/game` | 获取当前玩家视图 |
 | `POST` | `/api/v1/game/new` | 新游戏，正文为 `{"player_name":"名字"}` |
 | `POST` | `/api/v1/game/action` | 执行动作，正文为 `{"action_id":"..."}` |
-| `POST` | `/api/v1/game/dialogue` | 生成同地人物聚焦台词，正文为 `{"actor_id":"N04","situation":"focus"}` |
+| `POST` | `/api/v1/game/dialogue` | 开始或继续同地人物对话；开场正文为 `{"actor_id":"N04","situation":"focus"}`，追问增加 `"player_message":"……"` |
 | `PUT` | `/api/v1/settings/ai` | 立即启用、切换或关闭人物对话模型 |
 | `POST` | `/api/v1/game/save` | 原子保存，正文为 `{"slot":"autosave"}` |
 | `POST` | `/api/v1/game/load` | 读取存档槽 |

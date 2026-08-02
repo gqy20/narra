@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"time"
@@ -51,33 +53,81 @@ func renderPeople(output io.Writer, view app.PlayerView, debug bool) {
 	fmt.Fprintln(output, "输入 talk <人物编号或姓名> 与人物交谈。")
 }
 
-func renderTalk(output io.Writer, session *app.Session, dialogueService *ai.Service, view app.PlayerView, selector string, debug bool) []app.AvailableAction {
+type terminalDialogueSession struct {
+	actor    app.VisibleActor
+	revision string
+}
+
+func startDialogue(output io.Writer, game *terminalGame, dialogueService *ai.Service, view app.PlayerView, selector string, debug bool) (*terminalDialogueSession, []app.AvailableAction) {
 	if selector == "" {
 		renderPeople(output, view, debug)
-		return nil
+		return nil, nil
 	}
 	actor, err := resolveActor(selector, view.KnownActors, debug)
 	if err != nil {
 		fmt.Fprintf(output, "无法交谈：%v\n", err)
-		return nil
+		return nil, nil
 	}
-	snapshot, err := session.DialogueSnapshotFor(actor.ID, "focus")
+	snapshot, err := game.session.DialogueSnapshotFor(actor.ID, "focus")
 	if err != nil {
 		fmt.Fprintf(output, "无法交谈：%v\n", err)
-		return nil
+		return nil, nil
 	}
 	if dialogueService == nil {
 		fmt.Fprintln(output, "人物对话未启用。请配置模型后重新启动，或继续使用规则行动。")
+		return nil, nil
+	}
+	conversation := &terminalDialogueSession{actor: actor, revision: snapshot.Revision}
+	line, err := generateDialogueTurn(output, game.session, dialogueService, snapshot, "")
+	if err != nil {
+		fmt.Fprintf(output, "对话生成失败：%v\n", err)
+		return nil, nil
+	}
+	if err := recordDialogueTurn(game, snapshot, "", line); err != nil {
+		fmt.Fprintf(output, "保存对话失败：%v\n", err)
+		return nil, nil
+	}
+	renderDialogueReply(output, actor, snapshot, line, debug)
+	actions := renderActorActionsSuggested(output, view.AvailableActions, actor.ID, line.SuggestedActions)
+	fmt.Fprintln(output, "已进入对话：直接输入回复；context 查看语境；actions 查看交涉；leave 离开。")
+	return conversation, actions
+}
+
+func continueDialogue(output io.Writer, game *terminalGame, dialogueService *ai.Service, conversation *terminalDialogueSession, playerText string, debug bool) []app.AvailableAction {
+	snapshot, err := game.session.DialogueSnapshotFor(conversation.actor.ID, "focus")
+	if err != nil || snapshot.Revision != conversation.revision {
+		fmt.Fprintln(output, "局势已经变化，本次对话已结束；请重新使用 talk。")
 		return nil
 	}
-	fmt.Fprintf(output, "\n%s正在生成一次人物回应；这不是自由对话，也不会推进游戏时间。\n", actor.Name)
+	line, err := generateDialogueTurn(output, game.session, dialogueService, snapshot, playerText)
+	if err != nil {
+		fmt.Fprintf(output, "对话生成失败：%v\n", err)
+		return nil
+	}
+	if err := recordDialogueTurn(game, snapshot, playerText, line); err != nil {
+		fmt.Fprintf(output, "保存对话失败：%v\n", err)
+		return nil
+	}
+	renderDialogueReply(output, conversation.actor, snapshot, line, debug)
+	return renderActorActionsSuggested(output, game.session.View().AvailableActions, conversation.actor.ID, line.SuggestedActions)
+}
+
+func generateDialogueTurn(output io.Writer, session *app.Session, dialogueService *ai.Service, snapshot app.DialogueSnapshot, playerText string) (ai.Dialogue, error) {
+	if playerText == "" {
+		fmt.Fprintf(output, "\n%s正在生成开场回应；不会推进游戏时间。按 Ctrl+C 可取消。\n", snapshot.Actor.Name)
+	} else {
+		fmt.Fprintf(output, "%s正在回应；不会推进游戏时间。按 Ctrl+C 可取消。\n", snapshot.Actor.Name)
+	}
 	type dialogueResult struct {
 		line ai.Dialogue
 		err  error
 	}
+	requestContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
 	result := make(chan dialogueResult, 1)
 	go func() {
-		line, generationErr := dialogueService.GenerateDialogueDetailed(context.Background(), snapshot)
+		history := session.DialogueHistory(snapshot.Actor.ID, snapshot.Revision, 8)
+		line, generationErr := dialogueService.GenerateConversationTurn(requestContext, snapshot, history, playerText)
 		result <- dialogueResult{line: line, err: generationErr}
 	}()
 	ticker := time.NewTicker(5 * time.Second)
@@ -95,10 +145,26 @@ func renderTalk(output io.Writer, session *app.Session, dialogueService *ai.Serv
 			fmt.Fprintf(output, "  已等待 %d 秒，仍在等待模型返回……\n", int(time.Since(started).Seconds()))
 		}
 	}
-	if generationErr != nil {
-		fmt.Fprintf(output, "对话生成失败：%v\n", generationErr)
-		return nil
+	return line, generationErr
+}
+
+func recordDialogueTurn(game *terminalGame, snapshot app.DialogueSnapshot, playerText string, line ai.Dialogue) error {
+	if err := game.session.RecordDialogue(app.DialogueExchange{
+		ActorID: snapshot.Actor.ID, Revision: snapshot.Revision, PlayerText: playerText,
+		NPCText: line.Utterance, Emotion: line.Emotion, DialogueAct: line.DialogueAct,
+		ReferencedFacts: line.ReferencedFacts, SuggestedActions: line.SuggestedActions,
+	}); err != nil {
+		return err
 	}
+	if game.autosave && game.saves != nil {
+		if err := game.saves.save(autosaveSlot, game.session); err != nil {
+			return fmt.Errorf("autosave dialogue: %w", err)
+		}
+	}
+	return nil
+}
+
+func renderDialogueReply(output io.Writer, actor app.VisibleActor, snapshot app.DialogueSnapshot, line ai.Dialogue, debug bool) {
 	fmt.Fprintf(output, "%s：“%s”\n", actor.Name, line.Utterance)
 	fmt.Fprintf(output, "态度：%s\n", snapshot.Relation.Attitude)
 	if snapshot.PublicPlan != "" {
@@ -107,9 +173,20 @@ func renderTalk(output io.Writer, session *app.Session, dialogueService *ai.Serv
 	if debug {
 		fmt.Fprintf(output, "对话来源：%s；状态版本：%s\n", line.Source, line.Revision)
 	}
-	actions := renderActorActions(output, view.AvailableActions, actor.ID)
-	fmt.Fprintln(output, "如需改变关系或局势，请选择上方规则行动；自然语言输入不会被当作对话内容。")
-	return actions
+}
+
+func renderDialogueContext(output io.Writer, session *app.Session, conversation *terminalDialogueSession) {
+	snapshot, err := session.DialogueSnapshotFor(conversation.actor.ID, "focus")
+	if err != nil || snapshot.Revision != conversation.revision {
+		fmt.Fprintln(output, "当前对话语境已经失效。")
+		return
+	}
+	fmt.Fprintf(output, "对话语境：%s · 第 %d 天 · %s\n", conversation.actor.Name, snapshot.Day, snapshot.Relation.Attitude)
+	if snapshot.PublicPlan != "" {
+		fmt.Fprintln(output, "公开动向："+snapshot.PublicPlan)
+	}
+	history := session.DialogueHistory(conversation.actor.ID, conversation.revision, 8)
+	fmt.Fprintf(output, "已保留最近 %d 轮对话。\n", len(history))
 }
 
 func resolveActor(selector string, actors []app.VisibleActor, debug bool) (app.VisibleActor, error) {
@@ -128,6 +205,10 @@ func resolveActor(selector string, actors []app.VisibleActor, debug bool) (app.V
 }
 
 func renderActorActions(output io.Writer, actions []app.AvailableAction, actorID string) []app.AvailableAction {
+	return renderActorActionsSuggested(output, actions, actorID, nil)
+}
+
+func renderActorActionsSuggested(output io.Writer, actions []app.AvailableAction, actorID string, suggestions []string) []app.AvailableAction {
 	actorActions := make([]app.AvailableAction, 0)
 	for _, action := range terminalSelectableActions(actions) {
 		if action.TargetID == actorID {
@@ -135,12 +216,20 @@ func renderActorActions(output io.Writer, actions []app.AvailableAction, actorID
 		}
 	}
 	found := false
+	suggested := make(map[string]bool, len(suggestions))
+	for _, actionID := range suggestions {
+		suggested[actionID] = true
+	}
 	for index, action := range actorActions {
 		if !found {
 			fmt.Fprintln(output, "可选交涉：")
 			found = true
 		}
-		fmt.Fprintf(output, "  %d. %s — %s\n", index+1, action.Name, action.Description)
+		marker := ""
+		if suggested[action.ID] {
+			marker = " [模型建议]"
+		}
+		fmt.Fprintf(output, "  %d. %s%s — %s\n", index+1, action.Name, marker, action.Description)
 	}
 	if !found {
 		fmt.Fprintln(output, "当前没有需要通过规则结算的交涉选项。")

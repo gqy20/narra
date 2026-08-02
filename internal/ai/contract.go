@@ -5,26 +5,29 @@ package ai
 import "context"
 
 type Dialogue struct {
-	ActorID         string   `json:"actor_id"`
-	Revision        string   `json:"state_revision"`
-	Utterance       string   `json:"utterance"`
-	Emotion         string   `json:"emotion"`
-	DialogueAct     string   `json:"dialogue_act"`
-	ReferencedFacts []string `json:"referenced_fact_ids"`
-	Source          string   `json:"source"`
+	ActorID          string   `json:"actor_id"`
+	Revision         string   `json:"state_revision"`
+	Utterance        string   `json:"utterance"`
+	Emotion          string   `json:"emotion"`
+	DialogueAct      string   `json:"dialogue_act"`
+	ReferencedFacts  []string `json:"referenced_fact_ids"`
+	SuggestedActions []string `json:"suggested_action_ids"`
+	Source           string   `json:"source"`
 }
 
 type DialogueDraft struct {
-	Utterance       string   `json:"utterance"`
-	Emotion         string   `json:"emotion"`
-	DialogueAct     string   `json:"dialogue_act"`
-	ReferencedFacts []string `json:"referenced_fact_ids"`
+	Utterance        string   `json:"utterance"`
+	Emotion          string   `json:"emotion"`
+	DialogueAct      string   `json:"dialogue_act"`
+	ReferencedFacts  []string `json:"referenced_fact_ids"`
+	SuggestedActions []string `json:"suggested_action_ids"`
 }
 
 type GenerationRequest struct {
-	System         string
-	Input          string
-	AllowedFactIDs []string
+	System           string
+	Input            string
+	AllowedFactIDs   []string
+	AllowedActionIDs []string
 }
 
 type GenerationMetadata struct {

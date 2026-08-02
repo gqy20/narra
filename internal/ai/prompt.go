@@ -2,7 +2,7 @@ package ai
 
 import _ "embed"
 
-const promptVersion = "npc-focus-v1"
+const promptVersion = "npc-conversation-v2"
 
-//go:embed prompts/npc_focus_v1.txt
-var npcFocusSystemPrompt string
+//go:embed prompts/npc_conversation_v2.txt
+var npcConversationSystemPrompt string

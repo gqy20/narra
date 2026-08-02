@@ -83,8 +83,9 @@ type actionRequest struct {
 }
 
 type dialogueRequest struct {
-	ActorID   string `json:"actor_id"`
-	Situation string `json:"situation,omitempty"`
+	ActorID       string `json:"actor_id"`
+	Situation     string `json:"situation,omitempty"`
+	PlayerMessage string `json:"player_message,omitempty"`
 }
 
 type slotRequest struct {

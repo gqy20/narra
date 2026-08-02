@@ -20,25 +20,25 @@ func TestNewRequiresCredentialsAndModel(t *testing.T) {
 }
 
 func TestDialogueSchemaIsClosedAndComplete(t *testing.T) {
-	dialogueSchema := dialogueSchemaFor([]string{"F01"})
+	dialogueSchema := dialogueSchemaFor([]string{"F01"}, []string{"tell:N01:F01"})
 	if dialogueSchema["additionalProperties"] != false {
 		t.Fatalf("dialogue schema is not closed: %+v", dialogueSchema)
 	}
 	required, ok := dialogueSchema["required"].([]string)
-	if !ok || len(required) != 4 {
+	if !ok || len(required) != 5 {
 		t.Fatalf("dialogue schema required fields = %#v", dialogueSchema["required"])
 	}
 }
 
 func TestDialogueSchemaRestrictsFactReferences(t *testing.T) {
-	schema := dialogueSchemaFor([]string{"F01", "F02"})
+	schema := dialogueSchemaFor([]string{"F01", "F02"}, nil)
 	properties := schema["properties"].(map[string]any)
 	facts := properties["referenced_fact_ids"].(map[string]any)
 	items := facts["items"].(map[string]any)
 	if got := items["enum"].([]string); len(got) != 2 || got[0] != "F01" || got[1] != "F02" {
 		t.Fatalf("fact enum = %#v", got)
 	}
-	empty := dialogueSchemaFor(nil)["properties"].(map[string]any)["referenced_fact_ids"].(map[string]any)
+	empty := dialogueSchemaFor(nil, nil)["properties"].(map[string]any)["referenced_fact_ids"].(map[string]any)
 	if empty["maxItems"] != 0 {
 		t.Fatalf("empty fact list = %#v", empty)
 	}
@@ -54,7 +54,7 @@ func TestGenerateDialogueUsesStructuredOutputAndDecodesResponse(t *testing.T) {
 			t.Errorf("decode request: %v", err)
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		_, _ = writer.Write([]byte(`{"id":"msg_test","type":"message","role":"assistant","model":"test-model","content":[{"type":"text","text":"{\"utterance\":\"先说说你的来意。\",\"emotion\":\"alert\",\"dialogue_act\":\"question\",\"referenced_fact_ids\":[]}"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":12,"output_tokens":8}}`))
+		_, _ = writer.Write([]byte(`{"id":"msg_test","type":"message","role":"assistant","model":"test-model","content":[{"type":"text","text":"{\"utterance\":\"先说说你的来意。\",\"emotion\":\"alert\",\"dialogue_act\":\"question\",\"referenced_fact_ids\":[],\"suggested_action_ids\":[]}"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":12,"output_tokens":8}}`))
 	}))
 	defer server.Close()
 

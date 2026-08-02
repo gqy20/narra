@@ -12,18 +12,19 @@ import (
 // the optional narrative service. It is not part of the authoritative world
 // state and must never be used to settle game rules.
 type DialogueSnapshot struct {
-	Revision      string           `json:"revision"`
-	ScenarioID    string           `json:"scenario_id"`
-	Day           int              `json:"day"`
-	Situation     string           `json:"situation"`
-	Actor         DialogueActor    `json:"actor"`
-	Player        DialoguePlayer   `json:"player"`
-	Relation      DialogueRelation `json:"relation"`
-	PublicPlan    string           `json:"public_plan,omitempty"`
-	RecentEvents  []DialogueEvent  `json:"recent_events,omitempty"`
-	AllowedClaims []DialogueClaim  `json:"allowed_claims,omitempty"`
-	PrivateDrives []string         `json:"private_drives,omitempty"`
-	AllowedActs   []string         `json:"allowed_acts,omitempty"`
+	Revision         string           `json:"revision"`
+	ScenarioID       string           `json:"scenario_id"`
+	Day              int              `json:"day"`
+	Situation        string           `json:"situation"`
+	Actor            DialogueActor    `json:"actor"`
+	Player           DialoguePlayer   `json:"player"`
+	Relation         DialogueRelation `json:"relation"`
+	PublicPlan       string           `json:"public_plan,omitempty"`
+	RecentEvents     []DialogueEvent  `json:"recent_events,omitempty"`
+	AllowedClaims    []DialogueClaim  `json:"allowed_claims,omitempty"`
+	PrivateDrives    []string         `json:"private_drives,omitempty"`
+	AllowedActs      []string         `json:"allowed_acts,omitempty"`
+	AvailableActions []DialogueAction `json:"available_actions,omitempty"`
 }
 
 type DialogueActor struct {
@@ -55,6 +56,12 @@ type DialogueClaim struct {
 
 type DialogueEvent struct {
 	Day         int    `json:"day"`
+	Description string `json:"description"`
+}
+
+type DialogueAction struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
@@ -99,6 +106,13 @@ func (s *Session) DialogueSnapshotFor(actorID, situation string) (DialogueSnapsh
 		AllowedClaims: dialogueAllowedClaims(state, npc),
 		PrivateDrives: dialoguePrivateDrives(config, npc),
 		AllowedActs:   s.dialogueAllowedActs(state, actorID),
+	}
+	for _, option := range s.actionCatalog(state) {
+		if option.TargetID == actorID && option.Kind != "advance" {
+			snapshot.AvailableActions = append(snapshot.AvailableActions, DialogueAction{
+				ID: option.ID, Name: option.Name, Description: option.Description,
+			})
+		}
 	}
 	if visible.Plan != nil {
 		snapshot.PublicPlan = strings.TrimSpace(visible.Plan.Plan + "；" + visible.Plan.Reason)

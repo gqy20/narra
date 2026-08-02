@@ -92,6 +92,16 @@ func TestDialogueEndpointUsesModelWithoutChangingSession(t *testing.T) {
 	if before.Day != after.Day || len(gameServer.session.History()) != 0 {
 		t.Fatalf("dialogue changed authoritative session: before=%d after=%d history=%v", before.Day, after.Day, gameServer.session.History())
 	}
+	response, status = request(t, service.URL, http.MethodPost, "/api/v1/game/dialogue", map[string]string{
+		"actor_id": "N04", "player_message": "你准备如何核验？",
+	})
+	if status != http.StatusOK || response.Dialogue == nil {
+		t.Fatalf("dialogue follow-up = %d %+v", status, response)
+	}
+	history := gameServer.session.DialogueHistory("N04", gameServer.session.DialogueRevision("N04"), 8)
+	if len(history) != 2 || history[1].PlayerText != "你准备如何核验？" || gameServer.session.View().Day != before.Day {
+		t.Fatalf("server dialogue history/state = %+v / %+v", history, gameServer.session.View())
+	}
 }
 
 func TestDialogueEndpointReportsUnavailableWithoutModel(t *testing.T) {

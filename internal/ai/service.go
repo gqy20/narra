@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"fantu/internal/app"
 )
@@ -36,13 +38,29 @@ func NewService(provider Provider, options ServiceOptions) *Service {
 
 func (s *Service) Enabled() bool { return s != nil && s.provider != nil }
 
-// GenerateDialogue returns a validated model response or an explicit error.
-// It never fabricates a local replacement for a failed model call.
-func (s *Service) GenerateDialogueDetailed(ctx context.Context, snapshot app.DialogueSnapshot) (Dialogue, error) {
+// GenerateConversationTurn returns one validated NPC reply using only the
+// redacted snapshot and bounded, non-authoritative conversation history.
+func (s *Service) GenerateConversationTurn(ctx context.Context, snapshot app.DialogueSnapshot, history []app.DialogueExchange, playerText string) (Dialogue, error) {
 	if s == nil || s.provider == nil {
 		return Dialogue{}, ErrUnavailable
 	}
-	input, err := json.Marshal(snapshot)
+	playerText = strings.TrimSpace(playerText)
+	if utf8.RuneCountInString(playerText) > 500 {
+		return Dialogue{}, fmt.Errorf("player dialogue must not exceed 500 characters")
+	}
+	if len(history) > 8 {
+		history = history[len(history)-8:]
+	}
+	if err := validateConversationHistory(snapshot, history); err != nil {
+		return Dialogue{}, fmt.Errorf("validate dialogue history: %w", err)
+	}
+	payload := struct {
+		Snapshot      app.DialogueSnapshot   `json:"snapshot"`
+		History       []app.DialogueExchange `json:"history,omitempty"`
+		PlayerMessage string                 `json:"player_message,omitempty"`
+		Opening       bool                   `json:"opening"`
+	}{Snapshot: snapshot, History: history, PlayerMessage: playerText, Opening: playerText == ""}
+	input, err := json.Marshal(payload)
 	if err != nil {
 		return Dialogue{}, fmt.Errorf("encode dialogue snapshot: %w", err)
 	}
@@ -57,10 +75,15 @@ func (s *Service) GenerateDialogueDetailed(ctx context.Context, snapshot app.Dia
 	for _, claim := range snapshot.AllowedClaims {
 		allowedFactIDs = append(allowedFactIDs, claim.FactID)
 	}
+	allowedActionIDs := make([]string, 0, len(snapshot.AvailableActions))
+	for _, action := range snapshot.AvailableActions {
+		allowedActionIDs = append(allowedActionIDs, action.ID)
+	}
 	draft, _, err := s.provider.GenerateDialogue(callCtx, GenerationRequest{
-		System:         npcFocusSystemPrompt,
-		Input:          fmt.Sprintf("以下是经过游戏规则裁剪的本次人物上下文。只根据这些内容生成一句当前开场话：\n%s", input),
-		AllowedFactIDs: allowedFactIDs,
+		System:           npcConversationSystemPrompt,
+		Input:            fmt.Sprintf("以下是经过游戏规则裁剪的对话上下文。生成 NPC 的下一句回应：\n%s", input),
+		AllowedFactIDs:   allowedFactIDs,
+		AllowedActionIDs: allowedActionIDs,
 	})
 	if err != nil {
 		return Dialogue{}, fmt.Errorf("generate dialogue: %w", err)
@@ -71,8 +94,28 @@ func (s *Service) GenerateDialogueDetailed(ctx context.Context, snapshot app.Dia
 	result := Dialogue{
 		ActorID: snapshot.Actor.ID, Revision: snapshot.Revision,
 		Utterance: draft.Utterance, Emotion: draft.Emotion, DialogueAct: draft.DialogueAct,
-		ReferencedFacts: append([]string(nil), draft.ReferencedFacts...), Source: "anthropic",
+		ReferencedFacts:  append([]string{}, draft.ReferencedFacts...),
+		SuggestedActions: append([]string{}, draft.SuggestedActions...), Source: "anthropic",
 	}
 	s.cache.put(key, result)
 	return result, nil
+}
+
+func validateConversationHistory(snapshot app.DialogueSnapshot, history []app.DialogueExchange) error {
+	for index, exchange := range history {
+		if exchange.ActorID != snapshot.Actor.ID || exchange.Revision != snapshot.Revision {
+			return fmt.Errorf("exchange %d does not match current actor and revision", index+1)
+		}
+		if utf8.RuneCountInString(exchange.PlayerText) > 500 {
+			return fmt.Errorf("exchange %d player text is too long", index+1)
+		}
+		draft := DialogueDraft{
+			Utterance: exchange.NPCText, Emotion: exchange.Emotion, DialogueAct: exchange.DialogueAct,
+			ReferencedFacts: exchange.ReferencedFacts, SuggestedActions: exchange.SuggestedActions,
+		}
+		if err := validateDialogue(snapshot, &draft); err != nil {
+			return fmt.Errorf("exchange %d: %w", index+1, err)
+		}
+	}
+	return nil
 }

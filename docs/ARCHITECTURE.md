@@ -92,16 +92,17 @@ Godot 控件 ──动作 ID──> /api/v1 ──> app.Session ──> engine
 Godot 地图/场景/行动视图 <── PlayerView <─────────┘
 ```
 
-可选 AI 对话是这条权威链路旁边的只读表现支路：`internal/app` 先从当前 Session 构造不可变的 `DialogueSnapshot`，仅包含同地人物的公开资料、玩家已经获知或亲自告知的说法、抽象化动机和公开事件；`internal/ai` 再通过 Anthropic 官方 Go SDK 请求受 JSON Schema 约束的短台词。服务不会把 `WorldState`、事实真值、秘密认知、策略评分或内部标记交给模型。模型调用不持有 Session 锁，返回时若局势 revision 已变化则丢弃旧结果；超时、网络错误、越权事实引用、空响应或格式错误都会作为失败返回，不生成替代台词。
+可选 AI 对话是这条权威链路旁边的非权威表现支路：`internal/app` 先从当前 Session 构造不可变的 `DialogueSnapshot`，仅包含同地人物的公开资料、玩家已经获知或亲自告知的说法、抽象化动机、公开事件与当前可见交涉；`internal/ai` 再通过 Anthropic 官方 Go SDK请求受 JSON Schema 约束的多轮回应。每次最多注入同一局势 revision 下最近 8 轮历史，模型只能建议当前公开行动，不能执行行动。对话记录随存档保存，但不参与世界回放和规则结算。服务不会把 `WorldState`、事实真值、秘密认知、策略评分或内部标记交给模型。模型调用不持有 Session 锁，返回时若局势 revision 已变化则丢弃旧结果；取消、超时、网络错误、越权事实或行动引用、空响应及格式错误都会作为失败返回，不生成替代台词。
 
 `cmd/play` 与 `cmd/server` 通过 `internal/aiconfig` 共享 `.env` 加载、模型参数和 provider 构建。终端的 `talk` 命令直接读取同一个 Session 的脱敏快照，不经过本地 HTTP；Godot 则通过独立 HTTP 通道访问。两条路径最终复用同一个 `internal/ai.Service`，并遵守相同的结构化输出校验和显式错误规则。未启用模型时 provider 不会被构造，对话能力明确标记为不可用。
 
 Godot 的模型设置写入用户运行目录中的独立 `ai-settings.json`；密钥不会进入进程参数或日志，该配置文件也不会被纳入诊断包。打包服务启动时读取该文件，运行期间则通过回环地址上的 `PUT /api/v1/settings/ai` 原子替换对话服务，因此切换或关闭模型不会销毁 Session。响应只返回启用状态和模式，不回传密钥。
 
 ```text
-app.Session ──脱敏快照──> internal/ai ──> Anthropic Messages API
-     │                         │
-     └──权威规则与存档         └──仅 Dialogue 表现数据──> Godot 人物聚焦区
+app.Session ──脱敏快照 + 会话历史──> internal/ai ──> Anthropic Messages API
+     │                                  │
+     ├──权威规则与行动回放               └──结构化 Dialogue + 受限行动建议──> CLI / Godot
+     └──持久化非权威对话记录
 ```
 
 结构化输出使用官方 SDK 的稳定 `OutputConfig` 和 JSON Schema，响应解码使用 Go 标准库 `encoding/json`，并在应用侧再次校验枚举、长度和 `referenced_fact_ids` 白名单。Godot 为对话使用独立 `HTTPRequest`，不会占用动作、存档和读取视图的请求通道。

@@ -26,8 +26,9 @@ func main() {
 	aiConfig := registerPlayAIFlags()
 	dataDir := flag.String("data", filepath.FromSlash("data/blackwind"), "scenario data directory")
 	playerName := flag.String("name", "无名散修", "new-game player name")
-	loadPath := flag.String("load", "", "load an existing save file")
-	autosavePath := flag.String("autosave", "", "save automatically after every turn")
+	saveDir := flag.String("saves", "saves", "directory containing named save slots")
+	loadSlot := flag.String("load", "", "load a named save slot")
+	autosave := flag.Bool("autosave", true, "save to the autosave slot after every turn")
 	debug := flag.Bool("debug", false, "show stable IDs and internal metric details")
 	flag.Parse()
 
@@ -36,9 +37,14 @@ func main() {
 		fail(err)
 	}
 
+	store, err := newTerminalSaveStore(*saveDir, bundle)
+	if err != nil {
+		fail(err)
+	}
+
 	var session *app.Session
-	if *loadPath != "" {
-		session, err = app.LoadFile(bundle, *loadPath)
+	if *loadSlot != "" {
+		session, err = store.load(*loadSlot)
 	} else {
 		session, err = app.NewSession(bundle, app.DefaultBlackwindPlayer(*playerName))
 	}
@@ -51,18 +57,28 @@ func main() {
 	}
 	renderDialogueMode(os.Stdout, dialogueMode)
 
-	if err := runGame(os.Stdin, os.Stdout, session, dialogue, *autosavePath, *debug); err != nil {
+	game := &terminalGame{session: session, saves: store, autosave: *autosave}
+	if err := runGame(os.Stdin, os.Stdout, game, dialogue, *debug); err != nil {
 		fail(err)
 	}
 }
 
-func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *ai.Service, autosavePath string, debug bool) error {
+func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai.Service, debug bool) error {
+	session := game.session
 	scanner := bufio.NewScanner(input)
 	fmt.Fprintln(output, "凡途 · 黑风谷局势")
 	fmt.Fprintln(output, "输入 help 查看命令；输入 actions 查看当前选择。")
+	if game.saves != nil {
+		if game.autosave {
+			fmt.Fprintf(output, "自动存档已开启：每次成功行动后写入 %s 槽。\n", autosaveSlot)
+		} else {
+			fmt.Fprintln(output, "自动存档已关闭；可输入 autosave on 开启。")
+		}
+	}
 	view := session.View()
 	actionMenuCurrent := false
 	var displayedActions []app.AvailableAction
+	var conversation *terminalDialogueSession
 	renderView(output, view, debug)
 
 	for {
@@ -79,6 +95,27 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 			return nil
 		}
 		line := strings.TrimSpace(strings.TrimPrefix(scanner.Text(), "\ufeff"))
+		if conversation != nil {
+			switch {
+			case line == "leave":
+				fmt.Fprintf(output, "你结束了与%s的对话。\n", conversation.actor.Name)
+				conversation = nil
+				actionMenuCurrent = false
+				displayedActions = nil
+				continue
+			case line == "context":
+				renderDialogueContext(output, session, conversation)
+				continue
+			case line == "actions":
+				displayedActions = renderActorActions(output, view.AvailableActions, conversation.actor.ID)
+				actionMenuCurrent = len(displayedActions) > 0
+				continue
+			case line != "" && !isTerminalCommand(line):
+				displayedActions = continueDialogue(output, game, dialogue, conversation, line, debug)
+				actionMenuCurrent = len(displayedActions) > 0
+				continue
+			}
+		}
 		switch {
 		case line == "":
 			continue
@@ -95,7 +132,7 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 			renderPeople(output, view, debug)
 			continue
 		case line == "talk" || strings.HasPrefix(line, "talk "):
-			displayedActions = renderTalk(output, session, dialogue, view, commandArgument(line), debug)
+			conversation, displayedActions = startDialogue(output, game, dialogue, view, commandArgument(line), debug)
 			actionMenuCurrent = len(displayedActions) > 0
 			continue
 		case line == "actions" || strings.HasPrefix(line, "actions "):
@@ -109,18 +146,22 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 		case line == "journal":
 			renderJournal(output, view, debug)
 			continue
-		case line == "wait" || line == "wait next" || line == "wait complete":
+		case line == "wait next":
+			renderWaitNextPreview(output, view)
+			continue
+		case line == "wait" || line == "wait next confirm" || line == "wait complete":
 			actionID, err := waitCommand(line, view.AvailableActions)
 			if err != nil {
 				fmt.Fprintf(output, "无法等待：%v\n", err)
 				continue
 			}
-			view, err = executeTerminalAction(output, session, actionID, autosavePath, debug)
+			view, err = executeTerminalAction(output, game, actionID, debug)
 			if err != nil {
 				return err
 			}
 			actionMenuCurrent = false
 			displayedActions = nil
+			conversation = nil
 			continue
 		case line == "go" || strings.HasPrefix(line, "go "):
 			actionID, err := resolveTravel(commandArgument(line), view, debug)
@@ -128,22 +169,39 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 				fmt.Fprintf(output, "无法前往：%v\n", err)
 				continue
 			}
-			view, err = executeTerminalAction(output, session, actionID, autosavePath, debug)
+			view, err = executeTerminalAction(output, game, actionID, debug)
 			if err != nil {
 				return err
 			}
 			actionMenuCurrent = false
 			displayedActions = nil
+			conversation = nil
+			continue
+		case line == "saves":
+			renderSaveSlots(output, game.saves)
+			continue
+		case line == "autosave" || strings.HasPrefix(line, "autosave "):
+			renderAutosaveCommand(output, game, commandArgument(line))
+			continue
+		case line == "load" || strings.HasPrefix(line, "load "):
+			loaded, err := loadSaveCommand(output, game, commandArgument(line))
+			if err != nil {
+				fmt.Fprintf(output, "读取失败：%v\n", err)
+				continue
+			}
+			if !loaded {
+				continue
+			}
+			session = game.session
+			view = session.View()
+			actionMenuCurrent = false
+			displayedActions = nil
+			conversation = nil
+			renderView(output, view, debug)
 			continue
 		case line == "save" || strings.HasPrefix(line, "save "):
-			path := commandArgument(line)
-			if path == "" {
-				path = "save.json"
-			}
-			if err := saveSession(path, session); err != nil {
+			if err := saveSlotCommand(output, game, commandArgument(line)); err != nil {
 				fmt.Fprintf(output, "保存失败：%v\n", err)
-			} else {
-				fmt.Fprintf(output, "已保存到 %s\n", path)
 			}
 			continue
 		case line == "do" || strings.HasPrefix(line, "do "):
@@ -156,12 +214,13 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 				fmt.Fprintf(output, "无法执行：%v\n", err)
 				continue
 			}
-			view, err = executeTerminalAction(output, session, actionID, autosavePath, debug)
+			view, err = executeTerminalAction(output, game, actionID, debug)
 			if err != nil {
 				return err
 			}
 			actionMenuCurrent = false
 			displayedActions = nil
+			conversation = nil
 			continue
 		}
 		if _, err := strconv.Atoi(line); err == nil {
@@ -169,6 +228,19 @@ func runGame(input io.Reader, output io.Writer, session *app.Session, dialogue *
 			continue
 		}
 		fmt.Fprintf(output, "未知命令 %q；输入 help 查看命令。\n", line)
+	}
+}
+
+func isTerminalCommand(line string) bool {
+	command := line
+	if before, _, found := strings.Cut(line, " "); found {
+		command = before
+	}
+	switch command {
+	case "q", "quit", "exit", "help", "?", "look", "people", "talk", "actions", "map", "journal", "wait", "go", "saves", "autosave", "load", "save", "do", "context", "leave":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -204,14 +276,14 @@ func waitCommand(command string, actions []app.AvailableAction) (string, error) 
 	return "", errors.New("当前不能快进到下一变化")
 }
 
-func executeTerminalAction(output io.Writer, session *app.Session, actionID, autosavePath string, debug bool) (app.PlayerView, error) {
-	view, err := session.Execute(actionID)
+func executeTerminalAction(output io.Writer, game *terminalGame, actionID string, debug bool) (app.PlayerView, error) {
+	view, err := game.session.Execute(actionID)
 	if err != nil {
 		fmt.Fprintf(output, "行动失败：%v\n", err)
-		return session.View(), nil
+		return game.session.View(), nil
 	}
-	if autosavePath != "" {
-		if err := saveSession(autosavePath, session); err != nil {
+	if game.autosave && game.saves != nil {
+		if err := game.saves.save(autosaveSlot, game.session); err != nil {
 			return app.PlayerView{}, fmt.Errorf("autosave: %w", err)
 		}
 	}
@@ -220,6 +292,132 @@ func executeTerminalAction(output io.Writer, session *app.Session, actionID, aut
 		renderActionRefresh(output, view.AvailableActions)
 	}
 	return view, nil
+}
+
+func renderWaitNextPreview(output io.Writer, view app.PlayerView) {
+	var waitAction *app.AvailableAction
+	for index := range view.AvailableActions {
+		if view.AvailableActions[index].ID == "wait:next" {
+			waitAction = &view.AvailableActions[index]
+			break
+		}
+	}
+	if waitAction == nil {
+		fmt.Fprintln(output, "无法等待：当前不能快进到下一次重要变化。")
+		return
+	}
+	fmt.Fprintf(output, "快进预览：当前第 %d 天；该操作会连续略过平静日，直到下一次重要变化。\n", view.Day)
+	if waitAction.Timing != "" {
+		fmt.Fprintln(output, "  - "+waitAction.Timing)
+	}
+	for _, warning := range waitAction.Warnings {
+		fmt.Fprintln(output, "  - 风险："+warning)
+	}
+	for _, unknown := range waitAction.Unknowns {
+		fmt.Fprintln(output, "  - 未知："+unknown)
+	}
+	if view.Travel != nil && view.Travel.Timing != "" {
+		fmt.Fprintln(output, "  - "+view.Travel.Timing)
+	}
+	if view.RouteProgress != nil && view.RouteProgress.Window != "" {
+		fmt.Fprintf(output, "  - 当前路线窗口：%s\n", view.RouteProgress.Window)
+	}
+	fmt.Fprintln(output, "确认后请输入 wait next confirm；也可用 wait 只等待一天。")
+}
+
+func saveSlotCommand(output io.Writer, game *terminalGame, argument string) error {
+	if game.saves == nil {
+		return errors.New("save store is unavailable")
+	}
+	fields := strings.Fields(argument)
+	slot := defaultSaveSlot
+	confirm := false
+	if len(fields) > 0 {
+		slot = fields[0]
+	}
+	if len(fields) > 1 && fields[1] == "confirm" {
+		confirm = true
+	}
+	if len(fields) > 2 || (len(fields) > 1 && !confirm) {
+		return errors.New("usage: save [slot] [confirm]")
+	}
+	exists, err := game.saves.exists(slot)
+	if err != nil {
+		return err
+	}
+	if exists && !confirm {
+		fmt.Fprintf(output, "存档槽 %s 已存在；输入 save %s confirm 确认覆盖。\n", slot, slot)
+		return nil
+	}
+	if err := game.saves.save(slot, game.session); err != nil {
+		return err
+	}
+	fmt.Fprintf(output, "已保存到存档槽 %s。\n", slot)
+	return nil
+}
+
+func loadSaveCommand(output io.Writer, game *terminalGame, argument string) (bool, error) {
+	if game.saves == nil {
+		return false, errors.New("save store is unavailable")
+	}
+	fields := strings.Fields(argument)
+	if len(fields) == 0 || len(fields) > 2 {
+		return false, errors.New("usage: load <slot> [confirm]")
+	}
+	confirm := len(fields) == 2 && fields[1] == "confirm"
+	if len(fields) == 2 && !confirm {
+		return false, errors.New("usage: load <slot> [confirm]")
+	}
+	if !game.autosave && !confirm {
+		fmt.Fprintf(output, "自动存档已关闭；输入 load %s confirm 确认放弃当前未保存进度。\n", fields[0])
+		return false, nil
+	}
+	loaded, err := game.saves.load(fields[0])
+	if err != nil {
+		return false, err
+	}
+	game.session = loaded
+	fmt.Fprintf(output, "已读取存档槽 %s。\n", fields[0])
+	return true, nil
+}
+
+func renderSaveSlots(output io.Writer, store *terminalSaveStore) {
+	if store == nil {
+		fmt.Fprintln(output, "存档系统不可用。")
+		return
+	}
+	infos, err := store.list()
+	if err != nil {
+		fmt.Fprintf(output, "读取存档列表失败：%v\n", err)
+		return
+	}
+	if len(infos) == 0 {
+		fmt.Fprintln(output, "尚无存档。")
+		return
+	}
+	fmt.Fprintln(output, "存档槽：")
+	for _, info := range infos {
+		fmt.Fprintf(output, "  - %s：第 %d 天 · %s · %s\n", info.Slot, info.Day, info.Location, info.Modified.Format("2006-01-02 15:04"))
+	}
+}
+
+func renderAutosaveCommand(output io.Writer, game *terminalGame, argument string) {
+	switch strings.ToLower(strings.TrimSpace(argument)) {
+	case "":
+		state := "关闭"
+		if game.autosave {
+			state = "开启"
+		}
+		fmt.Fprintf(output, "自动存档：%s（槽位 %s）。\n", state, autosaveSlot)
+	case "on":
+		game.autosave = true
+		fmt.Fprintf(output, "自动存档已开启，将在每次成功行动后写入 %s。\n", autosaveSlot)
+	case "off":
+		game.autosave = false
+		fmt.Fprintln(output, "自动存档已关闭。")
+	default:
+		fmt.Fprintln(output, "用法：autosave [on|off]")
+	}
 }
 
 func renderView(output io.Writer, view app.PlayerView, debug bool) {
@@ -328,18 +526,37 @@ func renderActions(output io.Writer, actions []app.AvailableAction, debug bool) 
 
 func renderActionsCategory(output io.Writer, actions []app.AvailableAction, requested string, debug bool) ([]app.AvailableAction, bool) {
 	selectable := terminalSelectableActions(actions)
-	category, valid := normalizeActionCategory(requested)
-	if !valid {
-		fmt.Fprintf(output, "未知行动类别 %q；可用类别：调查、交涉、准备、出行。\n", requested)
+	query, err := parseActionQuery(requested)
+	if err != nil {
+		fmt.Fprintf(output, "行动查询无效：%v\n", err)
 		return nil, false
 	}
-	displayed := make([]app.AvailableAction, 0, len(selectable))
+	filtered := make([]app.AvailableAction, 0, len(selectable))
 	for _, action := range selectable {
-		if category == "" || terminalActionCategory(action) == category {
-			displayed = append(displayed, action)
+		if query.category != "" && terminalActionCategory(action) != query.category {
+			continue
 		}
+		if query.search != "" && !actionMatchesSearch(action, query.search) {
+			continue
+		}
+		filtered = append(filtered, action)
 	}
-	fmt.Fprintln(output, "可用行动：")
+	const pageSize = 8
+	pageCount := (len(filtered) + pageSize - 1) / pageSize
+	if pageCount == 0 {
+		pageCount = 1
+	}
+	if query.page > pageCount {
+		fmt.Fprintf(output, "页码超出范围；当前查询共 %d 页。\n", pageCount)
+		return nil, false
+	}
+	start := (query.page - 1) * pageSize
+	end := start + pageSize
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	displayed := filtered[start:end]
+	fmt.Fprintf(output, "可用行动（第 %d/%d 页，共 %d 项）：\n", query.page, pageCount, len(filtered))
 	found := false
 	lastCategory := ""
 	for index, action := range displayed {
@@ -366,12 +583,83 @@ func renderActionsCategory(output io.Writer, actions []app.AvailableAction, requ
 		fmt.Fprintf(output, "  %d. %s%s — %s（%s%s）\n", index+1, action.Name, id, action.Description, duration, cost)
 	}
 	if !found {
-		fmt.Fprintln(output, "  当前没有该类别的可执行行动。")
+		fmt.Fprintln(output, "  当前没有符合条件的可执行行动。")
+	}
+	if query.page < pageCount {
+		fmt.Fprintf(output, "下一页：%s\n", query.nextPageCommand())
 	}
 	if len(actions) != len(selectable) {
 		fmt.Fprintln(output, "时间推进：wait 等待一天；wait complete 完成当前行动；wait next 快进到下一重要变化。")
 	}
 	return displayed, true
+}
+
+type terminalActionQuery struct {
+	category string
+	search   string
+	page     int
+}
+
+func parseActionQuery(requested string) (terminalActionQuery, error) {
+	query := terminalActionQuery{page: 1}
+	fields := strings.Fields(strings.TrimSpace(requested))
+	if len(fields) == 0 {
+		return query, nil
+	}
+	if strings.EqualFold(fields[0], "find") || fields[0] == "搜索" {
+		if len(fields) < 2 {
+			return query, errors.New("用法：actions find <关键词>")
+		}
+		searchEnd := len(fields)
+		if len(fields) >= 4 && (fields[len(fields)-2] == "page" || fields[len(fields)-2] == "页") {
+			page, err := strconv.Atoi(fields[len(fields)-1])
+			if err != nil || page < 1 {
+				return query, errors.New("页码必须是大于零的整数")
+			}
+			query.page = page
+			searchEnd -= 2
+		}
+		query.search = strings.ToLower(strings.Join(fields[1:searchEnd], " "))
+		if query.search == "" {
+			return query, errors.New("搜索关键词不能为空")
+		}
+		return query, nil
+	}
+	index := 0
+	if fields[0] != "page" && fields[0] != "页" {
+		category, valid := normalizeActionCategory(fields[0])
+		if !valid || category == "" {
+			return query, fmt.Errorf("未知类别 %q；可用类别：调查、交涉、准备、出行", fields[0])
+		}
+		query.category = category
+		index++
+	}
+	if index < len(fields) {
+		if len(fields)-index != 2 || (fields[index] != "page" && fields[index] != "页") {
+			return query, errors.New("用法：actions [类别] [page <页码>]")
+		}
+		page, err := strconv.Atoi(fields[index+1])
+		if err != nil || page < 1 {
+			return query, errors.New("页码必须是大于零的整数")
+		}
+		query.page = page
+	}
+	return query, nil
+}
+
+func (q terminalActionQuery) nextPageCommand() string {
+	if q.search != "" {
+		return fmt.Sprintf("actions find %s page %d", q.search, q.page+1)
+	}
+	if q.category == "" {
+		return fmt.Sprintf("actions page %d", q.page+1)
+	}
+	return fmt.Sprintf("actions %s page %d", q.category, q.page+1)
+}
+
+func actionMatchesSearch(action app.AvailableAction, search string) bool {
+	haystack := strings.ToLower(strings.Join([]string{action.Name, action.Description, action.TargetName, action.FactClaim}, " "))
+	return strings.Contains(haystack, search)
 }
 
 func terminalSelectableActions(actions []app.AvailableAction) []app.AvailableAction {
@@ -527,17 +815,10 @@ func confidenceLabel(value int) string {
 
 func renderHelp(output io.Writer, debug bool) {
 	if debug {
-		fmt.Fprintln(output, "命令：look；people；talk <编号|人物ID|姓名>（一次回应）；actions [调查|交涉|准备|出行]；do <行动编号>；map [all]；go <地点>；journal；wait；wait complete；wait next；save [文件]；quit。")
+		fmt.Fprintln(output, "命令：look；people；talk <编号|人物ID|姓名>（进入多轮对话）；对话中直接输入回复，context 查看语境，leave 离开；actions [调查|交涉|准备|出行] [page 页码]；actions find <关键词>；do <行动编号>；map [all]；go <地点>；journal；wait；wait complete；wait next；saves；save [槽位]；load <槽位>；autosave [on|off]；quit。")
 		return
 	}
-	fmt.Fprintln(output, "命令：look；people；talk <人物编号或姓名>（一次回应）；actions [调查|交涉|准备|出行]；do <行动编号>；map [all]；go <地点>；journal；wait；wait complete；wait next；save [文件]；quit。")
-}
-
-func saveSession(path string, session *app.Session) error {
-	if strings.TrimSpace(path) == "" {
-		return errors.New("save path is empty")
-	}
-	return session.SaveFile(path)
+	fmt.Fprintln(output, "命令：look；people；talk <人物编号或姓名>（进入多轮对话）；对话中直接输入回复，context 查看语境，leave 离开；actions [调查|交涉|准备|出行] [page 页码]；actions find <关键词>；do <行动编号>；map [all]；go <地点>；journal；wait；wait complete；wait next；saves；save [槽位]；load <槽位>；autosave [on|off]；quit。")
 }
 
 func fail(err error) {
