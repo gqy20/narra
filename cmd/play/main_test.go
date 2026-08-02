@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -21,12 +24,24 @@ type terminalDialogueProvider struct {
 
 type failingTerminalDialogueProvider struct{}
 
+type blockingTerminalDialogueProvider struct {
+	calls   atomic.Int32
+	started chan int32
+}
+
 func testTerminalGame(session *app.Session) *terminalGame {
 	return &terminalGame{session: session}
 }
 
 func (failingTerminalDialogueProvider) GenerateDialogue(context.Context, ai.GenerationRequest) (ai.DialogueDraft, ai.GenerationMetadata, error) {
 	return ai.DialogueDraft{}, ai.GenerationMetadata{}, errors.New("provider failed")
+}
+
+func (p *blockingTerminalDialogueProvider) GenerateDialogue(ctx context.Context, _ ai.GenerationRequest) (ai.DialogueDraft, ai.GenerationMetadata, error) {
+	call := p.calls.Add(1)
+	p.started <- call
+	<-ctx.Done()
+	return ai.DialogueDraft{}, ai.GenerationMetadata{}, ctx.Err()
 }
 
 func (p *terminalDialogueProvider) GenerateDialogue(_ context.Context, request ai.GenerationRequest) (ai.DialogueDraft, ai.GenerationMetadata, error) {
@@ -161,7 +176,7 @@ func TestTerminalNavigationAndDialogueDoNotAdvanceWorld(t *testing.T) {
 	provider := &terminalDialogueProvider{}
 	dialogue := ai.NewService(provider, ai.ServiceOptions{Timeout: time.Second, CacheSize: 4})
 	var output bytes.Buffer
-	commands := "look\npeople\ntalk 2\nmap\njournal\nquit\n"
+	commands := "look\npeople\ntalk 2\nawait\nmap\njournal\nquit\n"
 	if err := runGame(bytes.NewBufferString(commands), &output, testTerminalGame(session), dialogue, false); err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +208,7 @@ func TestTerminalSupportsPersistentMultiTurnNPCDialogue(t *testing.T) {
 	dialogue := ai.NewService(provider, ai.ServiceOptions{Timeout: time.Second, CacheSize: 4})
 	game := &terminalGame{session: session, saves: store, autosave: true}
 	var output bytes.Buffer
-	commands := "talk 2\n这条消息若是真的，你准备如何核验？\ncontext\nleave\nquit\n"
+	commands := "talk 2\nawait\n这条消息若是真的，你准备如何核验？\nawait\ncontext\nleave\nquit\n"
 	if err := runGame(bytes.NewBufferString(commands), &output, game, dialogue, false); err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +251,7 @@ func TestTerminalReportsModelFailureWithoutInventingDialogue(t *testing.T) {
 				t.Fatal(err)
 			}
 			var output bytes.Buffer
-			if err := runGame(bytes.NewBufferString("talk 2\nquit\n"), &output, testTerminalGame(session), dialogue, false); err != nil {
+			if err := runGame(bytes.NewBufferString("talk 2\nawait\nquit\n"), &output, testTerminalGame(session), dialogue, false); err != nil {
 				t.Fatal(err)
 			}
 			text := output.String()
@@ -247,6 +262,61 @@ func TestTerminalReportsModelFailureWithoutInventingDialogue(t *testing.T) {
 				t.Fatalf("failure produced invented dialogue or changed state:\n%s", text)
 			}
 		})
+	}
+}
+
+func TestTerminalCanInspectCancelAndRetryDialogueGeneration(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultBlackwindPlayer("取消测试玩家"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider := &blockingTerminalDialogueProvider{started: make(chan int32, 2)}
+	dialogue := ai.NewService(provider, ai.ServiceOptions{Timeout: time.Minute})
+	input, writer := io.Pipe()
+	var output bytes.Buffer
+	done := make(chan error, 1)
+	go func() {
+		done <- runGame(input, &output, testTerminalGame(session), dialogue, false)
+	}()
+
+	if _, err := fmt.Fprintln(writer, "talk 2"); err != nil {
+		t.Fatal(err)
+	}
+	if call := <-provider.started; call != 1 {
+		t.Fatalf("first provider call = %d", call)
+	}
+	for _, command := range []string{"不应执行的排队回复", "context", "cancel", "retry"} {
+		if _, err := fmt.Fprintln(writer, command); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if call := <-provider.started; call != 2 {
+		t.Fatalf("retry provider call = %d", call)
+	}
+	for _, command := range []string{"cancel", "leave", "quit"} {
+		if _, err := fmt.Fprintln(writer, command); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+
+	text := output.String()
+	for _, want := range []string{"这条输入将在回应完成后处理", "模型请求 1 已等待", "已取消本次模型生成", "正在重新提交", "结束了与"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("output missing %q:\n%s", want, text)
+		}
+	}
+	if provider.calls.Load() != 2 || len(session.DialogueHistory("N04", session.DialogueRevision("N04"), 8)) != 0 || session.View().Day != 0 {
+		t.Fatalf("cancellation changed state: calls=%d view=%+v", provider.calls.Load(), session.View())
 	}
 }
 

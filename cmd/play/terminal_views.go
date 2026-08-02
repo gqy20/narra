@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"os/signal"
 	"strconv"
 	"strings"
 	"time"
@@ -58,7 +56,29 @@ type terminalDialogueSession struct {
 	revision string
 }
 
-func startDialogue(output io.Writer, game *terminalGame, dialogueService *ai.Service, view app.PlayerView, selector string, debug bool) (*terminalDialogueSession, []app.AvailableAction) {
+type terminalDialogueAttempt struct {
+	actor      app.VisibleActor
+	snapshot   app.DialogueSnapshot
+	playerText string
+	opening    bool
+}
+
+type terminalDialogueResult struct {
+	requestID uint64
+	line      ai.Dialogue
+	err       error
+}
+
+type terminalDialogueRequest struct {
+	id      uint64
+	attempt terminalDialogueAttempt
+	result  chan terminalDialogueResult
+	ticker  *time.Ticker
+	started time.Time
+	cancel  context.CancelFunc
+}
+
+func prepareDialogueStart(output io.Writer, game *terminalGame, dialogueService *ai.Service, view app.PlayerView, selector string, debug bool) (*terminalDialogueSession, *terminalDialogueAttempt) {
 	if selector == "" {
 		renderPeople(output, view, debug)
 		return nil, nil
@@ -78,74 +98,44 @@ func startDialogue(output io.Writer, game *terminalGame, dialogueService *ai.Ser
 		return nil, nil
 	}
 	conversation := &terminalDialogueSession{actor: actor, revision: snapshot.Revision}
-	line, err := generateDialogueTurn(output, game.session, dialogueService, snapshot, "")
-	if err != nil {
-		fmt.Fprintf(output, "对话生成失败：%v\n", err)
-		return nil, nil
-	}
-	if err := recordDialogueTurn(game, snapshot, "", line); err != nil {
-		fmt.Fprintf(output, "保存对话失败：%v\n", err)
-		return nil, nil
-	}
-	renderDialogueReply(output, actor, snapshot, line, debug)
-	actions := renderActorActionsSuggested(output, view.AvailableActions, actor.ID, line.SuggestedActions)
-	fmt.Fprintln(output, "已进入对话：直接输入回复；context 查看语境；actions 查看交涉；leave 离开。")
-	return conversation, actions
+	attempt := &terminalDialogueAttempt{actor: actor, snapshot: snapshot, opening: true}
+	return conversation, attempt
 }
 
-func continueDialogue(output io.Writer, game *terminalGame, dialogueService *ai.Service, conversation *terminalDialogueSession, playerText string, debug bool) []app.AvailableAction {
+func prepareDialogueTurn(output io.Writer, game *terminalGame, conversation *terminalDialogueSession, playerText string) *terminalDialogueAttempt {
 	snapshot, err := game.session.DialogueSnapshotFor(conversation.actor.ID, "focus")
 	if err != nil || snapshot.Revision != conversation.revision {
 		fmt.Fprintln(output, "局势已经变化，本次对话已结束；请重新使用 talk。")
 		return nil
 	}
-	line, err := generateDialogueTurn(output, game.session, dialogueService, snapshot, playerText)
-	if err != nil {
-		fmt.Fprintf(output, "对话生成失败：%v\n", err)
-		return nil
-	}
-	if err := recordDialogueTurn(game, snapshot, playerText, line); err != nil {
-		fmt.Fprintf(output, "保存对话失败：%v\n", err)
-		return nil
-	}
-	renderDialogueReply(output, conversation.actor, snapshot, line, debug)
-	return renderActorActionsSuggested(output, game.session.View().AvailableActions, conversation.actor.ID, line.SuggestedActions)
+	return &terminalDialogueAttempt{actor: conversation.actor, snapshot: snapshot, playerText: playerText}
 }
 
-func generateDialogueTurn(output io.Writer, session *app.Session, dialogueService *ai.Service, snapshot app.DialogueSnapshot, playerText string) (ai.Dialogue, error) {
-	if playerText == "" {
-		fmt.Fprintf(output, "\n%s正在生成开场回应；不会推进游戏时间。按 Ctrl+C 可取消。\n", snapshot.Actor.Name)
+func beginDialogueRequest(output io.Writer, session *app.Session, dialogueService *ai.Service, attempt terminalDialogueAttempt, requestID uint64) *terminalDialogueRequest {
+	if attempt.opening {
+		fmt.Fprintf(output, "\n%s正在生成开场回应；不会推进游戏时间。输入 cancel 可取消。\n", attempt.actor.Name)
 	} else {
-		fmt.Fprintf(output, "%s正在回应；不会推进游戏时间。按 Ctrl+C 可取消。\n", snapshot.Actor.Name)
+		fmt.Fprintf(output, "%s正在回应；不会推进游戏时间。输入 cancel 可取消。\n", attempt.actor.Name)
 	}
-	type dialogueResult struct {
-		line ai.Dialogue
-		err  error
-	}
-	requestContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
-	result := make(chan dialogueResult, 1)
+	requestContext, cancel := context.WithCancel(context.Background())
+	result := make(chan terminalDialogueResult, 1)
 	go func() {
-		history := session.DialogueHistory(snapshot.Actor.ID, snapshot.Revision, 8)
-		line, generationErr := dialogueService.GenerateConversationTurn(requestContext, snapshot, history, playerText)
-		result <- dialogueResult{line: line, err: generationErr}
+		history := session.DialogueHistory(attempt.snapshot.Actor.ID, attempt.snapshot.Revision, 8)
+		line, generationErr := dialogueService.GenerateConversationTurn(requestContext, attempt.snapshot, history, attempt.playerText)
+		result <- terminalDialogueResult{requestID: requestID, line: line, err: generationErr}
 	}()
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-	started := time.Now()
-	var line ai.Dialogue
-	var generationErr error
-	waiting := true
-	for waiting {
-		select {
-		case generated := <-result:
-			line, generationErr = generated.line, generated.err
-			waiting = false
-		case <-ticker.C:
-			fmt.Fprintf(output, "  已等待 %d 秒，仍在等待模型返回……\n", int(time.Since(started).Seconds()))
-		}
+	return &terminalDialogueRequest{
+		id: requestID, attempt: attempt, result: result,
+		ticker: time.NewTicker(5 * time.Second), started: time.Now(), cancel: cancel,
 	}
-	return line, generationErr
+}
+
+func stopDialogueRequest(request *terminalDialogueRequest) {
+	if request == nil {
+		return
+	}
+	request.cancel()
+	request.ticker.Stop()
 }
 
 func recordDialogueTurn(game *terminalGame, snapshot app.DialogueSnapshot, playerText string, line ai.Dialogue) error {
