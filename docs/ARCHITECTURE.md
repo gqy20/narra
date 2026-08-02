@@ -10,6 +10,7 @@ cmd/                 可执行程序入口
   batch/             固定验收和参数扫描
   play/              玩家视角的交互式终端客户端
   server/            Godot 使用的本机 HTTP 服务入口
+  schema/            生成版本化 API JSON Schema
 internal/
   app/               Session、玩家视图、行动目录和存档回放
   server/            /api/v1 协议、存档槽与并发边界
@@ -19,6 +20,7 @@ internal/
   batch/             批量运行、扰动和统计
   report/            单次运行报告适配器
 data/blackwind/      黑风谷正式 YAML 内容包（含人物、世界与剧情线）
+api/                  Godot 与服务端共享的版本化 JSON 契约
 godot/               只消费 PlayerView 的 2D 场景化桌面客户端
 testdata/            Go 工具自动忽略的验收玩家计划
 docs/                产品、架构、规格和验收文档
@@ -87,7 +89,7 @@ M1 应用层位于 `internal/app`，负责 Session、玩家可见视图、动态
 
 交互式 CLI 已通过 `cmd/play` 接入应用层。存档采用“初始玩家 + 行动历史”的版本化格式，加载时通过权威引擎确定性回放，因此不会把内部状态结构固化成外部协议。
 
-Godot 本地服务由 `cmd/server` 和 `internal/server` 提供，协议固定在 `/api/v1`。服务仅监听回环地址，通过互斥锁串行修改单个 Session；Godot 只渲染 `PlayerView` 并提交服务端给出的动作 ID，不复制行动合法性、视图过滤或结算规则。
+Godot 本地服务由 `cmd/server` 和 `internal/server` 提供，协议固定在 `/api/v1`。服务仅监听回环地址，通过互斥锁串行修改单个 Session；Godot 只渲染 `PlayerView` 并提交服务端给出的动作 ID，不复制行动合法性、视图过滤或结算规则。`api/v1-response.schema.json` 由服务端 Go 响应类型生成；契约测试会阻止未同步 Schema 的字段变更，Godot 应只在响应适配层读取原始 JSON 字典。
 
 Godot 客户端按如下单向数据流工作：
 

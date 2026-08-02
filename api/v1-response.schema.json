@@ -1,0 +1,1106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fantu.local/schemas/response",
+  "$ref": "#/$defs/Response",
+  "$defs": {
+    "AISettingsView": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "mode": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "enabled",
+        "mode"
+      ]
+    },
+    "APIError": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ]
+    },
+    "AvailableAction": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "integer"
+        },
+        "completion_day": {
+          "type": "integer"
+        },
+        "timing": {
+          "type": "string"
+        },
+        "expected_outcomes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "resolves": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "costs": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "type": "object"
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "target_name": {
+          "type": "string"
+        },
+        "fact_id": {
+          "type": "string"
+        },
+        "fact_claim": {
+          "type": "string"
+        },
+        "term_id": {
+          "type": "string"
+        },
+        "term_label": {
+          "type": "string"
+        },
+        "personal_outcome": {
+          "type": "string"
+        },
+        "target_role": {
+          "type": "string"
+        },
+        "relevance": {
+          "type": "string"
+        },
+        "risk": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "known_conditions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "unknowns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "irreversible": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "category",
+        "name",
+        "description",
+        "duration"
+      ]
+    },
+    "Capabilities": {
+      "properties": {
+        "ai_dialogue": {
+          "type": "boolean"
+        },
+        "ai_configuration": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "ai_dialogue",
+        "ai_configuration"
+      ]
+    },
+    "Dialogue": {
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "state_revision": {
+          "type": "string"
+        },
+        "utterance": {
+          "type": "string"
+        },
+        "emotion": {
+          "type": "string"
+        },
+        "dialogue_act": {
+          "type": "string"
+        },
+        "referenced_fact_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "suggested_action_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "actor_id",
+        "state_revision",
+        "utterance",
+        "emotion",
+        "dialogue_act",
+        "referenced_fact_ids",
+        "suggested_action_ids",
+        "source"
+      ]
+    },
+    "EndingSummary": {
+      "properties": {
+        "outcome": {
+          "type": "string"
+        },
+        "player_consequences": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "review": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "highlights": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "influence": {
+          "items": {
+            "$ref": "#/$defs/VisibleInfluence"
+          },
+          "type": "array"
+        },
+        "actor_plan_changes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "outcome",
+        "highlights"
+      ]
+    },
+    "PlayMetrics": {
+      "properties": {
+        "decision_inputs": {
+          "type": "integer"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "active_actions": {
+          "type": "integer"
+        },
+        "wait_actions": {
+          "type": "integer"
+        },
+        "max_action_catalog": {
+          "type": "integer"
+        },
+        "longest_quiet_wait": {
+          "type": "integer"
+        },
+        "max_repeated_active_action": {
+          "type": "integer"
+        },
+        "visible_decision_changes": {
+          "type": "integer"
+        },
+        "core_result_day": {
+          "type": "integer"
+        },
+        "post_result_inputs": {
+          "type": "integer"
+        },
+        "auto_advanced_days": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "decision_inputs",
+        "turns",
+        "active_actions",
+        "wait_actions",
+        "max_action_catalog",
+        "longest_quiet_wait",
+        "max_repeated_active_action",
+        "visible_decision_changes",
+        "post_result_inputs",
+        "auto_advanced_days"
+      ]
+    },
+    "PlayerView": {
+      "properties": {
+        "scenario_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "day": {
+          "type": "integer"
+        },
+        "duration": {
+          "type": "integer"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "ended": {
+          "type": "boolean"
+        },
+        "resolved": {
+          "type": "boolean"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "player": {
+          "$ref": "#/$defs/VisiblePlayer"
+        },
+        "location": {
+          "$ref": "#/$defs/VisibleLocation"
+        },
+        "world_map": {
+          "$ref": "#/$defs/VisibleWorldMap"
+        },
+        "known_actors": {
+          "items": {
+            "$ref": "#/$defs/VisibleActor"
+          },
+          "type": "array"
+        },
+        "known_facts": {
+          "items": {
+            "$ref": "#/$defs/VisibleBelief"
+          },
+          "type": "array"
+        },
+        "recent_events": {
+          "items": {
+            "$ref": "#/$defs/VisibleEvent"
+          },
+          "type": "array"
+        },
+        "causal_threads": {
+          "items": {
+            "$ref": "#/$defs/VisibleInfluence"
+          },
+          "type": "array"
+        },
+        "available_actions": {
+          "items": {
+            "$ref": "#/$defs/AvailableAction"
+          },
+          "type": "array"
+        },
+        "guidance": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "last_turn": {
+          "$ref": "#/$defs/TurnFeedback"
+        },
+        "ending": {
+          "$ref": "#/$defs/EndingSummary"
+        },
+        "metrics": {
+          "$ref": "#/$defs/PlayMetrics"
+        },
+        "travel": {
+          "$ref": "#/$defs/TravelGuidance"
+        },
+        "preparation": {
+          "$ref": "#/$defs/PreparationSummary"
+        },
+        "route_progress": {
+          "$ref": "#/$defs/RouteProgress"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "scenario_id",
+        "title",
+        "day",
+        "duration",
+        "phase",
+        "ended",
+        "resolved",
+        "player",
+        "location",
+        "world_map",
+        "known_actors",
+        "known_facts",
+        "recent_events",
+        "available_actions",
+        "metrics",
+        "preparation"
+      ]
+    },
+    "PreparationFactor": {
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "value": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "ready": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "key",
+        "label",
+        "status",
+        "ready"
+      ]
+    },
+    "PreparationSummary": {
+      "properties": {
+        "score_sources": {
+          "items": {
+            "$ref": "#/$defs/PreparationFactor"
+          },
+          "type": "array"
+        },
+        "conditions": {
+          "items": {
+            "$ref": "#/$defs/PreparationFactor"
+          },
+          "type": "array"
+        },
+        "total_score": {
+          "type": "integer"
+        },
+        "target_score": {
+          "type": "integer"
+        },
+        "rating": {
+          "type": "string"
+        },
+        "rating_detail": {
+          "type": "string"
+        },
+        "eligible": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "score_sources",
+        "conditions",
+        "total_score",
+        "target_score",
+        "rating",
+        "rating_detail",
+        "eligible"
+      ]
+    },
+    "PresentationCue": {
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "intensity": {
+          "type": "integer"
+        },
+        "subject_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "kind",
+        "intensity"
+      ]
+    },
+    "Response": {
+      "properties": {
+        "api_version": {
+          "type": "string"
+        },
+        "view": {
+          "$ref": "#/$defs/PlayerView"
+        },
+        "dialogue": {
+          "$ref": "#/$defs/Dialogue"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities"
+        },
+        "ai_settings": {
+          "$ref": "#/$defs/AISettingsView"
+        },
+        "error": {
+          "$ref": "#/$defs/APIError"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "api_version"
+      ]
+    },
+    "RouteProgress": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "next_step": {
+          "type": "string"
+        },
+        "window": {
+          "type": "string"
+        },
+        "deadline_day": {
+          "type": "integer"
+        },
+        "location": {
+          "type": "string"
+        },
+        "personal_return": {
+          "type": "string"
+        },
+        "urgent": {
+          "type": "boolean"
+        },
+        "complete": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "status",
+        "next_step",
+        "urgent",
+        "complete"
+      ]
+    },
+    "TravelCheck": {
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "ready": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "label",
+        "ready"
+      ]
+    },
+    "TravelGuidance": {
+      "properties": {
+        "destination": {
+          "type": "string"
+        },
+        "travel_days": {
+          "type": "integer"
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "timing": {
+          "type": "string"
+        },
+        "route": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/TravelCheck"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "destination",
+        "travel_days",
+        "ready"
+      ]
+    },
+    "TurnFeedback": {
+      "properties": {
+        "day": {
+          "type": "integer"
+        },
+        "days_advanced": {
+          "type": "integer"
+        },
+        "quiet_days": {
+          "type": "integer"
+        },
+        "action_id": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "messages": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "influence": {
+          "items": {
+            "$ref": "#/$defs/VisibleInfluence"
+          },
+          "type": "array"
+        },
+        "presentation": {
+          "$ref": "#/$defs/PresentationCue"
+        },
+        "stop_reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "day",
+        "days_advanced",
+        "action_id",
+        "action",
+        "status",
+        "messages"
+      ]
+    },
+    "VisibleActor": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "faction": {
+          "type": "string"
+        },
+        "public_profile": {
+          "type": "string"
+        },
+        "public_role": {
+          "type": "string"
+        },
+        "public_focus": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "public_risk": {
+          "type": "string"
+        },
+        "plan": {
+          "$ref": "#/$defs/VisibleActorPlan"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "faction",
+        "public_profile"
+      ]
+    },
+    "VisibleActorPlan": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "faction": {
+          "type": "string"
+        },
+        "location_id": {
+          "type": "string"
+        },
+        "location_name": {
+          "type": "string"
+        },
+        "public_goal": {
+          "type": "string"
+        },
+        "plan": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "destination_id": {
+          "type": "string"
+        },
+        "destination_name": {
+          "type": "string"
+        },
+        "expected_day": {
+          "type": "integer"
+        },
+        "influenced_by_player": {
+          "type": "boolean"
+        },
+        "changed_by_player": {
+          "type": "boolean"
+        },
+        "previous_plan": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "faction",
+        "location_id",
+        "location_name",
+        "public_goal",
+        "plan",
+        "reason",
+        "status",
+        "influenced_by_player",
+        "changed_by_player"
+      ]
+    },
+    "VisibleBelief": {
+      "properties": {
+        "fact_id": {
+          "type": "string"
+        },
+        "claim": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "learned_on": {
+          "type": "integer"
+        },
+        "contested": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "fact_id",
+        "claim",
+        "confidence",
+        "source",
+        "learned_on",
+        "contested"
+      ]
+    },
+    "VisibleDecisionChange": {
+      "properties": {
+        "day": {
+          "type": "integer"
+        },
+        "without_information": {
+          "type": "string"
+        },
+        "with_information": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "day",
+        "without_information",
+        "with_information"
+      ]
+    },
+    "VisibleEvent": {
+      "properties": {
+        "day": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        },
+        "actor_name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "day",
+        "type",
+        "actor_name",
+        "description"
+      ]
+    },
+    "VisibleInfluence": {
+      "properties": {
+        "actor_name": {
+          "type": "string"
+        },
+        "fact_id": {
+          "type": "string"
+        },
+        "fact_claim": {
+          "type": "string"
+        },
+        "delivered_day": {
+          "type": "integer"
+        },
+        "stage": {
+          "type": "string"
+        },
+        "stage_label": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "changes": {
+          "items": {
+            "$ref": "#/$defs/VisibleDecisionChange"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "actor_name",
+        "fact_id",
+        "fact_claim",
+        "delivered_day",
+        "stage",
+        "stage_label",
+        "summary"
+      ]
+    },
+    "VisibleItem": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "amount"
+      ]
+    },
+    "VisibleLocation": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "safe": {
+          "type": "boolean"
+        },
+        "scene_key": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "atmosphere": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "safe"
+      ]
+    },
+    "VisibleMapLocation": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "safe": {
+          "type": "boolean"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "scene_key": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "atmosphere": {
+          "type": "string"
+        },
+        "current": {
+          "type": "boolean"
+        },
+        "contest": {
+          "type": "boolean"
+        },
+        "actor_count": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "safe",
+        "x",
+        "y",
+        "current",
+        "contest"
+      ]
+    },
+    "VisibleMapRoute": {
+      "properties": {
+        "from_id": {
+          "type": "string"
+        },
+        "to_id": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "integer"
+        },
+        "danger": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "action_id": {
+          "type": "string"
+        },
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "from_id",
+        "to_id",
+        "duration",
+        "danger",
+        "status"
+      ]
+    },
+    "VisiblePlayer": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "injury": {
+          "type": "integer"
+        },
+        "resources": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "type": "object"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/VisibleItem"
+          },
+          "type": "array"
+        },
+        "busy": {
+          "type": "boolean"
+        },
+        "busy_until": {
+          "type": "integer"
+        },
+        "busy_action": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "injury",
+        "resources",
+        "items",
+        "busy"
+      ]
+    },
+    "VisibleWorldMap": {
+      "properties": {
+        "locations": {
+          "items": {
+            "$ref": "#/$defs/VisibleMapLocation"
+          },
+          "type": "array"
+        },
+        "routes": {
+          "items": {
+            "$ref": "#/$defs/VisibleMapRoute"
+          },
+          "type": "array"
+        },
+        "actors": {
+          "items": {
+            "$ref": "#/$defs/VisibleActorPlan"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "locations",
+        "routes"
+      ]
+    }
+  }
+}

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -15,6 +16,20 @@ import (
 	"fantu/internal/app"
 	"fantu/internal/scenario"
 )
+
+func TestCommittedAPIContractMatchesResponseTypes(t *testing.T) {
+	want, err := ContractJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join("..", "..", "api", "v1-response.schema.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatal("API contract is stale; run go run ./cmd/schema")
+	}
+}
 
 type serverDialogueProvider struct{}
 
