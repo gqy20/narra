@@ -17,8 +17,28 @@ func TestBuyoutAgreementTransfersPriceAndUniqueItem(t *testing.T) {
 	if state.Items["jade_box"] != "N03" || state.NPCs["N02"].Resources["spirit_stones"] != 210 || state.NPCs["N03"].Resources["spirit_stones"] != 90 {
 		t.Fatalf("buyout item=%s seller=%d buyer=%d", state.Items["jade_box"], state.NPCs["N02"].Resources["spirit_stones"], state.NPCs["N03"].Resources["spirit_stones"])
 	}
-	if state.Agreements["G1"].Shares["N03"] != 100 {
+	if state.Agreements["G1"].Shares["N03"] != 100 || state.Agreements["G1"].Currency != "spirit_stones" {
 		t.Fatalf("buyout agreement = %+v", state.Agreements["G1"])
+	}
+}
+
+func TestBuyoutAgreementUsesScenarioCurrency(t *testing.T) {
+	bundle := loadBlackwind(t)
+	bundle.Rules.Economy.AgreementCurrency = "credit"
+	for index := range bundle.NPCs {
+		switch bundle.NPCs[index].ID {
+		case "N02":
+			bundle.NPCs[index].Resources["credit"] = 1
+		case "N03":
+			bundle.NPCs[index].Resources["credit"] = 5
+		}
+	}
+	state, err := New(bundle).SettleAgreement(domain.AgreementRequest{ID: "G-credit", Mode: "buyout", OwnerID: "N02", CustodianID: "N03", ItemID: "jade_box", Price: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.NPCs["N02"].Resources["credit"] != 3 || state.NPCs["N03"].Resources["credit"] != 3 || state.Agreements["G-credit"].Currency != "credit" {
+		t.Fatalf("credit buyout state = %+v", state.Agreements["G-credit"])
 	}
 }
 

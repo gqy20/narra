@@ -57,7 +57,7 @@ func newEngine(bundle domain.Bundle, plan *domain.RunPlan) *Engine {
 	}
 	for _, market := range bundle.Scenario.Markets {
 		state.Markets[market.ID] = &domain.MarketState{
-			ID: market.ID, LocationID: market.LocationID, Stock: copyIntMap(market.Stock), Prices: copyIntMap(market.BasePrices),
+			ID: market.ID, LocationID: market.LocationID, Currency: market.Currency, Stock: copyIntMap(market.Stock), Prices: copyIntMap(market.BasePrices),
 			Sold: make(map[string]int), PriceStep: market.PriceStep, BlockadeFlag: market.BlockadeFlag,
 		}
 	}

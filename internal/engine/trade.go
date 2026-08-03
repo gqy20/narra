@@ -34,8 +34,12 @@ func (e *Engine) TradeInformation(trade domain.InformationTrade) (*domain.WorldS
 		}
 	}
 	if trade.Mode == "sell" {
-		if e.actorResources(trade.ToID)["spirit_stones"] < trade.Price {
-			return nil, fmt.Errorf("actor %s cannot pay %d spirit stones", trade.ToID, trade.Price)
+		currency := e.bundle.Rules.Economy.InformationTradeCurrency
+		if currency == "" {
+			return nil, fmt.Errorf("paid information trade is disabled by scenario rules")
+		}
+		if e.actorResources(trade.ToID)[currency] < trade.Price {
+			return nil, fmt.Errorf("actor %s cannot pay %d %s", trade.ToID, trade.Price, currency)
 		}
 	} else if trade.Price != 0 {
 		return nil, fmt.Errorf("only sell mode accepts a price")
@@ -52,8 +56,9 @@ func (e *Engine) TradeInformation(trade domain.InformationTrade) (*domain.WorldS
 		return e.State(), nil
 	}
 	if trade.Mode == "sell" {
-		e.actorResources(trade.ToID)["spirit_stones"] -= trade.Price
-		e.actorResources(trade.FromID)["spirit_stones"] += trade.Price
+		currency := e.bundle.Rules.Economy.InformationTradeCurrency
+		e.actorResources(trade.ToID)[currency] -= trade.Price
+		e.actorResources(trade.FromID)[currency] += trade.Price
 	}
 	e.mergeTradedBelief(trade.ToID, source, trade.FromID, event.ID, trade.Distortion)
 	if trade.Mode == "exchange" {

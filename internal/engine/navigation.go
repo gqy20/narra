@@ -9,26 +9,28 @@ import (
 
 func (e *Engine) genericNavigationStrategies(state *domain.WorldState, npc *domain.NPCState) []domain.Strategy {
 	currentLocation, knownLocation := e.bundle.Locations[npc.Location]
-	if npc.Injury >= 2 && knownLocation && !currentLocation.Safe {
+	retreat := e.bundle.Rules.Navigation.Retreat
+	if retreat.Enabled && npc.Injury >= retreat.MinInjury && knownLocation && !currentLocation.Safe {
 		if route, _, ok := e.pathToNearestSafe(state, npc); ok {
-			return []domain.Strategy{navigationStrategy(npc, route, "flee", "撤往安全地点", 5, 5)}
+			return []domain.Strategy{navigationStrategy(npc, route, retreat.ActionID, retreat.Description, retreat.GoalTypes, retreat.Score)}
 		}
 	}
-	if e.bundle.Scenario.DisableGenericContestNavigation {
+	contestRule := e.bundle.Rules.Navigation.Contest
+	if !contestRule.Enabled {
 		return nil
 	}
 	contest := e.bundle.Scenario.Contest
-	if state.Day > contest.Day || state.Items[contest.ItemID] != contest.LocationID || !wantsContest(npc) {
+	if state.Day > contest.Day || state.Items[contest.ItemID] != contest.LocationID || !wantsContest(npc, contestRule) {
 		return nil
 	}
 	route, totalDuration, ok := e.shortestPath(state, npc, npc.Location, contest.LocationID, false)
 	if !ok || state.Day+totalDuration-1 > contest.Day {
 		return nil
 	}
-	return []domain.Strategy{navigationStrategy(npc, route, "explore", "沿可行路线接近争夺目标", 4, 4)}
+	return []domain.Strategy{navigationStrategy(npc, route, contestRule.ActionID, contestRule.Description, contestRule.GoalTypes, contestRule.Score)}
 }
 
-func navigationStrategy(npc *domain.NPCState, route domain.Route, actionID, purpose string, goal, urgency int) domain.Strategy {
+func navigationStrategy(npc *domain.NPCState, route domain.Route, actionID, purpose string, goalTypes []string, score domain.ScoreInput) domain.Strategy {
 	conditions := []domain.Condition{{Type: "location", Value: npc.Location}}
 	if route.RequiredItem != "" {
 		conditions = append(conditions, domain.Condition{Type: "has_item", Key: route.RequiredItem})
@@ -36,36 +38,29 @@ func navigationStrategy(npc *domain.NPCState, route domain.Route, actionID, purp
 	if route.RequiredFlag != "" {
 		conditions = append(conditions, domain.Condition{Type: "flag", Key: route.RequiredFlag})
 	}
-	base := 0
-	if actionID == "flee" {
-		base = 8
-	}
+	score.Cost = route.Duration
+	score.Danger = route.Danger
 	return domain.Strategy{
 		ID: fmt.Sprintf("generic-%s-%s-%s", actionID, npc.Location, route.To), ActionID: actionID,
 		Description: fmt.Sprintf("%s%s：%s → %s", npc.Name, purpose, npc.Location, route.To),
 		Duration:    route.Duration, Generated: true, Conditions: conditions,
-		GoalTypes: navigationGoalTypes(actionID),
-		Score:     domain.ScoreInput{Base: base, Goal: goal, Urgency: urgency, Probability: 4, Cost: route.Duration, Danger: route.Danger},
+		GoalTypes: append([]string(nil), goalTypes...),
+		Score:     score,
 		Effects:   []domain.Effect{{Type: "move", Value: route.To}},
 	}
 }
 
-func navigationGoalTypes(actionID string) []string {
-	if actionID == "flee" {
-		return []string{"avoid"}
-	}
-	return []string{"acquire"}
-}
-
-func wantsContest(npc *domain.NPCState) bool {
-	if npc.Personality.Ambition < 3 || npc.Injury >= 3 {
+func wantsContest(npc *domain.NPCState, rule domain.ContestNavigationRule) bool {
+	if !rule.Enabled || npc.Personality.Ambition < rule.MinAmbition || npc.Injury > rule.MaxInjury {
 		return false
 	}
-	if belief, ok := npc.Beliefs["F09"]; ok && belief.Confidence >= 2 {
-		return false
+	for _, factID := range rule.BlockingFacts {
+		if belief, ok := npc.Beliefs[factID]; ok && belief.Confidence >= rule.MinConfidence {
+			return false
+		}
 	}
-	for _, factID := range []string{"F01", "F04"} {
-		if belief, ok := npc.Beliefs[factID]; ok && belief.Confidence >= 2 {
+	for _, factID := range rule.KnowledgeFacts {
+		if belief, ok := npc.Beliefs[factID]; ok && belief.Confidence >= rule.MinConfidence {
 			return true
 		}
 	}

@@ -77,7 +77,7 @@ func TestGenericInvestigationCanBeDisabledPerScenario(t *testing.T) {
 		Beliefs:   []domain.Belief{{FactID: "F02", Confidence: 1}},
 	}
 	bundle := plannerBundle(t, npc, 2)
-	bundle.Scenario.DisableGenericInvestigation = true
+	bundle.Rules.Investigation.Enabled = false
 	state, err := New(bundle).Run()
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)

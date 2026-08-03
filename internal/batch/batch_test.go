@@ -22,7 +22,7 @@ func TestInvestigationEfficacyRequiresLaterTriggeredAction(t *testing.T) {
 		{ID: "E2", Type: "action", ActionID: "verify"},
 		{ID: "E3", Type: "action", TriggerEventIDs: []string{"E1"}},
 	}
-	total, useful := investigationEfficacy(events)
+	total, useful := investigationEfficacy(events, "verify")
 	if total != 2 || useful != 1 {
 		t.Fatalf("investigation efficacy = %d/%d, want 1/2", useful, total)
 	}

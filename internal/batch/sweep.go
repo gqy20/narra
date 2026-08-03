@@ -25,6 +25,7 @@ func RunSweep(bundle domain.Bundle, plans []domain.RunPlan, includeBaseline bool
 		return Summary{}, err
 	}
 	summary := Summary{
+		Title: bundle.Scenario.Title, ContestItemName: contestItemName(bundle),
 		OwnerDistribution:  make(map[string]int),
 		ActionDistribution: make(map[string]int),
 		ResourceFlow:       make(map[string]int),

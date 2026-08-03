@@ -1,6 +1,10 @@
 package engine
 
-import "fantu/internal/domain"
+import (
+	"strings"
+
+	"fantu/internal/domain"
+)
 
 // genericStrategies supplies conservative fallback plans when none of the
 // scenario-authored strategies is currently legal. In unified_score mode they
@@ -9,34 +13,31 @@ func (e *Engine) genericStrategies(state *domain.WorldState, npc *domain.NPCStat
 	var strategies []domain.Strategy
 	strategies = append(strategies, e.genericNavigationStrategies(state, npc)...)
 	strategies = append(strategies, e.genericInvestigationStrategies(npc)...)
-	if _, ok := e.bundle.Actions["heal"]; ok && npc.Injury >= 2 {
-		strategies = append(strategies, domain.Strategy{
-			ID: "generic-heal", ActionID: "heal", Description: npc.Name + "暂缓原计划并处理伤势",
-			Generated: true, GoalTypes: []string{"avoid"}, Conditions: []domain.Condition{{Type: "injury_at_least", MinConfidence: 2}},
-			Score:   domain.ScoreInput{Goal: 4, Urgency: 5, Probability: 5, Cost: 1},
-			Effects: []domain.Effect{{Type: "adjust_injury", Amount: -1}},
-		})
-	}
-	if _, ok := e.bundle.Actions["cultivate"]; ok && !npc.Completed["generic-cultivate"] && npc.Injury == 0 && npc.Resources["combat"] <= 3 && shouldCultivate(npc) {
-		strategies = append(strategies, domain.Strategy{
-			ID: "generic-cultivate", ActionID: "cultivate", Description: npc.Name + "利用空档修炼并巩固状态",
-			Once: true, Generated: true, GoalTypes: []string{"status"},
-			Conditions: []domain.Condition{{Type: "injury_at_most", MaxConfidence: 0}, {Type: "resource_at_most", Key: "combat", MaxConfidence: 3}},
-			Score:      domain.ScoreInput{Goal: 3, Urgency: 2, Probability: 5, Cost: 2},
-			Effects:    []domain.Effect{{Type: "adjust_resource", Key: "combat", Amount: 1}},
-		})
-	}
-	if _, ok := e.bundle.Actions["buy"]; ok && !npc.Completed["generic-buy-antidote"] && npc.Items["antidote"] == 0 && needsAntidote(npc) {
-		if marketID, price, available := e.marketOffer(npc.ID, "antidote", 1); available && npc.Resources["spirit_stones"] >= price {
-			strategies = append(strategies, domain.Strategy{
-				ID: "generic-buy-antidote", ActionID: "buy", Description: npc.Name + "为可能的黑风谷行动补充解瘴丹",
-				Once: true, Generated: true, GoalTypes: []string{"avoid", "acquire"},
-				Conditions: []domain.Condition{{Type: "missing_item", Key: "antidote"}, {Type: "resource_at_least", Key: "spirit_stones", MinConfidence: price}},
-				Score:      domain.ScoreInput{Goal: 2, Urgency: 3, Probability: 5, Cost: 2},
-				Costs:      map[string]int{"spirit_stones": price},
-				Effects:    []domain.Effect{{Type: "market_buy", Value: marketID, Key: "antidote", Amount: 1}},
-			})
+	for _, definition := range e.bundle.Rules.FallbackStrategies {
+		strategy := definition.Strategy
+		if strategy.Once && npc.Completed[strategy.ID] || definition.RequireNoAuthoredStrategies && len(npc.Strategies) > 0 || !anyConditionMet(state, npc, definition.AnyConditions) || !personalityThresholdsMet(npc.Personality, definition.PersonalityAtLeast) {
+			continue
 		}
+		strategy.Generated = true
+		strategy.Description = strings.ReplaceAll(strategy.Description, "{actor}", npc.Name)
+		strategy.Conditions = append([]domain.Condition(nil), strategy.Conditions...)
+		strategy.Effects = append([]domain.Effect(nil), strategy.Effects...)
+		strategy.GoalTypes = append([]string(nil), strategy.GoalTypes...)
+		strategy.Costs = copyIntMap(strategy.Costs)
+		if purchase := definition.MarketPurchase; purchase != nil {
+			amount := purchase.Amount
+			if amount <= 0 {
+				amount = 1
+			}
+			marketID, currency, price, available := e.marketOffer(npc.ID, purchase.ItemID, amount)
+			if !available || npc.Resources[currency] < price {
+				continue
+			}
+			strategy.Conditions = append(strategy.Conditions, domain.Condition{Type: domain.ConditionResourceAtLeast, Key: currency, MinConfidence: price})
+			strategy.Costs[currency] = price
+			strategy.Effects = append(strategy.Effects, domain.Effect{Type: domain.EffectMarketBuy, Value: marketID, Key: purchase.ItemID, Amount: amount})
+		}
+		strategies = append(strategies, strategy)
 	}
 
 	result := strategies[:0]
@@ -48,38 +49,46 @@ func (e *Engine) genericStrategies(state *domain.WorldState, npc *domain.NPCStat
 		if state.Day+duration-1 > e.bundle.Scenario.Duration {
 			continue
 		}
-		if e.bundle.Scenario.PlanningMode == "unified_score" || strategy.ActionID == "flee" || !overlapsAuthoredWindow(state.Day, state.Day+duration-1, e.bundle.Scenario.Duration, npc) {
+		retreat := e.bundle.Rules.Navigation.Retreat
+		if e.bundle.Scenario.PlanningMode == "unified_score" || retreat.Enabled && strategy.ActionID == retreat.ActionID || !overlapsAuthoredWindow(state.Day, state.Day+duration-1, e.bundle.Scenario.Duration, npc) {
 			result = append(result, strategy)
 		}
 	}
 	return result
 }
 
-func shouldCultivate(npc *domain.NPCState) bool {
-	if npc.Personality.Ambition >= 4 {
-		return true
-	}
-	for _, actionID := range []string{"explore", "track", "ambush", "flee", "prepare_breakthrough"} {
-		if hasAuthoredAction(npc, actionID) {
-			return true
+func personalityThresholdsMet(personality domain.Personality, thresholds map[string]int) bool {
+	for key, threshold := range thresholds {
+		value := 0
+		switch key {
+		case "caution":
+			value = personality.Caution
+		case "greed":
+			value = personality.Greed
+		case "loyalty":
+			value = personality.Loyalty
+		case "ambition":
+			value = personality.Ambition
+		case "credit":
+			value = personality.Credit
+		case "risk_tolerance":
+			value = personality.RiskTolerance
+		default:
+			return false
+		}
+		if value < threshold {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
-func needsAntidote(npc *domain.NPCState) bool {
-	for _, strategy := range npc.Strategies {
-		for _, condition := range strategy.Conditions {
-			if condition.Type == "has_item" && condition.Key == "antidote" {
-				return true
-			}
-		}
+func anyConditionMet(state *domain.WorldState, npc *domain.NPCState, conditions []domain.Condition) bool {
+	if len(conditions) == 0 {
+		return true
 	}
-	if len(npc.Strategies) != 0 {
-		return false
-	}
-	for _, factID := range []string{"F01", "F04"} {
-		if belief, ok := npc.Beliefs[factID]; ok && belief.Confidence >= 2 {
+	for _, condition := range conditions {
+		if conditionsMet(state, npc, []domain.Condition{condition}) {
 			return true
 		}
 	}

@@ -28,7 +28,10 @@ func TestLoadBlackwindBundle(t *testing.T) {
 	if got, want := len(bundle.Scenario.Opportunities), 1; got != want {
 		t.Fatalf("opportunity action count = %d, want %d", got, want)
 	}
-	if bundle.Content.SchemaVersion != CurrentSchemaVersion || bundle.Content.Version != "1.4.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
+	if len(bundle.Scenario.Markets) == 0 || bundle.Scenario.Markets[0].Currency != "spirit_stones" {
+		t.Fatalf("market currency = %+v", bundle.Scenario.Markets)
+	}
+	if bundle.Content.SchemaVersion != CurrentSchemaVersion || bundle.Content.Version != "1.5.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
 		t.Fatalf("content metadata = %+v", bundle.Content)
 	}
 	if bundle.Presentation.Brand != "凡途" || bundle.Presentation.WorldTitle != "黑风谷山川" || len(bundle.Presentation.Resources) != 4 || len(bundle.Presentation.Locations) != 5 || len(bundle.Presentation.Actors) != 10 {
@@ -36,6 +39,12 @@ func TestLoadBlackwindBundle(t *testing.T) {
 	}
 	if bundle.Dialogue.Context == "" || bundle.Dialogue.PlayerAddress != "道友" || bundle.Dialogue.Style == "" {
 		t.Fatalf("dialogue metadata = %+v", bundle.Dialogue)
+	}
+	if len(bundle.Rules.FallbackStrategies) != 3 || !bundle.Rules.Investigation.Enabled || !bundle.Rules.Navigation.Contest.Enabled {
+		t.Fatalf("world rules = %+v", bundle.Rules)
+	}
+	if len(bundle.Rules.Player.Actions) != 2 || bundle.Rules.Player.Movement.ActionID != "explore" || bundle.Rules.Economy.AgreementCurrency != "spirit_stones" {
+		t.Fatalf("player/economy rules = %+v / %+v", bundle.Rules.Player, bundle.Rules.Economy)
 	}
 	if arc, ok := bundle.StoryArcs["qinglan_intel"]; !ok || arc.InitialState != "uncommitted" || len(arc.Nodes) != 10 || len(arc.Nodes[0].Choices) != 3 || len(arc.ProgressRules) == 0 || len(arc.ConsequenceRules) == 0 {
 		t.Fatalf("qinglan story arc = %+v", arc)
@@ -53,6 +62,28 @@ func TestLoadBlackwindBundle(t *testing.T) {
 		if npc.PublicProfile == "" || npc.PublicRole == "" || len(npc.PublicInterests) == 0 || npc.PublicRisk == "" {
 			t.Fatalf("NPC %s lacks complete public decision context", npc.ID)
 		}
+	}
+}
+
+func TestValidateRejectsInvalidWorldRuleReference(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle.Rules.Navigation.Contest.KnowledgeFacts = append(bundle.Rules.Navigation.Contest.KnowledgeFacts, "missing-fact")
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "contest navigation references unknown fact") {
+		t.Fatalf("invalid world rule error = %v", err)
+	}
+}
+
+func TestValidateRejectsInvalidPlayerRuleCurrency(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle.Rules.Player.Actions[1].RepeatCost.Resource = "missing-resource"
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "repeat cost references unknown player resource") {
+		t.Fatalf("invalid player rule error = %v", err)
 	}
 }
 

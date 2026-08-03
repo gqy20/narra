@@ -2,8 +2,6 @@ id: tianqi_t00
 title: 天变邸抄：五月初六
 duration: 15
 planning_mode: authored_priority
-disable_generic_investigation: true
-disable_generic_contest_navigation: true
 topics: [inquiry, ledger, supply, witness, survivors, register, relief, politics, press, rumor, cause, evidence, forgery, draft, transport]
 markets: []
 directives:

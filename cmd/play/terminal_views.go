@@ -240,7 +240,11 @@ func renderMap(output io.Writer, view app.PlayerView, debug bool) {
 }
 
 func renderMapMode(output io.Writer, view app.PlayerView, debug, showAll bool) {
-	fmt.Fprintln(output, "\n【黑风谷周边地图】")
+	mapTitle := view.Presentation.WorldTitle
+	if mapTitle == "" {
+		mapTitle = "世界地图"
+	}
+	fmt.Fprintf(output, "\n【%s】\n", mapTitle)
 	for index, location := range view.WorldMap.Locations {
 		marker := " "
 		if location.Current {

@@ -32,7 +32,8 @@ func (e *Engine) SettleAgreement(request domain.AgreementRequest) (*domain.World
 		return nil, fmt.Errorf("agreement shares must total 100")
 	}
 	if request.Mode == "buyout" {
-		if request.Price <= 0 || e.actorResources(request.CustodianID)["spirit_stones"] < request.Price {
+		currency := e.bundle.Rules.Economy.AgreementCurrency
+		if currency == "" || request.Price <= 0 || e.actorResources(request.CustodianID)[currency] < request.Price {
 			return nil, fmt.Errorf("buyout requires payable positive price")
 		}
 	} else if request.Price != 0 {
@@ -44,13 +45,14 @@ func (e *Engine) SettleAgreement(request domain.AgreementRequest) (*domain.World
 		event.TriggerEventIDs = []string{sourceID}
 	}
 	if request.Mode == "buyout" {
-		e.actorResources(request.CustodianID)["spirit_stones"] -= request.Price
-		e.actorResources(request.OwnerID)["spirit_stones"] += request.Price
+		currency := e.bundle.Rules.Economy.AgreementCurrency
+		e.actorResources(request.CustodianID)[currency] -= request.Price
+		e.actorResources(request.OwnerID)[currency] += request.Price
 	}
 	e.transferUniqueItem(request.ItemID, request.OwnerID, request.CustodianID, event.ID)
 	e.state.Agreements[request.ID] = &domain.Agreement{
 		ID: request.ID, Mode: request.Mode, Parties: parties, ItemID: request.ItemID, CustodianID: request.CustodianID,
-		Shares: shares, Price: request.Price, Status: "settled", SettledEventID: event.ID,
+		Shares: shares, Price: request.Price, Currency: e.bundle.Rules.Economy.AgreementCurrency, Status: "settled", SettledEventID: event.ID,
 	}
 	e.state.Events = append(e.state.Events, event)
 	return e.State(), nil

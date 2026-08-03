@@ -31,8 +31,8 @@ func (e *Engine) marketPurchasesLegal(effects []domain.Effect, actorID string, c
 			return false, "insufficient stock for " + effect.Key
 		}
 		price := marketPurchasePrice(market, effect.Key, amount)
-		if costs["spirit_stones"] < price {
-			return false, fmt.Sprintf("purchase cost %d is below current price %d", costs["spirit_stones"], price)
+		if costs[market.Currency] < price {
+			return false, fmt.Sprintf("purchase cost %d %s is below current price %d", costs[market.Currency], market.Currency, price)
 		}
 	}
 	return true, ""
@@ -99,7 +99,7 @@ func splitMarketKey(key string) [2]string {
 	return [2]string{key, ""}
 }
 
-func (e *Engine) marketOffer(actorID, itemID string, amount int) (string, int, bool) {
+func (e *Engine) marketOffer(actorID, itemID string, amount int) (string, string, int, bool) {
 	location, _ := e.actorLocationFaction(actorID)
 	ids := make([]string, 0, len(e.state.Markets))
 	for id := range e.state.Markets {
@@ -111,7 +111,7 @@ func (e *Engine) marketOffer(actorID, itemID string, amount int) (string, int, b
 		if market.LocationID != location || market.Stock[itemID] < amount || (market.BlockadeFlag != "" && e.state.WorldFlag(market.BlockadeFlag)) {
 			continue
 		}
-		return id, marketPurchasePrice(market, itemID, amount), true
+		return id, market.Currency, marketPurchasePrice(market, itemID, amount), true
 	}
-	return "", 0, false
+	return "", "", 0, false
 }

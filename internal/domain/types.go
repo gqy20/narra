@@ -13,19 +13,128 @@ const (
 )
 
 type Scenario struct {
-	ID                              string                        `json:"id"`
-	Title                           string                        `json:"title"`
-	Duration                        int                           `json:"duration"`
-	PlanningMode                    string                        `json:"planning_mode,omitempty"`
-	DisableGenericInvestigation     bool                          `json:"disable_generic_investigation,omitempty"`
-	DisableGenericContestNavigation bool                          `json:"disable_generic_contest_navigation,omitempty"`
-	Topics                          []string                      `json:"topics,omitempty"`
-	Markets                         []MarketDefinition            `json:"markets,omitempty"`
-	Directives                      []WorldDirectiveDefinition    `json:"directives,omitempty"`
-	Opportunities                   []OpportunityActionDefinition `json:"opportunity_actions,omitempty"`
-	Phases                          []SituationPhase              `json:"phases"`
-	FixedEvents                     []FixedEvent                  `json:"fixed_events"`
-	Contest                         Contest                       `json:"contest"`
+	ID            string                        `json:"id"`
+	Title         string                        `json:"title"`
+	Duration      int                           `json:"duration"`
+	PlanningMode  string                        `json:"planning_mode,omitempty"`
+	Topics        []string                      `json:"topics,omitempty"`
+	Markets       []MarketDefinition            `json:"markets,omitempty"`
+	Directives    []WorldDirectiveDefinition    `json:"directives,omitempty"`
+	Opportunities []OpportunityActionDefinition `json:"opportunity_actions,omitempty"`
+	Phases        []SituationPhase              `json:"phases"`
+	FixedEvents   []FixedEvent                  `json:"fixed_events"`
+	Contest       Contest                       `json:"contest"`
+}
+
+// WorldRules contains scenario-authored policy for the generic world
+// simulation. The engine implements the bounded algorithms; a story package
+// supplies their actions, thresholds, facts, scores, and presentation text.
+type WorldRules struct {
+	FallbackStrategies []GeneratedStrategyRule `json:"fallback_strategies,omitempty" yaml:"fallback_strategies,omitempty"`
+	Investigation      InvestigationRule       `json:"investigation" yaml:"investigation"`
+	Navigation         NavigationRules         `json:"navigation" yaml:"navigation"`
+	Player             PlayerRules             `json:"player" yaml:"player"`
+	Economy            EconomyRules            `json:"economy" yaml:"economy"`
+}
+
+type PlayerRules struct {
+	Investigation    PlayerCapabilityRule  `json:"investigation" yaml:"investigation"`
+	MarketPurchase   PlayerCapabilityRule  `json:"market_purchase" yaml:"market_purchase"`
+	Movement         PlayerCapabilityRule  `json:"movement" yaml:"movement"`
+	ShareInformation PlayerCapabilityRule  `json:"share_information" yaml:"share_information"`
+	Actions          []PlayerActionRule    `json:"actions,omitempty" yaml:"actions,omitempty"`
+	ResourceWarnings []ResourceWarningRule `json:"resource_warnings,omitempty" yaml:"resource_warnings,omitempty"`
+}
+
+type PlayerCapabilityRule struct {
+	Enabled  bool   `json:"enabled" yaml:"enabled"`
+	ActionID string `json:"action_id,omitempty" yaml:"action_id,omitempty"`
+}
+
+type PlayerActionRule struct {
+	ID                 string          `json:"id" yaml:"id"`
+	ActionID           string          `json:"action_id" yaml:"action_id"`
+	Kind               string          `json:"kind" yaml:"kind"`
+	Category           string          `json:"category" yaml:"category"`
+	Name               string          `json:"name" yaml:"name"`
+	Description        string          `json:"description" yaml:"description"`
+	PaidDescription    string          `json:"paid_description,omitempty" yaml:"paid_description,omitempty"`
+	CommandDescription string          `json:"command_description" yaml:"command_description"`
+	Conditions         []Condition     `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	Effects            []Effect        `json:"effects" yaml:"effects"`
+	RepeatCost         *RepeatCostRule `json:"repeat_cost,omitempty" yaml:"repeat_cost,omitempty"`
+	Warning            string          `json:"warning,omitempty" yaml:"warning,omitempty"`
+}
+
+type RepeatCostRule struct {
+	Resource string `json:"resource" yaml:"resource"`
+	Amounts  []int  `json:"amounts" yaml:"amounts"`
+}
+
+type ResourceWarningRule struct {
+	Resource        string                     `json:"resource" yaml:"resource"`
+	Thresholds      []ResourceWarningThreshold `json:"thresholds" yaml:"thresholds"`
+	IncreaseMessage string                     `json:"increase_message" yaml:"increase_message"`
+	DecreaseMessage string                     `json:"decrease_message" yaml:"decrease_message"`
+}
+
+type ResourceWarningThreshold struct {
+	Value int    `json:"value" yaml:"value"`
+	Flag  string `json:"flag" yaml:"flag"`
+	Label string `json:"label" yaml:"label"`
+}
+
+type EconomyRules struct {
+	InformationTradeCurrency string `json:"information_trade_currency,omitempty" yaml:"information_trade_currency,omitempty"`
+	AgreementCurrency        string `json:"agreement_currency,omitempty" yaml:"agreement_currency,omitempty"`
+}
+
+type GeneratedStrategyRule struct {
+	Strategy                    Strategy        `json:"strategy" yaml:"strategy"`
+	AnyConditions               []Condition     `json:"any_conditions,omitempty" yaml:"any_conditions,omitempty"`
+	PersonalityAtLeast          map[string]int  `json:"personality_at_least,omitempty" yaml:"personality_at_least,omitempty"`
+	RequireNoAuthoredStrategies bool            `json:"require_no_authored_strategies,omitempty" yaml:"require_no_authored_strategies,omitempty"`
+	MarketPurchase              *MarketPurchase `json:"market_purchase,omitempty" yaml:"market_purchase,omitempty"`
+}
+
+type MarketPurchase struct {
+	ItemID string `json:"item_id" yaml:"item_id"`
+	Amount int    `json:"amount,omitempty" yaml:"amount,omitempty"`
+}
+
+type InvestigationRule struct {
+	Enabled     bool       `json:"enabled" yaml:"enabled"`
+	ActionID    string     `json:"action_id,omitempty" yaml:"action_id,omitempty"`
+	Description string     `json:"description,omitempty" yaml:"description,omitempty"`
+	GoalTypes   []string   `json:"goal_types,omitempty" yaml:"goal_types,omitempty"`
+	Score       ScoreInput `json:"score" yaml:"score"`
+}
+
+type NavigationRules struct {
+	Retreat NavigationRule        `json:"retreat" yaml:"retreat"`
+	Contest ContestNavigationRule `json:"contest" yaml:"contest"`
+}
+
+type NavigationRule struct {
+	Enabled     bool       `json:"enabled" yaml:"enabled"`
+	ActionID    string     `json:"action_id,omitempty" yaml:"action_id,omitempty"`
+	Description string     `json:"description,omitempty" yaml:"description,omitempty"`
+	MinInjury   int        `json:"min_injury,omitempty" yaml:"min_injury,omitempty"`
+	GoalTypes   []string   `json:"goal_types,omitempty" yaml:"goal_types,omitempty"`
+	Score       ScoreInput `json:"score" yaml:"score"`
+}
+
+type ContestNavigationRule struct {
+	Enabled        bool       `json:"enabled" yaml:"enabled"`
+	ActionID       string     `json:"action_id,omitempty" yaml:"action_id,omitempty"`
+	Description    string     `json:"description,omitempty" yaml:"description,omitempty"`
+	KnowledgeFacts []string   `json:"knowledge_facts,omitempty" yaml:"knowledge_facts,omitempty"`
+	BlockingFacts  []string   `json:"blocking_facts,omitempty" yaml:"blocking_facts,omitempty"`
+	MinConfidence  int        `json:"min_confidence,omitempty" yaml:"min_confidence,omitempty"`
+	MinAmbition    int        `json:"min_ambition,omitempty" yaml:"min_ambition,omitempty"`
+	MaxInjury      int        `json:"max_injury,omitempty" yaml:"max_injury,omitempty"`
+	GoalTypes      []string   `json:"goal_types,omitempty" yaml:"goal_types,omitempty"`
+	Score          ScoreInput `json:"score" yaml:"score"`
 }
 
 type ScenarioPresentation struct {
@@ -209,6 +318,7 @@ type WorldDirectiveDefinition struct {
 type MarketDefinition struct {
 	ID           string         `json:"id"`
 	LocationID   string         `json:"location_id"`
+	Currency     string         `json:"currency"`
 	Stock        map[string]int `json:"stock"`
 	BasePrices   map[string]int `json:"base_prices"`
 	PriceStep    int            `json:"price_step"`
@@ -218,6 +328,7 @@ type MarketDefinition struct {
 type MarketState struct {
 	ID           string
 	LocationID   string
+	Currency     string
 	Stock        map[string]int
 	Prices       map[string]int
 	Sold         map[string]int
@@ -505,6 +616,7 @@ type Bundle struct {
 	Scenario      Scenario
 	Presentation  ScenarioPresentation
 	Dialogue      DialogueConfig
+	Rules         WorldRules
 	StoryArcs     map[string]StoryArc
 	Flags         map[string]FlagDefinition
 	Actions       map[string]ActionDefinition
@@ -710,6 +822,7 @@ type Agreement struct {
 	CustodianID    string
 	Shares         map[string]int
 	Price          int
+	Currency       string
 	Status         string
 	SettledEventID string
 }

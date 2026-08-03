@@ -36,7 +36,11 @@ func (e *Engine) resolveUniqueClaimConflicts(intents []domain.ActionIntent) map[
 
 func (e *Engine) claimStrength(intent domain.ActionIntent) int {
 	resources, _ := e.resourcesFor(intent.ActorID)
-	return resources["combat"] + resources["support"] + intent.Score.Total
+	strength := intent.Score.Total
+	for _, resource := range e.bundle.Scenario.Contest.ScoreResources {
+		strength += resources[resource]
+	}
+	return strength
 }
 
 func (e *Engine) uniqueTransfersLegal(effects []domain.Effect) (bool, string) {

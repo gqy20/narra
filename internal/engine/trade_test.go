@@ -21,6 +21,26 @@ func TestInformationTradeSellTransfersPaymentAndBelief(t *testing.T) {
 	}
 }
 
+func TestInformationTradeUsesScenarioCurrency(t *testing.T) {
+	bundle := loadBlackwind(t)
+	bundle.Rules.Economy.InformationTradeCurrency = "credit"
+	for index := range bundle.NPCs {
+		switch bundle.NPCs[index].ID {
+		case "N01":
+			bundle.NPCs[index].Resources["credit"] = 1
+		case "N03":
+			bundle.NPCs[index].Resources["credit"] = 5
+		}
+	}
+	state, err := New(bundle).TradeInformation(domain.InformationTrade{ID: "credit-sale", Mode: "sell", FromID: "N01", ToID: "N03", FactID: "F01", Price: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.NPCs["N01"].Resources["credit"] != 3 || state.NPCs["N03"].Resources["credit"] != 3 {
+		t.Fatalf("credit balances seller=%d buyer=%d", state.NPCs["N01"].Resources["credit"], state.NPCs["N03"].Resources["credit"])
+	}
+}
+
 func TestInformationTradeExchangeSwapsKnownFacts(t *testing.T) {
 	simulation := New(loadBlackwind(t))
 	state, err := simulation.TradeInformation(domain.InformationTrade{ID: "swap", Mode: "exchange", FromID: "N01", ToID: "N02", FactID: "F10", ExchangeFactID: "F05"})

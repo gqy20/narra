@@ -119,7 +119,7 @@ func TestDefaultViewLocalizesTermsAndHidesStableIDs(t *testing.T) {
 	var output bytes.Buffer
 	renderView(&output, session.View(), false)
 	text := output.String()
-	for _, want := range []string{"序幕", "战力=2", "支援=0", "灵石=100", "信誉=3", "[传闻]"} {
+	for _, want := range []string{"序幕", "战力=2", "助力=0", "灵石=100", "信用=3", "[传闻]"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("default output does not contain %q:\n%s", want, text)
 		}
@@ -181,7 +181,7 @@ func TestTerminalNavigationAndDialogueDoNotAdvanceWorld(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := output.String()
-	for _, want := range []string{"【白石坊市】", "【白石坊市 · 同地人物】", "魏无咎：", "【黑风谷周边地图】", "【行旅卷宗】"} {
+	for _, want := range []string{"【白石坊市】", "【白石坊市 · 同地人物】", "魏无咎：", "【黑风谷山川】", "【行旅卷宗】"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("terminal output does not contain %q:\n%s", want, text)
 		}

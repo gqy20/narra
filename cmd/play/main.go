@@ -67,7 +67,8 @@ func main() {
 func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai.Service, debug bool) error {
 	session := game.session
 	commands := scanTerminalCommands(input)
-	fmt.Fprintln(output, "凡途 · 黑风谷局势")
+	view := session.View()
+	fmt.Fprintf(output, "%s · %s\n", view.Presentation.Brand, view.Title)
 	fmt.Fprintln(output, "输入 help 查看命令；输入 actions 查看当前选择。")
 	if game.saves != nil {
 		if game.autosave {
@@ -76,7 +77,6 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 			fmt.Fprintln(output, "自动存档已关闭；可输入 autosave on 开启。")
 		}
 	}
-	view := session.View()
 	actionMenuCurrent := false
 	var displayedActions []app.AvailableAction
 	var conversation *terminalDialogueSession
@@ -284,7 +284,7 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 			continue
 		case line == "actions" || strings.HasPrefix(line, "actions "):
 			var valid bool
-			displayedActions, valid = renderActionsCategory(output, view.AvailableActions, commandArgument(line), debug)
+			displayedActions, valid = renderActionsCategoryWithLabels(output, view.AvailableActions, commandArgument(line), debug, playerViewResourceLabels(view))
 			actionMenuCurrent = valid && len(displayedActions) > 0
 			continue
 		case line == "map" || line == "map all":
@@ -640,8 +640,9 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 	}
 	sort.Strings(resourceKeys)
 	resources := make([]string, 0, len(resourceKeys))
+	resourceLabels := playerViewResourceLabels(view)
 	for _, key := range resourceKeys {
-		resources = append(resources, fmt.Sprintf("%s=%d", resourceLabel(key), view.Player.Resources[key]))
+		resources = append(resources, fmt.Sprintf("%s=%d", resourceLabel(resourceLabels, key), view.Player.Resources[key]))
 	}
 	fmt.Fprintf(output, "%s｜伤势 %d｜%s\n", view.Player.Name, view.Player.Injury, strings.Join(resources, "  "))
 
@@ -696,6 +697,10 @@ func renderActions(output io.Writer, actions []app.AvailableAction, debug bool) 
 }
 
 func renderActionsCategory(output io.Writer, actions []app.AvailableAction, requested string, debug bool) ([]app.AvailableAction, bool) {
+	return renderActionsCategoryWithLabels(output, actions, requested, debug, nil)
+}
+
+func renderActionsCategoryWithLabels(output io.Writer, actions []app.AvailableAction, requested string, debug bool, resourceLabels map[string]string) ([]app.AvailableAction, bool) {
 	selectable := terminalSelectableActions(actions)
 	query, err := parseActionQuery(requested)
 	if err != nil {
@@ -741,7 +746,7 @@ func renderActionsCategory(output io.Writer, actions []app.AvailableAction, requ
 		if len(action.Costs) > 0 {
 			parts := make([]string, 0, len(action.Costs))
 			for key, amount := range action.Costs {
-				parts = append(parts, fmt.Sprintf("%s %d", resourceLabel(key), amount))
+				parts = append(parts, fmt.Sprintf("%s %d", resourceLabel(resourceLabels, key), amount))
 			}
 			sort.Strings(parts)
 			cost = "；花费 " + strings.Join(parts, "、")
@@ -925,19 +930,19 @@ func renderInfluences(output io.Writer, influences []app.VisibleInfluence, debug
 	}
 }
 
-func resourceLabel(key string) string {
-	switch key {
-	case "combat":
-		return "战力"
-	case "support":
-		return "支援"
-	case "spirit_stones":
-		return "灵石"
-	case "credit":
-		return "信誉"
-	default:
-		return key
+func playerViewResourceLabels(view app.PlayerView) map[string]string {
+	labels := make(map[string]string, len(view.Presentation.Resources))
+	for _, resource := range view.Presentation.Resources {
+		labels[resource.ID] = resource.Label
 	}
+	return labels
+}
+
+func resourceLabel(labels map[string]string, key string) string {
+	if label := labels[key]; label != "" {
+		return label
+	}
+	return key
 }
 
 func statusLabel(status string) string {

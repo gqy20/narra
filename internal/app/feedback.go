@@ -47,7 +47,7 @@ func (s *Session) turnFeedback(actionID, actionName string, before, after *domai
 	for _, event := range after.Events[len(before.Events):] {
 		if event.ActorID == "world" || event.TargetID == after.Player.ID {
 			feedback.Messages = append(feedback.Messages, event.Description)
-		} else if event.ActorID == after.Player.ID && event.ActionID == "spread" {
+		} else if event.ActorID == after.Player.ID && event.ActionID == s.bundle.Rules.Player.ShareInformation.ActionID {
 			feedback.Messages = append(feedback.Messages, "情报已经送达"+s.actorName(after, event.TargetID)+"。")
 			feedback.Messages = append(feedback.Messages, "对方是否改变行动，会在后续局势变化时显现。")
 		}
@@ -384,7 +384,7 @@ func (s *Session) visibleInfluence(state *domain.WorldState, decisions []domain.
 	deliveries := make(map[string]visibleDelivery)
 	orderedDeliveryIDs := make([]string, 0)
 	for _, event := range state.Events {
-		if event.ActorID != state.Player.ID || event.ActionID != "spread" {
+		if event.ActorID != state.Player.ID || event.ActionID != s.bundle.Rules.Player.ShareInformation.ActionID {
 			continue
 		}
 		for _, effect := range event.Effects {

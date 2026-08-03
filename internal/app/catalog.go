@@ -19,7 +19,7 @@ func (s *Session) actionCatalog(state *domain.WorldState) []AvailableAction {
 	result := make([]AvailableAction, 0, len(options))
 	for _, option := range options {
 		action := s.withDecisionContext(state, option.view)
-		action = s.withExposureContext(state, action, option.command)
+		action = s.withResourceWarningContext(state, action, option.command)
 		result = append(result, action)
 	}
 	sort.Slice(result, func(i, j int) bool {
@@ -32,50 +32,50 @@ func (s *Session) actionCatalog(state *domain.WorldState) []AvailableAction {
 	return result
 }
 
-func (s *Session) withExposureContext(state *domain.WorldState, action AvailableAction, command *domain.PlayerCommand) AvailableAction {
+func (s *Session) withResourceWarningContext(state *domain.WorldState, action AvailableAction, command *domain.PlayerCommand) AvailableAction {
 	if command == nil || state.Player == nil {
 		return action
 	}
-	delta := 0
-	for _, effect := range command.Effects {
-		if effect.Type == "adjust_resource" && effect.Key == "exposure" && (effect.TargetID == "" || effect.TargetID == state.Player.ID) {
-			delta += effect.Amount
+	for _, rule := range s.bundle.Rules.Player.ResourceWarnings {
+		delta := 0
+		for _, effect := range command.Effects {
+			if effect.Type == domain.EffectAdjustResource && effect.Key == rule.Resource && (effect.TargetID == "" || effect.TargetID == state.Player.ID) {
+				delta += effect.Amount
+			}
 		}
-	}
-	if delta == 0 {
-		return action
-	}
-	current := state.Player.Resources["exposure"]
-	after := current + delta
-	if after < 0 {
-		after = 0
-	}
-	if delta < 0 {
-		if state.WorldFlag("exposure_watched") || state.WorldFlag("source_inquiry_open") || state.WorldFlag("exposure_compromised") {
-			action.Warnings = append(action.Warnings, fmt.Sprintf("暴露：%d → %d；降低当前热度不会清除已经形成的跟踪、盘问或经手记录。", current, after))
+		if delta == 0 {
+			continue
 		}
-		return action
-	}
-	type threshold struct {
-		value int
-		flag  string
-		label string
-	}
-	thresholds := []threshold{
-		{value: 2, flag: "exposure_watched", label: "行踪跟踪"},
-		{value: 4, flag: "source_inquiry_open", label: "来源盘问"},
-		{value: 6, flag: "exposure_compromised", label: "身份暴露与署名刊载阻断"},
-	}
-	triggered := make([]string, 0, len(thresholds))
-	for _, candidate := range thresholds {
-		if current < candidate.value && after >= candidate.value && !state.WorldFlag(candidate.flag) {
-			triggered = append(triggered, candidate.label)
+		current := state.Player.Resources[rule.Resource]
+		after := maxInt(0, current+delta)
+		if delta < 0 {
+			persistent := false
+			for _, threshold := range rule.Thresholds {
+				persistent = persistent || state.WorldFlag(threshold.Flag)
+			}
+			if persistent && rule.DecreaseMessage != "" {
+				action.Warnings = append(action.Warnings, renderRuleText(rule.DecreaseMessage, map[string]string{"before": fmt.Sprint(current), "after": fmt.Sprint(after)}))
+			}
+			continue
 		}
-	}
-	if len(triggered) > 0 {
-		action.Warnings = append(action.Warnings, fmt.Sprintf("暴露：%d → %d；行动完成后将触发：%s。", current, after, strings.Join(triggered, "、")))
+		triggered := make([]string, 0, len(rule.Thresholds))
+		for _, threshold := range rule.Thresholds {
+			if current < threshold.Value && after >= threshold.Value && !state.WorldFlag(threshold.Flag) {
+				triggered = append(triggered, threshold.Label)
+			}
+		}
+		if len(triggered) > 0 && rule.IncreaseMessage != "" {
+			action.Warnings = append(action.Warnings, renderRuleText(rule.IncreaseMessage, map[string]string{"before": fmt.Sprint(current), "after": fmt.Sprint(after), "labels": strings.Join(triggered, "、")}))
+		}
 	}
 	return action
+}
+
+func renderRuleText(template string, values map[string]string) string {
+	for key, value := range values {
+		template = strings.ReplaceAll(template, "{"+key+"}", value)
+	}
+	return template
 }
 
 func (s *Session) withDecisionContext(state *domain.WorldState, action AvailableAction) AvailableAction {
@@ -125,12 +125,16 @@ func (s *Session) withDecisionContext(state *domain.WorldState, action Available
 		action.KnownConditions = append(action.KnownConditions, "此前条件已经打开这条补救路线")
 		action.Unknowns = append(action.Unknowns, "交换对象之后如何使用所得信息仍需观察")
 	case "heal":
-		action.ExpectedOutcomes = []string{"伤势降低 1 级"}
+		if len(action.ExpectedOutcomes) == 0 {
+			action.ExpectedOutcomes = []string{"伤势降低 1 级"}
+		}
 		action.Resolves = []string{"当前伤势"}
 		action.KnownConditions = []string{"当前带伤", "疗伤条件允许"}
 		action.Unknowns = []string{"疗伤期间局势仍会按日推进"}
 	case "cultivate":
-		action.ExpectedOutcomes = []string{s.resourceName("combat") + "提高 1 点"}
+		if len(action.ExpectedOutcomes) == 0 {
+			action.ExpectedOutcomes = []string{"完成这次成长行动"}
+		}
 		action.KnownConditions = []string{"当前没有伤势妨碍闭关"}
 		action.Unknowns = []string{"闭关期间局势仍会按日推进"}
 	case "advance":
@@ -243,8 +247,9 @@ func canPayVisibleCosts(resources, costs map[string]int) bool {
 }
 
 func (s *Session) addInvestigationActions(options map[string]actionOption, state *domain.WorldState) {
-	action, ok := s.bundle.Actions["verify"]
-	if !ok || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
+	rule := s.bundle.Rules.Player.Investigation
+	action, ok := s.bundle.Actions[rule.ActionID]
+	if !rule.Enabled || !ok || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
 		return
 	}
 	for factID, belief := range state.Player.Beliefs {
@@ -266,7 +271,7 @@ func (s *Session) addInvestigationActions(options map[string]actionOption, state
 		options[id] = actionOption{
 			view: AvailableAction{ID: id, Kind: "verify", Category: "investigate", Name: "核验线索", Description: "核验：“" + belief.Claim + "”", Duration: action.Duration, FactID: factID, FactClaim: belief.Claim},
 			command: &domain.PlayerCommand{
-				ActionID: "verify", Description: "核验线索：“" + belief.Claim + "”",
+				ActionID: rule.ActionID, Description: "核验线索：“" + belief.Claim + "”",
 				Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "belief_max", Key: factID, MaxConfidence: 2}},
 				Effects:    effects,
 			},
@@ -275,8 +280,9 @@ func (s *Session) addInvestigationActions(options map[string]actionOption, state
 }
 
 func (s *Session) addMarketActions(options map[string]actionOption, state *domain.WorldState) {
-	action, ok := s.bundle.Actions["buy"]
-	if !ok || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
+	rule := s.bundle.Rules.Player.MarketPurchase
+	action, ok := s.bundle.Actions[rule.ActionID]
+	if !rule.Enabled || !ok || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
 		return
 	}
 	marketIDs := make([]string, 0, len(state.Markets))
@@ -299,7 +305,7 @@ func (s *Session) addMarketActions(options map[string]actionOption, state *domai
 				continue
 			}
 			price := market.Prices[itemID]
-			if price <= 0 || state.Player.Resources["spirit_stones"] < price {
+			if price <= 0 || state.Player.Resources[market.Currency] < price {
 				continue
 			}
 			name := itemID
@@ -308,11 +314,11 @@ func (s *Session) addMarketActions(options map[string]actionOption, state *domai
 			}
 			id := fmt.Sprintf("buy:%s:%s", marketID, itemID)
 			options[id] = actionOption{
-				view: AvailableAction{ID: id, Kind: "buy", Category: "trade", Name: "购买" + name, Description: fmt.Sprintf("库存 %d，当前价格 %d %s", market.Stock[itemID], price, s.resourceName("spirit_stones")), Duration: action.Duration, Costs: map[string]int{"spirit_stones": price}, TargetID: itemID, TargetName: name},
+				view: AvailableAction{ID: id, Kind: "buy", Category: "trade", Name: "购买" + name, Description: fmt.Sprintf("库存 %d，当前价格 %d %s", market.Stock[itemID], price, s.resourceName(market.Currency)), Duration: action.Duration, Costs: map[string]int{market.Currency: price}, TargetID: itemID, TargetName: name},
 				command: &domain.PlayerCommand{
-					ActionID: "buy", Description: "玩家购买" + name,
-					Conditions: []domain.Condition{{Type: "location", Value: market.LocationID}, {Type: "resource_at_least", Key: "spirit_stones", MinConfidence: price}},
-					Costs:      map[string]int{"spirit_stones": price}, Effects: []domain.Effect{{Type: "market_buy", Value: marketID, Key: itemID, Amount: 1}},
+					ActionID: rule.ActionID, Description: "玩家购买" + name,
+					Conditions: []domain.Condition{{Type: "location", Value: market.LocationID}, {Type: "resource_at_least", Key: market.Currency, MinConfidence: price}},
+					Costs:      map[string]int{market.Currency: price}, Effects: []domain.Effect{{Type: "market_buy", Value: marketID, Key: itemID, Amount: 1}},
 				},
 			}
 		}
@@ -320,7 +326,8 @@ func (s *Session) addMarketActions(options map[string]actionOption, state *domai
 }
 
 func (s *Session) addMovementActions(options map[string]actionOption, state *domain.WorldState) {
-	if _, ok := s.bundle.Actions["explore"]; !ok {
+	rule := s.bundle.Rules.Player.Movement
+	if _, ok := s.bundle.Actions[rule.ActionID]; !rule.Enabled || !ok {
 		return
 	}
 	location := s.bundle.Locations[state.Player.Location]
@@ -339,14 +346,15 @@ func (s *Session) addMovementActions(options map[string]actionOption, state *dom
 		}
 		options[id] = actionOption{
 			view:    AvailableAction{ID: id, Kind: "move", Category: "move", Name: "前往" + destination.Name, Description: fmt.Sprintf("耗时 %d 天，危险度 %d", route.Duration, route.Danger), Duration: route.Duration, TargetID: route.To, TargetName: destination.Name},
-			command: &domain.PlayerCommand{ActionID: "explore", Duration: route.Duration, Description: "玩家前往" + destination.Name, Conditions: conditions, Effects: []domain.Effect{{Type: "move", Value: route.To}}},
+			command: &domain.PlayerCommand{ActionID: rule.ActionID, Duration: route.Duration, Description: "玩家前往" + destination.Name, Conditions: conditions, Effects: []domain.Effect{{Type: "move", Value: route.To}}},
 		}
 	}
 }
 
 func (s *Session) addInformationActions(options map[string]actionOption, state *domain.WorldState) {
-	action, ok := s.bundle.Actions["spread"]
-	if !ok || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
+	rule := s.bundle.Rules.Player.ShareInformation
+	action, ok := s.bundle.Actions[rule.ActionID]
+	if !rule.Enabled || !ok || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
 		return
 	}
 	actors := s.visibleActors(state)
@@ -379,7 +387,7 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 					FactID: factID, FactClaim: claim, Relevance: relevance, Risk: risk, Warnings: warnings,
 				},
 				command: &domain.PlayerCommand{
-					ActionID: "spread", TargetID: actor.ID, Description: "玩家向" + actor.Name + "分享消息：“" + claim + "”",
+					ActionID: rule.ActionID, TargetID: actor.ID, Description: "玩家向" + actor.Name + "分享消息：“" + claim + "”",
 					Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "location", Value: state.Player.Location}},
 					Effects:    []domain.Effect{{Type: "set_belief", TargetID: actor.ID, FactID: factID, Claim: claim, Confidence: belief.Confidence, EvidenceStrength: belief.EvidenceStrength, Source: state.Player.ID, Propagation: "private", Secrecy: belief.Secrecy}},
 				},
@@ -441,7 +449,7 @@ func (s *Session) advanceWarnings(state *domain.WorldState) []string {
 
 func (s *Session) hasDeliveredFact(state *domain.WorldState, targetID, factID string) bool {
 	for _, event := range state.Events {
-		if event.ActorID != state.Player.ID || event.TargetID != targetID || event.ActionID != "spread" {
+		if event.ActorID != state.Player.ID || event.TargetID != targetID || event.ActionID != s.bundle.Rules.Player.ShareInformation.ActionID {
 			continue
 		}
 		for _, effect := range event.Effects {
@@ -454,38 +462,149 @@ func (s *Session) hasDeliveredFact(state *domain.WorldState, targetID, factID st
 }
 
 func (s *Session) addRecoveryActions(options map[string]actionOption, state *domain.WorldState) {
-	if action, ok := s.bundle.Actions["heal"]; ok && state.Player.Injury > 0 && fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
-		options["heal"] = actionOption{
-			view:    AvailableAction{ID: "heal", Kind: "heal", Category: "self", Name: "疗伤", Description: "专心处理伤势，降低一级伤势", Duration: action.Duration},
-			command: &domain.PlayerCommand{ActionID: "heal", Description: "玩家专心疗伤", Conditions: []domain.Condition{{Type: "injury_at_least", MinConfidence: 1}}, Effects: []domain.Effect{{Type: "adjust_injury", Amount: -1}}},
+	for _, rule := range s.bundle.Rules.Player.Actions {
+		action, ok := s.bundle.Actions[rule.ActionID]
+		if !ok || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) || !playerCatalogConditionsMet(state, rule.Conditions) {
+			continue
 		}
-	}
-	if action, ok := s.bundle.Actions["cultivate"]; ok && state.Player.Injury == 0 && fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
-		completed := s.countHistoryAction("cultivate")
+		completed := s.countHistoryAction(rule.ID)
 		stage := completed + 1
-		cost := cultivationCost(completed)
-		if state.Player.Resources["spirit_stones"] < cost {
-			return
+		cost, cumulativeCost, costResource := repeatActionCost(rule.RepeatCost, completed)
+		if cost > 0 && state.Player.Resources[costResource] < cost {
+			continue
 		}
 		costs := make(map[string]int)
 		warnings := make([]string, 0, 1)
-		combatLabel := s.resourceName("combat")
-		currencyLabel := s.resourceName("spirit_stones")
-		description := fmt.Sprintf("第 %d 阶段闭关三日，%s提高一点", stage, combatLabel)
-		if cost > 0 {
-			costs["spirit_stones"] = cost
-			cumulativeCost := 0
-			for index := 0; index <= completed; index++ {
-				cumulativeCost += cultivationCost(index)
-			}
-			description = fmt.Sprintf("第 %d 阶段闭关三日，以 %d %s稳固气机，%s提高一点；完成后累计闭关耗费 %d %s", stage, cost, currencyLabel, combatLabel, cumulativeCost, currencyLabel)
-			warnings = append(warnings, fmt.Sprintf("重复闭关已进入高耗阶段；本轮消耗 %d %s，完成后累计耗费 %d %s。", cost, currencyLabel, cumulativeCost, currencyLabel))
+		values := map[string]string{
+			"stage": fmt.Sprint(stage), "cost": fmt.Sprint(cost), "cumulative": fmt.Sprint(cumulativeCost),
+			"cost_resource": s.resourceName(costResource), "effect_resource": s.playerActionEffectResource(rule.Effects),
 		}
-		options["cultivate"] = actionOption{
-			view:    AvailableAction{ID: "cultivate", Kind: "cultivate", Category: "self", Name: "修炼", Description: description, Duration: action.Duration, Costs: costs, Warnings: warnings},
-			command: &domain.PlayerCommand{ActionID: "cultivate", Description: "玩家闭关修炼", Conditions: []domain.Condition{{Type: "injury_at_most", MaxConfidence: 0}}, Costs: costs, Effects: []domain.Effect{{Type: "adjust_resource", Key: "combat", Amount: 1}}},
+		description := renderRuleText(rule.Description, values)
+		if cost > 0 {
+			costs[costResource] = cost
+			if rule.PaidDescription != "" {
+				description = renderRuleText(rule.PaidDescription, values)
+			}
+			if rule.Warning != "" {
+				warnings = append(warnings, renderRuleText(rule.Warning, values))
+			}
+		}
+		options[rule.ID] = actionOption{
+			view: AvailableAction{
+				ID: rule.ID, Kind: rule.Kind, Category: rule.Category, Name: rule.Name, Description: description,
+				Duration: action.Duration, Costs: costs, Warnings: warnings, ExpectedOutcomes: s.playerActionOutcomes(rule.Effects),
+			},
+			command: &domain.PlayerCommand{
+				ActionID: rule.ActionID, Description: rule.CommandDescription,
+				Conditions: append([]domain.Condition(nil), rule.Conditions...), Costs: costs, Effects: append([]domain.Effect(nil), rule.Effects...),
+			},
 		}
 	}
+}
+
+func playerCatalogConditionsMet(state *domain.WorldState, conditions []domain.Condition) bool {
+	for _, condition := range conditions {
+		switch condition.Type {
+		case domain.ConditionBelief:
+			belief, ok := state.Player.Beliefs[condition.Key]
+			if !ok || belief.Confidence < condition.MinConfidence {
+				return false
+			}
+		case domain.ConditionBeliefMax:
+			belief, ok := state.Player.Beliefs[condition.Key]
+			if !ok || belief.Confidence > condition.MaxConfidence {
+				return false
+			}
+		case domain.ConditionHasItem:
+			if state.Player.Items[condition.Key] <= 0 {
+				return false
+			}
+		case domain.ConditionMissingItem:
+			if state.Player.Items[condition.Key] > 0 {
+				return false
+			}
+		case domain.ConditionLocation:
+			if state.Player.Location != condition.Value {
+				return false
+			}
+		case domain.ConditionFlag:
+			if condition.Scope == "actor" && !state.ActorFlag(state.Player.ID, condition.Key) || condition.Scope != "actor" && !state.WorldFlag(condition.Key) {
+				return false
+			}
+		case domain.ConditionMissingFlag:
+			if condition.Scope == "actor" && state.ActorFlag(state.Player.ID, condition.Key) || condition.Scope != "actor" && state.WorldFlag(condition.Key) {
+				return false
+			}
+		case domain.ConditionResourceAtLeast:
+			if state.Player.Resources[condition.Key] < condition.MinConfidence {
+				return false
+			}
+		case domain.ConditionResourceAtMost:
+			if state.Player.Resources[condition.Key] > condition.MaxConfidence {
+				return false
+			}
+		case domain.ConditionInjuryAtLeast:
+			if state.Player.Injury < condition.MinConfidence {
+				return false
+			}
+		case domain.ConditionInjuryAtMost:
+			if state.Player.Injury > condition.MaxConfidence {
+				return false
+			}
+		case domain.ConditionOpportunity:
+			if _, ok := state.Opportunities[condition.Key]; !ok {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func repeatActionCost(rule *domain.RepeatCostRule, completed int) (int, int, string) {
+	if rule == nil || len(rule.Amounts) == 0 {
+		return 0, 0, ""
+	}
+	amountAt := func(index int) int {
+		if index >= len(rule.Amounts) {
+			return rule.Amounts[len(rule.Amounts)-1]
+		}
+		return rule.Amounts[index]
+	}
+	cumulative := 0
+	for index := 0; index <= completed; index++ {
+		cumulative += amountAt(index)
+	}
+	return amountAt(completed), cumulative, rule.Resource
+}
+
+func (s *Session) playerActionEffectResource(effects []domain.Effect) string {
+	for _, effect := range effects {
+		if effect.Type == domain.EffectAdjustResource && effect.Key != "" {
+			return s.resourceName(effect.Key)
+		}
+	}
+	return "资源"
+}
+
+func (s *Session) playerActionOutcomes(effects []domain.Effect) []string {
+	result := make([]string, 0, len(effects))
+	for _, effect := range effects {
+		switch effect.Type {
+		case domain.EffectAdjustResource:
+			result = append(result, fmt.Sprintf("%s%+d 点", s.resourceName(effect.Key), effect.Amount))
+		case domain.EffectAdjustInjury:
+			result = append(result, fmt.Sprintf("伤势%+d 级", effect.Amount))
+		case domain.EffectAddItem:
+			name := effect.Key
+			if item, ok := s.bundle.Items[effect.Key]; ok {
+				name = item.Name
+			}
+			result = append(result, fmt.Sprintf("获得 %d 件%s", maxInt(1, effect.Amount), name))
+		}
+	}
+	return result
 }
 
 func (s *Session) countHistoryAction(actionID string) int {
@@ -496,19 +615,6 @@ func (s *Session) countHistoryAction(actionID string) int {
 		}
 	}
 	return count
-}
-
-func cultivationCost(completed int) int {
-	switch completed {
-	case 0, 1:
-		return 0
-	case 2:
-		return 10
-	case 3:
-		return 20
-	default:
-		return 30
-	}
 }
 
 func waitOption(description string) actionOption {

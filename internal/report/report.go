@@ -29,7 +29,7 @@ func Markdown(writer io.Writer, state *domain.WorldState, bundle domain.Bundle) 
 			}
 		}
 		sort.Strings(playerItems)
-		if _, err := fmt.Fprintf(writer, "- 玩家位置：%s\n- 玩家伤势：%d\n- 玩家灵石：%d\n- 玩家信用：%d\n- 玩家物品：%s\n\n", locationName(bundle, state.Player.Location), state.Player.Injury, state.Player.Resources["spirit_stones"], state.Player.Resources["credit"], strings.Join(playerItems, "、")); err != nil {
+		if _, err := fmt.Fprintf(writer, "- 玩家位置：%s\n- 玩家伤势：%d\n- 玩家资源：%s\n- 玩家物品：%s\n\n", locationName(bundle, state.Player.Location), state.Player.Injury, formattedResources(bundle, state.Player.Resources), strings.Join(playerItems, "、")); err != nil {
 			return err
 		}
 		if len(state.Opportunities) > 0 {
@@ -96,7 +96,7 @@ func Markdown(writer io.Writer, state *domain.WorldState, bundle domain.Bundle) 
 	if _, err := fmt.Fprint(writer, "\n## 最终角色状态\n\n"); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintln(writer, "| 角色 | 地点 | 伤势 | 战力 | 关键物品 |"); err != nil {
+	if _, err := fmt.Fprintln(writer, "| 角色 | 地点 | 伤势 | 资源 | 关键物品 |"); err != nil {
 		return err
 	}
 	if _, err := fmt.Fprintln(writer, "| --- | --- | ---: | ---: | --- |"); err != nil {
@@ -116,7 +116,7 @@ func Markdown(writer io.Writer, state *domain.WorldState, bundle domain.Bundle) 
 			}
 		}
 		sort.Strings(items)
-		if _, err := fmt.Fprintf(writer, "| %s | %s | %d | %d | %s |\n", npc.Name, locationName(bundle, npc.Location), npc.Injury, npc.Resources["combat"], strings.Join(items, "、")); err != nil {
+		if _, err := fmt.Fprintf(writer, "| %s | %s | %d | %s | %s |\n", npc.Name, locationName(bundle, npc.Location), npc.Injury, formattedResources(bundle, npc.Resources), strings.Join(items, "、")); err != nil {
 			return err
 		}
 	}
@@ -174,6 +174,27 @@ func Markdown(writer io.Writer, state *domain.WorldState, bundle domain.Bundle) 
 		}
 	}
 	return nil
+}
+
+func formattedResources(bundle domain.Bundle, resources map[string]int) string {
+	labels := make(map[string]string, len(bundle.Presentation.Resources))
+	for _, definition := range bundle.Presentation.Resources {
+		labels[definition.ID] = definition.Label
+	}
+	keys := make([]string, 0, len(resources))
+	for key := range resources {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		label := labels[key]
+		if label == "" {
+			label = key
+		}
+		parts = append(parts, fmt.Sprintf("%s=%d", label, resources[key]))
+	}
+	return strings.Join(parts, "、")
 }
 
 func eventAuditSuffix(event domain.WorldEvent) string {

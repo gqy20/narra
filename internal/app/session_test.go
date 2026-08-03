@@ -601,6 +601,13 @@ func TestSaveMigrationRejectsFutureVersion(t *testing.T) {
 
 func TestBuyAndInvestigationUseAuthoritativeEngine(t *testing.T) {
 	session := testSession(t)
+	if got := session.engine.State().Markets["M01"].Currency; got != "spirit_stones" {
+		t.Fatalf("market currency = %q", got)
+	}
+	buyOption := session.actionOptions(session.engine.State())["buy:M01:antidote"]
+	if buyOption.command == nil || buyOption.command.Costs["spirit_stones"] != 20 || len(buyOption.command.Effects) != 1 {
+		t.Fatalf("buy option = %+v", buyOption)
+	}
 	view, err := session.Execute("buy:M01:antidote")
 	if err != nil {
 		t.Fatal(err)

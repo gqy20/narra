@@ -8,6 +8,14 @@ import (
 )
 
 func Markdown(writer io.Writer, summary Summary) error {
+	title := summary.Title
+	if title == "" {
+		title = "场景"
+	}
+	contestItem := summary.ContestItemName
+	if contestItem == "" {
+		contestItem = "核心资源"
+	}
 	mode := "固定验收场景"
 	if summary.Sweep != nil {
 		mode = "参数扫描"
@@ -28,7 +36,7 @@ func Markdown(writer io.Writer, summary Summary) error {
 	entropy := ownerEntropy(summary.OwnerDistribution)
 	idleRate := ratio(summary.IdleNPCDays, summary.NPCDays)
 	repeatRate := ratio(summary.RepeatedSelections, summary.DecisionTransitions)
-	if _, err := fmt.Fprintf(writer, "# 黑风谷批量模拟报告\n\n- 模式：%s\n- 运行数量：%d\n- 有效运行：%d\n- 无效变体：%d\n- 不同归属：%d\n- 结局熵：%.3f bits\n- NPC 空闲率：%d/%d（%.1f%%）\n- 连续决策重复率：%d/%d（%.1f%%）\n- 调查有效率：%d/%d（%.1f%%）\n- 关系改变首选：%d/%d（%.1f%%）\n- 单信息反事实改变首选：%d/%d（%.1f%%）\n- 失败后续分支：%d 种，最高集中度 %.1f%%\n- 警告数量：%d\n", mode, len(summary.Results), validCount, summary.InvalidCount, len(summary.OwnerDistribution), entropy, summary.IdleNPCDays, summary.NPCDays, idleRate, summary.RepeatedSelections, summary.DecisionTransitions, repeatRate, summary.UsefulInvestigations, summary.Investigations, efficacy, summary.RelationshipChanged, summary.RelationshipRelevant, relationshipRate, summary.CounterfactualChanges, summary.CounterfactualTests, counterfactualRate, len(summary.FailureFollowUps), concentration, len(summary.Warnings)); err != nil {
+	if _, err := fmt.Fprintf(writer, "# %s批量模拟报告\n\n- 模式：%s\n- 运行数量：%d\n- 有效运行：%d\n- 无效变体：%d\n- 不同归属：%d\n- 结局熵：%.3f bits\n- NPC 空闲率：%d/%d（%.1f%%）\n- 连续决策重复率：%d/%d（%.1f%%）\n- 调查有效率：%d/%d（%.1f%%）\n- 关系改变首选：%d/%d（%.1f%%）\n- 单信息反事实改变首选：%d/%d（%.1f%%）\n- 失败后续分支：%d 种，最高集中度 %.1f%%\n- 警告数量：%d\n", title, mode, len(summary.Results), validCount, summary.InvalidCount, len(summary.OwnerDistribution), entropy, summary.IdleNPCDays, summary.NPCDays, idleRate, summary.RepeatedSelections, summary.DecisionTransitions, repeatRate, summary.UsefulInvestigations, summary.Investigations, efficacy, summary.RelationshipChanged, summary.RelationshipRelevant, relationshipRate, summary.CounterfactualChanges, summary.CounterfactualTests, counterfactualRate, len(summary.FailureFollowUps), concentration, len(summary.Warnings)); err != nil {
 		return err
 	}
 	if summary.Sweep != nil {
@@ -39,7 +47,7 @@ func Markdown(writer io.Writer, summary Summary) error {
 			return err
 		}
 	} else {
-		if _, err := fmt.Fprint(writer, "\n## 场景结果\n\n| 场景 | 青髓芝归属 | 世界事件 | 决策记录 | 有效调查/调查 | 开放机会 | 结局 |\n| --- | --- | ---: | ---: | ---: | ---: | --- |\n"); err != nil {
+		if _, err := fmt.Fprintf(writer, "\n## 场景结果\n\n| 场景 | %s归属 | 世界事件 | 决策记录 | 有效调查/调查 | 开放机会 | 结局 |\n| --- | --- | ---: | ---: | ---: | ---: | --- |\n", contestItem); err != nil {
 			return err
 		}
 		for _, result := range summary.Results {

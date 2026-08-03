@@ -41,6 +41,8 @@ type Result struct {
 }
 
 type Summary struct {
+	Title                 string
+	ContestItemName       string
 	Results               []Result
 	OwnerDistribution     map[string]int
 	ActionDistribution    map[string]int
@@ -91,6 +93,7 @@ func LoadPlans(dir string, bundle domain.Bundle) ([]domain.RunPlan, error) {
 
 func Run(bundle domain.Bundle, plans []domain.RunPlan, includeBaseline bool) (Summary, error) {
 	summary := Summary{
+		Title: bundle.Scenario.Title, ContestItemName: contestItemName(bundle),
 		OwnerDistribution:  make(map[string]int),
 		ActionDistribution: make(map[string]int),
 		ResourceFlow:       make(map[string]int),
@@ -113,6 +116,13 @@ func Run(bundle domain.Bundle, plans []domain.RunPlan, includeBaseline bool) (Su
 	}
 	summary.buildWarnings(bundle, plans)
 	return summary, nil
+}
+
+func contestItemName(bundle domain.Bundle) string {
+	if item, ok := bundle.Items[bundle.Scenario.Contest.ItemID]; ok && item.Name != "" {
+		return item.Name
+	}
+	return bundle.Scenario.Contest.ItemID
 }
 
 func summarize(bundle domain.Bundle, state *domain.WorldState) Result {
@@ -142,7 +152,7 @@ func summarize(bundle domain.Bundle, state *domain.WorldState) Result {
 			result.RuleCoverage["failure:"+event.Type]++
 		}
 	}
-	result.Investigations, result.UsefulInvestigations = investigationEfficacy(state.Events)
+	result.Investigations, result.UsefulInvestigations = investigationEfficacy(state.Events, bundle.Rules.Investigation.ActionID, bundle.Rules.Player.Investigation.ActionID)
 	result.FailureCount, result.FailureFollowUps = failureDiversity(state.Events)
 	result.NPCDays, result.IdleNPCDays = idleNPCDays(state)
 	result.DecisionTransitions, result.RepeatedSelections = decisionRepetition(state.Decisions)
@@ -163,11 +173,17 @@ func summarize(bundle domain.Bundle, state *domain.WorldState) Result {
 	return result
 }
 
-func investigationEfficacy(events []domain.WorldEvent) (int, int) {
+func investigationEfficacy(events []domain.WorldEvent, actionIDs ...string) (int, int) {
+	trackedActions := make(map[string]bool, len(actionIDs))
+	for _, actionID := range actionIDs {
+		if actionID != "" {
+			trackedActions[actionID] = true
+		}
+	}
 	investigations := make(map[string]bool)
 	useful := make(map[string]bool)
 	for _, event := range events {
-		if event.ActionID == "verify" && (event.Type == "action" || event.Type == "player_action") {
+		if trackedActions[event.ActionID] && (event.Type == "action" || event.Type == "player_action") {
 			investigations[event.ID] = true
 		}
 		for _, triggerID := range event.TriggerEventIDs {

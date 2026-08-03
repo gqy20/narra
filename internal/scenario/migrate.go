@@ -34,6 +34,23 @@ var contentMigrations = map[int]contentMigration{
 	1: migrateContentV1ToV2,
 	2: migrateContentV2ToV3,
 	3: migrateContentV3ToV4,
+	4: migrateContentV4ToV5,
+}
+
+func migrateContentV4ToV5(_ string, files map[string][]byte, report *ContentMigrationReport) error {
+	manifestSource := string(files["manifest.yml"])
+	files["manifest.yml"] = []byte(strings.Replace(manifestSource, "schema_version: 4", "schema_version: 5", 1))
+	report.Changes = append(report.Changes, "manifest schema_version: 4 -> 5")
+	if files["rules.yml"] == nil && files["rules.yaml"] == nil {
+		rules := domain.WorldRules{}
+		encoded, err := yaml.Marshal(rules)
+		if err != nil {
+			return fmt.Errorf("encode rules.yml: %w", err)
+		}
+		files["rules.yml"] = encoded
+		report.Changes = append(report.Changes, "rules.yml: add explicit world simulation policy")
+	}
+	return nil
 }
 
 func migrateContentV3ToV4(_ string, files map[string][]byte, report *ContentMigrationReport) error {

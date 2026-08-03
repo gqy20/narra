@@ -1,0 +1,32 @@
+fallback_strategies: []
+
+investigation:
+  enabled: false
+
+navigation:
+  retreat:
+    enabled: true
+    action_id: flee
+    description: 撤往安全地点
+    min_injury: 2
+    goal_types: [avoid]
+    score: {base: 8, goal: 5, urgency: 5, probability: 4}
+  contest:
+    enabled: false
+
+player:
+  investigation: {enabled: true, action_id: verify}
+  market_purchase: {enabled: false}
+  movement: {enabled: true, action_id: explore}
+  share_information: {enabled: true, action_id: spread}
+  actions: []
+  resource_warnings:
+  - resource: exposure
+    increase_message: "暴露：{before} → {after}；行动完成后将触发：{labels}。"
+    decrease_message: "暴露：{before} → {after}；降低当前热度不会清除已经形成的跟踪、盘问或经手记录。"
+    thresholds:
+    - {value: 2, flag: exposure_watched, label: 行踪跟踪}
+    - {value: 4, flag: source_inquiry_open, label: 来源盘问}
+    - {value: 6, flag: exposure_compromised, label: 身份暴露与署名刊载阻断}
+
+economy: {}

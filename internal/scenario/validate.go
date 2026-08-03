@@ -49,10 +49,13 @@ func Validate(bundle domain.Bundle) error {
 	}
 	seenMarkets := make(map[string]bool)
 	for _, market := range bundle.Scenario.Markets {
-		if market.ID == "" || seenMarkets[market.ID] || market.PriceStep < 0 {
+		if market.ID == "" || seenMarkets[market.ID] || market.PriceStep < 0 || strings.TrimSpace(market.Currency) == "" {
 			return fmt.Errorf("scenario has invalid or duplicate market %q", market.ID)
 		}
 		seenMarkets[market.ID] = true
+		if _, ok := bundle.DefaultPlayer.Resources[market.Currency]; !ok {
+			return fmt.Errorf("market %s currency %s is not a player resource", market.ID, market.Currency)
+		}
 		if _, ok := bundle.Locations[market.LocationID]; !ok {
 			return fmt.Errorf("market %s references unknown location %s", market.ID, market.LocationID)
 		}
@@ -66,6 +69,9 @@ func Validate(bundle domain.Bundle) error {
 		return err
 	}
 	if err := validateOpportunityActions(bundle); err != nil {
+		return err
+	}
+	if err := validateWorldRules(bundle); err != nil {
 		return err
 	}
 	if len(bundle.NPCs) == 0 {
@@ -174,6 +180,203 @@ func Validate(bundle domain.Bundle) error {
 	return nil
 }
 
+func validateWorldRules(bundle domain.Bundle) error {
+	seen := make(map[string]bool)
+	for _, rule := range bundle.Rules.FallbackStrategies {
+		strategy := rule.Strategy
+		if strategy.ID == "" || seen[strategy.ID] {
+			return fmt.Errorf("world rules have invalid or duplicate fallback strategy %q", strategy.ID)
+		}
+		seen[strategy.ID] = true
+		action, ok := bundle.Actions[strategy.ActionID]
+		if !ok {
+			return fmt.Errorf("world rule %s references unknown action %s", strategy.ID, strategy.ActionID)
+		}
+		if strings.TrimSpace(strategy.Description) == "" {
+			return fmt.Errorf("world rule %s requires description", strategy.ID)
+		}
+		if err := validateStaticMovement(action.Duration, strategy.Duration, strategy.Conditions, strategy.Effects, "", bundle); err != nil {
+			return fmt.Errorf("world rule %s: %w", strategy.ID, err)
+		}
+		if err := validateCosts(strategy.Costs); err != nil {
+			return fmt.Errorf("world rule %s: %w", strategy.ID, err)
+		}
+		if err := validateConditionsAndEffects(strategy.Conditions, nil, strategy.Effects, bundle); err != nil {
+			return fmt.Errorf("world rule %s: %w", strategy.ID, err)
+		}
+		for _, condition := range rule.AnyConditions {
+			if err := validateCondition(condition, bundle); err != nil {
+				return fmt.Errorf("world rule %s any_conditions: %w", strategy.ID, err)
+			}
+		}
+		for trait, threshold := range rule.PersonalityAtLeast {
+			validTrait := trait == "caution" || trait == "greed" || trait == "loyalty" || trait == "ambition" || trait == "credit" || trait == "risk_tolerance"
+			if !validTrait || threshold < 0 || threshold > 5 {
+				return fmt.Errorf("world rule %s has invalid personality threshold %s=%d", strategy.ID, trait, threshold)
+			}
+		}
+		for _, goalType := range strategy.GoalTypes {
+			if !validGoalType(goalType) {
+				return fmt.Errorf("world rule %s has invalid goal type %s", strategy.ID, goalType)
+			}
+		}
+		if purchase := rule.MarketPurchase; purchase != nil {
+			if _, ok := bundle.Items[purchase.ItemID]; !ok || purchase.Amount < 0 {
+				return fmt.Errorf("world rule %s has invalid market purchase item or amount", strategy.ID)
+			}
+			available := false
+			for _, market := range bundle.Scenario.Markets {
+				if _, ok := market.Stock[purchase.ItemID]; ok {
+					available = true
+					break
+				}
+			}
+			if !available {
+				return fmt.Errorf("world rule %s purchases %s which no market stocks", strategy.ID, purchase.ItemID)
+			}
+		}
+	}
+	if err := validateInvestigationRule(bundle); err != nil {
+		return err
+	}
+	if err := validateNavigationRules(bundle); err != nil {
+		return err
+	}
+	if err := validatePlayerRules(bundle); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validatePlayerRules(bundle domain.Bundle) error {
+	capabilities := []struct {
+		name string
+		rule domain.PlayerCapabilityRule
+	}{
+		{"investigation", bundle.Rules.Player.Investigation},
+		{"market_purchase", bundle.Rules.Player.MarketPurchase},
+		{"movement", bundle.Rules.Player.Movement},
+		{"share_information", bundle.Rules.Player.ShareInformation},
+	}
+	for _, capability := range capabilities {
+		if !capability.rule.Enabled {
+			continue
+		}
+		if _, ok := bundle.Actions[capability.rule.ActionID]; !ok {
+			return fmt.Errorf("enabled player capability %s references unknown action %s", capability.name, capability.rule.ActionID)
+		}
+	}
+	seenActions := make(map[string]bool)
+	for _, rule := range bundle.Rules.Player.Actions {
+		if rule.ID == "" || seenActions[rule.ID] || rule.Kind == "" || rule.Category == "" || rule.Name == "" || rule.Description == "" || rule.CommandDescription == "" {
+			return fmt.Errorf("player rules have invalid or duplicate action %q", rule.ID)
+		}
+		seenActions[rule.ID] = true
+		if _, ok := bundle.Actions[rule.ActionID]; !ok {
+			return fmt.Errorf("player rule %s references unknown action %s", rule.ID, rule.ActionID)
+		}
+		if err := validateConditionsAndEffects(rule.Conditions, nil, rule.Effects, bundle); err != nil {
+			return fmt.Errorf("player rule %s: %w", rule.ID, err)
+		}
+		if repeat := rule.RepeatCost; repeat != nil {
+			if repeat.Resource == "" || len(repeat.Amounts) == 0 {
+				return fmt.Errorf("player rule %s has incomplete repeat cost", rule.ID)
+			}
+			if _, ok := bundle.DefaultPlayer.Resources[repeat.Resource]; !ok {
+				return fmt.Errorf("player rule %s repeat cost references unknown player resource %s", rule.ID, repeat.Resource)
+			}
+			for _, amount := range repeat.Amounts {
+				if amount < 0 {
+					return fmt.Errorf("player rule %s repeat cost has negative amount", rule.ID)
+				}
+			}
+		}
+	}
+	for _, warning := range bundle.Rules.Player.ResourceWarnings {
+		if warning.Resource == "" || warning.IncreaseMessage == "" || warning.DecreaseMessage == "" {
+			return fmt.Errorf("player resource warning requires resource and messages")
+		}
+		if _, ok := bundle.DefaultPlayer.Resources[warning.Resource]; !ok {
+			return fmt.Errorf("player resource warning references unknown resource %s", warning.Resource)
+		}
+		previous := 0
+		seenFlags := make(map[string]bool)
+		for _, threshold := range warning.Thresholds {
+			if threshold.Value <= previous || threshold.Flag == "" || threshold.Label == "" || seenFlags[threshold.Flag] {
+				return fmt.Errorf("player resource warning %s has invalid thresholds", warning.Resource)
+			}
+			previous = threshold.Value
+			seenFlags[threshold.Flag] = true
+		}
+	}
+	for name, currency := range map[string]string{
+		"information_trade_currency": bundle.Rules.Economy.InformationTradeCurrency,
+		"agreement_currency":         bundle.Rules.Economy.AgreementCurrency,
+	} {
+		if currency == "" {
+			continue
+		}
+		if _, ok := bundle.DefaultPlayer.Resources[currency]; !ok {
+			return fmt.Errorf("economy %s references unknown player resource %s", name, currency)
+		}
+	}
+	return nil
+}
+
+func validateInvestigationRule(bundle domain.Bundle) error {
+	rule := bundle.Rules.Investigation
+	if !rule.Enabled {
+		return nil
+	}
+	if _, ok := bundle.Actions[rule.ActionID]; !ok || strings.TrimSpace(rule.Description) == "" {
+		return fmt.Errorf("enabled investigation rule requires a known action and description")
+	}
+	for _, goalType := range rule.GoalTypes {
+		if !validGoalType(goalType) {
+			return fmt.Errorf("investigation rule has invalid goal type %s", goalType)
+		}
+	}
+	return nil
+}
+
+func validateNavigationRules(bundle domain.Bundle) error {
+	retreat := bundle.Rules.Navigation.Retreat
+	if retreat.Enabled {
+		if _, ok := bundle.Actions[retreat.ActionID]; !ok || strings.TrimSpace(retreat.Description) == "" || retreat.MinInjury < 1 {
+			return fmt.Errorf("enabled retreat rule requires a known action, description, and positive min_injury")
+		}
+		for _, goalType := range retreat.GoalTypes {
+			if !validGoalType(goalType) {
+				return fmt.Errorf("retreat rule has invalid goal type %s", goalType)
+			}
+		}
+	}
+	contest := bundle.Rules.Navigation.Contest
+	if !contest.Enabled {
+		return nil
+	}
+	if _, ok := bundle.Actions[contest.ActionID]; !ok || strings.TrimSpace(contest.Description) == "" || contest.MinConfidence < 1 || contest.MinConfidence > 3 {
+		return fmt.Errorf("enabled contest navigation requires a known action, description, and confidence 1..3")
+	}
+	if contest.MinAmbition < 0 || contest.MinAmbition > 5 || contest.MaxInjury < 0 || contest.MaxInjury > 3 {
+		return fmt.Errorf("contest navigation has invalid ambition or injury threshold")
+	}
+	for _, goalType := range contest.GoalTypes {
+		if !validGoalType(goalType) {
+			return fmt.Errorf("contest navigation has invalid goal type %s", goalType)
+		}
+	}
+	if len(contest.KnowledgeFacts) == 0 {
+		return fmt.Errorf("enabled contest navigation requires knowledge_facts")
+	}
+	for _, factID := range append(append([]string(nil), contest.KnowledgeFacts...), contest.BlockingFacts...) {
+		if _, ok := bundle.Facts[factID]; !ok {
+			return fmt.Errorf("contest navigation references unknown fact %s", factID)
+		}
+	}
+	return nil
+}
+
 func validatePresentation(bundle domain.Bundle) error {
 	presentation := bundle.Presentation
 	if strings.TrimSpace(presentation.Brand) == "" || strings.TrimSpace(presentation.WorldTitle) == "" || strings.TrimSpace(presentation.Objective) == "" {
@@ -241,6 +444,7 @@ func validateFlagRegistry(bundle domain.Bundle) error {
 	}
 	references := make(map[string]bool)
 	collectFlagReferences(reflect.ValueOf(bundle.Scenario), references)
+	collectFlagReferences(reflect.ValueOf(bundle.Rules), references)
 	collectFlagReferences(reflect.ValueOf(bundle.StoryArcs), references)
 	collectFlagReferences(reflect.ValueOf(bundle.NPCs), references)
 	for _, location := range bundle.Locations {
@@ -250,6 +454,11 @@ func validateFlagRegistry(bundle domain.Bundle) error {
 	}
 	for _, market := range bundle.Scenario.Markets {
 		addFlagReference(references, "world", market.BlockadeFlag)
+	}
+	for _, warning := range bundle.Rules.Player.ResourceWarnings {
+		for _, threshold := range warning.Thresholds {
+			addFlagReference(references, "world", threshold.Flag)
+		}
 	}
 	addFlagReference(references, "actor", bundle.Scenario.Contest.PreparationFlag)
 	contestRules := append([]domain.ContestOutcomeRule(nil), bundle.Scenario.Contest.OutcomeRules...)

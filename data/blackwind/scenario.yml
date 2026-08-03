@@ -19,6 +19,7 @@ topics:
 markets:
 - id: M01
   location_id: L01
+  currency: spirit_stones
   stock:
     antidote: 30
   base_prices:
