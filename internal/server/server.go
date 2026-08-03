@@ -45,11 +45,18 @@ type Options struct {
 
 type Response struct {
 	APIVersion   string          `json:"api_version"`
+	Scenario     *ScenarioInfo   `json:"scenario,omitempty"`
 	View         *app.PlayerView `json:"view,omitempty"`
 	Dialogue     *ai.Dialogue    `json:"dialogue,omitempty"`
 	Capabilities *Capabilities   `json:"capabilities,omitempty"`
 	AISettings   *AISettingsView `json:"ai_settings,omitempty"`
 	Error        *APIError       `json:"error,omitempty"`
+}
+
+type ScenarioInfo struct {
+	ID           string                      `json:"id"`
+	Title        string                      `json:"title"`
+	Presentation domain.ScenarioPresentation `json:"presentation"`
 }
 
 type Capabilities struct {
@@ -104,7 +111,7 @@ func New(bundle domain.Bundle, saveDir string) *GameServer {
 func NewWithOptions(bundle domain.Bundle, saveDir string, options Options) *GameServer {
 	return &GameServer{
 		bundle:        bundle,
-		saveDir:       saveDir,
+		saveDir:       filepath.Join(saveDir, bundle.Scenario.ID),
 		shutdownToken: options.ShutdownToken,
 		shutdown:      options.Shutdown,
 		dialogue:      options.Dialogue,
@@ -159,6 +166,7 @@ func (s *GameServer) health(writer http.ResponseWriter, request *http.Request) {
 	configurable := s.configureAI != nil
 	s.mu.Unlock()
 	writeJSON(writer, http.StatusOK, Response{APIVersion: APIVersion,
+		Scenario:     &ScenarioInfo{ID: s.bundle.Scenario.ID, Title: s.bundle.Scenario.Title, Presentation: s.bundle.Presentation},
 		Capabilities: &Capabilities{AIDialogue: enabled, AIConfiguration: configurable},
 		AISettings:   &AISettingsView{Enabled: enabled, Mode: mode},
 	})

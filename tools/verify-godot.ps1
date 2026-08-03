@@ -20,6 +20,9 @@ try {
         & $godot.Source --headless --path $godotProject --script res://tests/api_contract.gd
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+        & $godot.Source --headless --path $godotProject --script res://tests/scenario_selection.gd
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
         & $godot.Source --headless --path $godotProject --script res://tests/integration.gd
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

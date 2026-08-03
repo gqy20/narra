@@ -49,7 +49,7 @@ func TestGameLifecycleAndSlotPersistence(t *testing.T) {
 	defer service.Close()
 
 	response, status := request(t, service.URL, http.MethodGet, "/api/v1/health", nil)
-	if status != http.StatusOK || response.APIVersion != APIVersion {
+	if status != http.StatusOK || response.APIVersion != APIVersion || response.Scenario == nil || response.Scenario.ID != bundle.Scenario.ID || response.Scenario.Presentation.WorldTitle == "" {
 		t.Fatalf("health = %d %+v", status, response)
 	}
 	_, status = request(t, service.URL, http.MethodGet, "/api/v1/game", nil)
@@ -73,7 +73,7 @@ func TestGameLifecycleAndSlotPersistence(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("save status = %d", status)
 	}
-	if _, err := os.Stat(filepath.Join(saveDir, "slot-1.json")); err != nil {
+	if _, err := os.Stat(filepath.Join(saveDir, bundle.Scenario.ID, "slot-1.json")); err != nil {
 		t.Fatal(err)
 	}
 	_, status = request(t, service.URL, http.MethodPost, "/api/v1/game/quit", map[string]string{})

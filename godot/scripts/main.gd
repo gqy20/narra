@@ -25,6 +25,8 @@ const AUTOSAVE_SLOT := "autosave"
 const AI_SETTINGS_FILE := "ai-settings.json"
 const BUNDLED_SERVER_STARTUP_DELAY := 0.4
 const PORTABLE_USER_ARG := "--portable"
+const SCENARIO_ARG_PREFIX := "--scenario="
+const DATA_DIR_ARG_PREFIX := "--data-dir="
 const LOG_MAX_MIB := 5
 const LOG_BACKUPS := 5
 const LOG_LEVELS: Array[String] = ["DEBUG", "INFO", "WARN", "ERROR"]
@@ -138,6 +140,8 @@ var saves_dir := ""
 var crash_dir := ""
 var client_log_path := ""
 var portable_mode := false
+var scenario_selector := "blackwind"
+var scenario_data_dir := ""
 var session_id := ""
 var shutdown_token := ""
 var build_version := "dev"
@@ -249,6 +253,7 @@ var narrative_font: Font
 
 
 func _ready() -> void:
+	_configure_scenario_selection()
 	_configure_runtime_paths()
 	_configure_runtime_identity()
 	_initialize_crash_tracking()
@@ -277,6 +282,8 @@ func _ready() -> void:
 	if runtime_warning != "":
 		_show_error(runtime_warning)
 	local_server_process.start({
+		"scenario": scenario_selector,
+		"data_dir": scenario_data_dir,
 		"runtime_root": runtime_root,
 		"logs_dir": logs_dir,
 		"saves_dir": saves_dir,
@@ -348,6 +355,16 @@ func _configure_runtime_paths() -> void:
 		recovery_log_path = logs_dir.path_join("client-recovery.log")
 		push_error(runtime_warning)
 	_archive_previous_client_logs()
+
+
+func _configure_scenario_selection() -> void:
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with(SCENARIO_ARG_PREFIX):
+			var requested := argument.trim_prefix(SCENARIO_ARG_PREFIX).strip_edges()
+			if requested != "" and requested.get_file() == requested and requested not in [".", ".."]:
+				scenario_selector = requested
+		elif argument.begins_with(DATA_DIR_ARG_PREFIX):
+			scenario_data_dir = argument.trim_prefix(DATA_DIR_ARG_PREFIX).strip_edges().simplify_path()
 
 
 func _configure_runtime_identity() -> void:

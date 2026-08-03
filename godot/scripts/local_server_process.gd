@@ -6,6 +6,7 @@ signal log_event(level: String, event: String, message: String, fields: Dictiona
 const SERVER_NAME := "fantu-server.exe"
 
 var pid := -1
+var data_dir := ""
 
 
 func start(config: Dictionary) -> int:
@@ -16,7 +17,10 @@ func start(config: Dictionary) -> int:
 	if not FileAccess.file_exists(server_path):
 		push_error("Bundled game server is missing: %s" % server_path)
 		return pid
-	var data_dir := install_dir.path_join("data").path_join("blackwind")
+	data_dir = resolve_data_dir(config, install_dir)
+	if data_dir == "" or not DirAccess.dir_exists_absolute(data_dir):
+		push_error("Scenario data directory is missing: %s" % data_dir)
+		return pid
 	var runtime_root := str(config.get("runtime_root", ""))
 	var logs_dir := str(config.get("logs_dir", ""))
 	pid = OS.create_process(
@@ -45,6 +49,17 @@ func start(config: Dictionary) -> int:
 	else:
 		log_event.emit("ERROR", "server_start_failed", "could not create bundled service process", {"path": server_path})
 	return pid
+
+
+func resolve_data_dir(config: Dictionary, install_dir := "") -> String:
+	var explicit_dir := str(config.get("data_dir", "")).strip_edges()
+	if explicit_dir != "":
+		return explicit_dir.simplify_path()
+	var root := install_dir if install_dir != "" else OS.get_executable_path().get_base_dir()
+	var scenario := str(config.get("scenario", "blackwind")).strip_edges()
+	if scenario == "" or scenario.get_file() != scenario or scenario in [".", ".."]:
+		return ""
+	return root.path_join("data").path_join(scenario).simplify_path()
 
 
 func is_running() -> bool:

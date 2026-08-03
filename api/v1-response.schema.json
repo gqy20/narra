@@ -567,6 +567,9 @@
         "api_version": {
           "type": "string"
         },
+        "scenario": {
+          "$ref": "#/$defs/ScenarioInfo"
+        },
         "view": {
           "$ref": "#/$defs/PlayerView"
         },
@@ -631,6 +634,26 @@
         "next_step",
         "urgent",
         "complete"
+      ]
+    },
+    "ScenarioInfo": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "presentation": {
+          "$ref": "#/$defs/ScenarioPresentation"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "presentation"
       ]
     },
     "ScenarioPresentation": {

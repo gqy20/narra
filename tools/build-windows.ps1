@@ -73,9 +73,9 @@ try {
     & $godot.Source --headless --path $godotProject --export-release "Windows Desktop" $clientPath
     if ($LASTEXITCODE -ne 0) { throw "Godot Windows export failed." }
 
-    $dataDestination = Join-Path $packageDir "data\blackwind"
+    $dataDestination = Join-Path $packageDir "data"
     New-Item -ItemType Directory -Path $dataDestination -Force | Out-Null
-    Copy-Item -Path (Join-Path $projectRoot "data\blackwind\*") -Destination $dataDestination -Recurse -Force
+    Copy-Item -Path (Join-Path $projectRoot "data\*") -Destination $dataDestination -Recurse -Force
 
     $resolvedVersion = if ([string]::IsNullOrWhiteSpace($Version)) { "dev" } else { $Version }
     $gitCommit = "unknown"
