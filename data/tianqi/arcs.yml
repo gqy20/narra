@@ -17,7 +17,7 @@
       term_label: 保管原件
       name: 接下交割残页原件
       description: 余墨林愿意把刚取得的残页交给你辨认；原件能留下存疑旁注，也会把追查风险带到你身上。
-      command_description: 玩家从余墨林处接下交割残页原件
+      command_description: 你从余墨林处接下交割残页原件
       personal_outcome: 获得交割残页原件，证据+1、暴露+1；书坊暂时失去原件控制。
       relevance: 残页可能连接灾前交割记录与灾后补账，但单页不能证明爆炸成因。
       risk: 原件经手人可能同时受到官署收缴与灰网追索。
@@ -37,7 +37,7 @@
       term_label: 只留抄件
       name: 只抄一份，不碰原件
       description: 你逐字抄下残页并保留限定语，让余墨林继续处置原件。
-      command_description: 玩家只抄录交割残页并拒绝保管原件
+      command_description: 你只抄录交割残页并拒绝保管原件
       personal_outcome: 获得交割残页抄件，盟援+1；避免成为原件经手人，但无法控制原件去向。
       relevance: 抄件可以传播内容，却难以独立证明纸张、印戳和来源。
       risk: 原件若落入灰网，抄件会面对来源质疑。
@@ -68,7 +68,7 @@
       term_label: 原件入档
       name: 把原件交给裴慎行核验
       description: 让残页进入会勘材料，并要求在登记中保留“只能证明记录异常”的边界。
-      command_description: 玩家将交割残页原件交给会勘官署
+      command_description: 你将交割残页原件交给会勘官署
       personal_outcome: 权势+1，裴慎行信任+1；你成为公开材料经手人。
       relevance: 官署能够核验印戳与格式，也可能把残页压缩为支持既有初稿的一句话。
       risk: 原件进入官档后，你无法再决定它是否公开。
@@ -101,10 +101,10 @@
       term_label: 原件比对
       name: 请沈惟实用交割残页核验补造账册格式
       description: 调取交割残页登记拓样，与新送账册的纸墨、印记和流转时间逐项比对。
-      command_description: 玩家与沈惟实用交割残页原件登记核验补造账册格式
+      command_description: 你与沈惟实用交割残页原件登记核验补造账册格式
       personal_outcome: 证据+1、暴露+1；取得高可信格式核验结论，打开正式揭穿补造账册的路线。
       relevance: 格式比对能够证明补造账册形成于灾后，却仍不能证明改账者制造了爆炸。
-      risk: 原件经手记录会把玩家与官署核验链公开连接。
+      risk: 原件经手记录会把你与官署核验链公开连接。
       expected_outcomes: [确认补造账册灾后形成, 取得高可信格式核验结论, 打开周良辅自陈串证机会]
       warnings: [核验结论只针对账册形成时间与格式。]
       irreversible: true
@@ -133,7 +133,7 @@
       term_label: 换取保护
       name: 把原件交给罗三槐
       description: 以原件换取灰网的临时保护和两点盟援，但放弃追查账目来源。
-      command_description: 玩家把交割残页原件交给罗三槐换取保护
+      command_description: 你把交割残页原件交给罗三槐换取保护
       personal_outcome: 盟援+2、暴露-1；罗三槐信任+1，官署失去原件核验机会。
       relevance: 罗三槐最清楚残页会伤到谁，也最有能力让它从公开材料中消失。
       risk: 这会帮助补造账册成为最完整的官方候选版本。
@@ -164,7 +164,7 @@
       term_label: 保留限定
       name: 按证据等级编入抄报
       description: 明写残页只能证明记录异常，不能推出实物流向与爆炸成因。
-      command_description: 玩家要求余墨林按证据等级刊载交割残页抄件
+      command_description: 你要求余墨林按证据等级刊载交割残页抄件
       personal_outcome: 盟援+1、证据+1；传播较慢，但文本更能经受质疑。
       relevance: 抄报能保存官档之外的材料，也会放大排版和措辞造成的影响。
       risk: 来源仍可能被追查，抄件也无法完成纸墨核验。
@@ -183,7 +183,7 @@
       term_label: 强化因果
       name: 把残页写成军需侵盗实证
       description: 删除限定语，让抄报直接把账面异常写成官物被侵盗。
-      command_description: 玩家允许余墨林把交割残页写成军需侵盗实证
+      command_description: 你允许余墨林把交割残页写成军需侵盗实证
       personal_outcome: 权势+2、暴露+2；传播更快，但混淆账面异常与实物流向。
       relevance: 强烈结论更容易进入政治讨论，也更容易被一处反证整体击穿。
       risk: 这是对现有证据的过度表述。
@@ -219,17 +219,16 @@
     from_day: 2
     until_day: 6
     location_id: L02
-    target_id: N03
-    fact_id: F02
-    min_confidence: 1
+    target_id: N08
     action_id: spread
+    conditions: [{type: belief, key: F02, min_confidence: 1}]
     choices:
     - id: route:e07:protect
       term_id: protect
       term_label: 匿名保全
       name: 先匿名保全第一版证词
       description: 与叶春娘共同记录询问时间和原话，暂不公开刘六安住处与姓名。
-      command_description: 玩家帮助匿名保全刘六安第一版证词
+      command_description: 你帮助匿名保全刘六安第一版证词
       personal_outcome: 证据+1、盟援+1；避免第六日自动改口，但短期权势不增加。
       relevance: 证词价值取决于版本时间线，而不只取决于最后一次签字。
       risk: 保护证人会让官署怀疑你隐匿材料。
@@ -249,18 +248,18 @@
       term_label: 立即入档
       name: 立即带刘六安去会勘公署
       description: 让证词尽快取得官样记录，但接受官署在询问中整理措辞。
-      command_description: 玩家带刘六安接受会勘正式询问
+      command_description: 你带刘六安接受会勘正式询问
       personal_outcome: 权势+1、暴露+1；裴慎行获得证词，刘六安更早进入受控流程。
       relevance: 正式记录提高行政效力，也会让最后签字版本覆盖公众对早期口述的认识。
       risk: 刘六安可能为了优恤和安全调整说法。
-      expected_outcomes: [证词进入官署, 玩家权势+1, 刘六安对玩家疑虑增加]
+      expected_outcomes: [证词进入官署, 权势+1, 刘六安对你的疑虑增加]
       warnings: [正式询问不等于证词不受压力。]
       irreversible: true
       effects:
       - {type: set_belief, target_id: N02, fact_id: F02, claim: 刘六安说爆炸前有一次不合常例的操作, confidence: 2, evidence_strength: 2, source: player, propagation: private, secrecy: 1}
       - {type: adjust_resource, target_id: player, key: authority, amount: 1}
       - {type: adjust_resource, target_id: player, key: exposure, amount: 1}
-      - {type: adjust_relation, from_id: target, target_id: player, key: suspicion, amount: 1}
+      - {type: adjust_relation, from_id: N03, target_id: player, key: suspicion, amount: 1}
       to_state: officialized
       feedback: {messages: [刘六安进入正式询问流程，他的证词开始被整理成官样文本。], journal: [选择刘六安证词立即入档，换取行政效力并承担证词污染风险。], presentation: {kind: danger, intensity: 2, subject: target}}
   progress_rules:
@@ -290,7 +289,7 @@
       term_label: 分级核名
       name: 帮叶春娘分级核实名册
       description: 把姓名分成双重互证、单一证言和待认领三层，先争取部分人进入官册。
-      command_description: 玩家帮助叶春娘分级核验灾民自建名册
+      command_description: 你帮助叶春娘分级核验灾民自建名册
       personal_outcome: 证据+1、盟援+2；获得灾民信任，但占用名册关闭前的行动时间。
       relevance: 民间名册不是完整死亡数字，却能证明官册之外存在具体的人。
       risk: 核名越细，越要谨慎处理住址和证人身份。
@@ -312,7 +311,7 @@
       term_label: 匿名互证
       name: 用匿名证词网络分级核实名册
       description: 利用已经保全的早期证词，把互证关系编码留档，只向官署递交完成双重互证的姓名。
-      command_description: 玩家用受保护的证词网络分级核验灾民自建名册
+      command_description: 你用受保护的证词网络分级核验灾民自建名册
       personal_outcome: 证据+2、盟援+2；兼顾部分优恤与证人安全，但放弃公开完整互证关系。
       relevance: 先保护证人让名册核验不必以公开住址和互证者姓名为代价。
       risk: 匿名编码降低了外部人员立即复核整份名册的便利。
@@ -335,7 +334,7 @@
       term_label: 整体刊出
       name: 把完整名册交给书坊
       description: 不等待官署逐一核籍，先把所有姓名与失踪记录交给余墨林保存。
-      command_description: 玩家推动灾民自建名册完整进入书坊传播
+      command_description: 你推动灾民自建名册完整进入书坊传播
       personal_outcome: 权势+1、暴露+2；姓名更难消失，但住址与互证关系会被追查。
       relevance: 民间传播擅长保存记忆，不等于能够立即改变行政分配。
       risk: 未匿名的住址和证人可能随文本一起暴露。
@@ -356,7 +355,7 @@
       term_label: 匿名刊出
       name: 刊出隐去来源的灾民名册
       description: 借助已经保全的证词版本，只刊姓名、状态和证据等级，隐去住址与互证者。
-      command_description: 玩家推动灾民自建名册以匿名分级版本进入书坊传播
+      command_description: 你推动灾民自建名册以匿名分级版本进入书坊传播
       personal_outcome: 权势+1、盟援+1；保存姓名并降低来源暴露，但公开文本无法独立复核全部关系。
       relevance: 证词保护使“保存姓名”和“公开来源”不再是同一件事。
       risk: 匿名版可能被官署批评为缺少可立即查验的对应关系。
@@ -398,7 +397,7 @@
       term_label: 保留未决
       name: 请沈惟实递交成因限定
       description: 以多份现场记录为依据，要求最终文本明确“尚不能确认唯一物理过程”。
-      command_description: 玩家请沈惟实把成因未决写入会勘意见
+      command_description: 你请沈惟实把成因未决写入会勘意见
       personal_outcome: 证据+1、沈惟实信任+2；降低形成爽快定论的可能，也得罪要求迅速归责的人。
       relevance: 这不是证明某种成因，而是限制现有材料能够推出什么。
       risk: 未决报告可能被批评为拖延结案。
@@ -427,10 +426,10 @@
       term_label: 揭穿补造
       name: 提交补造账册格式核验结果
       description: 指出纸墨、印记和流转时间破绽，证明有人灾后补造账册影响会勘。
-      command_description: 玩家向裴慎行提交账册灾后补造的格式证据
+      command_description: 你向裴慎行提交账册灾后补造的格式证据
       personal_outcome: 权势+1、证据+2、暴露+2；罗三槐敌意上升。
       relevance: 灾后造假能够证明有人影响会勘，但仍不能证明其制造爆炸。
-      risk: 揭穿越晚，官署信誉和玩家安全代价越高。
+      risk: 揭穿越晚，官署信誉和你的安全代价越高。
       expected_outcomes: [补造账册退出可信材料核心, 会勘保留账册矛盾, 罗三槐敌意+2]
       warnings: [不要把灾后造假直接写成灾前纵火。]
       irreversible: true
@@ -467,7 +466,7 @@
       term_label: 串证护送
       name: 当面串证，由沈惟实递交核验
       description: 用已经核出的补造账册格式破绽逐项询问周良辅，在互不提示的情况下记录经手细节；沈惟实携核验结果赴公署，你接走证人与原件。
-      command_description: 玩家完成补造账册与周良辅自陈串证，委托沈惟实递交核验并护送周良辅
+      command_description: 你完成补造账册与周良辅自陈串证，委托沈惟实递交核验并护送周良辅
       personal_outcome: 证据+3、盟援+1、暴露+3；形成两条独立材料的串证，同时承担证人保护与来源公开风险。
       relevance: 串证能够证明长期改账和灾后补造相互衔接，仍然不能证明这些行为造成爆炸。
       risk: 这是对灰网威胁最大的证据组合；周良辅本人仍需为参与假账负责。
@@ -496,7 +495,7 @@
       term_label: 带走原件
       name: 接走周良辅和自陈原件
       description: 在灰网追来前接走自陈原件，并承担保护一个参与过假账的证人所带来的风险。
-      command_description: 玩家接走周良辅与他的自陈原件
+      command_description: 你接走周良辅与他的自陈原件
       personal_outcome: 证据+2、盟援+1、暴露+2；自陈原件脱离灰网，周良辅获得暂时保护。
       relevance: 这份自陈能证明持续改账和周良辅的参与，却不能解释爆炸如何发生。
       risk: 周良辅不是无辜者；保护证人不等于替他免除责任。
@@ -520,7 +519,7 @@
       term_label: 封存抄件
       name: 留下密封抄件，不带走周良辅
       description: 当面抄录自陈并由周良辅留下只有经手人才知道的错误，原件仍由他保管。
-      command_description: 玩家封存周良辅自陈抄件但不接走周良辅
+      command_description: 你封存周良辅自陈抄件但不接走周良辅
       personal_outcome: 获得周良辅自陈封存抄件、证据+1；灰网仍可能截回原件和周良辅。
       relevance: 独立抄件能防止内容完全消失，却不能证明原件最终保管链。
       risk: 放弃护送意味着周良辅仍会被追上。
@@ -561,7 +560,7 @@
       term_label: 分级公开
       name: 编成保留证据等级的邸抄
       description: 将材料分别标为事实、高可信推断、单一证词、传闻与未决，不把管理积弊写成爆炸成因。
-      command_description: 玩家编成保留证据等级的公开邸抄
+      command_description: 你编成保留证据等级的公开邸抄
       personal_outcome: 证据+2、盟援+1；推动会勘保留成因限定，传播速度较慢。
       relevance: 这份文本不提供唯一答案，但读者能够看见每句话的来源与边界。
       risk: 官署和激进陈言者都可能认为它“不够有用”。
@@ -585,7 +584,7 @@
       term_label: 强化归责
       name: 编成直指军需侵盗的檄文
       description: 删除多数限定，把交割异常、夜间搬运和补造账册串成一条确定的责任叙事。
-      command_description: 玩家编成强化军需归责的公开文本
+      command_description: 你编成强化军需归责的公开文本
       personal_outcome: 权势+3、暴露+3；传播冲击最大，但把尚未证明的因果写进正文。
       relevance: 这可能推动制度调查，也可能因一处证据断裂使全部诉求被反驳。
       risk: 文本超出现有证据能证明的范围，并可能伤及未被核实的人。
@@ -608,8 +607,8 @@
       term_label: 私档保全
       name: 只编私档，暂不刊行
       description: 保存原件目录、抄件差异和证词时间线，不在当前政治窗口中公开归责。
-      command_description: 玩家把可核材料编成私档并暂缓刊行
-      personal_outcome: 获得玩家私档、证据+2；短期权势不增加，证人暴露较少。
+      command_description: 你把可核材料编成私档并暂缓刊行
+      personal_outcome: 获得个人私档、证据+2；短期权势不增加，证人暴露较少。
       relevance: 保存不等于沉默，它把材料留给未来复核，却放弃当下部分现实影响。
       risk: 官册与会勘仍会在没有这份材料的情况下完成。
       expected_outcomes: [形成可供未来复核的私档, 降低证人与来源暴露]
@@ -626,7 +625,7 @@
       term_label: 匿名拆分
       name: 把分级文本拆成匿名短抄
       description: 公开署名刊载受阻后，把事实、证词和未决边界分开交给数条小型抄写网络，避免任何单一递送者掌握完整来源。
-      command_description: 玩家在刊载受阻后匿名拆分并传递分级文本
+      command_description: 你在刊载受阻后匿名拆分并传递分级文本
       personal_outcome: 证据+1、暴露-1，不增加权势；部分内容得以流传，但无法形成一份公开完整文本。
       relevance: 匿名拆分能够保存证据边界，却削弱文本的统一影响和来源可核性。
       risk: 分段文本可能在后续转抄中失去彼此之间的限定关系。

@@ -342,7 +342,26 @@ func (s *Session) actorContestScore(state *domain.WorldState, actorID string) in
 }
 
 func (s *Session) playerConsequences(state *domain.WorldState) []string {
-	return s.storyConsequences(state)
+	engaged := make(map[string]bool)
+	for arcID, arc := range s.bundle.StoryArcs {
+		for _, node := range arc.Nodes {
+			for _, choice := range node.Choices {
+				if containsString(s.history, choice.ID) {
+					engaged[arcID] = true
+				}
+			}
+		}
+	}
+	return s.storyConsequencesForArcs(state, engaged)
+}
+
+func containsString(values []string, wanted string) bool {
+	for _, value := range values {
+		if value == wanted {
+			return true
+		}
+	}
+	return false
 }
 
 func confidenceLabel(confidence int) string {

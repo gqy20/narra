@@ -103,8 +103,12 @@ func TestTianqiWitnessProtectionChangesRegisterChoices(t *testing.T) {
 		state := session.engine.State()
 		t.Fatalf("witness protection route unavailable on day %d at %s: story=%v belief=%+v N03=%s actions=%v", state.Day, state.Player.Location, state.StoryStates, state.Player.Beliefs["F02"], state.NPCs["N03"].Location, actionIDs(session.View().AvailableActions))
 	}
-	if _, err := session.Execute("route:e07:protect"); err != nil {
+	view, err := session.Execute("route:e07:protect")
+	if err != nil {
 		t.Fatalf("protect witness: %v", err)
+	}
+	if containsMessage(view.LastTurn.Messages, "材料已经送达刘六安") || containsMessage(view.LastTurn.Messages, "告诉了刘六安") {
+		t.Fatalf("witness protection told Liu Liu'an his own testimony: %+v", view.LastTurn)
 	}
 	actions := session.View().AvailableActions
 	if actionWithID(actions, "route:e08:verify-protected") == nil || actionWithID(actions, "route:e08:publish-redacted") == nil {
@@ -113,7 +117,7 @@ func TestTianqiWitnessProtectionChangesRegisterChoices(t *testing.T) {
 	if actionWithID(actions, "route:e08:verify") != nil || actionWithID(actions, "route:e08:publish") != nil {
 		t.Fatalf("unsafe register choices remained available after protection: %v", actionIDs(actions))
 	}
-	view, err := session.Execute("route:e08:verify-protected")
+	view, err = session.Execute("route:e08:verify-protected")
 	if err != nil {
 		t.Fatalf("verify protected register: %v", err)
 	}
@@ -143,6 +147,33 @@ func TestTianqiShowsConcurrentRouteDeadlines(t *testing.T) {
 		if _, ok := progressByID[routeID]; !ok {
 			t.Fatalf("concurrent route %s missing: %+v", routeID, view.RouteProgresses)
 		}
+	}
+	if len(progressByID) != len(view.RouteProgresses) {
+		t.Fatalf("route progress contains duplicate route ids: %+v", view.RouteProgresses)
+	}
+}
+
+func TestTianqiPreparationOmitsEmptyRequiredItem(t *testing.T) {
+	view := loadTianqiSession(t).View()
+	for _, factor := range view.Preparation.Conditions {
+		if factor.Label == "" || factor.Key == "required_item" {
+			t.Fatalf("tianqi preparation exposed an empty required item: %+v", view.Preparation.Conditions)
+		}
+	}
+}
+
+func TestTianqiEndingOmitsUntouchedArcConsequences(t *testing.T) {
+	session := loadTianqiSession(t)
+	view := session.View()
+	var err error
+	for !view.Resolved {
+		view, err = session.Execute("wait:next")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if view.Ending == nil || len(view.Ending.PlayerConsequences) != 0 {
+		t.Fatalf("passive ending treated untouched arcs as player consequences: %+v", view.Ending)
 	}
 }
 

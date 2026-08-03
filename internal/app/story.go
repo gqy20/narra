@@ -163,7 +163,16 @@ func (s *Session) storyRouteProgresses(state *domain.WorldState) []RouteProgress
 		return candidates[i].rule.ID < candidates[j].rule.ID
 	})
 	result := make([]RouteProgress, 0, len(candidates))
+	seenRoutes := make(map[string]struct{}, len(candidates))
 	for _, candidate := range candidates {
+		routeID := candidate.rule.RouteID
+		if routeID == "" {
+			routeID = candidate.arcID + ":" + candidate.rule.ID
+		}
+		if _, seen := seenRoutes[routeID]; seen {
+			continue
+		}
+		seenRoutes[routeID] = struct{}{}
 		location := ""
 		if candidate.rule.LocationID != "" {
 			location = s.visibleLocation(candidate.rule.LocationID).Name
@@ -178,8 +187,15 @@ func (s *Session) storyRouteProgresses(state *domain.WorldState) []RouteProgress
 }
 
 func (s *Session) storyConsequences(state *domain.WorldState) []string {
+	return s.storyConsequencesForArcs(state, nil)
+}
+
+func (s *Session) storyConsequencesForArcs(state *domain.WorldState, included map[string]bool) []string {
 	arcIDs := make([]string, 0, len(s.bundle.StoryArcs))
 	for arcID := range s.bundle.StoryArcs {
+		if included != nil && !included[arcID] {
+			continue
+		}
 		arcIDs = append(arcIDs, arcID)
 	}
 	sort.Strings(arcIDs)
@@ -266,6 +282,11 @@ func storyRelationMetric(relation domain.Relation, metric string) int {
 func storyConditionsMet(state *domain.WorldState, conditions []domain.Condition) bool {
 	for _, condition := range conditions {
 		switch condition.Type {
+		case domain.ConditionBelief:
+			belief, ok := state.Player.Beliefs[condition.Key]
+			if !ok || belief.Confidence < condition.MinConfidence {
+				return false
+			}
 		case "has_item":
 			if state.Player.Items[condition.Key] <= 0 {
 				return false

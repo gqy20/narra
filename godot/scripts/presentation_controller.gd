@@ -366,14 +366,8 @@ func _render_ending(ending: Dictionary) -> void:
 			host.game_screen_controller._text(host.ending_annex_box, "· 你将“%s”告诉了%s。" % [influence.get("fact_claim", "消息"), influence.get("actor_name", "某人")], true, 15)
 			for change in influence.get("changes", []):
 				host.game_screen_controller._text(host.ending_annex_box, "  第 %d 日：原本%s；后来%s。" % [int(change.get("day", 0)), change.get("without_information", "另有安排"), change.get("with_information", "改变计划")], true, 14)
-	var record_heading = host.game_screen_controller._text(host.ending_annex_box, "本局记录", true, 16)
-	record_heading.add_theme_color_override("font_color", host.COLORS.accent)
-	for highlight in ending.get("highlights", []):
-		if str(highlight).begins_with("你传递的消息改变了"):
-			continue
-		host.game_screen_controller._text(host.ending_annex_box, "· %s" % highlight, true, 15)
 	var plan_changes: Array = ending.get("actor_plan_changes", [])
-	if not plan_changes.is_empty():
+	if influences.is_empty() and not plan_changes.is_empty():
 		var plan_heading = host.game_screen_controller._text(host.ending_annex_box, "人物计划改写", true, 16)
 		plan_heading.add_theme_color_override("font_color", host.COLORS.accent)
 		for change in plan_changes:

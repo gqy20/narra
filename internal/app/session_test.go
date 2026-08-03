@@ -1032,6 +1032,15 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	if !preparationFactorReady(view.Preparation.Conditions, "required_item", true) || view.Player.Resources["support"] != 2 || view.Preparation.TotalScore != 5 {
 		t.Fatalf("trust action seat did not create usable preparation: player=%+v preparation=%+v", view.Player, view.Preparation)
 	}
+	trustProgresses := 0
+	for _, progress := range view.RouteProgresses {
+		if progress.ID == "trust" {
+			trustProgresses++
+		}
+	}
+	if trustProgresses != 1 {
+		t.Fatalf("completed trust route rendered %d competing statuses: %+v", trustProgresses, view.RouteProgresses)
+	}
 	for _, wantDay := range []int{17, 19, 21} {
 		view, err = session.Execute("wait:next")
 		if err != nil {

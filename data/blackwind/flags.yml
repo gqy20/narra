@@ -43,7 +43,7 @@
 - {id: injury_public, scope: world, description: 陈青山伤势已经公开}
 - {id: li_betrayed, scope: world, description: 李寒鸦已遭背叛}
 - {id: li_hunts_player, scope: world, description: 李寒鸦开始追猎玩家}
-- {id: n09_challenges_player_source, scope: world, description: 赵鹤鸣公开质疑玩家消息来源}
+- {id: n09_challenges_player_source, scope: world, description: 赵鹤鸣公开质疑你提供的消息来源}
 - {id: outer_valley_crowded, scope: world, description: 黑风谷外围人员拥挤}
 - {id: player_backed_shen, scope: world, description: 玩家公开支持沈砚秋, public_label: 你已公开支持沈砚秋}
 - {id: player_declared_independent, scope: world, description: 玩家公开声明保持独立}

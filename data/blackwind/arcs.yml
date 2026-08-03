@@ -96,7 +96,7 @@
           term_label: 换取同行名额
           name: 以日期换取同行承诺
           description: 暂不拿走物资，要求沈砚秋在开谷时把你编入青岚队伍。
-          personal_outcome: 获得第17日随青岚队伍出发的承诺；届时可取得随队药与 1 点支援。
+          personal_outcome: 获得第17日随青岚队伍出发的承诺；届时可取得随队药与 1 点助力。
           expected_outcomes:
             - 沈砚秋获得已核实日期
             - 取得开谷时随队出发的承诺，信任 +1
@@ -140,7 +140,7 @@
           term_label: 公开担保
           name: 为情报来源担保
           description: 在宗门审核中公开承担消息责任，不让沈砚秋独自承受赵鹤鸣的质疑。
-          command_description: 玩家在宗门审核中为情报来源担保
+          command_description: 你在宗门审核中为情报来源担保
           personal_outcome: 信用 +1，沈砚秋信任 +1；同时坐实你与沈砚秋的共同立场。
           relevance: 赵鹤鸣正在借宗门审核质疑这条消息的来源。
           risk: 担保会提高你的宗门声望，也会让赵鹤鸣把你视为沈砚秋一方。
@@ -177,7 +177,7 @@
           term_label: 转交计划
           name: 把计划转交赵鹤鸣
           description: 否认担保，并把沈砚秋的成熟日期与备战安排交给赵鹤鸣换取报酬。
-          command_description: 玩家把沈砚秋的计划转交赵鹤鸣
+          command_description: 你把沈砚秋的计划转交赵鹤鸣
           personal_outcome: 立即获得 20 灵石，但沈砚秋信任 -4，信任路线转为背约。
           relevance: 赵鹤鸣需要证据削弱沈砚秋在门内的地位。
           risk: 这会把一次无偿相助变成背叛；沈砚秋会知道计划从你这里泄露。
@@ -213,12 +213,12 @@
           term_label: 借丹援队
           name: 把解瘴丹借回队伍
           description: 接受苏晚照的请求，把换来的解瘴丹交回青岚药修使用。
-          command_description: 玩家把交易所得解瘴丹借给苏晚照
-          personal_outcome: 失去解瘴丹与独行资格，换得 2 点支援和苏晚照 2 点信任。
+          command_description: 你把交易所得解瘴丹借给苏晚照
+          personal_outcome: 失去解瘴丹与独行资格，换得 2 点助力和苏晚照 2 点信任。
           relevance: 坊市已经封锁，苏晚照无法为队伍补回这枚解瘴丹。
           risk: 交出后你的亲自入谷路线会再次关闭。
           expected_outcomes:
-            - 支援 +2
+            - 助力 +2
             - 苏晚照信任 +2
             - 交出 1 枚解瘴丹
           warnings:
@@ -232,13 +232,13 @@
             - {type: set_flag, target_id: player, key: qinglan_antidote_lent, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_antidote_midgame_resolved, value: "true"}
           to_state: antidote_lent
-          feedback: {messages: [你把解瘴丹交回青岚队伍，独行资格转化为支援与信任。], journal: [响应苏晚照的借丹请求，放弃独行路线。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
+          feedback: {messages: [你把解瘴丹交回青岚队伍，独行资格转化为助力与信任。], journal: [响应苏晚照的借丹请求，放弃独行路线。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
         - id: route:antidote:keep
           term_id: keep
           term_label: 坚持独行
           name: 拒绝归还解瘴丹
           description: 明确告诉苏晚照，这枚丹药是一次完成的交易，你会保留它并独自决定入谷时机。
-          command_description: 玩家拒绝把交易所得解瘴丹借回青岚队伍
+          command_description: 你拒绝把交易所得解瘴丹借回青岚队伍
           personal_outcome: 保留解瘴丹与路线自由；苏晚照对你的怀疑 +2。
           relevance: 苏晚照把队伍药物缺口摆到了你面前。
           risk: 你仍可独行，但青岚药修不会把你视为可以托付物资的人。
@@ -273,7 +273,7 @@
           term_label: 接受审核
           name: 接受青岚门审核
           description: 登记情报来源与行动职责，以正式队员身份保留同行资格。
-          command_description: 玩家接受青岚门同行审核
+          command_description: 你接受青岚门同行审核
           personal_outcome: 信用 +1、沈砚秋信任 +1，并保留第16日随队集结资格。
           relevance: 青岚门要求所有参与者登记情报与职责。
           risk: 通过审核后，陈氏会把你视为青岚门行动的一员。
@@ -296,8 +296,8 @@
           term_label: 保持独立
           name: 退出青岚同行名单
           description: 拒绝宗门审核，保留散修身份并放弃此前换得的同行名额。
-          command_description: 玩家拒绝青岚门审核并退出同行名单
-          personal_outcome: 放弃随队药与支援；沈砚秋信任 -2，陈青山不再把你视为青岚阵营。
+          command_description: 你拒绝青岚门审核并退出同行名单
+          personal_outcome: 放弃随队药与助力；沈砚秋信任 -2，陈青山不再把你视为青岚阵营。
           relevance: 宗门审核要求你在安全与独立之间作出明确选择。
           risk: 退出后，第16日不会再出现随队集结。
           expected_outcomes:
@@ -334,12 +334,12 @@
           term_label: 亲自入局
           name: 把担保转为行动席位
           description: 以已经公开承担的责任换取青岚门行动物资，亲自加入入谷准备。
-          personal_outcome: 获得解瘴丹、2 点支援与额外筹备；你将有机会亲自争夺，而不只等待记功。
+          personal_outcome: 获得解瘴丹、2 点助力与额外筹备；你将有机会亲自争夺，而不只等待记功。
           relevance: 你已经替沈砚秋承担消息责任，有资格要求行动资源。
           risk: 亲自加入会消耗宗门人手，也意味着你要承担入谷风险。
           expected_outcomes:
             - 获得 1 枚解瘴丹
-            - 支援 +2
+            - 助力 +2
             - 形成额外筹备
           warnings:
             - 选择行动席位后，本轮不能再领取情报报酬。
@@ -351,7 +351,7 @@
             - {type: set_flag, target_id: player, key: qinglan_trust_operation_joined, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_trust_late_resolved, value: "true"}
           to_state: trust_joined
-          feedback: {messages: [担保已经兑现为行动席位，入谷物资与支援交到你手中。], journal: [将青岚信任回报兑现为亲自行动条件。], presentation: {kind: acquire, intensity: 3, subject: player}}
+          feedback: {messages: [担保已经兑现为行动席位，入谷物资与助力交到你手中。], journal: [将青岚信任回报兑现为亲自行动条件。], presentation: {kind: acquire, intensity: 3, subject: player}}
         - id: route:trust:commission
           term_id: commission
           term_label: 领取报酬
@@ -392,12 +392,12 @@
           term_label: 独行踩点
           name: 用解瘴丹提前踩点
           description: 保留丹药并独自勘察谷口裂隙，把入谷自由转化为路线优势。
-          personal_outcome: 保留解瘴丹，获得 2 点支援并形成额外筹备，提高亲自争夺的胜算。
+          personal_outcome: 保留解瘴丹，获得 2 点助力并形成额外筹备，提高亲自争夺的胜算。
           relevance: 你拥有封锁后的稀缺丹药，可以比普通散修更早试探瘴气。
           risk: 独行踩点不会修复苏晚照对你的怀疑。
           expected_outcomes:
             - 保留解瘴丹
-            - 支援 +2
+            - 助力 +2
             - 形成额外筹备
           warnings:
             - 完成踩点后，不能再出售本轮入谷名额。
@@ -466,10 +466,10 @@
           term_label: 随队集结
           name: 兑现同行承诺
           description: 在开谷前完成集结；次日领取随队解瘴丹与人手，自行决定是否跟进青岚队伍。
-          command_description: 玩家兑现与沈砚秋的同行约定
-          personal_outcome: 获得 1 枚解瘴丹与 1 点支援，打开开谷后的入谷路线。
+          command_description: 你兑现与沈砚秋的同行约定
+          personal_outcome: 获得 1 枚解瘴丹与 1 点助力，打开开谷后的入谷路线。
           expected_outcomes:
-            - 获得 1 枚解瘴丹与 1 点支援
+            - 获得 1 枚解瘴丹与 1 点助力
             - 在开谷日获得前往黑风谷外围的选择
           resolves:
             - 缺少解瘴丹
@@ -478,7 +478,7 @@
             - {type: adjust_resource, target_id: player, key: support, amount: 1}
             - {type: set_flag, target_id: player, key: qinglan_escort_fulfilled, value: "true"}
           to_state: escort_fulfilled
-          feedback: {messages: [同行承诺已经兑现，随队丹药与基础支援到位。], journal: [完成青岚集结，等待确定先锋或后勤分工。], presentation: {kind: acquire, intensity: 2, subject: player}}
+          feedback: {messages: [同行承诺已经兑现，随队丹药与基础助力到位。], journal: [完成青岚集结，等待确定先锋或后勤分工。], presentation: {kind: acquire, intensity: 2, subject: player}}
 
     - id: choose_escort_role
       from_state: escort_fulfilled
@@ -497,11 +497,11 @@
           term_label: 担任先锋
           name: 接下先锋分工
           description: 带领随队人手先行探路，把同行承诺转化为正面争夺准备。
-          personal_outcome: 支援 +3并形成额外筹备；按时抵达后具备与主要争夺者正面对抗的实力。
+          personal_outcome: 助力 +3并形成额外筹备；按时抵达后具备与主要争夺者正面对抗的实力。
           relevance: 你已经通过审核并完成集结，队伍可以把一组人手交由你指挥。
           risk: 先锋要亲自承担谷口风险，不能同时领取后勤报酬。
           expected_outcomes:
-            - 支援 +3
+            - 助力 +3
             - 形成额外筹备
             - 获得独立指挥权
           warnings:
@@ -513,19 +513,19 @@
             - {type: set_flag, target_id: player, key: qinglan_escort_vanguard, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_escort_late_resolved, value: "true"}
           to_state: escort_vanguard
-          feedback: {messages: [你接下先锋分工，获得额外支援与独立指挥权。], journal: [选择担任青岚先锋，争夺准备显著提高。], presentation: {kind: actor_focus, intensity: 3, subject: target}}
+          feedback: {messages: [你接下先锋分工，获得额外助力与独立指挥权。], journal: [选择担任青岚先锋，争夺准备显著提高。], presentation: {kind: actor_focus, intensity: 3, subject: target}}
         - id: route:escort:quartermaster
           term_id: quartermaster
           term_label: 负责后勤
           name: 负责随队后勤
           description: 不争先锋位置，负责分配丹药、路线与补给，提前结算个人报酬。
-          personal_outcome: 获得 30 灵石、2 点信用与 1 点支援；仍可入谷，但不以正面争夺为主要回报。
+          personal_outcome: 获得 30 灵石、2 点信用与 1 点助力；仍可入谷，但不以正面争夺为主要回报。
           relevance: 队伍集结后需要熟悉情报来源的人统一物资与路线。
           risk: 后勤收益稳定，但不会提供足以压过主要争夺者的战力。
           expected_outcomes:
             - 获得 30 灵石
             - 信用 +2
-            - 支援 +1
+            - 助力 +1
           warnings:
             - 选择后勤后，本轮不能改任先锋。
           irreversible: true
@@ -542,7 +542,7 @@
     - id: trust-rewarded
       states: [trust_reviewed, trust_joined, trust_commissioned]
       conditions: [{type: flag, scope: actor, key: qinglan_trust_rewarded}]
-      text: 担保兑现：沈砚秋为你记功；信用 +2，支援 +1。
+      text: 担保兑现：沈砚秋为你记功；信用 +2，助力 +1。
     - id: trust-betrayed
       states: [trust_betrayed]
       text: 你出卖沈砚秋，获得 20 灵石；最终信任为 {{value}}。
@@ -564,7 +564,7 @@
       relation_metric: trust
     - id: trust-operation-joined
       states: [trust_joined]
-      text: 担保换得行动席位、解瘴丹、2 点支援与额外筹备。
+      text: 担保换得行动席位、解瘴丹、2 点助力与额外筹备。
     - id: trust-commissioned
       states: [trust_commissioned]
       text: 你放弃行动席位，获得 30 灵石与 1 点信用。
@@ -574,13 +574,13 @@
       text: 你未回应借丹；解瘴丹仍归你使用。
     - id: antidote-lent
       states: [antidote_lent]
-      text: 你交回解瘴丹，放弃独行；支援 +2，苏晚照更加信任你。
+      text: 你交回解瘴丹，放弃独行；助力 +2，苏晚照更加信任你。
     - id: antidote-kept
       states: [antidote_kept, antidote_scouted, antidote_liquidated]
       text: 你拒绝归还解瘴丹，保留独自决定入谷时机的自由；苏晚照不再信任你。
     - id: antidote-scouted
       states: [antidote_scouted]
-      text: 你用解瘴丹提前踩点；支援 +2，并获额外筹备。
+      text: 你用解瘴丹提前踩点；助力 +2，并获额外筹备。
     - id: antidote-liquidated
       states: [antidote_liquidated]
       text: 你放弃争夺，卖出解瘴丹，获得 60 灵石。
@@ -596,13 +596,13 @@
       text: 你退出同行名单，放弃随队收益，保持散修身份。
     - id: escort-fulfilled
       states: [escort_fulfilled, escort_vanguard, escort_quartermaster]
-      text: 你兑现同行承诺，获得解瘴丹与 1 点支援。
+      text: 你兑现同行承诺，获得解瘴丹与 1 点助力。
     - id: escort-vanguard
       states: [escort_vanguard]
-      text: 你接下先锋分工；支援 +3，并获额外筹备与独立指挥权。
+      text: 你接下先锋分工；助力 +3，并获额外筹备与独立指挥权。
     - id: escort-quartermaster
       states: [escort_quartermaster]
-      text: 你负责后勤，获得 30 灵石、2 点信用与 1 点支援。
+      text: 你负责后勤，获得 30 灵石、2 点信用与 1 点助力。
     - id: escort-chen-affiliation
       states: [escort_committed, escort_approved, escort_refused, escort_fulfilled, escort_vanguard, escort_quartermaster]
       conditions:
@@ -619,7 +619,7 @@
       status: 已转为亲自行动
       next_step: 带着宗门物资准备入谷
       location_id: L02
-      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      personal_return: 宗门记功，或把关系兑现为入谷物资与助力
       complete: true
 
     - id: trust-commissioned
@@ -630,7 +630,7 @@
       status: 已结算报酬
       next_step: 观察沈砚秋能否兑现后续记功
       location_id: L02
-      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      personal_return: 宗门记功，或把关系兑现为入谷物资与助力
       complete: true
     - id: trust-betrayed
       priority: 300
@@ -640,7 +640,7 @@
       status: 已经背约
       next_step: 赵鹤鸣已取得计划，无法恢复担保
       location_id: L02
-      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      personal_return: 宗门记功，或把关系兑现为入谷物资与助力
       complete: true
     - id: trust-rewarded
       priority: 300
@@ -650,7 +650,7 @@
       status: 承诺已经兑现
       next_step: 沈砚秋已为你记功
       location_id: L02
-      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      personal_return: 宗门记功，或把关系兑现为入谷物资与助力
       complete: true
     - id: trust-vouched-waiting
       priority: 200
@@ -663,7 +663,7 @@
       window: 第14—16日
       deadline_day: 16
       location_id: L02
-      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      personal_return: 宗门记功，或把关系兑现为入谷物资与助力
     - id: trust-vouched-open
       priority: 200
       from_day: 14
@@ -676,7 +676,7 @@
       window: 第14—16日
       deadline_day: 16
       location_id: L02
-      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      personal_return: 宗门记功，或把关系兑现为入谷物资与助力
       urgent: true
     - id: trust-vouched-missed
       priority: 200
@@ -689,7 +689,7 @@
       window: 第14—16日
       deadline_day: 16
       location_id: L02
-      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      personal_return: 宗门记功，或把关系兑现为入谷物资与助力
       complete: true
     - id: trust-review-waiting
       priority: 100
@@ -702,7 +702,7 @@
       window: 第10—12日
       deadline_day: 12
       location_id: L02
-      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      personal_return: 宗门记功，或把关系兑现为入谷物资与助力
     - id: trust-review-open
       priority: 100
       from_day: 10
@@ -715,7 +715,7 @@
       window: 第10—12日
       deadline_day: 12
       location_id: L02
-      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      personal_return: 宗门记功，或把关系兑现为入谷物资与助力
       urgent: true
     - id: trust-review-missed
       priority: 100
@@ -728,7 +728,7 @@
       window: 第10—12日
       deadline_day: 12
       location_id: L02
-      personal_return: 宗门记功，或把关系兑现为入谷物资与支援
+      personal_return: 宗门记功，或把关系兑现为入谷物资与助力
       complete: true
 
     - id: antidote-scouted
@@ -757,7 +757,7 @@
       route_id: antidote
       label: 解瘴丹交易
       status: 已经借丹援队
-      next_step: 独行路线关闭，支援与关系收益已到账
+      next_step: 独行路线关闭，助力与关系收益已到账
       location_id: L02
       personal_return: 保留独行资格，并可选择踩点或转售变现
       complete: true
@@ -848,7 +848,7 @@
       status: 先锋分工已确定
       next_step: 带领人手按时进入内谷
       location_id: L02
-      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      personal_return: 随队丹药、助力，以及先锋或后勤分工收益
       complete: true
     - id: escort-quartermaster
       priority: 300
@@ -858,7 +858,7 @@
       status: 后勤分工已确定
       next_step: 个人报酬已到账，可继续决定是否入谷
       location_id: L02
-      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      personal_return: 随队丹药、助力，以及先锋或后勤分工收益
       complete: true
     - id: escort-fulfilled-open
       priority: 250
@@ -871,7 +871,7 @@
       window: 第17—18日
       deadline_day: 18
       location_id: L02
-      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      personal_return: 随队丹药、助力，以及先锋或后勤分工收益
       urgent: true
     - id: escort-fulfilled-missed
       priority: 250
@@ -880,11 +880,11 @@
       route_id: escort
       label: 青岚同行
       status: 分工窗口已错过
-      next_step: 你仍保留随队丹药与基础支援
+      next_step: 你仍保留随队丹药与基础助力
       window: 第17—18日
       deadline_day: 18
       location_id: L02
-      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      personal_return: 随队丹药、助力，以及先锋或后勤分工收益
       complete: true
     - id: escort-refused
       priority: 300
@@ -894,7 +894,7 @@
       status: 已经退出同行
       next_step: 保持散修身份，自行寻找入谷条件
       location_id: L02
-      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      personal_return: 随队丹药、助力，以及先锋或后勤分工收益
       complete: true
     - id: escort-approved-waiting
       priority: 200
@@ -907,7 +907,7 @@
       window: 仅第16日
       deadline_day: 16
       location_id: L02
-      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      personal_return: 随队丹药、助力，以及先锋或后勤分工收益
     - id: escort-approved-open
       priority: 200
       from_day: 16
@@ -920,7 +920,7 @@
       window: 仅第16日
       deadline_day: 16
       location_id: L02
-      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      personal_return: 随队丹药、助力，以及先锋或后勤分工收益
       urgent: true
     - id: escort-approved-missed
       priority: 200
@@ -933,7 +933,7 @@
       window: 仅第16日
       deadline_day: 16
       location_id: L02
-      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      personal_return: 随队丹药、助力，以及先锋或后勤分工收益
       complete: true
     - id: escort-review-waiting
       priority: 100
@@ -946,7 +946,7 @@
       window: 第10—13日
       deadline_day: 13
       location_id: L02
-      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      personal_return: 随队丹药、助力，以及先锋或后勤分工收益
     - id: escort-review-open
       priority: 100
       from_day: 10
@@ -959,7 +959,7 @@
       window: 第10—13日
       deadline_day: 13
       location_id: L02
-      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      personal_return: 随队丹药、助力，以及先锋或后勤分工收益
       urgent: true
     - id: escort-review-missed
       priority: 100
@@ -972,7 +972,7 @@
       window: 第10—13日
       deadline_day: 13
       location_id: L02
-      personal_return: 随队丹药、支援，以及先锋或后勤分工收益
+      personal_return: 随队丹药、助力，以及先锋或后勤分工收益
       complete: true
 
 - id: antidote_recovery
@@ -997,7 +997,7 @@
           term_id: antidote_recovery
           name: 以情报换取解瘴丹
           description: 把已核实的成熟日期交给苏晚照，换取一枚青岚门备用解瘴丹。
-          command_description: 玩家以成熟日期向苏晚照换取解瘴丹
+          command_description: 你以成熟日期向苏晚照换取解瘴丹
           personal_outcome: 获得 1 枚解瘴丹，重新打开亲自入谷路线。
           relevance: 直接相关 · 苏晚照公开关注青髓芝药性与移植时机
           risk: 苏晚照会获得准确成熟日期，并可能据此调整青岚门的后续安排。

@@ -139,10 +139,13 @@ func TestDefaultViewLocalizesTermsAndHidesStableIDs(t *testing.T) {
 	var output bytes.Buffer
 	renderView(&output, session.View(), false)
 	text := output.String()
-	for _, want := range []string{"序幕", "战力=2", "助力=0", "灵石=100", "信用=3", "[传闻]"} {
+	for _, want := range []string{"序幕", "战力=2", "灵石=100", "信用=3", "线索：1 条"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("default output does not contain %q:\n%s", want, text)
 		}
+	}
+	if strings.Contains(text, "助力=0") || strings.Contains(text, "青髓芝将在第24天成熟") {
+		t.Errorf("default output did not keep zero resources and clue details out of the main view:\n%s", text)
 	}
 	for _, forbidden := range []string{"combat", "support", "spirit_stones", "credit", "F02", "verify:F02"} {
 		if strings.Contains(text, forbidden) {
@@ -152,8 +155,39 @@ func TestDefaultViewLocalizesTermsAndHidesStableIDs(t *testing.T) {
 
 	output.Reset()
 	renderActions(&output, session.View().AvailableActions, true)
-	if !strings.Contains(output.String(), "F02") || !strings.Contains(output.String(), "verify:F02") {
+	if !strings.Contains(output.String(), "F02") || !strings.Contains(output.String(), "verify:F02") || !strings.Contains(output.String(), "预期：") || !strings.Contains(output.String(), "时机：") {
 		t.Fatalf("debug output omitted stable IDs:\n%s", output.String())
+	}
+}
+
+func TestTerminalUsesScenarioAuthoredHeaderAndClueTerm(t *testing.T) {
+	tests := []struct {
+		world     string
+		header    string
+		clueLabel string
+	}{
+		{"tianqi", "天变邸抄 · 京师灾变与会勘", "材料："},
+		{"blackwind", "凡途 · 黑风谷山川", "线索："},
+		{"orbital", "凡途 · 远星环站轨道结构", "遥测记录："},
+	}
+	for _, test := range tests {
+		t.Run(test.world, func(t *testing.T) {
+			bundle, err := scenario.Load(filepath.Join("../../data", test.world))
+			if err != nil {
+				t.Fatal(err)
+			}
+			session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "术语测试"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var output bytes.Buffer
+			if err := runGame(bytes.NewBufferString("quit\n"), &output, testTerminalGame(session), nil, false); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(output.String(), test.header) || !strings.Contains(output.String(), test.clueLabel) || !strings.Contains(output.String(), strings.Split(test.header, " · ")[0]+"[") {
+				t.Fatalf("scenario-authored terminal labels missing:\n%s", output.String())
+			}
+		})
 	}
 }
 
@@ -178,7 +212,7 @@ func TestDefaultViewLocalizesStatusAndInvestigationSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	output.Reset()
-	renderView(&output, session.View(), false)
+	renderJournal(&output, session.View(), false)
 	if !strings.Contains(output.String(), "来源：亲自核验") || strings.Contains(output.String(), "player-investigation") {
 		t.Fatalf("source was not localized:\n%s", output.String())
 	}
@@ -201,7 +235,7 @@ func TestTerminalNavigationAndDialogueDoNotAdvanceWorld(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := output.String()
-	for _, want := range []string{"【白石坊市】", "【白石坊市 · 同地人物】", "魏无咎：", "【黑风谷山川】", "【行旅卷宗】"} {
+	for _, want := range []string{"【白石坊市】", "【白石坊市 · 同地人物】", "魏无咎：", "【黑风谷山川】", "【卷宗】"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("terminal output does not contain %q:\n%s", want, text)
 		}
@@ -576,7 +610,7 @@ func TestTerminalPresentationExplainsPreparationAndLoss(t *testing.T) {
 	}
 	var output bytes.Buffer
 	renderJournal(&output, session.View(), false)
-	if !strings.Contains(output.String(), "综合准备分：2 / 胜算基线 6") || !strings.Contains(output.String(), "计分来源") || !strings.Contains(output.String(), "参赛条件") {
+	if !strings.Contains(output.String(), "综合准备：2 / 基线 6") || !strings.Contains(output.String(), "准备项") || !strings.Contains(output.String(), "进入条件") {
 		t.Fatalf("preparation remains opaque:\n%s", output.String())
 	}
 	output.Reset()
@@ -586,8 +620,8 @@ func TestTerminalPresentationExplainsPreparationAndLoss(t *testing.T) {
 		}
 	}
 	renderView(&output, session.View(), false)
-	if !strings.Contains(output.String(), "胜负复盘") || !strings.Contains(output.String(), "没有解瘴丹") {
-		t.Fatalf("ending omitted actionable review:\n%s", output.String())
+	if !strings.Contains(output.String(), "局势结束") || strings.Contains(output.String(), "胜负复盘") || strings.Contains(output.String(), "试玩记录") || strings.Contains(output.String(), "没有解瘴丹") {
+		t.Fatalf("ending did not stay concise by default:\n%s", output.String())
 	}
 }
 

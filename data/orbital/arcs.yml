@@ -95,8 +95,8 @@
           term_id: escort
           term_label: 换取同行名额
           name: 以日期换取同行承诺
-          description: 暂不拿走物资，要求顾岚在充能完成时把你编入指挥部队伍。
-          personal_outcome: 获得第17日随指挥部队伍出发的承诺；届时可领取随队物资与 1 点支援。
+          description: 暂不拿走物资，要求顾岚在指挥部集结时把你编入队伍。
+          personal_outcome: 获得第17日随指挥部队伍出发的承诺；届时可领取随队物资与 1 点助力。
           expected_outcomes:
             - 顾岚获得已核实日期
             - 换取充能完成时随队出发的承诺，信任 +1
@@ -140,12 +140,12 @@
           term_label: 公开担保
           name: 为数据来源担保
           description: 在舰队审核中公开承担消息责任，不让顾岚独自承受赵鸣的质疑。
-          command_description: 玩家在舰队审核中为数据来源担保
-          personal_outcome: 通行权限 +1，顾岚信任 +1；同时坐实你与顾岚的共同立场。
+          command_description: 你在舰队审核中为数据来源担保
+          personal_outcome: 声望 +1，顾岚信任 +1；同时坐实你与顾岚的共同立场。
           relevance: 赵鸣正在借舰队审核质疑这条消息的来源。
           risk: 担保会提高你的舰队声望，也会让赵鸣把你视为顾岚一方。
           expected_outcomes:
-            - 通行权限 +1
+            - 声望 +1
             - 顾岚信任 +1
             - 完成信任路线的中段履约
           warnings:
@@ -177,12 +177,12 @@
           term_label: 转交计划
           name: 把计划转交赵鸣
           description: 否认担保，并把顾岚的完成充能日期与备战安排交给赵鸣换取报酬。
-          command_description: 玩家把顾岚的计划转交赵鸣
-          personal_outcome: 立即获得 20 通行权限点，但顾岚信任 -4，信任路线转为背约。
+          command_description: 你把顾岚的计划转交赵鸣
+          personal_outcome: 立即获得 20 配给点，但顾岚信任 -4，信任路线转为背约。
           relevance: 赵鸣需要证据削弱顾岚在指挥部的地位。
           risk: 这会把一次无偿相助变成背叛；顾岚会知道计划从你这里泄露。
           expected_outcomes:
-            - 获得 20 通行权限点
+            - 获得 20 配给点
             - 顾岚信任 -4
             - 赵鸣获得已核实日期
           warnings:
@@ -213,12 +213,12 @@
           term_label: 物资归队
           name: 把舱外服交回指挥部
           description: 接受苏弥的请求，把换来的舱外服交给指挥部维修组。
-          command_description: 玩家把交易所得舱外服借给苏弥
-          personal_outcome: 失去舱外服与独行资格，换得 2 点支援和苏弥 2 点信任。
+          command_description: 你把交易所得舱外服借给苏弥
+          personal_outcome: 失去舱外服与独行资格，换得 2 点助力和苏弥 2 点信任。
           relevance: 补给环已经封锁，苏弥无法为队伍补回这枚舱外服。
           risk: 交出后你的亲自进入核心舱路线会再次关闭。
           expected_outcomes:
-            - 支援 +2
+            - 助力 +2
             - 苏弥信任 +2
             - 交出 1 枚舱外服
           warnings:
@@ -232,13 +232,13 @@
             - {type: set_flag, target_id: player, key: command_deck_eva_suit_lent, value: "true"}
             - {type: set_flag, target_id: player, key: command_deck_eva_suit_midgame_resolved, value: "true"}
           to_state: eva_suit_lent
-          feedback: {messages: [你把舱外服交回指挥部，独行资格转化为支援与信任。], journal: [响应苏弥的物资请求，放弃独行路线。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
+          feedback: {messages: [你把舱外服交回指挥部，独行资格转化为助力与信任。], journal: [响应苏弥的物资请求，放弃独行路线。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
         - id: route:eva_suit:keep
           term_id: keep
           term_label: 坚持独行
           name: 拒绝归还舱外服
           description: 明确告诉苏弥，这枚维修耗材是一次完成的交易，你会保留它并独自决定进入核心舱时机。
-          command_description: 玩家拒绝把交易所得舱外服交回指挥部
+          command_description: 你拒绝把交易所得舱外服交回指挥部
           personal_outcome: 保留舱外服与路线自由；苏弥对你的怀疑 +2。
           relevance: 苏弥把维修组的物资缺口摆到了你面前。
           risk: 你仍可独行，但指挥部维修组不会再向你托付物资。
@@ -273,12 +273,12 @@
           term_label: 接受审核
           name: 接受环站指挥部审核
           description: 登记数据来源与行动职责，以正式队员身份保留同行资格。
-          command_description: 玩家接受环站指挥部同行审核
-          personal_outcome: 通行权限 +1、顾岚信任 +1，并保留第16日随队集结资格。
+          command_description: 你接受环站指挥部同行审核
+          personal_outcome: 声望 +1、顾岚信任 +1，并保留第16日随队集结资格。
           relevance: 环站指挥部要求所有参与者登记数据与职责。
           risk: 通过审核后，赫利俄斯财团会把你视为环站指挥部行动的一员。
           expected_outcomes:
-            - 通行权限 +1
+            - 声望 +1
             - 顾岚信任 +1
             - 保留同行资格
           warnings:
@@ -296,8 +296,8 @@
           term_label: 保持独立
           name: 退出指挥部同行名单
           description: 拒绝舰队审核，保留自由工程师身份并放弃此前换得的同行名额。
-          command_description: 玩家拒绝环站指挥部审核并退出同行名单
-          personal_outcome: 放弃随队物资与支援；顾岚信任 -2，赫克托不再把你视为指挥部阵营。
+          command_description: 你拒绝环站指挥部审核并退出同行名单
+          personal_outcome: 放弃随队物资与助力；顾岚信任 -2，赫克托不再把你视为指挥部阵营。
           relevance: 舰队审核要求你在安全与独立之间作出明确选择。
           risk: 退出后，第16日不会再出现随队集结。
           expected_outcomes:
@@ -334,12 +334,12 @@
           term_label: 亲自入局
           name: 把担保转为行动席位
           description: 以已经公开承担的责任换取环站指挥部行动物资，亲自加入进入核心舱准备。
-          personal_outcome: 获得舱外服、2 点支援与额外筹备；你可以亲自争夺跃迁核心。
+          personal_outcome: 获得舱外服、2 点助力与额外筹备；你可以亲自争夺跃迁核心。
           relevance: 你已经替顾岚承担消息责任，有资格要求行动资源。
           risk: 亲自加入会消耗舰队人手，也意味着你要承担进入核心舱风险。
           expected_outcomes:
             - 获得 1 枚舱外服
-            - 支援 +2
+            - 助力 +2
             - 形成额外筹备
           warnings:
             - 选择行动席位后，本轮不能再领取数据报酬。
@@ -351,18 +351,18 @@
             - {type: set_flag, target_id: player, key: command_deck_trust_operation_joined, value: "true"}
             - {type: set_flag, target_id: player, key: command_deck_trust_late_resolved, value: "true"}
           to_state: trust_joined
-          feedback: {messages: [担保已经兑现为行动席位，进入核心舱物资与支援交到你手中。], journal: [将指挥部信任回报兑现为亲自行动条件。], presentation: {kind: acquire, intensity: 3, subject: player}}
+          feedback: {messages: [担保已经兑现为行动席位，进入核心舱物资与助力交到你手中。], journal: [将指挥部信任回报兑现为亲自行动条件。], presentation: {kind: acquire, intensity: 3, subject: player}}
         - id: route:trust:commission
           term_id: commission
           term_label: 领取报酬
           name: 结算数据与担保报酬
           description: 不占用环站指挥部行动席位，提前结算数据交叉校验与公开担保的报酬。
-          personal_outcome: 立即获得 30 通行权限点与 1 点通行权限；保留顾岚获胜后的记功可能。
+          personal_outcome: 立即获得 30 配给点与 1 点声望；保留顾岚获胜后的记功可能。
           relevance: 可靠消息与公开担保已经替环站指挥部节省了交叉校验成本。
           risk: 你不会获得舰队物资，若要亲自争夺仍需自行准备。
           expected_outcomes:
-            - 获得 30 通行权限点
-            - 通行权限 +1
+            - 获得 30 配给点
+            - 声望 +1
           warnings:
             - 领取报酬后，本轮不能再申请行动席位。
           irreversible: true
@@ -372,7 +372,7 @@
             - {type: set_flag, target_id: player, key: command_deck_trust_commissioned, value: "true"}
             - {type: set_flag, target_id: player, key: command_deck_trust_late_resolved, value: "true"}
           to_state: trust_commissioned
-          feedback: {messages: [你选择结清数据报酬，不再占用环站指挥部行动席位。], journal: [将信任担保结算为通行权限点与通行权限。], presentation: {kind: acquire, intensity: 2, subject: player}}
+          feedback: {messages: [你选择结清数据报酬，不再占用环站指挥部行动席位。], journal: [将信任担保结算为配给点与声望。], presentation: {kind: acquire, intensity: 2, subject: player}}
 
     - id: turn_eva_suit_into_route
       from_state: eva_suit_kept
@@ -392,12 +392,12 @@
           term_label: 独行踩点
           name: 用舱外服提前踩点
           description: 保留维修耗材并独自勘察维护环入口裂隙，把进入核心舱自由转化为路线优势。
-          personal_outcome: 保留舱外服，获得 2 点支援与额外筹备，提高核心争夺胜算。
+          personal_outcome: 保留舱外服，获得 2 点助力与额外筹备，提高核心争夺胜算。
           relevance: 你拥有封锁后的稀缺维修耗材，可以比普通自由工程师更早勘察维护环。
           risk: 独行踩点不会修复苏弥对你的怀疑。
           expected_outcomes:
             - 保留舱外服
-            - 支援 +2
+            - 助力 +2
             - 形成额外筹备
           warnings:
             - 完成踩点后，不能再拍卖本轮进入核心舱名额。
@@ -428,11 +428,11 @@
           term_label: 变现资格
           name: 转售维修耗材与进入核心舱路线
           description: 把舱外服和独行路线打包转售，放弃核心争夺并锁定收益。
-          personal_outcome: 交出舱外服并获得 60 通行权限点；本局退出核心争夺。
+          personal_outcome: 交出舱外服并获得 60 配给点；本局退出核心争夺。
           relevance: 补给环封锁后，现成维修耗材和可行路线都具备溢价。
           risk: 失去舱外服后，你将无法进入核心舱。
           expected_outcomes:
-            - 获得 60 通行权限点
+            - 获得 60 配给点
             - 交出 1 枚舱外服
             - 锁定交易收益
           warnings:
@@ -466,10 +466,10 @@
           term_label: 随队集结
           name: 兑现同行承诺
           description: 在充能完成前集结；次日领取舱外服与人手，自行决定是否跟进指挥部队伍。
-          command_description: 玩家兑现与顾岚的同行约定
-          personal_outcome: 获得 1 枚舱外服与 1 点支援，打开充能完成后的核心舱路线。
+          command_description: 你兑现与顾岚的同行约定
+          personal_outcome: 获得 1 枚舱外服与 1 点助力，打开充能完成后的核心舱路线。
           expected_outcomes:
-            - 获得 1 枚舱外服与 1 点支援
+            - 获得 1 枚舱外服与 1 点助力
             - 在充能完成日获得前往受损维护环的选择
           resolves:
             - 缺少舱外服
@@ -478,7 +478,7 @@
             - {type: adjust_resource, target_id: player, key: crew_support, amount: 1}
             - {type: set_flag, target_id: player, key: command_deck_escort_fulfilled, value: "true"}
           to_state: escort_fulfilled
-          feedback: {messages: [同行承诺已经兑现，随队维修耗材与基础支援到位。], journal: [完成舰队集结，等待确定先锋或后勤分工。], presentation: {kind: acquire, intensity: 2, subject: player}}
+          feedback: {messages: [同行承诺已经兑现，随队维修耗材与基础助力到位。], journal: [完成舰队集结，等待确定先锋或后勤分工。], presentation: {kind: acquire, intensity: 2, subject: player}}
 
     - id: choose_escort_role
       from_state: escort_fulfilled
@@ -497,11 +497,11 @@
           term_label: 担任先锋
           name: 接下先锋分工
           description: 带领随队人手先行探路，把同行承诺转化为争夺准备。
-          personal_outcome: 支援 +3 并形成额外筹备；按时抵达后可与主要竞争者正面对抗。
+          personal_outcome: 助力 +3 并形成额外筹备；按时抵达后可与主要竞争者正面对抗。
           relevance: 你已经通过审核并完成集结，队伍可以把一组人手交由你指挥。
           risk: 先锋要亲自承担维护环入口风险，不能同时领取后勤报酬。
           expected_outcomes:
-            - 支援 +3
+            - 助力 +3
             - 形成额外筹备
             - 获得独立指挥权
           warnings:
@@ -513,19 +513,19 @@
             - {type: set_flag, target_id: player, key: command_deck_escort_vanguard, value: "true"}
             - {type: set_flag, target_id: player, key: command_deck_escort_late_resolved, value: "true"}
           to_state: escort_vanguard
-          feedback: {messages: [你接下先锋分工，获得额外支援与独立指挥权。], journal: [选择担任舰队先锋，核心舱行动准备显著提高。], presentation: {kind: actor_focus, intensity: 3, subject: target}}
+          feedback: {messages: [你接下先锋分工，获得额外助力与独立指挥权。], journal: [选择担任舰队先锋，核心舱行动准备显著提高。], presentation: {kind: actor_focus, intensity: 3, subject: target}}
         - id: route:escort:quartermaster
           term_id: quartermaster
           term_label: 负责后勤
           name: 负责随队后勤
           description: 不争先锋位置，负责分配维修耗材、路线与补给，提前结算个人报酬。
-          personal_outcome: 获得 30 通行权限点、2 点通行权限与 1 点支援；仍可进入核心舱，但不参与正面争夺。
+          personal_outcome: 获得 30 配给点、2 点声望与 1 点助力；仍可进入核心舱，但不参与正面争夺。
           relevance: 队伍集结后需要熟悉数据来源的人统一物资与路线。
           risk: 后勤收益稳定，但不足以压过主要竞争者。
           expected_outcomes:
-            - 获得 30 通行权限点
-            - 通行权限 +2
-            - 支援 +1
+            - 获得 30 配给点
+            - 声望 +2
+            - 助力 +1
           warnings:
             - 选择后勤后，本轮不能改任先锋。
           irreversible: true
@@ -536,16 +536,16 @@
             - {type: set_flag, target_id: player, key: command_deck_escort_quartermaster, value: "true"}
             - {type: set_flag, target_id: player, key: command_deck_escort_late_resolved, value: "true"}
           to_state: escort_quartermaster
-          feedback: {messages: [你接下随队后勤，稳定报酬与通行权限已经结算。], journal: [选择负责舰队后勤，以稳定收益替代先锋位置。], presentation: {kind: acquire, intensity: 2, subject: player}}
+          feedback: {messages: [你接下随队后勤，稳定报酬与声望已经结算。], journal: [选择负责舰队后勤，以稳定收益替代先锋位置。], presentation: {kind: acquire, intensity: 2, subject: player}}
 
   consequence_rules:
     - id: trust-rewarded
       states: [trust_reviewed, trust_joined, trust_commissioned]
       conditions: [{type: flag, scope: actor, key: command_deck_trust_rewarded}]
-      text: 担保兑现：顾岚为你记功；通行权限 +2，支援 +1。
+      text: 担保兑现：顾岚为你记功；声望 +2，助力 +1。
     - id: trust-betrayed
       states: [trust_betrayed]
-      text: 你出卖顾岚，获得 20 通行权限点；最终信任为 {{value}}。
+      text: 你出卖顾岚，获得 20 配给点；最终信任为 {{value}}。
       relation_from_id: N03
       relation_to_id: player
       relation_metric: trust
@@ -564,26 +564,26 @@
       relation_metric: trust
     - id: trust-operation-joined
       states: [trust_joined]
-      text: 担保换得行动席位、舱外服、2 点支援与额外筹备。
+      text: 担保换得行动席位、舱外服、2 点助力与额外筹备。
     - id: trust-commissioned
       states: [trust_commissioned]
-      text: 你放弃行动席位，获得 30 通行权限点与 1 点通行权限。
+      text: 你放弃行动席位，获得 30 配给点与 1 点声望。
 
     - id: eva_suit-request-missed
       states: [eva_suit_committed]
       text: 你未回应物资借用请求；舱外服仍归你使用。
     - id: eva_suit-lent
       states: [eva_suit_lent]
-      text: 你交回舱外服，放弃独行；支援 +2，苏弥更加信任你。
+      text: 你交回舱外服，放弃独行；助力 +2，苏弥更加信任你。
     - id: eva_suit-kept
       states: [eva_suit_kept, eva_suit_scouted, eva_suit_liquidated]
       text: 你拒绝归还舱外服，保留独自决定进入核心舱时机的自由；苏弥不再信任你。
     - id: eva_suit-scouted
       states: [eva_suit_scouted]
-      text: 你用舱外服提前踩点；支援 +2，并获额外筹备。
+      text: 你用舱外服提前踩点；助力 +2，并获额外筹备。
     - id: eva_suit-liquidated
       states: [eva_suit_liquidated]
-      text: 你放弃核心争夺，卖出舱外服，获得 60 通行权限点。
+      text: 你放弃核心争夺，卖出舱外服，获得 60 配给点。
 
     - id: escort-review-missed
       states: [escort_committed]
@@ -596,13 +596,13 @@
       text: 你退出同行名单，放弃随队收益，保持自由工程师身份。
     - id: escort-fulfilled
       states: [escort_fulfilled, escort_vanguard, escort_quartermaster]
-      text: 你兑现同行承诺，获得舱外服与 1 点支援。
+      text: 你兑现同行承诺，获得舱外服与 1 点助力。
     - id: escort-vanguard
       states: [escort_vanguard]
-      text: 你接下先锋分工；支援 +3，并获额外筹备与独立指挥权。
+      text: 你接下先锋分工；助力 +3，并获额外筹备与独立指挥权。
     - id: escort-quartermaster
       states: [escort_quartermaster]
-      text: 你负责后勤，获得 30 通行权限点、2 点通行权限与 1 点支援。
+      text: 你负责后勤，获得 30 配给点、2 点声望与 1 点助力。
     - id: escort-chen-affiliation
       states: [escort_committed, escort_approved, escort_refused, escort_fulfilled, escort_vanguard, escort_quartermaster]
       conditions:
@@ -619,7 +619,7 @@
       status: 已转为亲自行动
       next_step: 带着舰队物资准备进入核心舱
       location_id: L02
-      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与助力
       complete: true
 
     - id: trust-commissioned
@@ -630,7 +630,7 @@
       status: 已结算报酬
       next_step: 观察顾岚能否兑现后续记功
       location_id: L02
-      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与助力
       complete: true
     - id: trust-betrayed
       priority: 300
@@ -640,7 +640,7 @@
       status: 已经背约
       next_step: 赵鸣已回收计划，无法恢复担保
       location_id: L02
-      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与助力
       complete: true
     - id: trust-rewarded
       priority: 300
@@ -650,7 +650,7 @@
       status: 承诺已经兑现
       next_step: 顾岚已为你记功
       location_id: L02
-      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与助力
       complete: true
     - id: trust-vouched-waiting
       priority: 200
@@ -663,7 +663,7 @@
       window: 第14—16日
       deadline_day: 16
       location_id: L02
-      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与助力
     - id: trust-vouched-open
       priority: 200
       from_day: 14
@@ -676,7 +676,7 @@
       window: 第14—16日
       deadline_day: 16
       location_id: L02
-      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与助力
       urgent: true
     - id: trust-vouched-missed
       priority: 200
@@ -689,7 +689,7 @@
       window: 第14—16日
       deadline_day: 16
       location_id: L02
-      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与助力
       complete: true
     - id: trust-review-waiting
       priority: 100
@@ -702,7 +702,7 @@
       window: 第10—12日
       deadline_day: 12
       location_id: L02
-      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与助力
     - id: trust-review-open
       priority: 100
       from_day: 10
@@ -715,7 +715,7 @@
       window: 第10—12日
       deadline_day: 12
       location_id: L02
-      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与助力
       urgent: true
     - id: trust-review-missed
       priority: 100
@@ -728,7 +728,7 @@
       window: 第10—12日
       deadline_day: 12
       location_id: L02
-      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与助力
       complete: true
 
     - id: eva_suit-scouted
@@ -757,7 +757,7 @@
       route_id: eva_suit
       label: 舱外服交易
       status: 物资已经归队
-      next_step: 独行路线关闭，支援与关系收益已到账
+      next_step: 独行路线关闭，助力与关系收益已到账
       location_id: L02
       personal_return: 保留独行资格，并可选择踩点或转售变现
       complete: true
@@ -848,7 +848,7 @@
       status: 先锋分工已确定
       next_step: 带领人手按时进入核心舱
       location_id: L02
-      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      personal_return: 随队维修耗材、助力，以及先锋或后勤分工收益
       complete: true
     - id: escort-quartermaster
       priority: 300
@@ -858,7 +858,7 @@
       status: 后勤分工已确定
       next_step: 个人报酬已到账，可继续决定是否进入核心舱
       location_id: L02
-      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      personal_return: 随队维修耗材、助力，以及先锋或后勤分工收益
       complete: true
     - id: escort-fulfilled-open
       priority: 250
@@ -871,7 +871,7 @@
       window: 第17—18日
       deadline_day: 18
       location_id: L02
-      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      personal_return: 随队维修耗材、助力，以及先锋或后勤分工收益
       urgent: true
     - id: escort-fulfilled-missed
       priority: 250
@@ -880,11 +880,11 @@
       route_id: escort
       label: 指挥部同行
       status: 分工窗口已错过
-      next_step: 你仍保留随队维修耗材与基础支援
+      next_step: 你仍保留随队维修耗材与基础助力
       window: 第17—18日
       deadline_day: 18
       location_id: L02
-      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      personal_return: 随队维修耗材、助力，以及先锋或后勤分工收益
       complete: true
     - id: escort-refused
       priority: 300
@@ -894,7 +894,7 @@
       status: 已经退出同行
       next_step: 保持自由工程师身份，自行寻找进入核心舱条件
       location_id: L02
-      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      personal_return: 随队维修耗材、助力，以及先锋或后勤分工收益
       complete: true
     - id: escort-approved-waiting
       priority: 200
@@ -907,7 +907,7 @@
       window: 仅第16日
       deadline_day: 16
       location_id: L02
-      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      personal_return: 随队维修耗材、助力，以及先锋或后勤分工收益
     - id: escort-approved-open
       priority: 200
       from_day: 16
@@ -920,7 +920,7 @@
       window: 仅第16日
       deadline_day: 16
       location_id: L02
-      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      personal_return: 随队维修耗材、助力，以及先锋或后勤分工收益
       urgent: true
     - id: escort-approved-missed
       priority: 200
@@ -933,7 +933,7 @@
       window: 仅第16日
       deadline_day: 16
       location_id: L02
-      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      personal_return: 随队维修耗材、助力，以及先锋或后勤分工收益
       complete: true
     - id: escort-review-waiting
       priority: 100
@@ -946,7 +946,7 @@
       window: 第10—13日
       deadline_day: 13
       location_id: L02
-      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      personal_return: 随队维修耗材、助力，以及先锋或后勤分工收益
     - id: escort-review-open
       priority: 100
       from_day: 10
@@ -959,7 +959,7 @@
       window: 第10—13日
       deadline_day: 13
       location_id: L02
-      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      personal_return: 随队维修耗材、助力，以及先锋或后勤分工收益
       urgent: true
     - id: escort-review-missed
       priority: 100
@@ -972,7 +972,7 @@
       window: 第10—13日
       deadline_day: 13
       location_id: L02
-      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      personal_return: 随队维修耗材、助力，以及先锋或后勤分工收益
       complete: true
 
 - id: eva_suit_recovery
@@ -997,7 +997,7 @@
           term_id: eva_suit_recovery
           name: 以数据换取舱外服
           description: 把已核实的完成充能日期交给苏弥，换取一枚环站指挥部备用舱外服。
-          command_description: 玩家以完成充能日期向苏弥换取舱外服
+          command_description: 你以完成充能日期向苏弥换取舱外服
           personal_outcome: 获得 1 枚舱外服，重新打开亲自进入核心舱路线。
           relevance: 直接相关 · 苏弥公开关注跃迁核心状态与转移时机
           risk: 苏弥会获得准确完成充能日期，并可能据此调整环站指挥部的后续安排。

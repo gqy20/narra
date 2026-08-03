@@ -77,7 +77,7 @@ player:
     category: self
     name: 维修
     description: 专心处理伤势，降低一级伤势
-    command_description: 玩家专心维修
+    command_description: 你专心维修
     conditions:
     - {type: injury_at_least, min_confidence: 1}
     effects:
@@ -89,7 +89,7 @@ player:
     name: 校准系统
     description: "第 {stage} 阶段离线校准，{effect_resource}提高一点"
     paid_description: "第 {stage} 阶段离线校准，以 {cost} {cost_resource}稳固控制回路，{effect_resource}提高一点；完成后累计离线校准耗费 {cumulative} {cost_resource}"
-    command_description: 玩家离线校准校准系统
+    command_description: 你离线校准系统
     conditions:
     - {type: injury_at_most, max_confidence: 0}
     effects:

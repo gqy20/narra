@@ -77,7 +77,7 @@ player:
     category: self
     name: 疗伤
     description: 专心处理伤势，降低一级伤势
-    command_description: 玩家专心疗伤
+    command_description: 你专心疗伤
     conditions:
     - {type: injury_at_least, min_confidence: 1}
     effects:
@@ -89,7 +89,7 @@ player:
     name: 修炼
     description: "第 {stage} 阶段闭关，{effect_resource}提高一点"
     paid_description: "第 {stage} 阶段闭关，以 {cost} {cost_resource}稳固气机，{effect_resource}提高一点；完成后累计闭关耗费 {cumulative} {cost_resource}"
-    command_description: 玩家闭关修炼
+    command_description: 你闭关修炼
     conditions:
     - {type: injury_at_most, max_confidence: 0}
     effects:

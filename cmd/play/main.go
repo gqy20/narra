@@ -75,7 +75,11 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 	session := game.session
 	commands := scanTerminalCommands(input)
 	view := session.View()
-	fmt.Fprintf(output, "%s · %s\n", view.Presentation.Brand, view.Title)
+	headerTitle := view.Presentation.WorldTitle
+	if headerTitle == "" {
+		headerTitle = view.Title
+	}
+	fmt.Fprintf(output, "%s · %s\n", view.Presentation.Brand, headerTitle)
 	fmt.Fprintln(output, "输入 help 查看命令；输入 actions 查看当前选择。")
 	if game.saves != nil {
 		if game.autosave {
@@ -282,7 +286,11 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 				fmt.Fprintln(output, "\n已退出。")
 				return nil
 			}
-			fmt.Fprintf(output, "\n凡途[%s·第%d天]> ", view.Location.Name, view.Day)
+			brand := strings.TrimSpace(view.Presentation.Brand)
+			if brand == "" {
+				brand = "游戏"
+			}
+			fmt.Fprintf(output, "\n%s[%s·第%d天]> ", brand, view.Location.Name, view.Day)
 			var ok bool
 			command, ok = <-commands
 			if !ok {
@@ -582,25 +590,19 @@ func renderWaitNextPreview(output io.Writer, view app.PlayerView) {
 		fmt.Fprintln(output, "无法等待：当前不能快进到下一次重要变化。")
 		return
 	}
-	fmt.Fprintf(output, "快进预览：当前第 %d 天；该操作会连续略过平静日，直到下一次重要变化。\n", view.Day)
+	fmt.Fprintf(output, "快进：第 %d 天 → 下一次重要变化。\n", view.Day)
 	if waitAction.Timing != "" {
 		fmt.Fprintln(output, "  - "+waitAction.Timing)
 	}
 	for _, warning := range waitAction.Warnings {
 		fmt.Fprintln(output, "  - 风险："+warning)
 	}
-	for _, unknown := range waitAction.Unknowns {
-		fmt.Fprintln(output, "  - 未知："+unknown)
-	}
-	if view.Travel != nil && view.Travel.Timing != "" {
-		fmt.Fprintln(output, "  - "+view.Travel.Timing)
-	}
 	for _, progress := range view.RouteProgresses {
 		if progress.Window != "" {
 			fmt.Fprintf(output, "  - %s路线窗口：%s\n", progress.Label, progress.Window)
 		}
 	}
-	fmt.Fprintln(output, "确认后请输入 wait next confirm；也可用 wait 只等待一天。")
+	fmt.Fprintln(output, "确认：wait next confirm；只等一天：wait。")
 }
 
 func saveSlotCommand(output io.Writer, game *terminalGame, argument string) error {
@@ -703,45 +705,41 @@ func renderAutosaveCommand(output io.Writer, game *terminalGame, argument string
 
 func renderView(output io.Writer, view app.PlayerView, debug bool) {
 	fmt.Fprintf(output, "\n=== 第 %d/%d 天 · %s · %s ===\n", view.Day, view.Duration, phaseLabel(view.Phase), view.Location.Name)
-	if view.LastTurn != nil {
-		fmt.Fprintf(output, "上回合：%s [%s]\n", view.LastTurn.Action, statusLabel(view.LastTurn.Status))
-		if view.LastTurn.DaysAdvanced > 1 {
-			fmt.Fprintf(output, "  - 推进了 %d 天，其中 %d 天没有需要处理的变化。\n", view.LastTurn.DaysAdvanced, view.LastTurn.QuietDays)
-		}
-		for _, message := range view.LastTurn.Messages {
-			fmt.Fprintf(output, "  - %s\n", message)
-		}
-		renderInfluences(output, view.LastTurn.Influence, debug, "情报回响")
-	}
 	if view.Resolved || view.Ended {
 		fmt.Fprintf(output, "局势结束：%s\n", view.Outcome)
-		if view.Ending != nil {
-			fmt.Fprintln(output, "你的历程：")
-			for _, highlight := range view.Ending.Highlights {
-				fmt.Fprintf(output, "  - %s\n", highlight)
-			}
-			renderInfluences(output, view.Ending.Influence, debug, "关键影响")
+		if debug && view.Ending != nil {
 			if len(view.Ending.PlayerConsequences) > 0 {
-				fmt.Fprintln(output, "个人结果：")
+				fmt.Fprintln(output, "本局余波：")
 				for _, consequence := range view.Ending.PlayerConsequences {
 					fmt.Fprintf(output, "  - %s\n", consequence)
 				}
 			}
+			renderInfluences(output, view.Ending.Influence, true, "你的介入")
 			if len(view.Ending.Review) > 0 {
-				fmt.Fprintln(output, "胜负复盘：")
+				fmt.Fprintln(output, "结算依据：")
 				for _, review := range view.Ending.Review {
 					fmt.Fprintf(output, "  - %s\n", review)
 				}
 			}
-		}
-		fmt.Fprintf(output, "试玩记录：%d 次决策输入，%d 次主动行动，%d 次推进；自动略过 %d 天，核心结果产生于第 %d 天。\n",
-			view.Metrics.DecisionInputs, view.Metrics.ActiveActions, view.Metrics.WaitActions, view.Metrics.AutoAdvancedDays, view.Metrics.CoreResultDay)
-		if debug {
-			fmt.Fprintf(output, "调试指标：最大行动目录=%d，最长空等待=%d，最大重复主动行动=%d，可见决策变化=%d，结果后输入=%d。\n",
-				view.Metrics.MaxActionCatalog, view.Metrics.LongestQuietWait, view.Metrics.MaxRepeatedActiveAction,
-				view.Metrics.VisibleDecisionChanges, view.Metrics.PostResultInputs)
+			fmt.Fprintf(output, "调试统计：决策=%d，行动=%d，推进=%d，自动略过=%d 天，结果日=%d。\n",
+				view.Metrics.DecisionInputs, view.Metrics.ActiveActions, view.Metrics.WaitActions, view.Metrics.AutoAdvancedDays, view.Metrics.CoreResultDay)
 		}
 		return
+	}
+	if view.LastTurn != nil {
+		fmt.Fprintf(output, "上回合：%s [%s]\n", view.LastTurn.Action, statusLabel(view.LastTurn.Status))
+		if debug && view.LastTurn.DaysAdvanced > 1 {
+			fmt.Fprintf(output, "  - 推进了 %d 天，其中 %d 天没有需要处理的变化。\n", view.LastTurn.DaysAdvanced, view.LastTurn.QuietDays)
+		}
+		for index, message := range view.LastTurn.Messages {
+			if index >= 2 {
+				break
+			}
+			fmt.Fprintf(output, "  - %s\n", message)
+		}
+		if debug {
+			renderInfluences(output, view.LastTurn.Influence, true, "情报回响")
+		}
 	}
 
 	resourceKeys := make([]string, 0, len(view.Player.Resources))
@@ -752,9 +750,19 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 	resources := make([]string, 0, len(resourceKeys))
 	resourceLabels := playerViewResourceLabels(view)
 	for _, key := range resourceKeys {
+		if view.Player.Resources[key] == 0 {
+			continue
+		}
 		resources = append(resources, fmt.Sprintf("%s=%d", resourceLabel(resourceLabels, key), view.Player.Resources[key]))
 	}
-	fmt.Fprintf(output, "%s｜伤势 %d｜%s\n", view.Player.Name, view.Player.Injury, strings.Join(resources, "  "))
+	playerSummary := view.Player.Name
+	if view.Player.Injury > 0 {
+		playerSummary += fmt.Sprintf("｜伤势 %d", view.Player.Injury)
+	}
+	if len(resources) > 0 {
+		playerSummary += "｜" + strings.Join(resources, "  ")
+	}
+	fmt.Fprintln(output, playerSummary)
 
 	if len(view.Player.Items) > 0 {
 		items := make([]string, 0, len(view.Player.Items))
@@ -767,14 +775,7 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 		fmt.Fprintf(output, "状态：%s（第 %d 天完成）\n", view.Player.BusyAction, view.Player.BusyUntil)
 	}
 	if len(view.KnownFacts) > 0 {
-		fmt.Fprintln(output, "线索：")
-		for _, belief := range view.KnownFacts {
-			id := ""
-			if debug {
-				id = belief.FactID + " "
-			}
-			fmt.Fprintf(output, "  %s[%s] %s（来源：%s）\n", id, confidenceLabel(belief.Confidence), belief.Claim, sourceLabel(belief.Source))
-		}
+		fmt.Fprintf(output, "%s：%d 条（输入 journal 查看）\n", presentationText(view, "term_clues", "线索"), len(view.KnownFacts))
 	}
 	if len(view.KnownActors) > 0 {
 		names := make([]string, 0, len(view.KnownActors))
@@ -784,13 +785,10 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 		fmt.Fprintf(output, "同地人物：%s\n", strings.Join(names, "、"))
 	}
 	if len(view.Guidance) > 0 {
-		fmt.Fprintln(output, "当前提示：")
-		for _, guidance := range view.Guidance {
-			fmt.Fprintf(output, "  - %s\n", guidance)
-		}
+		fmt.Fprintf(output, "眼下：%s\n", view.Guidance[0])
 	}
 	if view.Travel != nil {
-		fmt.Fprintf(output, "行程判断：前往%s预计需要 %d 天。\n", view.Travel.Destination, view.Travel.TravelDays)
+		fmt.Fprintf(output, "行程：%s · %d 天。\n", view.Travel.Destination, view.Travel.TravelDays)
 		if view.Travel.Ready {
 			fmt.Fprintln(output, "  - 当前通行条件已满足。")
 		} else {
@@ -866,7 +864,20 @@ func renderActionsCategoryWithLabels(output io.Writer, actions []app.AvailableAc
 			id = " [" + action.ID + "]"
 		}
 		duration := fmt.Sprintf("%d 天", action.Duration)
-		fmt.Fprintf(output, "  %d. %s%s — %s（%s%s）\n", index+1, action.Name, id, action.Description, duration, cost)
+		fmt.Fprintf(output, "  %d. %s%s（%s%s）\n", index+1, action.Name, id, duration, cost)
+		decisionNotes := make([]string, 0, 3)
+		if len(action.ExpectedOutcomes) > 0 {
+			decisionNotes = append(decisionNotes, "预期："+strings.Join(action.ExpectedOutcomes, "、"))
+		}
+		if action.Timing != "" {
+			decisionNotes = append(decisionNotes, "时机："+action.Timing)
+		}
+		if len(action.Warnings) > 0 {
+			decisionNotes = append(decisionNotes, "注意："+strings.Join(action.Warnings, "、"))
+		}
+		if len(decisionNotes) > 0 {
+			fmt.Fprintf(output, "     %s\n", strings.Join(decisionNotes, "；"))
+		}
 	}
 	if !found {
 		fmt.Fprintln(output, "  当前没有符合条件的可执行行动。")
@@ -1053,6 +1064,13 @@ func resourceLabel(labels map[string]string, key string) string {
 		return label
 	}
 	return key
+}
+
+func presentationText(view app.PlayerView, key, fallback string) string {
+	if text := strings.TrimSpace(view.Presentation.UI[key]); text != "" {
+		return text
+	}
+	return fallback
 }
 
 func statusLabel(status string) string {

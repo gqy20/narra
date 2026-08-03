@@ -5,9 +5,9 @@ intro: 三十日内，跃迁核心的归属将被决定。你未必亲手夺取�
 start_action: 从白石补给环入局
 resources:
 - {id: integrity, label: 系统完整度, emphasis: normal}
-- {id: credits, label: 通行权限点, emphasis: accent}
-- {id: crew_support, label: 船员支持, emphasis: success, hide_zero: true}
-- {id: reputation, label: 通行权限, emphasis: normal, hide_zero: true}
+- {id: credits, label: 配给点, emphasis: accent}
+- {id: crew_support, label: 助力, emphasis: success, hide_zero: true}
+- {id: reputation, label: 声望, emphasis: normal, hide_zero: true}
 ui:
   default_player_name: 无名站员
   term_clue: 遥测记录

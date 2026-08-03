@@ -148,7 +148,7 @@
       value: L05
   - id: N01-hunt-player
     action_id: trace
-    description: 林澈确认玩家违约后开始追踪跃迁核心和玩家行踪
+    description: 林澈确认你已违约，开始追踪跃迁核心和你的行踪
     target_id: P00
     from_day: 23
     until_day: 26
@@ -293,7 +293,7 @@
       amount: 1
   - id: N02-reassess-command_deck-player
     action_id: dock
-    description: 赫克托得知玩家准备随环站指挥部行动，重新划定合作边界
+    description: 赫克托得知你准备随环站指挥部行动，重新划定合作边界
     target_id: P00
     from_day: 10
     until_day: 13
@@ -845,7 +845,7 @@
       amount: 1
   - id: N06-request-traded-eva_suit
     action_id: dock
-    description: 苏弥在补给环封锁后，请玩家把从顾岚处换走的舱外服借回队伍
+    description: 补给环封锁后，苏弥请你把从顾岚处换走的舱外服借回队伍
     target_id: P00
     from_day: 8
     until_day: 10
@@ -953,7 +953,7 @@
       value: L05
   - id: N06-transplant
     action_id: charge_drive
-    description: 苏弥与玩家合作，用磁封容器提前转移跃迁核心
+    description: 苏弥与你合作，用磁封容器提前转移跃迁核心
     target_id: jump_core
     from_day: 20
     until_day: 20
@@ -1260,8 +1260,8 @@
       confidence: 1
   - id: N09-challenge-player-source
     action_id: dock
-    description: 赵鸣借舰队审核公开质疑玩家与顾岚的数据往来
-    public_description: 公开质疑玩家与顾岚的消息来源
+    description: 赵鸣借舰队审核公开质疑你与顾岚的数据往来
+    public_description: 公开质疑你与顾岚的消息来源
     target_id: P00
     from_day: 10
     until_day: 12

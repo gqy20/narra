@@ -29,19 +29,21 @@ func (s *Session) preparationSummary(state *domain.WorldState) PreparationSummar
 		})
 	}
 
-	itemName := contest.RequiredItemID
-	if item, ok := s.bundle.Items[contest.RequiredItemID]; ok {
-		itemName = item.Name
+	if contest.RequiredItemID != "" {
+		itemName := contest.RequiredItemID
+		if item, ok := s.bundle.Items[contest.RequiredItemID]; ok {
+			itemName = item.Name
+		}
+		hasItem := state.Player.Items[contest.RequiredItemID] > 0
+		summary.Eligible = summary.Eligible && hasItem
+		itemStatus := s.uiText("preparation_item_missing")
+		if hasItem {
+			itemStatus = s.uiText("preparation_item_ready")
+		}
+		summary.Conditions = append(summary.Conditions, PreparationFactor{
+			Key: "required_item", Label: itemName, Status: itemStatus, Ready: hasItem,
+		})
 	}
-	hasItem := contest.RequiredItemID == "" || state.Player.Items[contest.RequiredItemID] > 0
-	summary.Eligible = summary.Eligible && hasItem
-	itemStatus := s.uiText("preparation_item_missing")
-	if hasItem {
-		itemStatus = s.uiText("preparation_item_ready")
-	}
-	summary.Conditions = append(summary.Conditions, PreparationFactor{
-		Key: "required_item", Label: itemName, Status: itemStatus, Ready: hasItem,
-	})
 
 	destination := s.visibleLocation(contest.LocationID).Name
 	atDestination := state.Player.Location == contest.LocationID

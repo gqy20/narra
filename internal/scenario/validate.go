@@ -851,6 +851,8 @@ func validStoryCondition(condition domain.Condition) bool {
 	switch condition.Type {
 	case domain.ConditionHasItem, domain.ConditionMissingItem, domain.ConditionFlag, domain.ConditionMissingFlag:
 		return condition.Key != ""
+	case domain.ConditionBelief:
+		return condition.Key != "" && condition.MinConfidence >= 1 && condition.MinConfidence <= 3
 	default:
 		return false
 	}

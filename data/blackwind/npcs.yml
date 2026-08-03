@@ -148,7 +148,7 @@
       value: L05
   - id: N01-hunt-player
     action_id: track
-    description: 李玄确认玩家违约后开始追踪青髓芝和玩家行踪
+    description: 李玄确认你已违约，开始追踪青髓芝和你的行踪
     target_id: P00
     from_day: 23
     until_day: 26
@@ -293,7 +293,7 @@
       amount: 1
   - id: N02-reassess-qinglan-player
     action_id: visit
-    description: 陈青山得知玩家准备随青岚门行动，重新划定合作边界
+    description: 陈青山得知你准备随青岚门行动，重新划定合作边界
     target_id: P00
     from_day: 10
     until_day: 13
@@ -845,7 +845,7 @@
       amount: 1
   - id: N06-request-traded-antidote
     action_id: visit
-    description: 苏晚照在坊市封锁后，请玩家把从沈砚秋处换走的解瘴丹借回队伍
+    description: 坊市封锁后，苏晚照请你把从沈砚秋处换走的解瘴丹借回队伍
     target_id: P00
     from_day: 8
     until_day: 10
@@ -953,7 +953,7 @@
       value: L05
   - id: N06-transplant
     action_id: prepare_breakthrough
-    description: 苏晚照与玩家合作，用玉髓匣提前移植青髓芝
+    description: 苏晚照与你合作，用玉髓匣提前移植青髓芝
     target_id: qingsuizhi
     from_day: 20
     until_day: 20
@@ -1260,8 +1260,8 @@
       confidence: 1
   - id: N09-challenge-player-source
     action_id: visit
-    description: 赵鹤鸣借宗门审核公开质疑玩家与沈砚秋的情报往来
-    public_description: 公开质疑玩家与沈砚秋的消息来源
+    description: 赵鹤鸣借宗门审核公开质疑你与沈砚秋的情报往来
+    public_description: 公开质疑你与沈砚秋的消息来源
     target_id: P00
     from_day: 10
     until_day: 12

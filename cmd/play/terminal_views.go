@@ -353,41 +353,49 @@ func mapLocationName(view app.PlayerView, id string) string {
 }
 
 func renderJournal(output io.Writer, view app.PlayerView, debug bool) {
-	fmt.Fprintln(output, "\n【行旅卷宗】")
-	fmt.Fprintf(output, "综合准备分：%d / 胜算基线 %d · %s\n", view.Preparation.TotalScore, view.Preparation.TargetScore, view.Preparation.Rating)
+	fmt.Fprintln(output, "\n【卷宗】")
+	fmt.Fprintln(output, presentationText(view, "preparation_heading", "当前准备"))
+	fmt.Fprintf(output, "综合准备：%d / 基线 %d · %s\n", view.Preparation.TotalScore, view.Preparation.TargetScore, view.Preparation.Rating)
 	if view.Preparation.RatingDetail != "" {
 		fmt.Fprintf(output, "  %s\n", view.Preparation.RatingDetail)
 	}
-	fmt.Fprintln(output, "计分来源：")
-	for _, factor := range view.Preparation.ScoreSources {
-		fmt.Fprintf(output, "  - %s：%d（%s）\n", factor.Label, factor.Value, factor.Status)
-	}
-	fmt.Fprintln(output, "参赛条件：")
-	for _, factor := range view.Preparation.Conditions {
-		mark := "未满足"
-		if factor.Ready {
-			mark = "已满足"
+	if len(view.Preparation.ScoreSources) > 0 {
+		fmt.Fprintln(output, "准备项：")
+		for _, factor := range view.Preparation.ScoreSources {
+			fmt.Fprintf(output, "  - %s：%d（%s）\n", factor.Label, factor.Value, factor.Status)
 		}
-		fmt.Fprintf(output, "  - %s：%s\n", factor.Label, mark)
+	}
+	if len(view.Preparation.Conditions) > 0 {
+		fmt.Fprintln(output, "进入条件：")
+		for _, factor := range view.Preparation.Conditions {
+			if factor.Label == "" {
+				continue
+			}
+			mark := "未满足"
+			if factor.Ready {
+				mark = "已满足"
+			}
+			fmt.Fprintf(output, "  - %s：%s\n", factor.Label, mark)
+		}
 	}
 	for _, progress := range view.RouteProgresses {
-		fmt.Fprintf(output, "个人路线：%s · %s\n", progress.Label, progress.Status)
+		fmt.Fprintf(output, "当前路线：%s · %s\n", progress.Label, progress.Status)
 		if progress.NextStep != "" {
 			fmt.Fprintf(output, "  下一步：%s\n", progress.NextStep)
 		}
 	}
 	if len(view.KnownFacts) > 0 {
-		fmt.Fprintln(output, "已知线索：")
+		fmt.Fprintf(output, "已知%s：\n", presentationText(view, "term_clues", "线索"))
 		for _, fact := range view.KnownFacts {
 			id := ""
 			if debug {
 				id = " [" + fact.FactID + "]"
 			}
-			fmt.Fprintf(output, "  - %s%s（%s）\n", fact.Claim, id, confidenceLabel(fact.Confidence))
+			fmt.Fprintf(output, "  - %s%s（%s；来源：%s）\n", fact.Claim, id, confidenceLabel(fact.Confidence), sourceLabel(fact.Source))
 		}
 	}
 	if len(view.CausalThreads) > 0 {
-		fmt.Fprintln(output, "你的影响：")
+		fmt.Fprintf(output, "%s：\n", presentationText(view, "information_causal_heading", "你的影响"))
 		for _, thread := range view.CausalThreads {
 			fmt.Fprintf(output, "  - %s：%s\n", thread.ActorName, thread.Summary)
 		}
