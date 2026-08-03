@@ -979,7 +979,6 @@
       choices:
         - id: recover:N06:antidote
           term_id: antidote_recovery
-          term_label: 情报换丹
           name: 以情报换取解瘴丹
           description: 把已核实的成熟日期交给苏晚照，换取一枚青岚门备用解瘴丹。
           command_description: 玩家以成熟日期向苏晚照换取解瘴丹
