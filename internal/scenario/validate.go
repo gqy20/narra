@@ -247,18 +247,35 @@ func validateStoryArcs(bundle domain.Bundle) error {
 		}
 		nodes := make(map[string]bool, len(arc.Nodes))
 		for _, node := range arc.Nodes {
-			if node.ID == "" || nodes[node.ID] || !states[node.FromState] || node.MinConfidence < 1 || node.MinConfidence > 3 || len(node.Choices) == 0 {
+			if node.ID == "" || nodes[node.ID] || !states[node.FromState] || node.FromDay < 0 || node.UntilDay < 0 || node.FromDay > 0 && node.UntilDay > 0 && node.FromDay > node.UntilDay || len(node.Choices) == 0 {
 				return fmt.Errorf("story arc %s has invalid node %q", arcID, node.ID)
 			}
 			nodes[node.ID] = true
 			if !npcs[node.TargetID] {
 				return fmt.Errorf("story arc %s node %s references unknown target %s", arcID, node.ID, node.TargetID)
 			}
-			if _, ok := bundle.Facts[node.FactID]; !ok {
-				return fmt.Errorf("story arc %s node %s references unknown fact %s", arcID, node.ID, node.FactID)
+			if node.LocationID != "" {
+				if _, ok := bundle.Locations[node.LocationID]; !ok {
+					return fmt.Errorf("story arc %s node %s references unknown location %s", arcID, node.ID, node.LocationID)
+				}
+			}
+			if node.FactID != "" {
+				if _, ok := bundle.Facts[node.FactID]; !ok || node.MinConfidence < 1 || node.MinConfidence > 3 {
+					return fmt.Errorf("story arc %s node %s references invalid fact %s", arcID, node.ID, node.FactID)
+				}
+			} else if node.MinConfidence != 0 {
+				return fmt.Errorf("story arc %s node %s has confidence without fact", arcID, node.ID)
 			}
 			if _, ok := bundle.Actions[node.ActionID]; !ok {
 				return fmt.Errorf("story arc %s node %s references unknown action %s", arcID, node.ID, node.ActionID)
+			}
+			for _, condition := range node.Conditions {
+				if !validStoryCondition(condition) {
+					return fmt.Errorf("story arc %s node %s has unsupported condition %s", arcID, node.ID, condition.Type)
+				}
+			}
+			if err := validateConditionsAndEffects(node.Conditions, nil, nil, bundle); err != nil {
+				return fmt.Errorf("story arc %s node %s: %w", arcID, node.ID, err)
 			}
 			choices := make(map[string]bool, len(node.Choices))
 			for _, choice := range node.Choices {

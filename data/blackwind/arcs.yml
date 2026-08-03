@@ -4,8 +4,14 @@
   states:
     - uncommitted
     - trust_committed
+    - trust_reviewed
+    - trust_betrayed
     - antidote_committed
+    - antidote_lent
+    - antidote_kept
     - escort_committed
+    - escort_approved
+    - escort_refused
   nodes:
     - id: deliver_verified_date
       from_state: uncommitted
@@ -107,6 +113,193 @@
               key: player_joining_qinglan
               value: "true"
           to_state: escort_committed
+
+    - id: answer_source_review
+      from_state: trust_committed
+      from_day: 10
+      until_day: 12
+      location_id: L02
+      target_id: N09
+      action_id: visit
+      conditions:
+        - {type: flag, key: n09_challenges_player_source}
+        - {type: missing_flag, scope: actor, key: qinglan_trust_midgame_resolved}
+      choices:
+        - id: route:trust:vouch
+          term_id: vouch
+          term_label: 公开担保
+          name: 为情报来源担保
+          description: 在宗门审核中公开承担消息责任，不让沈砚秋独自承受赵鹤鸣的质疑。
+          command_description: 玩家在宗门审核中为情报来源担保
+          personal_outcome: 信用 +1，沈砚秋信任 +1；同时坐实你与沈砚秋的共同立场。
+          relevance: 赵鹤鸣正在借宗门审核质疑这条消息的来源。
+          risk: 担保会提高你的宗门声望，也会让赵鹤鸣把你视为沈砚秋一方。
+          expected_outcomes:
+            - 信用 +1
+            - 沈砚秋信任 +1
+            - 完成信任路线的中段履约
+          warnings:
+            - 公开担保后，无法再否认自己参与了沈砚秋的计划。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: credit, amount: 1}
+            - {type: adjust_relation, from_id: N03, target_id: player, key: trust, amount: 1}
+            - {type: set_flag, target_id: player, key: qinglan_trust_vouched, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_trust_midgame_resolved, value: "true"}
+          to_state: trust_reviewed
+
+    - id: leak_plan_during_review
+      from_state: trust_committed
+      from_day: 10
+      until_day: 12
+      location_id: L02
+      target_id: N09
+      fact_id: F01
+      min_confidence: 3
+      action_id: spread
+      conditions:
+        - {type: flag, key: n09_challenges_player_source}
+        - {type: missing_flag, scope: actor, key: qinglan_trust_midgame_resolved}
+      choices:
+        - id: route:trust:leak
+          term_id: leak
+          term_label: 转交计划
+          name: 把计划转交赵鹤鸣
+          description: 否认担保，并把沈砚秋的成熟日期与备战安排交给赵鹤鸣换取报酬。
+          command_description: 玩家把沈砚秋的计划转交赵鹤鸣
+          personal_outcome: 立即获得 20 灵石，但沈砚秋信任 -4，信任路线转为背约。
+          relevance: 赵鹤鸣需要证据削弱沈砚秋在门内的地位。
+          risk: 这会把一次无偿相助变成背叛；沈砚秋会知道计划从你这里泄露。
+          expected_outcomes:
+            - 获得 20 灵石
+            - 沈砚秋信任 -4
+            - 赵鹤鸣获得已核实日期
+          warnings:
+            - 这是信任路线的背约选择。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: spirit_stones, amount: 20}
+            - {type: adjust_relation, from_id: N03, target_id: player, key: trust, amount: -4}
+            - {type: set_flag, target_id: player, key: qinglan_trust_betrayed, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_trust_midgame_resolved, value: "true"}
+          to_state: trust_betrayed
+
+    - id: answer_antidote_request
+      from_state: antidote_committed
+      from_day: 8
+      until_day: 12
+      location_id: L02
+      target_id: N06
+      action_id: visit
+      conditions:
+        - {type: has_item, key: antidote}
+        - {type: flag, key: su_requests_antidote}
+        - {type: missing_flag, scope: actor, key: qinglan_antidote_midgame_resolved}
+      choices:
+        - id: route:antidote:lend
+          term_id: lend
+          term_label: 借丹援队
+          name: 把解瘴丹借回队伍
+          description: 接受苏晚照的请求，把换来的解瘴丹交回青岚药修使用。
+          command_description: 玩家把交易所得解瘴丹借给苏晚照
+          personal_outcome: 失去解瘴丹与独行资格，换得 2 点支援和苏晚照 2 点信任。
+          relevance: 坊市已经封锁，苏晚照无法为队伍补回这枚解瘴丹。
+          risk: 交出后你的亲自入谷路线会再次关闭。
+          expected_outcomes:
+            - 支援 +2
+            - 苏晚照信任 +2
+            - 交出 1 枚解瘴丹
+          warnings:
+            - 交出后将失去当前的独自入谷条件。
+          irreversible: true
+          effects:
+            - {type: remove_item, target_id: player, key: antidote, amount: 1}
+            - {type: add_item, target_id: N06, key: antidote, amount: 1}
+            - {type: adjust_resource, target_id: player, key: support, amount: 2}
+            - {type: adjust_relation, from_id: N06, target_id: player, key: trust, amount: 2}
+            - {type: set_flag, target_id: player, key: qinglan_antidote_lent, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_antidote_midgame_resolved, value: "true"}
+          to_state: antidote_lent
+        - id: route:antidote:keep
+          term_id: keep
+          term_label: 坚持独行
+          name: 拒绝归还解瘴丹
+          description: 明确告诉苏晚照，这枚丹药是一次完成的交易，你会保留它并独自决定入谷时机。
+          command_description: 玩家拒绝把交易所得解瘴丹借回青岚队伍
+          personal_outcome: 保留解瘴丹与路线自由；苏晚照对你的怀疑 +2。
+          relevance: 苏晚照把队伍药物缺口摆到了你面前。
+          risk: 你仍可独行，但青岚药修不会把你视为可以托付物资的人。
+          expected_outcomes:
+            - 保留解瘴丹
+            - 苏晚照怀疑 +2
+            - 确认独行路线
+          warnings:
+            - 拒绝后，苏晚照不会再次提出借丹请求。
+          irreversible: true
+          effects:
+            - {type: adjust_relation, from_id: N06, target_id: player, key: suspicion, amount: 2}
+            - {type: set_flag, target_id: player, key: qinglan_antidote_kept, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_antidote_midgame_resolved, value: "true"}
+          to_state: antidote_kept
+
+    - id: answer_escort_review
+      from_state: escort_committed
+      from_day: 10
+      until_day: 13
+      location_id: L02
+      target_id: N03
+      action_id: visit
+      conditions:
+        - {type: flag, key: qinglan_review}
+        - {type: flag, scope: actor, key: qinglan_escort_promised}
+        - {type: missing_flag, scope: actor, key: qinglan_escort_midgame_resolved}
+      choices:
+        - id: route:escort:review
+          term_id: review
+          term_label: 接受审核
+          name: 接受青岚门审核
+          description: 登记情报来源与行动职责，以正式队员身份保留同行资格。
+          command_description: 玩家接受青岚门同行审核
+          personal_outcome: 信用 +1、沈砚秋信任 +1，并保留第16日随队集结资格。
+          relevance: 青岚门要求所有参与者登记情报与职责。
+          risk: 通过审核后，陈氏会把你视为青岚门行动的一员。
+          expected_outcomes:
+            - 信用 +1
+            - 沈砚秋信任 +1
+            - 保留同行资格
+          warnings:
+            - 你的阵营立场将变得公开。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: credit, amount: 1}
+            - {type: adjust_relation, from_id: N03, target_id: player, key: trust, amount: 1}
+            - {type: set_flag, target_id: player, key: qinglan_escort_approved, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_escort_midgame_resolved, value: "true"}
+          to_state: escort_approved
+        - id: route:escort:independent
+          term_id: independent
+          term_label: 保持独立
+          name: 退出青岚同行名单
+          description: 拒绝宗门审核，保留散修身份并放弃此前换得的同行名额。
+          command_description: 玩家拒绝青岚门审核并退出同行名单
+          personal_outcome: 放弃随队药与支援；沈砚秋信任 -2，陈青山不再把你视为青岚阵营。
+          relevance: 宗门审核要求你在安全与独立之间作出明确选择。
+          risk: 退出后，第16日不会再出现随队集结。
+          expected_outcomes:
+            - 取消同行承诺
+            - 沈砚秋信任 -2
+            - 恢复公开的散修身份
+          warnings:
+            - 退出后不能重新申请本次同行。
+          irreversible: true
+          effects:
+            - {type: adjust_relation, from_id: N03, target_id: player, key: trust, amount: -2}
+            - {type: adjust_relation, from_id: N02, target_id: player, key: suspicion, amount: -1}
+            - {type: set_flag, target_id: player, key: qinglan_escort_promised, value: "false"}
+            - {type: set_flag, target_id: player, key: qinglan_escort_refused, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_escort_midgame_resolved, value: "true"}
+            - {type: set_flag, target_id: world, key: player_declared_independent, value: "true"}
+          to_state: escort_refused
 
   progress_rules:
     - id: trust-operation-joined

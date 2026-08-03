@@ -2,11 +2,76 @@ package app
 
 import "fantu/internal/domain"
 
+func (s *Session) addStoryActions(options map[string]actionOption, state *domain.WorldState) {
+	for arcID, arc := range s.bundle.StoryArcs {
+		for _, node := range arc.Nodes {
+			if node.FactID != "" || state.StoryStates[arcID] != node.FromState || node.FromDay > 0 && state.Day < node.FromDay || node.UntilDay > 0 && state.Day > node.UntilDay || !storyConditionsMet(state, node.Conditions) {
+				continue
+			}
+			action, ok := s.bundle.Actions[node.ActionID]
+			if !ok || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) || node.LocationID != "" && state.Player.Location != node.LocationID {
+				continue
+			}
+			target, ok := state.NPCs[node.TargetID]
+			if !ok || !node.AllowRemoteTarget && target.Location != state.Player.Location {
+				continue
+			}
+			targetRole := "可交谈人物"
+			for _, config := range s.bundle.NPCs {
+				if config.ID == node.TargetID {
+					if config.PublicRole != "" {
+						targetRole = config.PublicRole
+					}
+					break
+				}
+			}
+			kind := node.Kind
+			if kind == "" {
+				kind = "route"
+			}
+			category := node.Category
+			if category == "" {
+				category = "information"
+			}
+			for _, choice := range node.Choices {
+				if !storyConditionsMet(state, choice.Conditions) {
+					continue
+				}
+				conditions := append([]domain.Condition(nil), node.Conditions...)
+				if node.LocationID != "" {
+					conditions = append(conditions, domain.Condition{Type: "location", Value: node.LocationID})
+				}
+				conditions = append(conditions, choice.Conditions...)
+				effects := materializeStoryEffects(choice.Effects, state.Player.ID, node.TargetID)
+				effects = append(effects, domain.Effect{Type: "set_story_state", Key: arcID, Value: choice.ToState})
+				commandDescription := choice.CommandDescription
+				if commandDescription == "" {
+					commandDescription = choice.Description
+				}
+				options[choice.ID] = actionOption{
+					view: AvailableAction{
+						ID: choice.ID, Kind: kind, Category: category, Name: choice.Name, Description: choice.Description,
+						Duration: action.Duration, TargetID: node.TargetID, TargetName: target.Name, TargetRole: targetRole,
+						TermID: choice.TermID, TermLabel: choice.TermLabel, PersonalOutcome: choice.PersonalOutcome,
+						Relevance: choice.Relevance, Risk: choice.Risk,
+						ExpectedOutcomes: append([]string(nil), choice.ExpectedOutcomes...), Resolves: append([]string(nil), choice.Resolves...),
+						Warnings: append([]string(nil), choice.Warnings...), Irreversible: choice.Irreversible,
+					},
+					command: &domain.PlayerCommand{
+						ActionID: action.ID, TargetID: node.TargetID, Description: commandDescription,
+						Conditions: conditions, Effects: effects,
+					},
+				}
+			}
+		}
+	}
+}
+
 func (s *Session) addStoryInformationActions(options map[string]actionOption, state *domain.WorldState, actor VisibleActor, belief domain.Belief, action domain.ActionDefinition) bool {
 	added := false
 	for arcID, arc := range s.bundle.StoryArcs {
 		for _, node := range arc.Nodes {
-			if state.StoryStates[arcID] != node.FromState || node.ActionID != action.ID || node.TargetID != actor.ID || node.FactID != belief.FactID || belief.Confidence < node.MinConfidence {
+			if state.StoryStates[arcID] != node.FromState || node.ActionID != action.ID || node.TargetID != actor.ID || node.FactID != belief.FactID || belief.Confidence < node.MinConfidence || node.FromDay > 0 && state.Day < node.FromDay || node.UntilDay > 0 && state.Day > node.UntilDay || node.LocationID != "" && state.Player.Location != node.LocationID || !storyConditionsMet(state, node.Conditions) {
 				continue
 			}
 			for _, choice := range node.Choices {
@@ -14,6 +79,12 @@ func (s *Session) addStoryInformationActions(options map[string]actionOption, st
 					continue
 				}
 				relevance, risk := s.publicInformationContext(actor.ID, s.bundle.Facts[node.FactID])
+				if choice.Relevance != "" {
+					relevance = choice.Relevance
+				}
+				if choice.Risk != "" {
+					risk = choice.Risk
+				}
 				effects := []domain.Effect{{
 					Type: "set_belief", TargetID: actor.ID, FactID: node.FactID, Claim: belief.Claim,
 					Confidence: belief.Confidence, EvidenceStrength: belief.EvidenceStrength,
@@ -22,18 +93,23 @@ func (s *Session) addStoryInformationActions(options map[string]actionOption, st
 				effects = append(effects, materializeStoryEffects(choice.Effects, state.Player.ID, actor.ID)...)
 				effects = append(effects, domain.Effect{Type: "set_story_state", Key: arcID, Value: choice.ToState})
 				conditions := []domain.Condition{{Type: "belief", Key: node.FactID, MinConfidence: node.MinConfidence}, {Type: "location", Value: state.Player.Location}}
+				conditions = append(conditions, node.Conditions...)
 				conditions = append(conditions, choice.Conditions...)
+				commandDescription := choice.CommandDescription
+				if commandDescription == "" {
+					commandDescription = choice.Description
+				}
 				options[choice.ID] = actionOption{
 					view: AvailableAction{
 						ID: choice.ID, Kind: "tell", Category: "information", Name: choice.Name, Description: choice.Description,
 						Duration: action.Duration, TargetID: actor.ID, TargetName: actor.Name, TargetRole: actor.PublicRole,
 						FactID: node.FactID, FactClaim: belief.Claim, TermID: choice.TermID, TermLabel: choice.TermLabel,
 						PersonalOutcome: choice.PersonalOutcome, Relevance: relevance, Risk: risk,
-						ExpectedOutcomes: append([]string(nil), choice.ExpectedOutcomes...), Warnings: append([]string(nil), choice.Warnings...),
+						ExpectedOutcomes: append([]string(nil), choice.ExpectedOutcomes...), Resolves: append([]string(nil), choice.Resolves...), Warnings: append([]string(nil), choice.Warnings...),
 						Irreversible: choice.Irreversible,
 					},
 					command: &domain.PlayerCommand{
-						ActionID: action.ID, TargetID: actor.ID, Description: choice.Description,
+						ActionID: action.ID, TargetID: actor.ID, Description: commandDescription,
 						Conditions: conditions, Effects: effects,
 					},
 				}

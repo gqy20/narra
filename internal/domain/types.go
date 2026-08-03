@@ -54,28 +54,39 @@ type StoryProgressRule struct {
 }
 
 type StoryNode struct {
-	ID            string        `json:"id"`
-	FromState     string        `json:"from_state"`
-	TargetID      string        `json:"target_id"`
-	FactID        string        `json:"fact_id"`
-	MinConfidence int           `json:"min_confidence"`
-	ActionID      string        `json:"action_id"`
-	Choices       []StoryChoice `json:"choices"`
+	ID                string        `json:"id"`
+	FromState         string        `json:"from_state"`
+	FromDay           int           `json:"from_day,omitempty"`
+	UntilDay          int           `json:"until_day,omitempty"`
+	LocationID        string        `json:"location_id,omitempty"`
+	TargetID          string        `json:"target_id"`
+	AllowRemoteTarget bool          `json:"allow_remote_target,omitempty"`
+	FactID            string        `json:"fact_id"`
+	MinConfidence     int           `json:"min_confidence"`
+	ActionID          string        `json:"action_id"`
+	Kind              string        `json:"kind,omitempty"`
+	Category          string        `json:"category,omitempty"`
+	Conditions        []Condition   `json:"conditions,omitempty"`
+	Choices           []StoryChoice `json:"choices"`
 }
 
 type StoryChoice struct {
-	ID               string      `json:"id"`
-	TermID           string      `json:"term_id"`
-	TermLabel        string      `json:"term_label"`
-	Name             string      `json:"name"`
-	Description      string      `json:"description"`
-	PersonalOutcome  string      `json:"personal_outcome"`
-	ExpectedOutcomes []string    `json:"expected_outcomes,omitempty"`
-	Warnings         []string    `json:"warnings,omitempty"`
-	Irreversible     bool        `json:"irreversible,omitempty"`
-	Conditions       []Condition `json:"conditions,omitempty"`
-	Effects          []Effect    `json:"effects"`
-	ToState          string      `json:"to_state"`
+	ID                 string      `json:"id"`
+	TermID             string      `json:"term_id"`
+	TermLabel          string      `json:"term_label"`
+	Name               string      `json:"name"`
+	Description        string      `json:"description"`
+	CommandDescription string      `json:"command_description,omitempty"`
+	PersonalOutcome    string      `json:"personal_outcome"`
+	Relevance          string      `json:"relevance,omitempty"`
+	Risk               string      `json:"risk,omitempty"`
+	ExpectedOutcomes   []string    `json:"expected_outcomes,omitempty"`
+	Resolves           []string    `json:"resolves,omitempty"`
+	Warnings           []string    `json:"warnings,omitempty"`
+	Irreversible       bool        `json:"irreversible,omitempty"`
+	Conditions         []Condition `json:"conditions,omitempty"`
+	Effects            []Effect    `json:"effects"`
+	ToState            string      `json:"to_state"`
 }
 
 // OpportunityActionDefinition maps an open world opportunity to a normal

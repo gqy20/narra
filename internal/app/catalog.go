@@ -144,8 +144,8 @@ func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOptio
 	s.addMarketActions(options, state)
 	s.addMovementActions(options, state)
 	s.addInformationActions(options, state)
+	s.addStoryActions(options, state)
 	s.addRecoveryActions(options, state)
-	s.addRouteDevelopmentActions(options, state)
 	s.addRoutePayoffActions(options, state)
 	s.addEscortFulfillmentAction(options, state)
 	options["wait:next"] = actionOption{
@@ -528,88 +528,6 @@ func (s *Session) addAntidoteRecoveryAction(options map[string]actionOption, sta
 				{Type: "add_item", Key: "antidote", Amount: 1},
 			},
 		},
-	}
-}
-
-func (s *Session) addRouteDevelopmentActions(options map[string]actionOption, state *domain.WorldState) {
-	visit, hasVisit := s.bundle.Actions["visit"]
-	spread, hasSpread := s.bundle.Actions["spread"]
-	if !hasVisit || !hasSpread || state.Player.Location != "L02" {
-		return
-	}
-	playerID := state.Player.ID
-
-	if state.Day >= 10 && state.Day <= 12 && state.WorldFlag("n09_challenges_player_source") && !state.ActorFlag(playerID, "qinglan_trust_midgame_resolved") {
-		if zhao, ok := state.NPCs["N09"]; ok && zhao.Location == "L02" {
-			common := []domain.Condition{{Type: "location", Value: "L02"}, {Type: "flag", Key: "n09_challenges_player_source"}, {Type: "missing_flag", Scope: "actor", Key: "qinglan_trust_midgame_resolved"}}
-			options["route:trust:vouch"] = actionOption{
-				view: AvailableAction{
-					ID: "route:trust:vouch", Kind: "route", Category: "information", Name: "为情报来源担保", Description: "在宗门审核中公开承担消息责任，不让沈砚秋独自承受赵鹤鸣的质疑。", Duration: visit.Duration,
-					TargetID: "N09", TargetName: zhao.Name, TargetRole: "门内竞争者", TermID: "vouch", TermLabel: "公开担保", PersonalOutcome: "信用 +1，沈砚秋信任 +1；同时坐实你与沈砚秋的共同立场。",
-					Relevance: "赵鹤鸣正在借宗门审核质疑这条消息的来源。", Risk: "担保会提高你的宗门声望，也会让赵鹤鸣把你视为沈砚秋一方。",
-					ExpectedOutcomes: []string{"信用 +1", "沈砚秋信任 +1", "完成信任路线的中段履约"}, Warnings: []string{"公开担保后，无法再否认自己参与了沈砚秋的计划。"}, Irreversible: true,
-				},
-				command: &domain.PlayerCommand{ActionID: "visit", TargetID: "N09", Description: "玩家在宗门审核中为情报来源担保", Conditions: common, Effects: []domain.Effect{{Type: "adjust_resource", TargetID: playerID, Key: "credit", Amount: 1}, {Type: "adjust_relation", FromID: "N03", TargetID: playerID, Key: "trust", Amount: 1}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_trust_vouched", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_trust_midgame_resolved", Value: "true"}}},
-			}
-			belief := state.Player.Beliefs["F01"]
-			options["route:trust:leak"] = actionOption{
-				view: AvailableAction{
-					ID: "route:trust:leak", Kind: "route", Category: "information", Name: "把计划转交赵鹤鸣", Description: "否认担保，并把沈砚秋的成熟日期与备战安排交给赵鹤鸣换取报酬。", Duration: spread.Duration,
-					TargetID: "N09", TargetName: zhao.Name, TargetRole: "门内竞争者", FactID: "F01", FactClaim: belief.Claim, TermID: "leak", TermLabel: "转交计划", PersonalOutcome: "立即获得 20 灵石，但沈砚秋信任 -4，信任路线转为背约。",
-					Relevance: "赵鹤鸣需要证据削弱沈砚秋在门内的地位。", Risk: "这会把一次无偿相助变成背叛；沈砚秋会知道计划从你这里泄露。",
-					ExpectedOutcomes: []string{"获得 20 灵石", "沈砚秋信任 -4", "赵鹤鸣获得已核实日期"}, Warnings: []string{"这是信任路线的背约选择。"}, Irreversible: true,
-				},
-				command: &domain.PlayerCommand{ActionID: "spread", TargetID: "N09", Description: "玩家把沈砚秋的计划转交赵鹤鸣", Conditions: append(common, domain.Condition{Type: "belief", Key: "F01", MinConfidence: 3}), Effects: []domain.Effect{{Type: "set_belief", TargetID: "N09", FactID: "F01", Claim: belief.Claim, Confidence: belief.Confidence, EvidenceStrength: belief.EvidenceStrength, Source: playerID, Propagation: "private", Secrecy: belief.Secrecy}, {Type: "adjust_resource", TargetID: playerID, Key: "spirit_stones", Amount: 20}, {Type: "adjust_relation", FromID: "N03", TargetID: playerID, Key: "trust", Amount: -4}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_trust_betrayed", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_trust_midgame_resolved", Value: "true"}}},
-			}
-		}
-	}
-
-	if state.Day >= 8 && state.Day <= 12 && state.WorldFlag("su_requests_antidote") && state.Player.Items["antidote"] > 0 && !state.ActorFlag(playerID, "qinglan_antidote_midgame_resolved") {
-		if su, ok := state.NPCs["N06"]; ok && su.Location == "L02" {
-			common := []domain.Condition{{Type: "location", Value: "L02"}, {Type: "has_item", Key: "antidote"}, {Type: "flag", Key: "su_requests_antidote"}, {Type: "missing_flag", Scope: "actor", Key: "qinglan_antidote_midgame_resolved"}}
-			options["route:antidote:lend"] = actionOption{
-				view: AvailableAction{
-					ID: "route:antidote:lend", Kind: "route", Category: "information", Name: "把解瘴丹借回队伍", Description: "接受苏晚照的请求，把换来的解瘴丹交回青岚药修使用。", Duration: visit.Duration,
-					TargetID: "N06", TargetName: su.Name, TargetRole: "药理与移植研究者", TermID: "lend", TermLabel: "借丹援队", PersonalOutcome: "失去解瘴丹与独行资格，换得 2 点支援和苏晚照 2 点信任。",
-					Relevance: "坊市已经封锁，苏晚照无法为队伍补回这枚解瘴丹。", Risk: "交出后你的亲自入谷路线会再次关闭。",
-					ExpectedOutcomes: []string{"支援 +2", "苏晚照信任 +2", "交出 1 枚解瘴丹"}, Warnings: []string{"交出后将失去当前的独自入谷条件。"}, Irreversible: true,
-				},
-				command: &domain.PlayerCommand{ActionID: "visit", TargetID: "N06", Description: "玩家把交易所得解瘴丹借给苏晚照", Conditions: common, Effects: []domain.Effect{{Type: "remove_item", TargetID: playerID, Key: "antidote", Amount: 1}, {Type: "add_item", TargetID: "N06", Key: "antidote", Amount: 1}, {Type: "adjust_resource", TargetID: playerID, Key: "support", Amount: 2}, {Type: "adjust_relation", FromID: "N06", TargetID: playerID, Key: "trust", Amount: 2}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_antidote_lent", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_antidote_midgame_resolved", Value: "true"}}},
-			}
-			options["route:antidote:keep"] = actionOption{
-				view: AvailableAction{
-					ID: "route:antidote:keep", Kind: "route", Category: "information", Name: "拒绝归还解瘴丹", Description: "明确告诉苏晚照，这枚丹药是一次完成的交易，你会保留它并独自决定入谷时机。", Duration: visit.Duration,
-					TargetID: "N06", TargetName: su.Name, TargetRole: "药理与移植研究者", TermID: "keep", TermLabel: "坚持独行", PersonalOutcome: "保留解瘴丹与路线自由；苏晚照对你的怀疑 +2。",
-					Relevance: "苏晚照把队伍药物缺口摆到了你面前。", Risk: "你仍可独行，但青岚药修不会把你视为可以托付物资的人。",
-					ExpectedOutcomes: []string{"保留解瘴丹", "苏晚照怀疑 +2", "确认独行路线"}, Warnings: []string{"拒绝后，苏晚照不会再次提出借丹请求。"}, Irreversible: true,
-				},
-				command: &domain.PlayerCommand{ActionID: "visit", TargetID: "N06", Description: "玩家拒绝把交易所得解瘴丹借回青岚队伍", Conditions: common, Effects: []domain.Effect{{Type: "adjust_relation", FromID: "N06", TargetID: playerID, Key: "suspicion", Amount: 2}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_antidote_kept", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_antidote_midgame_resolved", Value: "true"}}},
-			}
-		}
-	}
-
-	if state.Day >= 10 && state.Day <= 13 && state.WorldFlag("qinglan_review") && state.ActorFlag(playerID, "qinglan_escort_promised") && !state.ActorFlag(playerID, "qinglan_escort_midgame_resolved") {
-		if shen, ok := state.NPCs["N03"]; ok && shen.Location == "L02" {
-			common := []domain.Condition{{Type: "location", Value: "L02"}, {Type: "flag", Key: "qinglan_review"}, {Type: "flag", Scope: "actor", Key: "qinglan_escort_promised"}, {Type: "missing_flag", Scope: "actor", Key: "qinglan_escort_midgame_resolved"}}
-			options["route:escort:review"] = actionOption{
-				view: AvailableAction{
-					ID: "route:escort:review", Kind: "route", Category: "information", Name: "接受青岚门审核", Description: "登记情报来源与行动职责，以正式队员身份保留同行资格。", Duration: visit.Duration,
-					TargetID: "N03", TargetName: shen.Name, TargetRole: "青岚门行动负责人", TermID: "review", TermLabel: "接受审核", PersonalOutcome: "信用 +1、沈砚秋信任 +1，并保留第16日随队集结资格。",
-					Relevance: "青岚门要求所有参与者登记情报与职责。", Risk: "通过审核后，陈氏会把你视为青岚门行动的一员。",
-					ExpectedOutcomes: []string{"信用 +1", "沈砚秋信任 +1", "保留同行资格"}, Warnings: []string{"你的阵营立场将变得公开。"}, Irreversible: true,
-				},
-				command: &domain.PlayerCommand{ActionID: "visit", TargetID: "N03", Description: "玩家接受青岚门同行审核", Conditions: common, Effects: []domain.Effect{{Type: "adjust_resource", TargetID: playerID, Key: "credit", Amount: 1}, {Type: "adjust_relation", FromID: "N03", TargetID: playerID, Key: "trust", Amount: 1}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_escort_approved", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_escort_midgame_resolved", Value: "true"}}},
-			}
-			options["route:escort:independent"] = actionOption{
-				view: AvailableAction{
-					ID: "route:escort:independent", Kind: "route", Category: "information", Name: "退出青岚同行名单", Description: "拒绝宗门审核，保留散修身份并放弃此前换得的同行名额。", Duration: visit.Duration,
-					TargetID: "N03", TargetName: shen.Name, TargetRole: "青岚门行动负责人", TermID: "independent", TermLabel: "保持独立", PersonalOutcome: "放弃随队药与支援；沈砚秋信任 -2，陈青山不再把你视为青岚阵营。",
-					Relevance: "宗门审核要求你在安全与独立之间作出明确选择。", Risk: "退出后，第16日不会再出现随队集结。",
-					ExpectedOutcomes: []string{"取消同行承诺", "沈砚秋信任 -2", "恢复公开的散修身份"}, Warnings: []string{"退出后不能重新申请本次同行。"}, Irreversible: true,
-				},
-				command: &domain.PlayerCommand{ActionID: "visit", TargetID: "N03", Description: "玩家拒绝青岚门审核并退出同行名单", Conditions: common, Effects: []domain.Effect{{Type: "adjust_relation", FromID: "N03", TargetID: playerID, Key: "trust", Amount: -2}, {Type: "adjust_relation", FromID: "N02", TargetID: playerID, Key: "suspicion", Amount: -1}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_escort_promised", Value: "false"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_escort_refused", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_escort_midgame_resolved", Value: "true"}, {Type: "set_flag", TargetID: "world", Key: "player_declared_independent", Value: "true"}}},
-			}
-		}
 	}
 }
 
