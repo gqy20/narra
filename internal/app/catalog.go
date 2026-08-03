@@ -18,7 +18,9 @@ func (s *Session) actionCatalog(state *domain.WorldState) []AvailableAction {
 	options := s.actionOptions(state)
 	result := make([]AvailableAction, 0, len(options))
 	for _, option := range options {
-		result = append(result, s.withDecisionContext(state, option.view))
+		action := s.withDecisionContext(state, option.view)
+		action = s.withExposureContext(state, action, option.command)
+		result = append(result, action)
 	}
 	sort.Slice(result, func(i, j int) bool {
 		left, right := categoryOrder(result[i].Category), categoryOrder(result[j].Category)
@@ -28,6 +30,52 @@ func (s *Session) actionCatalog(state *domain.WorldState) []AvailableAction {
 		return result[i].ID < result[j].ID
 	})
 	return result
+}
+
+func (s *Session) withExposureContext(state *domain.WorldState, action AvailableAction, command *domain.PlayerCommand) AvailableAction {
+	if command == nil || state.Player == nil {
+		return action
+	}
+	delta := 0
+	for _, effect := range command.Effects {
+		if effect.Type == "adjust_resource" && effect.Key == "exposure" && (effect.TargetID == "" || effect.TargetID == state.Player.ID) {
+			delta += effect.Amount
+		}
+	}
+	if delta == 0 {
+		return action
+	}
+	current := state.Player.Resources["exposure"]
+	after := current + delta
+	if after < 0 {
+		after = 0
+	}
+	if delta < 0 {
+		if state.WorldFlag("exposure_watched") || state.WorldFlag("source_inquiry_open") || state.WorldFlag("exposure_compromised") {
+			action.Warnings = append(action.Warnings, fmt.Sprintf("暴露：%d → %d；降低当前热度不会清除已经形成的跟踪、盘问或经手记录。", current, after))
+		}
+		return action
+	}
+	type threshold struct {
+		value int
+		flag  string
+		label string
+	}
+	thresholds := []threshold{
+		{value: 2, flag: "exposure_watched", label: "行踪跟踪"},
+		{value: 4, flag: "source_inquiry_open", label: "来源盘问"},
+		{value: 6, flag: "exposure_compromised", label: "身份暴露与署名刊载阻断"},
+	}
+	triggered := make([]string, 0, len(thresholds))
+	for _, candidate := range thresholds {
+		if current < candidate.value && after >= candidate.value && !state.WorldFlag(candidate.flag) {
+			triggered = append(triggered, candidate.label)
+		}
+	}
+	if len(triggered) > 0 {
+		action.Warnings = append(action.Warnings, fmt.Sprintf("暴露：%d → %d；行动完成后将触发：%s。", current, after, strings.Join(triggered, "、")))
+	}
+	return action
 }
 
 func (s *Session) withDecisionContext(state *domain.WorldState, action AvailableAction) AvailableAction {

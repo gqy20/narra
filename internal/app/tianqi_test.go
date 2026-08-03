@@ -8,12 +8,18 @@ import (
 )
 
 func loadTianqiSession(t *testing.T) *Session {
+	return loadTianqiSessionWithExposure(t, 0)
+}
+
+func loadTianqiSessionWithExposure(t *testing.T, exposure int) *Session {
 	t.Helper()
 	bundle, err := scenario.Load("../../data/tianqi")
 	if err != nil {
 		t.Fatalf("load tianqi scenario: %v", err)
 	}
-	session, err := NewSession(bundle, DefaultPlayer(bundle, "无名抄手"))
+	player := DefaultPlayer(bundle, "无名抄手")
+	player.Resources["exposure"] = exposure
+	session, err := NewSession(bundle, player)
 	if err != nil {
 		t.Fatalf("new tianqi session: %v", err)
 	}
@@ -117,6 +123,43 @@ func TestTianqiWitnessProtectionChangesRegisterChoices(t *testing.T) {
 	}
 	if view.Player.Resources["evidence"] != 4 || view.Player.Resources["allies"] != 4 || view.Player.Resources["exposure"] != 0 {
 		t.Fatalf("protected register resources = %+v", view.Player.Resources)
+	}
+}
+
+func TestTianqiShowsConcurrentRouteDeadlines(t *testing.T) {
+	session := loadTianqiSession(t)
+	if _, err := session.Execute("move:L02"); err != nil {
+		t.Fatalf("move to apothecary: %v", err)
+	}
+	if _, err := session.Execute("wait:next"); err != nil {
+		t.Fatalf("advance to concurrent route window: %v", err)
+	}
+	view := session.View()
+	progressByID := make(map[string]RouteProgress, len(view.RouteProgresses))
+	for _, progress := range view.RouteProgresses {
+		progressByID[progress.ID] = progress
+	}
+	for _, routeID := range []string{"e01", "e07", "e08"} {
+		if _, ok := progressByID[routeID]; !ok {
+			t.Fatalf("concurrent route %s missing: %+v", routeID, view.RouteProgresses)
+		}
+	}
+	if view.RouteProgress == nil || view.RouteProgress.ID != view.RouteProgresses[0].ID {
+		t.Fatalf("legacy route progress does not mirror first concurrent route: legacy=%+v all=%+v", view.RouteProgress, view.RouteProgresses)
+	}
+}
+
+func TestTianqiActionWarnsBeforeCrossingExposureThreshold(t *testing.T) {
+	session := loadTianqiSessionWithExposure(t, 1)
+	if _, err := session.Execute("move:L02"); err != nil {
+		t.Fatalf("move to apothecary: %v", err)
+	}
+	if _, err := session.Execute("wait:next"); err != nil {
+		t.Fatalf("advance to register window: %v", err)
+	}
+	action := actionWithID(session.View().AvailableActions, "route:e08:publish")
+	if action == nil || !containsMessage(action.Warnings, "暴露：1 → 3") || !containsMessage(action.Warnings, "行踪跟踪") {
+		t.Fatalf("exposure threshold warning = %+v", action)
 	}
 }
 
@@ -251,5 +294,76 @@ func TestTianqiE01FormatCheckUnlocksOfficialForgeryExposure(t *testing.T) {
 	}
 	if !session.engine.State().WorldFlag("forged_ledger_exposed") {
 		t.Fatal("official forgery exposure did not set world consequence")
+	}
+}
+
+func TestTianqiExposurePressureOpensWitnessResponse(t *testing.T) {
+	lowSession := loadTianqiSessionWithExposure(t, 2)
+	for lowSession.View().Day < 2 && !lowSession.engine.State().WorldFlag("exposure_watched") {
+		if _, err := lowSession.Execute("wait:next"); err != nil {
+			t.Fatalf("trigger exposure watch: %v", err)
+		}
+	}
+	state := lowSession.engine.State()
+	if !state.WorldFlag("exposure_watched") || state.WorldFlag("source_inquiry_open") {
+		t.Fatalf("low exposure flags = %v", state.WorldFlags)
+	}
+
+	session := loadTianqiSessionWithExposure(t, 4)
+	for session.View().Day < 3 && !session.engine.State().WorldFlag("source_inquiry_open") {
+		if _, err := session.Execute("wait:next"); err != nil {
+			t.Fatalf("trigger source inquiry: %v", err)
+		}
+	}
+	state = session.engine.State()
+	if !state.WorldFlag("source_inquiry_open") || state.Opportunities["answer_source_inquiry"] == "" || state.Opportunities["relocate_witness"] == "" {
+		t.Fatalf("medium exposure state: flags=%v opportunities=%v", state.WorldFlags, state.Opportunities)
+	}
+	if _, err := session.Execute("move:L02"); err != nil {
+		t.Fatalf("move to witness relocation: %v", err)
+	}
+	if actionWithID(session.View().AvailableActions, "opportunity:relocate-witness") == nil {
+		t.Fatalf("witness relocation unavailable: %v", actionIDs(session.View().AvailableActions))
+	}
+	view, err := session.Execute("opportunity:relocate-witness")
+	if err != nil {
+		t.Fatalf("relocate witness: %v", err)
+	}
+	state = session.engine.State()
+	if !state.WorldFlag("witness_relocated") || !state.WorldFlag("witness_protected") || state.NPCs["N03"].Location != "L07" || state.StoryStates["witness_route"] != "protected" || state.Opportunities["answer_source_inquiry"] != "" || state.Opportunities["relocate_witness"] != "" {
+		t.Fatalf("witness response did not resolve both opportunities: flags=%v opportunities=%v", state.WorldFlags, state.Opportunities)
+	}
+	if view.Player.Resources["allies"] != 0 || view.Player.Resources["exposure"] != 3 {
+		t.Fatalf("witness relocation resources = %+v", view.Player.Resources)
+	}
+}
+
+func TestTianqiHighExposureBlocksFormalPublication(t *testing.T) {
+	session := loadTianqiSessionWithExposure(t, 6)
+	if _, err := session.Execute("move:L04"); err != nil {
+		t.Fatalf("move to news shop: %v", err)
+	}
+	for session.View().Day < 9 || !session.engine.State().WorldFlag("publication_blocked") {
+		if _, err := session.Execute("wait:next"); err != nil {
+			t.Fatalf("advance to high exposure publication window: %v", err)
+		}
+	}
+	actions := session.View().AvailableActions
+	if actionWithID(actions, "route:record:bounded") != nil || actionWithID(actions, "route:record:accusatory") != nil {
+		t.Fatalf("formal publication remained available under high exposure: %v", actionIDs(actions))
+	}
+	if actionWithID(actions, "route:record:private") == nil || actionWithID(actions, "route:record:anonymous") == nil {
+		t.Fatalf("high exposure alternatives unavailable: %v", actionIDs(actions))
+	}
+	view, err := session.Execute("route:record:anonymous")
+	if err != nil {
+		t.Fatalf("circulate anonymous fragments: %v", err)
+	}
+	state := session.engine.State()
+	if !state.WorldFlag("anonymous_record_circulating") || !state.ActorFlag(state.Player.ID, "player_anonymous_record") || state.StoryStates["final_record"] != "anonymous_circulation" {
+		t.Fatalf("anonymous publication state: world=%v actor=%v story=%v", state.WorldFlags, state.ActorFlags[state.Player.ID], state.StoryStates)
+	}
+	if view.Player.Resources["exposure"] != 5 || view.Player.Resources["allies"] != 1 || view.Player.Resources["authority"] != 1 {
+		t.Fatalf("anonymous publication resources = %+v", view.Player.Resources)
 	}
 }

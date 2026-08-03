@@ -27,6 +27,7 @@ type PlayerView struct {
 	Travel           *TravelGuidance             `json:"travel,omitempty"`
 	Preparation      PreparationSummary          `json:"preparation"`
 	RouteProgress    *RouteProgress              `json:"route_progress,omitempty"`
+	RouteProgresses  []RouteProgress             `json:"route_progresses,omitempty"`
 }
 
 type TurnFeedback struct {

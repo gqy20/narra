@@ -263,6 +263,8 @@
       - {type: adjust_relation, from_id: target, target_id: player, key: suspicion, amount: 1}
       to_state: officialized
       feedback: {messages: [刘六安进入正式询问流程，他的证词开始被整理成官样文本。], journal: [选择E07立即入档，换取行政效力并承担证词污染风险。], presentation: {kind: danger, intensity: 2, subject: target}}
+  progress_rules:
+  - {id: witness-window, priority: 105, from_day: 2, until_day: 6, conditions: [{type: missing_flag, key: witness_protected}, {type: missing_flag, key: witness_pressured}], route_id: e07, label: 刘六安证词, status: 第一版口述尚未获得独立保全, next_step: 第6日前前往春和药铺决定匿名保全或立即入档, window: 第2日至第6日, deadline_day: 6, location_id: L02, personal_return: 决定证词版本与证人安全谁优先, urgent: true}
   consequence_rules:
   - {id: witness-unresolved-result, states: [unresolved], text: 玩家没有介入E07；刘六安在压力下改口，官署只保留更适合失慎归责的版本。}
   - {id: witness-protected-result, states: [protected], text: 刘六安第一版证词与后续口供并存，官署无法把改口当作唯一版本。}
@@ -370,6 +372,8 @@
       - {type: adjust_resource, target_id: player, key: allies, amount: 1}
       to_state: published
       feedback: {messages: [匿名分级名册进入书坊；姓名被保存，住址和互证者仍留在受保护对应表中。], journal: [利用证词保护网络公开E08匿名版。], presentation: {kind: reveal, intensity: 2, subject: target}}
+  progress_rules:
+  - {id: register-window, priority: 95, from_day: 2, until_day: 8, conditions: [{type: missing_flag, key: register_verified}, {type: missing_flag, key: register_published}], route_id: e08, label: 灾民自建名册, status: 叶春娘仍在整理官册外姓名, next_step: 第8日前前往春和药铺决定分级核名或民间刊存, window: 第2日至第8日, deadline_day: 8, location_id: L02, personal_return: 影响无籍者优恤与姓名保存方式, urgent: true}
   consequence_rules:
   - {id: register-unresolved-result, states: [collecting], text: 玩家没有帮助E08进入行政或传播渠道；官册封存后，大量官册外姓名只留在叶春娘手中的民间记录。}
   - {id: register-verified-result, states: [verified], text: 一部分无籍者凭分级互证进入官册，E08同时保留未能核实者。}
@@ -540,7 +544,7 @@
 - id: final_record
   title: 编成你的邸抄
   initial_state: unwritten
-  states: [unwritten, bounded_publication, accusatory_publication, private_preservation]
+  states: [unwritten, bounded_publication, accusatory_publication, private_preservation, anonymous_circulation]
   nodes:
   - id: choose_final_record
     from_state: unwritten
@@ -564,6 +568,8 @@
       expected_outcomes: [形成分级公开文本, 会勘保留成因未决, 获得额外定稿筹备]
       warnings: [严格标注会牺牲部分传播冲击力。]
       irreversible: true
+      conditions:
+      - {type: missing_flag, key: publication_blocked}
       effects:
       - {type: set_flag, scope: world, target_id: world, key: bounded_record_public, value: "true"}
       - {type: set_flag, scope: world, target_id: world, key: systemic_caveat, value: "true"}
@@ -586,6 +592,8 @@
       expected_outcomes: [迅速扩大政治影响, 罗三槐敌意上升, 文本可信度承受高风险]
       warnings: [你正在把多项有限证据拼成尚未被证明的完整因果。]
       irreversible: true
+      conditions:
+      - {type: missing_flag, key: publication_blocked}
       effects:
       - {type: set_flag, scope: world, target_id: world, key: accusatory_record_public, value: "true"}
       - {type: set_flag, target_id: player, key: player_accusatory_record, value: "true"}
@@ -613,10 +621,46 @@
       - {type: adjust_resource, target_id: player, key: evidence, amount: 2}
       to_state: private_preservation
       feedback: {messages: [材料被编成可复核的私档；它暂时没有进入官署、奏疏或抄报。], journal: [选择保存而非立即公开，保留未来追查能力。], presentation: {kind: acquire, intensity: 2, subject: player}}
+    - id: route:record:anonymous
+      term_id: anonymous_fragments
+      term_label: 匿名拆分
+      name: 把分级文本拆成匿名短抄
+      description: 公开署名刊载受阻后，把事实、证词和未决边界分开交给数条小型抄写网络，避免任何单一递送者掌握完整来源。
+      command_description: 玩家在刊载受阻后匿名拆分并传递分级文本
+      personal_outcome: 证据+1、暴露-1，不增加权势；部分内容得以流传，但无法形成一份公开完整文本。
+      relevance: 匿名拆分能够保存证据边界，却削弱文本的统一影响和来源可核性。
+      risk: 分段文本可能在后续转抄中失去彼此之间的限定关系。
+      expected_outcomes: [匿名短抄小范围流传, 完整来源链不由单一递送者掌握, 公开影响低于正式刊载]
+      warnings: [拆分传播不是完整公开，也不能自动解除对证人的追查。]
+      irreversible: true
+      conditions:
+      - {type: flag, key: publication_blocked}
+      effects:
+      - {type: set_flag, scope: world, target_id: world, key: anonymous_record_circulating, value: "true"}
+      - {type: set_flag, target_id: player, key: player_anonymous_record, value: "true"}
+      - {type: adjust_resource, target_id: player, key: evidence, amount: 1}
+      - {type: adjust_resource, target_id: player, key: exposure, amount: -1}
+      to_state: anonymous_circulation
+      feedback: {messages: [完整刊载被阻断，你把证据等级和未决边界拆入数条匿名短抄；内容仍在流动，却不再拥有统一署名。], journal: [高暴露下放弃正式刊载，改用匿名拆分传播。], presentation: {kind: danger, intensity: 2, subject: player}}
   progress_rules:
-  - {id: record-window, priority: 120, from_day: 9, until_day: 12, conditions: [{type: missing_flag, scope: actor, key: player_bounded_record}, {type: missing_flag, scope: actor, key: player_accusatory_record}, {type: missing_flag, scope: actor, key: player_private_record}], route_id: final_record, label: 编成邸抄, status: 余墨林正在等待你的终稿原则, next_step: 第12日前前往墨林书坊选择分级公开、强化归责或私档保全, window: 第9日至第12日, deadline_day: 12, location_id: L04, personal_return: 决定你留下的是哪一种记录, urgent: true}
+  - {id: record-window, priority: 120, from_day: 9, until_day: 12, conditions: [{type: missing_flag, scope: actor, key: player_bounded_record}, {type: missing_flag, scope: actor, key: player_accusatory_record}, {type: missing_flag, scope: actor, key: player_private_record}, {type: missing_flag, scope: actor, key: player_anonymous_record}], route_id: final_record, label: 编成邸抄, status: 余墨林正在等待你的终稿原则, next_step: 第12日前前往墨林书坊选择公开、私档或受阻后的匿名传播, window: 第9日至第12日, deadline_day: 12, location_id: L04, personal_return: 决定你留下的是哪一种记录, urgent: true}
   consequence_rules:
   - {id: record-unwritten-result, states: [unwritten], text: 玩家没有编成自己的文本；所见材料只通过交付对象的语言进入后世记录。}
   - {id: record-bounded-result, states: [bounded_publication], text: 玩家留下分级公开的邸抄：它拒绝给出伪造的唯一真相，却保存了证据边界和多种记录。}
   - {id: record-accusatory-result, states: [accusatory_publication], text: 玩家留下强烈的归责文本：它推动政治追查，也把若干尚未证明的连接写成事实。}
   - {id: record-private-result, states: [private_preservation], text: 玩家选择私档保全：当前影响有限，但原件目录、抄件差异和证词时间线仍可供未来复核。}
+  - {id: record-anonymous-result, states: [anonymous_circulation], text: 玩家在公开渠道受阻后把分级文本拆成匿名短抄；部分内容得以保存，完整文本的统一影响和可核来源同时减弱。}
+
+- id: exposure_pressure
+  title: 暴露压力
+  initial_state: active
+  states: [active]
+  nodes: []
+  progress_rules:
+  - {id: exposure-response, priority: 125, from_day: 3, until_day: 13, conditions: [{type: flag, key: source_inquiry_open}, {type: missing_flag, key: witness_relocated}, {type: missing_flag, key: source_accounted}], route_id: exposure, label: 来源压力, status: 官署正在追问材料来源，证人住处也可能被顺藤摸瓜, next_step: 前往公署提交有限说明，或去春和药铺转移证人, window: 压力已经生效, deadline_day: 13, personal_return: 降低即时暴露并决定由证据还是盟援承担代价, urgent: true}
+  consequence_rules:
+  - {id: exposure-watched-result, states: [active], conditions: [{type: flag, key: exposure_watched}, {type: missing_flag, key: source_inquiry_open}], text: 玩家多次经手并公开材料，往返路线和接触对象开始被不明人员记录。}
+  - {id: exposure-inquiry-result, states: [active], conditions: [{type: flag, key: source_inquiry_open}, {type: missing_flag, key: exposure_compromised}], text: 会勘官署要求玩家说明来源；玩家必须在有限说明与转移证人之间分配时间和人情。}
+  - {id: exposure-compromised-result, states: [active], conditions: [{type: flag, key: exposure_compromised}], text: 玩家身份与主要来源已被多方掌握，公开署名刊载遭到阻断，完整文本只能转入私档或匿名拆分渠道。}
+  - {id: witness-relocated-result, states: [active], conditions: [{type: flag, key: witness_relocated}], text: 玩家消耗盟援秘密转移了一名关键证人，降低即时暴露，却没有回答官署对来源的疑问。}
+  - {id: source-accounted-result, states: [active], conditions: [{type: flag, key: source_accounted}], text: 玩家以一点证据资源换取官署接受有限来源说明，降低即时暴露但留下正式经手记录。}

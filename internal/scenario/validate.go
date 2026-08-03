@@ -640,6 +640,10 @@ func validateWorldDirectives(bundle domain.Bundle) error {
 			if _, ok := bundle.Locations[directive.TargetID]; !ok || directive.MinValue <= 0 {
 				return fmt.Errorf("world directive %s requires a valid location and positive min_value", directive.ID)
 			}
+		case "player_resource_at_least":
+			if _, ok := bundle.DefaultPlayer.Resources[directive.Key]; !ok || directive.MinValue <= 0 {
+				return fmt.Errorf("world directive %s requires a valid player resource and positive min_value", directive.ID)
+			}
 		default:
 			return fmt.Errorf("world directive %s has unknown trigger %q", directive.ID, directive.Trigger)
 		}

@@ -137,32 +137,53 @@ func (s *Session) addStoryInformationActions(options map[string]actionOption, st
 }
 
 func (s *Session) storyRouteProgress(state *domain.WorldState) *RouteProgress {
-	var selected *domain.StoryProgressRule
-	selectedArcID := ""
+	progresses := s.storyRouteProgresses(state)
+	if len(progresses) == 0 {
+		return nil
+	}
+	selected := progresses[0]
+	return &selected
+}
+
+func (s *Session) storyRouteProgresses(state *domain.WorldState) []RouteProgress {
+	type candidate struct {
+		arcID string
+		rule  domain.StoryProgressRule
+	}
+	candidates := make([]candidate, 0)
 	for arcID, arc := range s.bundle.StoryArcs {
-		for index := range arc.ProgressRules {
-			rule := &arc.ProgressRules[index]
+		for _, rule := range arc.ProgressRules {
 			if rule.FromDay > 0 && state.Day < rule.FromDay || rule.UntilDay > 0 && state.Day > rule.UntilDay || !storyConditionsMet(state, rule.Conditions) {
 				continue
 			}
-			if selected == nil || rule.Priority > selected.Priority || rule.Priority == selected.Priority && (arcID < selectedArcID || arcID == selectedArcID && rule.ID < selected.ID) {
-				selected = rule
-				selectedArcID = arcID
-			}
+			candidates = append(candidates, candidate{arcID: arcID, rule: rule})
 		}
 	}
-	if selected == nil {
-		return nil
+	sort.SliceStable(candidates, func(i, j int) bool {
+		if candidates[i].rule.Priority != candidates[j].rule.Priority {
+			return candidates[i].rule.Priority > candidates[j].rule.Priority
+		}
+		if candidates[i].rule.DeadlineDay != candidates[j].rule.DeadlineDay {
+			return candidates[i].rule.DeadlineDay < candidates[j].rule.DeadlineDay
+		}
+		if candidates[i].arcID != candidates[j].arcID {
+			return candidates[i].arcID < candidates[j].arcID
+		}
+		return candidates[i].rule.ID < candidates[j].rule.ID
+	})
+	result := make([]RouteProgress, 0, len(candidates))
+	for _, candidate := range candidates {
+		location := ""
+		if candidate.rule.LocationID != "" {
+			location = s.visibleLocation(candidate.rule.LocationID).Name
+		}
+		result = append(result, RouteProgress{
+			ID: candidate.rule.RouteID, Label: candidate.rule.Label, Status: candidate.rule.Status, NextStep: candidate.rule.NextStep,
+			Window: candidate.rule.Window, DeadlineDay: candidate.rule.DeadlineDay, Location: location,
+			PersonalReturn: candidate.rule.PersonalReturn, Urgent: candidate.rule.Urgent, Complete: candidate.rule.Complete,
+		})
 	}
-	location := ""
-	if selected.LocationID != "" {
-		location = s.visibleLocation(selected.LocationID).Name
-	}
-	return &RouteProgress{
-		ID: selected.RouteID, Label: selected.Label, Status: selected.Status, NextStep: selected.NextStep,
-		Window: selected.Window, DeadlineDay: selected.DeadlineDay, Location: location,
-		PersonalReturn: selected.PersonalReturn, Urgent: selected.Urgent, Complete: selected.Complete,
-	}
+	return result
 }
 
 func (s *Session) storyConsequences(state *domain.WorldState) []string {

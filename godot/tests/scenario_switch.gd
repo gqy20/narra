@@ -47,8 +47,8 @@ func _run() -> void:
 	var map_text := _descendant_text(app.map_detail_box)
 	if "第十四日前，决定哪些材料进入会勘定稿" not in map_text:
 		return _fail("scenario objective was not applied to the world map")
-	if app.world_map_view.locations.size() != 6:
-		return _fail("tianqi world map did not render all six locations")
+	if app.world_map_view.locations.size() != 7:
+		return _fail("tianqi world map did not render all seven locations")
 
 	var actions: Array = app.current_view.get("available_actions", [])
 	if actions.is_empty():

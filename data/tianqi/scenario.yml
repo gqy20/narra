@@ -6,8 +6,78 @@ disable_generic_investigation: true
 disable_generic_contest_navigation: true
 topics: [inquiry, ledger, supply, witness, survivors, register, relief, politics, press, rumor, cause, evidence, forgery, draft, transport]
 markets: []
-directives: []
-opportunity_actions: []
+directives:
+- id: exposure-watched
+  description: 多次公开经手材料后，有人开始记录玩家的往返路线与接触对象
+  trigger: player_resource_at_least
+  key: exposure
+  from_day: 2
+  until_day: 13
+  min_value: 2
+  priority: 80
+  max_uses: 1
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: exposure_watched, value: "true"}
+- id: exposure-investigated
+  description: 玩家暴露继续上升，会勘官署要求说明材料来源，并迫使证人考虑转移
+  trigger: player_resource_at_least
+  key: exposure
+  from_day: 3
+  until_day: 13
+  min_value: 4
+  priority: 100
+  max_uses: 1
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: exposure_watched, value: "true"}
+  - {type: set_flag, scope: world, target_id: world, key: source_inquiry_open, value: "true"}
+  - {type: open_opportunity, target_id: world, key: answer_source_inquiry, value: 会勘公署正在等待一份有限来源说明}
+  - {type: open_opportunity, target_id: world, key: relocate_witness, value: 叶春娘可以协助秘密转移一名关键证人}
+- id: exposure-compromised
+  description: 玩家身份与主要来源已经暴露，公开署名文本的刊载和递送渠道受到阻断
+  trigger: player_resource_at_least
+  key: exposure
+  from_day: 5
+  until_day: 13
+  min_value: 6
+  priority: 120
+  max_uses: 1
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: exposure_watched, value: "true"}
+  - {type: set_flag, scope: world, target_id: world, key: source_inquiry_open, value: "true"}
+  - {type: set_flag, scope: world, target_id: world, key: exposure_compromised, value: "true"}
+  - {type: set_flag, scope: world, target_id: world, key: publication_blocked, value: "true"}
+  - {type: open_opportunity, target_id: world, key: answer_source_inquiry, value: 会勘公署正在等待一份有限来源说明}
+  - {type: open_opportunity, target_id: world, key: relocate_witness, value: 叶春娘可以协助秘密转移一名关键证人}
+opportunity_actions:
+- id: opportunity:answer-source-inquiry
+  key: answer_source_inquiry
+  action_id: visit
+  name: 向会勘公署提交有限来源说明
+  description: 只说明材料形成时间和保管链，不交出匿名证人与完整互证者名单；消耗一点证据资源，降低一点暴露
+  location_id: L03
+  duration: 1
+  costs: {evidence: 1}
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: source_accounted, value: "true"}
+  - {type: adjust_resource, key: exposure, amount: -1}
+  - {type: close_opportunity, target_id: world, key: answer_source_inquiry}
+  - {type: close_opportunity, target_id: world, key: relocate_witness}
+- id: opportunity:relocate-witness
+  key: relocate_witness
+  action_id: visit
+  name: 请叶春娘把刘六安转往城南寄寓
+  description: 动用一层盟援更换刘六安的住处和联络人，使地图位置真实改变并降低一点暴露，但不回答官署对来源的疑问
+  location_id: L02
+  duration: 1
+  costs: {allies: 1}
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: witness_relocated, value: "true"}
+  - {type: set_flag, scope: world, target_id: world, key: witness_protected, value: "true"}
+  - {type: set_story_state, key: witness_route, value: protected}
+  - {type: move, target_id: N03, value: L07}
+  - {type: adjust_resource, key: exposure, amount: -1}
+  - {type: close_opportunity, target_id: world, key: answer_source_inquiry}
+  - {type: close_opportunity, target_id: world, key: relocate_witness}
 phases:
 - {id: disaster, name: 灾变与救援, from_day: 1, to_day: 2}
 - {id: collection, name: 封锁与收拢, from_day: 3, to_day: 5}

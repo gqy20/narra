@@ -772,7 +772,7 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 		contest_line.add_theme_color_override("font_color", host.COLORS.accent)
 	host.game_screen_controller._render_map_actor_plans(host.map_detail_box, world_map.get("actors", []), host.selected_map_location_id)
 	if bool(selected.get("current", false)):
-		host.journal_panel_controller._render_route_progress(host.map_detail_box, host.current_view.get("route_progress", null), true)
+		host.journal_panel_controller._render_route_progresses(host.map_detail_box, host.current_view.get("route_progresses", []), host.current_view.get("route_progress", null), true)
 		var hint = host.game_screen_controller._text(host.map_detail_box, "沙盘上的金色道路当前可以通行。", true, 12)
 		hint.add_theme_color_override("font_color", host.COLORS.muted)
 		var enter_button = host.game_screen_controller._utility_button("回到眼前", host.game_screen_controller._set_visual_mode.bind("location"))

@@ -10,6 +10,10 @@ func (s *Session) routeProgress(state *domain.WorldState) *RouteProgress {
 	return s.storyRouteProgress(state)
 }
 
+func (s *Session) routeProgresses(state *domain.WorldState) []RouteProgress {
+	return s.storyRouteProgresses(state)
+}
+
 func routeProgressWarning(progress *RouteProgress, day int) string {
 	if progress == nil || progress.Complete || !progress.Urgent {
 		return ""

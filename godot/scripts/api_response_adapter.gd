@@ -28,7 +28,7 @@ func decode(response_code: int, body: PackedByteArray) -> Dictionary:
 
 func _normalize_view(source: Dictionary) -> Dictionary:
 	var view := source.duplicate(true)
-	for key in ["known_actors", "known_facts", "recent_events", "causal_threads", "available_actions", "guidance"]:
+	for key in ["known_actors", "known_facts", "recent_events", "causal_threads", "available_actions", "guidance", "route_progresses"]:
 		if not view.has(key) or not view.get(key) is Array:
 			view[key] = []
 	for key in ["player", "location", "world_map", "metrics", "preparation", "presentation"]:

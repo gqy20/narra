@@ -75,7 +75,7 @@ func _render_actions(actions: Array) -> void:
 	if eligible.is_empty():
 		host.game_screen_controller._text(host.overview_actions_box, "想赶路就翻开地图；想传话就先选中一个人。", true, 14)
 		return
-	host.journal_panel_controller._render_route_progress(host.overview_actions_box, host.current_view.get("route_progress", null), true)
+	host.journal_panel_controller._render_route_progresses(host.overview_actions_box, host.current_view.get("route_progresses", []), host.current_view.get("route_progress", null), true)
 	host.action_panel_controller._render_first_day_route_compass(eligible, host.overview_actions_box)
 	var visible_count = eligible.size() if host.show_all_actions else mini(3, eligible.size())
 	for index in visible_count:

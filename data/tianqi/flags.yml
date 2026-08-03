@@ -23,6 +23,13 @@
 - {id: e10_copy_preserved, scope: world, description: 周良辅自陈存在一份独立封存抄件}
 - {id: bounded_record_public, scope: world, description: 玩家推动一份保留证据等级的公开记录}
 - {id: accusatory_record_public, scope: world, description: 玩家推动一份强化归责的公开记录}
+- {id: exposure_watched, scope: world, description: 玩家经手材料过多，已有不明人员跟随其行踪, public_label: 有人正在追查你的行动路线}
+- {id: source_inquiry_open, scope: world, description: 官署开始要求玩家说明材料来源, public_label: 官署要求说明消息与文书来源}
+- {id: exposure_compromised, scope: world, description: 玩家身份与主要材料来源已被多方掌握, public_label: 你的身份和主要来源已经暴露}
+- {id: publication_blocked, scope: world, description: 书坊与递送渠道拒绝公开署名刊载玩家文本, public_label: 公开刊载渠道受到阻断}
+- {id: witness_relocated, scope: world, description: 玩家以盟援代价把关键证人转移到新的安全地点, public_label: 一名关键证人已经秘密转移}
+- {id: source_accounted, scope: world, description: 玩家向会勘官署提交了有限来源说明, public_label: 官署接受了一份有限来源说明}
+- {id: anonymous_record_circulating, scope: world, description: 完整刊载受阻后，匿名分段文本仍在小范围流传}
 - {id: player_kept_original, scope: actor, description: 玩家选择保管交割残页原件}
 - {id: player_kept_copy, scope: actor, description: 玩家只保留交割残页抄件}
 - {id: player_verified_register, scope: actor, description: 玩家帮助灾民名册完成分级核验}
@@ -31,4 +38,5 @@
 - {id: player_bounded_record, scope: actor, description: 玩家完成保留证据等级的公开记录}
 - {id: player_accusatory_record, scope: actor, description: 玩家完成强化归责的公开记录}
 - {id: player_private_record, scope: actor, description: 玩家选择只保存可核材料而不立即公开}
+- {id: player_anonymous_record, scope: actor, description: 玩家在公开渠道受阻后选择匿名分段传播}
 - {id: prepared, scope: actor, description: 人物已经为会勘定稿形成额外筹备}

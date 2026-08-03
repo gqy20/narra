@@ -428,6 +428,12 @@
         },
         "route_progress": {
           "$ref": "#/$defs/RouteProgress"
+        },
+        "route_progresses": {
+          "items": {
+            "$ref": "#/$defs/RouteProgress"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,

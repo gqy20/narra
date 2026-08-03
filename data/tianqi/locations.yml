@@ -23,6 +23,7 @@
   - {to: L01, duration: 1, danger: 1}
   - {to: L03, duration: 1, danger: 0}
   - {to: L04, duration: 1, danger: 0}
+  - {to: L07, duration: 1, danger: 1}
 - id: L03
   name: 联合会勘公署
   safe: true
@@ -74,3 +75,13 @@
   - {to: L03, duration: 1, danger: 0}
   - {to: L04, duration: 1, danger: 0}
   - {to: L05, duration: 1, danger: 0}
+- id: L07
+  name: 城南寄寓
+  safe: true
+  map_x: 0.10
+  map_y: 0.90
+  scene_key: safehouse
+  description: 叶春娘借来的一处临时寄寓，只由少数送药人与互证者知道门牌。
+  atmosphere: 门窗终日半掩，来客不互问真名，药包上的记号代替了地址。
+  routes:
+  - {to: L02, duration: 1, danger: 1}

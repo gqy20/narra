@@ -22,7 +22,7 @@ type Choice struct {
 func Choose(state *domain.WorldState, definitions []domain.WorldDirectiveDefinition) *Choice {
 	choices := make([]Choice, 0, len(definitions))
 	for _, definition := range definitions {
-		if !available(state, definition) {
+		if !available(state, definition) || supersededResourceThreshold(state, definition, definitions) {
 			continue
 		}
 		signals, urgency, ok := matchTrigger(state, definition)
@@ -46,6 +46,18 @@ func Choose(state *domain.WorldState, definitions []domain.WorldDirectiveDefinit
 	})
 	choice := choices[0]
 	return &choice
+}
+
+func supersededResourceThreshold(state *domain.WorldState, definition domain.WorldDirectiveDefinition, definitions []domain.WorldDirectiveDefinition) bool {
+	if definition.Trigger != "player_resource_at_least" {
+		return false
+	}
+	for _, candidate := range definitions {
+		if candidate.Trigger == definition.Trigger && candidate.Key == definition.Key && candidate.MinValue > definition.MinValue && state.Director.Uses[candidate.ID] > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func available(state *domain.WorldState, definition domain.WorldDirectiveDefinition) bool {
@@ -102,6 +114,12 @@ func matchTrigger(state *domain.WorldState, definition domain.WorldDirectiveDefi
 			return nil, 0, false
 		}
 		return []domain.WorldSignal{{Type: definition.Trigger, SubjectID: definition.TargetID, Value: count, Description: fmt.Sprintf("当地聚集%d名行动者", count)}}, count - definition.MinValue, true
+	case "player_resource_at_least":
+		if state.Player == nil || state.Player.Resources[definition.Key] < definition.MinValue {
+			return nil, 0, false
+		}
+		value := state.Player.Resources[definition.Key]
+		return []domain.WorldSignal{{Type: definition.Trigger, SubjectID: state.Player.ID, Value: value, Description: fmt.Sprintf("玩家%s达到%d", definition.Key, value)}}, value - definition.MinValue, true
 	default:
 		return nil, 0, false
 	}

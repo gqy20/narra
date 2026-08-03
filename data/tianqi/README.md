@@ -10,6 +10,8 @@
 
 调查路线会彼此改变：先保护刘六安，E08名册可以采用匿名互证或删节公开；直接刊出未删节名册则会引来梁进忠追查来源。保管E01原件并送官后，可以与沈惟实核验E09格式；玩家随后必须在公署正式揭穿补造账册，或留在书斋以E10完成串证并分工护送之间安排时间，无法无代价包办所有行动。
 
+`exposure` 现在会产生即时压力：达到2点后出现行踪跟踪，4点后触发来源盘问并开放“提交有限说明”或“转移证人”的应对行动，6点后正式署名刊载受到阻断。高暴露玩家仍可选择私档保全，或放弃正式权势收益，把分级文本拆成匿名短抄；降低当前暴露不会自动抹去已经形成的经手记录。
+
 运行方式：
 
 ```powershell
@@ -18,6 +20,22 @@ go run ./cmd/play -data data/tianqi
 go run ./cmd/server -data data/tianqi
 # 已启动独立服务时，Godot 编辑器客户端会自动读取该场景；Windows 成品可使用：
 # Fantu.exe --scenario=tianqi
+```
+
+验证方式：
+
+```powershell
+# 日常玩法编辑：只跑天启路径测试与T00语义检查，可使用Go测试缓存
+.\tools\verify-tianqi.ps1 -Mode fast
+
+# 场景或引擎阶段检查：重新运行app、engine、scenario三个核心包
+.\tools\verify-tianqi.ps1 -Mode core
+
+# 提交前：禁用测试结果缓存并运行全部Go测试
+.\tools\verify-tianqi.ps1 -Mode full
+
+# fast模式需要强制重跑测试时
+.\tools\verify-tianqi.ps1 -Mode fast -Fresh
 ```
 
 `scenario.yml` 中的 `id: tianqi_t00` 是运行、缓存和存档隔离使用的稳定标识；目录名 `tianqi` 只是启动时的场景选择名。AI 对话的时代语境、称呼和文风位于 `dialogue.yml`，底层事实约束仍由引擎统一执行。

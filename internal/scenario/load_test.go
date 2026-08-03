@@ -391,6 +391,20 @@ func TestValidateRejectsUnboundedWorldDirective(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsUnknownPlayerResourceDirective(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	bundle.Scenario.Directives = append(bundle.Scenario.Directives, domain.WorldDirectiveDefinition{
+		ID: "invalid-player-pressure", Description: "invalid", Trigger: "player_resource_at_least",
+		Key: "missing-resource", MinValue: 2, Priority: 10, MaxUses: 1,
+	})
+	if err := Validate(bundle); err == nil {
+		t.Fatal("Validate() accepted a directive with an unknown player resource")
+	}
+}
+
 func TestValidateRejectsInvalidStoryTransition(t *testing.T) {
 	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
 	if err != nil {
