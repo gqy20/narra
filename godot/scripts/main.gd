@@ -19,6 +19,7 @@ const LocalServerProcessScript = preload("res://scripts/local_server_process.gd"
 const SettingsStoreScript = preload("res://scripts/settings_store.gd")
 const GameClientScript = preload("res://scripts/game_client.gd")
 const GameViewModelScript = preload("res://scripts/game_view_model.gd")
+const DiagnosticsExporterScript = preload("res://scripts/diagnostics_exporter.gd")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
 const AI_SETTINGS_FILE := "ai-settings.json"
@@ -82,6 +83,7 @@ var local_server_process
 var settings_store = SettingsStoreScript.new()
 var game_client
 var view_model = GameViewModelScript.new()
+var diagnostics_exporter = DiagnosticsExporterScript.new()
 var actor_dialogue_by_id := {}
 var actor_dialogue_error_by_id := {}
 var actor_dialogue_history_by_id := {}
@@ -253,6 +255,7 @@ func _ready() -> void:
 	local_server_process = LocalServerProcessScript.new()
 	add_child(local_server_process)
 	local_server_process.log_event.connect(_log_event)
+	diagnostics_exporter.log_event.connect(_log_event)
 	get_tree().auto_accept_quit = false
 	_log_event("INFO", "startup", "client starting", {
 		"pid": OS.get_process_id(),
@@ -586,117 +589,23 @@ func _open_log_folder() -> void:
 
 
 func _export_diagnostics(open_folder := true) -> String:
-	_log_event("INFO", "diagnostics_export", "creating diagnostics archive")
-	var diagnostics_dir := runtime_root.path_join("diagnostics")
-	var mkdir_error := DirAccess.make_dir_recursive_absolute(diagnostics_dir)
-	if mkdir_error != OK:
-		_log_event("ERROR", "diagnostics_failed", "could not create diagnostics directory", {"error": mkdir_error})
-		_show_error("无法创建诊断目录。")
-		return ""
-	var timestamp := Time.get_datetime_string_from_system(true, false).replace("-", "").replace(":", "")
-	var archive_path := diagnostics_dir.path_join("Fantu-Diagnostics-%sZ.zip" % timestamp)
-	var packer := ZIPPacker.new()
-	var open_error := packer.open(archive_path)
-	if open_error != OK:
-		_log_event("ERROR", "diagnostics_failed", "could not open diagnostics archive", {"error": open_error})
+	var archive_path := diagnostics_exporter.export(_diagnostics_context(), open_folder)
+	if archive_path == "":
 		_show_error("无法创建诊断压缩包。")
-		return ""
-	var manifest := {
-		"application": "Fantu",
-		"generated_at_utc": "%sZ" % Time.get_datetime_string_from_system(true, false),
-		"version": build_version,
-		"session_id": session_id,
-		"operating_system": OS.get_name(),
-		"godot": Engine.get_version_info().get("string", "unknown"),
-		"portable_mode": portable_mode,
-		"log_level": log_level,
-		"environment": _diagnostic_environment(),
-		"contents": "Logs and environment metadata only; saves and request bodies are excluded.",
-	}
-	packer.start_file("manifest.json")
-	packer.write_file(JSON.stringify(manifest, "  ").to_utf8_buffer())
-	packer.close_file()
-	packer.start_file("environment.json")
-	packer.write_file(JSON.stringify(_diagnostic_environment(), "  ").to_utf8_buffer())
-	packer.close_file()
-	_add_diagnostic_log(packer, logs_dir.path_join("client.log"), "logs/client.log")
-	_add_diagnostic_log(packer, logs_dir.path_join("engine.log"), "logs/engine.log")
-	_add_diagnostic_log(packer, logs_dir.path_join("server.log"), "logs/server.log")
-	var archive_directory := DirAccess.open(archived_logs_dir)
-	if archive_directory != null:
-		var archive_names: Array[String] = []
-		for file_name in archive_directory.get_files():
-			if file_name.ends_with(".log"):
-				archive_names.append(file_name)
-		archive_names.sort()
-		for file_name in archive_names:
-			_add_diagnostic_log(packer, archived_logs_dir.path_join(file_name), "logs/archived/" + file_name)
-	var crash_directory := DirAccess.open(crash_dir)
-	if crash_directory != null:
-		var crash_names: Array[String] = []
-		for file_name in crash_directory.get_files():
-			if file_name.ends_with(".json") or file_name.ends_with(".dmp") or file_name.ends_with(".log"):
-				crash_names.append(file_name)
-		crash_names.sort()
-		while crash_names.size() > LOG_BACKUPS:
-			crash_names.pop_front()
-		for file_name in crash_names:
-			_add_diagnostic_log(packer, crash_dir.path_join(file_name), "crash/" + file_name)
-	packer.close()
-	_log_event("INFO", "diagnostics_created", "diagnostics archive created", {"file": archive_path.get_file()})
-	if open_folder:
-		OS.shell_open(diagnostics_dir)
 	return archive_path
 
 
-func _add_diagnostic_log(packer: ZIPPacker, source_path: String, archive_path: String) -> void:
-	if not FileAccess.file_exists(source_path):
-		return
-	var source := FileAccess.open(source_path, FileAccess.READ)
-	if source == null:
-		_log_event("WARN", "diagnostics_file_skipped", "could not read diagnostics file", {"file": source_path.get_file()})
-		return
-	if source.get_length() > DIAGNOSTIC_FILE_MAX_BYTES:
-		_log_event("WARN", "diagnostics_file_skipped", "diagnostics file exceeds size limit", {"file": source_path.get_file(), "size": source.get_length()})
-		return
-	if packer.start_file(archive_path) != OK:
-		return
-	packer.write_file(source.get_buffer(source.get_length()))
-	packer.close_file()
-
-
 func _diagnostic_environment() -> Dictionary:
-	var memory := OS.get_memory_info()
-	var screen_size := DisplayServer.screen_get_size()
-	var runtime_space := -1
-	var runtime_directory := DirAccess.open(runtime_root)
-	if runtime_directory != null:
-		runtime_space = runtime_directory.get_space_left()
+	return diagnostics_exporter.environment(_diagnostics_context())
+
+
+func _diagnostics_context() -> Dictionary:
 	return {
-		"operating_system": OS.get_name(),
-		"os_distribution": OS.get_distribution_name(),
-		"os_version": OS.get_version(),
-		"locale": OS.get_locale(),
-		"processor": OS.get_processor_name(),
-		"processor_count": OS.get_processor_count(),
-		"memory_physical_bytes": memory.get("physical", -1),
-		"memory_available_bytes": memory.get("free", -1),
-		"screen_width": screen_size.x,
-		"screen_height": screen_size.y,
-		"screen_dpi": DisplayServer.screen_get_dpi(),
-		"window_mode": display_mode,
-		"window_resolution": "%dx%d" % [display_resolution.x, display_resolution.y],
-		"ui_scale": ui_scale,
-		"graphics_adapter": RenderingServer.get_video_adapter_name(),
-		"graphics_vendor": RenderingServer.get_video_adapter_vendor(),
-		"graphics_api": RenderingServer.get_video_adapter_api_version(),
-		"godot_version": Engine.get_version_info().get("string", "unknown"),
-		"build": build_info,
-		"runtime_space_available_bytes": runtime_space,
-		"portable_mode": portable_mode,
+		"runtime_root": runtime_root, "logs_dir": logs_dir, "archived_logs_dir": archived_logs_dir, "crash_dir": crash_dir,
+		"build_version": build_version, "session_id": session_id, "portable_mode": portable_mode, "log_level": log_level,
+		"display_mode": display_mode, "display_resolution": display_resolution, "ui_scale": ui_scale, "build_info": build_info,
 		"server_process_running": local_server_process != null and local_server_process.is_running(),
-		"last_server_http_status": last_server_http_status,
-		"log_level": log_level,
+		"last_server_http_status": last_server_http_status, "max_file_bytes": DIAGNOSTIC_FILE_MAX_BYTES, "backups": LOG_BACKUPS,
 	}
 
 
