@@ -33,6 +33,33 @@ type contentMigration func(dir string, files map[string][]byte, report *ContentM
 var contentMigrations = map[int]contentMigration{
 	1: migrateContentV1ToV2,
 	2: migrateContentV2ToV3,
+	3: migrateContentV3ToV4,
+}
+
+func migrateContentV3ToV4(_ string, files map[string][]byte, report *ContentMigrationReport) error {
+	manifestSource := string(files["manifest.yml"])
+	files["manifest.yml"] = []byte(strings.Replace(manifestSource, "schema_version: 3", "schema_version: 4", 1))
+	report.Changes = append(report.Changes, "manifest schema_version: 3 -> 4")
+	if files["dialogue.yml"] != nil || files["dialogue.yaml"] != nil {
+		return nil
+	}
+	var scenarioValue struct {
+		Title string `json:"title"`
+	}
+	if err := yaml.Unmarshal(files["scenario.yml"], &scenarioValue); err != nil {
+		return fmt.Errorf("decode scenario.yml for dialogue defaults: %w", err)
+	}
+	dialogue := domain.DialogueConfig{
+		Context: scenarioValue.Title,
+		Style:   "自然、克制、符合人物公开身份的中文叙事口吻",
+	}
+	encoded, err := yaml.Marshal(dialogue)
+	if err != nil {
+		return fmt.Errorf("encode dialogue.yml: %w", err)
+	}
+	files["dialogue.yml"] = encoded
+	report.Changes = append(report.Changes, "dialogue.yml: add scenario dialogue metadata")
+	return nil
 }
 
 func MigrateContent(dir string, write bool) (ContentMigrationReport, error) {

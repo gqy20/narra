@@ -1,0 +1,76 @@
+- id: L01
+  name: 王恭厂外街
+  safe: false
+  map_x: 0.18
+  map_y: 0.62
+  scene_key: disaster_street
+  description: 灾变后的街巷仍在救人与清理，散纸、遗物和互相冲突的说法混在尘土里。
+  atmosphere: 焦木味压过炊烟，差役的喝令与寻人声彼此交叠。
+  routes:
+  - {to: L02, duration: 1, danger: 1}
+  - {to: L03, duration: 1, danger: 0}
+  - {to: L04, duration: 1, danger: 0}
+  - {to: L05, duration: 1, danger: 1}
+- id: L02
+  name: 春和药铺
+  safe: true
+  map_x: 0.30
+  map_y: 0.82
+  scene_key: apothecary
+  description: 叶春娘把救治、寻人和遗物认领写在同一面墙上，逐渐形成官册之外的名册。
+  atmosphere: 药气、血腥气和反复确认姓名的低声问答充满后堂。
+  routes:
+  - {to: L01, duration: 1, danger: 1}
+  - {to: L03, duration: 1, danger: 0}
+  - {to: L04, duration: 1, danger: 0}
+- id: L03
+  name: 联合会勘公署
+  safe: true
+  map_x: 0.57
+  map_y: 0.54
+  scene_key: inquiry_office
+  description: 各衙门书吏在期限内汇总灾损、口供与残存账目，一份能够上报的文本正在这里成形。
+  atmosphere: 纸页翻动不断，所有疑问都被催促着变成能够落笔的句子。
+  routes:
+  - {to: L01, duration: 1, danger: 0}
+  - {to: L02, duration: 1, danger: 0}
+  - {to: L04, duration: 1, danger: 0}
+  - {to: L05, duration: 1, danger: 0}
+  - {to: L06, duration: 1, danger: 0}
+- id: L04
+  name: 墨林书坊
+  safe: true
+  map_x: 0.28
+  map_y: 0.30
+  scene_key: archive
+  description: 抄手和掌柜把口述、奏疏摘要与奇闻编成不同版本，准备沿邸舍网络送出京城。
+  atmosphere: 裁纸声很轻，门外每一次停步都让屋内的人同时噤声。
+  routes:
+  - {to: L01, duration: 1, danger: 0}
+  - {to: L02, duration: 1, danger: 0}
+  - {to: L03, duration: 1, danger: 0}
+  - {to: L06, duration: 1, danger: 0}
+- id: L05
+  name: 西城仓院
+  safe: false
+  map_x: 0.76
+  map_y: 0.76
+  scene_key: warehouse
+  description: 罗三槐控制的临时仓院收拢散落文书和知情人，也在补造一套足以闭合缺口的账。
+  atmosphere: 车轮印在院外突然中断，门内却整夜有人研墨。
+  routes:
+  - {to: L01, duration: 1, danger: 1}
+  - {to: L03, duration: 1, danger: 0}
+  - {to: L06, duration: 1, danger: 0}
+- id: L06
+  name: 怀朴书斋
+  safe: true
+  map_x: 0.76
+  map_y: 0.26
+  scene_key: study
+  description: 郑怀朴与沈惟实在这里整理陈言材料，争论政策时机与证据边界谁更重要。
+  atmosphere: 奏疏草稿层层涂改，窗外关于修省的议论比墨迹干得更快。
+  routes:
+  - {to: L03, duration: 1, danger: 0}
+  - {to: L04, duration: 1, danger: 0}
+  - {to: L05, duration: 1, danger: 0}

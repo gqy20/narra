@@ -13,27 +13,37 @@ const (
 )
 
 type Scenario struct {
-	ID            string                        `json:"id"`
-	Title         string                        `json:"title"`
-	Duration      int                           `json:"duration"`
-	PlanningMode  string                        `json:"planning_mode,omitempty"`
-	Topics        []string                      `json:"topics,omitempty"`
-	Markets       []MarketDefinition            `json:"markets,omitempty"`
-	Directives    []WorldDirectiveDefinition    `json:"directives,omitempty"`
-	Opportunities []OpportunityActionDefinition `json:"opportunity_actions,omitempty"`
-	Phases        []SituationPhase              `json:"phases"`
-	FixedEvents   []FixedEvent                  `json:"fixed_events"`
-	Contest       Contest                       `json:"contest"`
+	ID                              string                        `json:"id"`
+	Title                           string                        `json:"title"`
+	Duration                        int                           `json:"duration"`
+	PlanningMode                    string                        `json:"planning_mode,omitempty"`
+	DisableGenericInvestigation     bool                          `json:"disable_generic_investigation,omitempty"`
+	DisableGenericContestNavigation bool                          `json:"disable_generic_contest_navigation,omitempty"`
+	Topics                          []string                      `json:"topics,omitempty"`
+	Markets                         []MarketDefinition            `json:"markets,omitempty"`
+	Directives                      []WorldDirectiveDefinition    `json:"directives,omitempty"`
+	Opportunities                   []OpportunityActionDefinition `json:"opportunity_actions,omitempty"`
+	Phases                          []SituationPhase              `json:"phases"`
+	FixedEvents                     []FixedEvent                  `json:"fixed_events"`
+	Contest                         Contest                       `json:"contest"`
 }
 
 type ScenarioPresentation struct {
-	Brand      string                          `json:"brand" yaml:"brand"`
-	WorldTitle string                          `json:"world_title" yaml:"world_title"`
-	Objective  string                          `json:"objective" yaml:"objective"`
-	Terrain    string                          `json:"terrain,omitempty" yaml:"terrain,omitempty"`
-	Resources  []ResourcePresentation          `json:"resources" yaml:"resources"`
-	Locations  map[string]LocationPresentation `json:"locations,omitempty" yaml:"locations,omitempty"`
-	Actors     map[string]ActorPresentation    `json:"actors,omitempty" yaml:"actors,omitempty"`
+	Brand       string                          `json:"brand" yaml:"brand"`
+	WorldTitle  string                          `json:"world_title" yaml:"world_title"`
+	Objective   string                          `json:"objective" yaml:"objective"`
+	Intro       string                          `json:"intro,omitempty" yaml:"intro,omitempty"`
+	StartAction string                          `json:"start_action,omitempty" yaml:"start_action,omitempty"`
+	Terrain     string                          `json:"terrain,omitempty" yaml:"terrain,omitempty"`
+	Resources   []ResourcePresentation          `json:"resources" yaml:"resources"`
+	Locations   map[string]LocationPresentation `json:"locations,omitempty" yaml:"locations,omitempty"`
+	Actors      map[string]ActorPresentation    `json:"actors,omitempty" yaml:"actors,omitempty"`
+}
+
+type DialogueConfig struct {
+	Context       string `json:"context,omitempty" yaml:"context,omitempty"`
+	PlayerAddress string `json:"player_address,omitempty" yaml:"player_address,omitempty"`
+	Style         string `json:"style,omitempty" yaml:"style,omitempty"`
 }
 
 type ResourcePresentation struct {
@@ -484,6 +494,7 @@ type Bundle struct {
 	Content       ContentMetadata
 	Scenario      Scenario
 	Presentation  ScenarioPresentation
+	Dialogue      DialogueConfig
 	StoryArcs     map[string]StoryArc
 	Flags         map[string]FlagDefinition
 	Actions       map[string]ActionDefinition

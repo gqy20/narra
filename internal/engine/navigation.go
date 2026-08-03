@@ -14,6 +14,9 @@ func (e *Engine) genericNavigationStrategies(state *domain.WorldState, npc *doma
 			return []domain.Strategy{navigationStrategy(npc, route, "flee", "撤往安全地点", 5, 5)}
 		}
 	}
+	if e.bundle.Scenario.DisableGenericContestNavigation {
+		return nil
+	}
 	contest := e.bundle.Scenario.Contest
 	if state.Day > contest.Day || state.Items[contest.ItemID] != contest.LocationID || !wantsContest(npc) {
 		return nil

@@ -79,6 +79,7 @@ content/<scenario>/
   world/*.yml
   arcs/*.yml
   presentation.yml
+  dialogue.yml
           │
           ▼
 内容编译器
@@ -495,7 +496,19 @@ locations:
 
 Godot 保留资源加载、动画和 fallback 逻辑，但不再为每个新人物手写注册项或 ID 分支。
 
-### 9.5 完成标准
+### 9.5 AI 对话配置
+
+`dialogue.yml` 声明当前场景的世界语境、玩家称呼和语言风格：
+
+```yaml
+context: 灾变后的京师正在争夺证据及其解释权
+player_address: 先生
+style: 克制、清晰的历史调查叙事口吻，不使用仙侠称谓
+```
+
+事实白名单、私密状态隔离、AI 不参与规则结算及结构化输出约束仍由引擎维护。场景作者可以改变叙事题材和措辞，但不能通过内容配置绕过规则安全边界。Schema v4 将 `dialogue.yml` 纳入内容指纹，并提供 v3 到 v4 的显式迁移。
+
+### 9.6 完成标准
 
 - [x] 场景专属结果不再写在通用 Engine 中；
 - [x] 路线进度、反馈和结局可追溯到同一个状态转换事件；

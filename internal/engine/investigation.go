@@ -7,6 +7,9 @@ import (
 )
 
 func (e *Engine) genericInvestigationStrategies(npc *domain.NPCState) []domain.Strategy {
+	if e.bundle.Scenario.DisableGenericInvestigation {
+		return nil
+	}
 	if _, ok := e.bundle.Actions["verify"]; !ok {
 		return nil
 	}

@@ -3,21 +3,30 @@ package scenario
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 
 	"fantu/internal/domain"
 )
 
+var scenarioIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
+
 func Validate(bundle domain.Bundle) error {
 	if bundle.Scenario.ID == "" || bundle.Scenario.Duration <= 0 {
 		return fmt.Errorf("scenario requires id and positive duration")
+	}
+	if !scenarioIDPattern.MatchString(bundle.Scenario.ID) {
+		return fmt.Errorf("scenario id %q must use 1-64 lowercase ASCII letters, digits, underscores, or hyphens and start with a letter", bundle.Scenario.ID)
 	}
 	if mode := bundle.Scenario.PlanningMode; mode != "" && mode != "authored_priority" && mode != "unified_score" {
 		return fmt.Errorf("scenario has invalid planning mode %q", mode)
 	}
 	if err := validatePresentation(bundle); err != nil {
 		return err
+	}
+	if strings.TrimSpace(bundle.Dialogue.Context) == "" || strings.TrimSpace(bundle.Dialogue.Style) == "" {
+		return fmt.Errorf("dialogue requires context and style")
 	}
 	if err := validateTopics(bundle); err != nil {
 		return err

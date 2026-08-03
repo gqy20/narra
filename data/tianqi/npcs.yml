@@ -1,0 +1,643 @@
+- id: N01
+  name: 周良辅
+  faction: FCT_SUPPLY_SHADOW
+  public_profile: 灾后失踪的王恭厂库吏，熟悉交割副册与账外周转。
+  public_role: 失踪库吏
+  public_goal: 用一份自陈换得活路，在被集中归责前离开灰网。
+  track_public_plan: true
+  public_interests:
+  - {topic: ledger, label: 账册去向}
+  - {topic: supply, label: 军需责任}
+  public_risk: 他参与过假账，任何公开接触都可能同时威胁他和接触者。
+  goal: 保住E10并退出军需灰网
+  goals:
+  - {type: protect, target_id: e10_statement, priority: 5, topics: [ledger]}
+  - {type: avoid, target_id: N09, priority: 5, topics: [supply]}
+  interests: [ledger, supply, witness]
+  location: L05
+  injury: 1
+  resources: {authority: 0, evidence: 4, allies: 0, exposure: 4}
+  items: [e10_statement]
+  beliefs:
+  - {fact_id: F10, claim: 自己的自陈能证明账册长期被改动，但不能解释爆炸, confidence: 3, source: 自身经手, learned_on: 0, secrecy: 3}
+  - {fact_id: F01, claim: 交割残页会让罗三槐把责任集中到自己身上, confidence: 3, source: 灾前副册, learned_on: 0, secrecy: 3}
+  personality: {caution: 5, greed: 2, loyalty: 1, ambition: 1, credit: 1, risk_tolerance: 1}
+  strategies:
+  - id: N01-seek-exit
+    action_id: inquire
+    description: 周良辅试图用自陈换取离京安排，却发现灰网只想收走材料
+    public_description: 周良辅正在寻找离开仓院的办法
+    target_id: N09
+    from_day: 8
+    until_day: 9
+    once: true
+    conditions: []
+    score: {base: 9, goal: 5, urgency: 5, probability: 3, information: 4, relationship: 1, cost: 1, danger: 4}
+    effects:
+    - {type: adjust_relation, from_id: N01, target_id: N09, key: fear, amount: 2}
+  - id: N01-attempt-flight
+    action_id: flee
+    description: 周良辅试图带着自陈离开仓院
+    public_description: 周良辅准备冒险离开西城仓院
+    from_day: 12
+    until_day: 12
+    duration: 1
+    once: true
+    conditions:
+    - {type: location, value: L05}
+    score: {base: 10, goal: 5, urgency: 5, probability: 2, information: 3, relationship: 0, cost: 2, danger: 5}
+    effects:
+    - {type: move, value: L06}
+
+- id: N02
+  name: 裴慎行
+  faction: FCT_INQUEST
+  public_profile: 奉调参与联合会勘的书办，擅长把残缺数字整理成可执行文本。
+  public_role: 会勘书办
+  public_goal: 第十四日前提交数字能对上、责任能执行的会勘报告。
+  track_public_plan: true
+  public_interests:
+  - {topic: inquiry, label: 会勘进度}
+  - {topic: ledger, label: 账册闭合}
+  - {topic: register, label: 灾损登记}
+  public_risk: 他会优先处理能够行政结案的材料，开放问题可能被压缩成一句话。
+  goal: 在期限内完成会勘定稿
+  goals:
+  - {type: acquire, target_id: official_draft, priority: 5, topics: [inquiry, draft]}
+  - {type: status, target_id: FCT_INQUEST, priority: 4, topics: [politics]}
+  interests: [inquiry, ledger, register, forgery, draft]
+  location: L03
+  injury: 0
+  resources: {authority: 5, evidence: 2, allies: 3, exposure: 1}
+  items: []
+  beliefs:
+  - {fact_id: F08, claim: 会勘必须先形成一份能够执行的责任文本, confidence: 3, source: 官署期限, learned_on: 0, secrecy: 1}
+  - {fact_id: F01, claim: 交割残页可能补上会勘账目缺口, confidence: 1, source: 收缴文书清单, learned_on: 0, secrecy: 1}
+  - {fact_id: F04, claim: 新送来的完整账册仍需核对格式, confidence: 1, source: 书吏传报, learned_on: 0, secrecy: 2}
+  personality: {caution: 4, greed: 1, loyalty: 4, ambition: 4, credit: 4, risk_tolerance: 2}
+  strategies:
+  - id: N02-collect-records
+    action_id: inquire
+    description: 裴慎行收拢库存抄数、匠役册页和民间捡拾文书
+    public_description: 会勘公署正在收缴和登记残存材料
+    from_day: 1
+    until_day: 3
+    once: true
+    conditions:
+    - {type: flag, key: inquiry_open}
+    score: {base: 8, goal: 5, urgency: 4, probability: 5, information: 5, relationship: 2, cost: 2, danger: 0}
+    effects:
+    - {type: adjust_resource, key: evidence, amount: 1}
+  - id: N02-draft-negligence
+    action_id: visit
+    description: 裴慎行把残缺材料整理为“火药失慎、责任待核”的第一稿
+    public_description: 会勘初稿开始在官署内部传阅
+    from_day: 7
+    until_day: 7
+    once: true
+    conditions:
+    - {type: flag, key: negligence_draft}
+    score: {base: 10, goal: 5, urgency: 5, probability: 5, information: 2, relationship: 3, cost: 2, danger: 1}
+    effects:
+    - {type: adjust_resource, key: authority, amount: 1}
+  - id: N02-review-forgery
+    action_id: verify
+    description: 裴慎行核对补造账册的纸墨、印记与流转时间
+    public_description: 会勘书吏正在复核新送到的完整账册
+    target_id: N09
+    from_day: 11
+    until_day: 13
+    once: true
+    conditions:
+    - {type: flag, key: forged_ledger_submitted}
+    score: {base: 8, goal: 5, urgency: 5, probability: 3, information: 5, relationship: 1, cost: 2, danger: 2}
+    effects:
+    - {type: set_belief, fact_id: F04, confidence: 2, evidence_strength: 3, source: 会勘格式核验}
+
+- id: N03
+  name: 刘六安
+  faction: FCT_SURVIVORS
+  public_profile: 灾变中幸存的军匠，受伤后对同一段经历出现不同表述。
+  public_role: 幸存军匠
+  public_goal: 让家人获得优恤，同时避免成为失慎责任人。
+  track_public_plan: true
+  public_interests:
+  - {topic: witness, label: 证词版本}
+  - {topic: relief, label: 家属优恤}
+  public_risk: 公开姓名和住处会增加他被隔离询问或被选为责任人的风险。
+  goal: 用最安全的口供换取家属优恤
+  goals:
+  - {type: protect, target_id: N03, priority: 5, topics: [witness]}
+  - {type: acquire, target_id: relief, priority: 5, topics: [relief]}
+  interests: [witness, survivors, relief, inquiry]
+  location: L02
+  injury: 2
+  resources: {authority: 0, evidence: 3, allies: 1, exposure: 3}
+  items: []
+  beliefs:
+  - {fact_id: F02, claim: 周良辅曾叫停一次不合常例的操作, confidence: 2, source: 受伤后的记忆, learned_on: 0, secrecy: 2}
+  - {fact_id: F06, claim: 自己无法确认异常操作与爆炸之间的关系, confidence: 2, source: 自身经历, learned_on: 0, secrecy: 2}
+  personality: {caution: 5, greed: 1, loyalty: 3, ambition: 1, credit: 2, risk_tolerance: 1}
+  strategies:
+  - id: N03-first-account
+    action_id: inquire
+    description: 刘六安向叶春娘说出第一版证词，强调异常操作但不判断成因
+    public_description: 刘六安正在药铺留下最早口述
+    target_id: N08
+    from_day: 2
+    until_day: 2
+    once: true
+    conditions: []
+    score: {base: 9, goal: 4, urgency: 5, probability: 4, information: 5, relationship: 4, cost: 1, danger: 2}
+    effects:
+    - {type: set_belief, target_id: N08, fact_id: F02, claim: 刘六安说周良辅曾叫停一次不合常例的操作, confidence: 2, evidence_strength: 2, source: N03, propagation: private, secrecy: 2}
+  - id: N03-revise-account
+    action_id: visit
+    description: 刘六安在压力下把“不合常例”改称“临时调整”
+    public_description: 刘六安接受第二轮会勘询问
+    target_id: N02
+    from_day: 6
+    until_day: 6
+    once: true
+    conditions:
+    - {type: missing_flag, key: witness_protected}
+    score: {base: 10, goal: 5, urgency: 5, probability: 5, information: 1, relationship: 2, cost: 1, danger: 3}
+    effects:
+    - {type: set_flag, scope: world, target_id: world, key: witness_pressured, value: "true"}
+    - {type: set_belief, target_id: N02, fact_id: F02, claim: 当夜只是临时调整，没有超出常见失误, confidence: 2, evidence_strength: 1, source: N03, propagation: private, secrecy: 1}
+
+- id: N04
+  name: 梁进忠
+  faction: FCT_INNER_COURT
+  public_profile: 奉内廷口谕办差的宦官，主要处理消息来源、人员隔离和传播风险。
+  public_role: 内廷办差者
+  public_goal: 防止未经核准的材料把灾异、刑狱和内廷权力串成失控叙事。
+  track_public_plan: true
+  public_interests:
+  - {topic: politics, label: 政治风险}
+  - {topic: press, label: 抄报来源}
+  - {topic: rumor, label: 街巷讹言}
+  public_risk: 他能施加非正式压力，却不能凭一人之意完成正式拘押或查禁。
+  goal: 拆散危险的信息串联
+  goals:
+  - {type: protect, target_id: FCT_INNER_COURT, priority: 5, topics: [politics]}
+  - {type: avoid, target_id: press, priority: 4, topics: [press, rumor]}
+  interests: [politics, press, rumor, witness]
+  location: L04
+  injury: 0
+  resources: {authority: 4, evidence: 1, allies: 3, exposure: 1}
+  items: []
+  beliefs:
+  - {fact_id: F06, claim: 无法确认成因的材料若被串联，会先制造京城恐慌, confidence: 2, source: 内廷办差经验, learned_on: 0, secrecy: 2}
+  - {fact_id: F09, claim: 奸细名单来源不明，但可用于观察消息渠道, confidence: 2, source: 巡缉回报, learned_on: 0, secrecy: 3}
+  personality: {caution: 5, greed: 1, loyalty: 5, ambition: 3, credit: 3, risk_tolerance: 2}
+  strategies:
+  - id: N04-warn-press
+    action_id: visit
+    description: 梁进忠要求余墨林暂缓刊出官员与证人姓名
+    public_description: 内廷办差者正在询问抄报来源
+    target_id: N07
+    from_day: 4
+    until_day: 4
+    once: true
+    conditions:
+    - {type: flag, key: revision_debate}
+    score: {base: 9, goal: 5, urgency: 4, probability: 4, information: 3, relationship: 3, cost: 1, danger: 1}
+    effects:
+    - {type: adjust_relation, from_id: N04, target_id: N07, key: suspicion, amount: 1}
+  - id: N04-isolate-witness
+    action_id: visit
+    description: 梁进忠安排刘六安在受控地点接受单独询问
+    public_description: 刘六安被转入官署能够控制的询问安排
+    target_id: N03
+    from_day: 6
+    until_day: 7
+    once: true
+    conditions:
+    - {type: missing_flag, key: witness_protected}
+    score: {base: 8, goal: 5, urgency: 4, probability: 4, information: 2, relationship: 2, cost: 2, danger: 2}
+    effects:
+    - {type: adjust_relation, from_id: N03, target_id: N04, key: fear, amount: 2}
+  - id: N04-enter-inquest
+    action_id: explore
+    description: 梁进忠在定稿前进入会勘公署，要求文本不要越过现有证据
+    public_description: 内廷办差者进入会勘公署旁听最后定稿
+    from_day: 12
+    until_day: 12
+    duration: 1
+    once: true
+    conditions:
+    - {type: location, value: L04}
+    score: {base: 10, goal: 5, urgency: 5, probability: 5, information: 3, relationship: 3, cost: 1, danger: 0}
+    effects:
+    - {type: move, value: L03}
+
+- id: N05
+  name: 郑怀朴
+  faction: FCT_REMONSTRANCE
+  public_profile: 替数名有意陈言的官员搜集灾情材料的落第士人。
+  public_role: 陈言材料搜集者
+  public_goal: 抓住修省窗口，让省刑、薄敛和军需积弊进入政治议程。
+  track_public_plan: true
+  public_interests:
+  - {topic: politics, label: 修省陈言}
+  - {topic: supply, label: 军需积弊}
+  public_risk: 他可能为了正确的政策方向，把尚有限定的材料写得过于确定。
+  goal: 让灾变材料进入修省陈言
+  goals:
+  - {type: status, target_id: FCT_REMONSTRANCE, priority: 5, topics: [politics]}
+  - {type: acquire, target_id: evidence, priority: 4, topics: [ledger, supply]}
+  interests: [politics, ledger, supply, survivors, draft]
+  location: L06
+  injury: 0
+  resources: {authority: 3, evidence: 2, allies: 3, exposure: 2}
+  items: []
+  beliefs:
+  - {fact_id: F03, claim: 账面领讫可能掩盖军需实物流转问题, confidence: 2, source: 京营凭单抄件, learned_on: 0, secrecy: 2}
+  - {fact_id: F01, claim: 交割残页可能把个案提升为制度问题, confidence: 1, source: 书坊传言, learned_on: 0, secrecy: 1}
+  personality: {caution: 2, greed: 1, loyalty: 3, ambition: 5, credit: 3, risk_tolerance: 4}
+  strategies:
+  - id: N05-build-memorial
+    action_id: inquire
+    description: 郑怀朴搜集能把灾变与刑狱、税役和军需积弊联系起来的材料
+    public_description: 陈言网络正在搜集灾区个案
+    from_day: 4
+    until_day: 7
+    once: true
+    conditions:
+    - {type: flag, key: revision_debate}
+    score: {base: 9, goal: 5, urgency: 5, probability: 4, information: 4, relationship: 3, cost: 2, danger: 2}
+    effects:
+    - {type: adjust_resource, key: allies, amount: 1}
+  - id: N05-strengthen-wording
+    action_id: visit
+    description: 郑怀朴删去部分限定语，让军需材料更适合进入奏疏
+    public_description: 陈言草稿开始采用更确定的措辞
+    target_id: N06
+    from_day: 10
+    until_day: 10
+    once: true
+    conditions: []
+    score: {base: 8, goal: 5, urgency: 5, probability: 4, information: 2, relationship: 2, cost: 1, danger: 3}
+    effects:
+    - {type: adjust_resource, key: authority, amount: 1}
+    - {type: adjust_relation, from_id: N06, target_id: N05, key: suspicion, amount: 2}
+  - id: N05-enter-inquest
+    action_id: explore
+    description: 郑怀朴携陈言摘要进入会勘公署争取定稿影响
+    public_description: 陈言网络向会勘定稿施加最后影响
+    from_day: 13
+    until_day: 13
+    duration: 1
+    once: true
+    conditions:
+    - {type: location, value: L06}
+    score: {base: 10, goal: 5, urgency: 5, probability: 5, information: 4, relationship: 3, cost: 1, danger: 1}
+    effects:
+    - {type: move, value: L03}
+
+- id: N06
+  name: 沈惟实
+  faction: FCT_REMONSTRANCE
+  public_profile: 替官员校核材料的幕友，坚持区分可证事实、推断与传闻。
+  public_role: 奏疏校核者
+  public_goal: 避免一条伪证毁掉全部修省诉求，同时不让小人物经验被彻底删除。
+  track_public_plan: true
+  public_interests:
+  - {topic: evidence, label: 证据等级}
+  - {topic: politics, label: 奏疏可信度}
+  public_risk: 过度追求官样互证，也可能把无法形成强证据的人排除在外。
+  goal: 为陈言文本保留可证边界
+  goals:
+  - {type: protect, target_id: evidence, priority: 5, topics: [evidence]}
+  - {type: avoid, target_id: F04, priority: 5, topics: [forgery]}
+  interests: [evidence, politics, forgery, survivors, ledger]
+  location: L06
+  injury: 0
+  resources: {authority: 2, evidence: 4, allies: 2, exposure: 1}
+  items: []
+  beliefs:
+  - {fact_id: F06, claim: 现有材料不足以确认唯一爆炸成因, confidence: 3, source: 多份互相冲突的记录, learned_on: 0, secrecy: 1}
+  - {fact_id: F04, claim: 一套过于完整的灾后账册尤其需要核验, confidence: 1, source: 文书经验, learned_on: 0, secrecy: 2}
+  personality: {caution: 5, greed: 1, loyalty: 3, ambition: 2, credit: 5, risk_tolerance: 2}
+  strategies:
+  - id: N06-challenge-spy-list
+    action_id: verify
+    description: 沈惟实追查奸细名单来源，并指出它无法证明纵火
+    public_description: 奏疏校核者正在核查奸细说的来源
+    from_day: 5
+    until_day: 7
+    once: true
+    conditions:
+    - {type: flag, key: spy_rumor_public}
+    score: {base: 9, goal: 5, urgency: 4, probability: 4, information: 5, relationship: 1, cost: 2, danger: 2}
+    effects:
+    - {type: set_belief, fact_id: F09, confidence: 3, evidence_strength: 4, source: 名单来源追查}
+  - id: N06-preserve-caveat
+    action_id: visit
+    description: 沈惟实把“不能确认唯一成因”的限定送入最终文本
+    public_description: 有人要求会勘报告保留未决边界
+    target_id: N02
+    from_day: 12
+    until_day: 13
+    once: true
+    conditions:
+    - {type: belief, key: F06, min_confidence: 3}
+    score: {base: 10, goal: 5, urgency: 5, probability: 4, information: 5, relationship: 2, cost: 1, danger: 2}
+    effects:
+    - {type: set_belief, target_id: N02, fact_id: F06, claim: 现有材料不足以确认唯一爆炸成因, confidence: 3, evidence_strength: 4, source: N06, propagation: private, secrecy: 1}
+
+- id: N07
+  name: 余墨林
+  faction: FCT_NEWS
+  public_profile: 经营抄报与书坊往来的掌柜，熟悉消息怎样被抄写、出售和查禁。
+  public_role: 抄报掌柜
+  public_goal: 编出一份能留下、又比其他版本更早流传的灾变记录。
+  track_public_plan: true
+  public_interests:
+  - {topic: press, label: 文本流传}
+  - {topic: witness, label: 灾区见闻}
+  - {topic: politics, label: 查禁风险}
+  public_risk: 他相信读者能自行区分事实和奇闻，容易低估确定语气造成的污染。
+  goal: 控制最先流传的灾变长抄
+  goals:
+  - {type: acquire, target_id: evidence, priority: 5, topics: [press, witness]}
+  - {type: profit, target_id: press, priority: 3, topics: [press]}
+  interests: [press, witness, survivors, politics, ledger]
+  location: L01
+  injury: 0
+  resources: {authority: 1, evidence: 3, allies: 4, exposure: 3}
+  items: [e01_original]
+  beliefs:
+  - {fact_id: F01, claim: 捡拾者送来的一页交割残纸带有异常领讫戳, confidence: 2, source: 唐姓抄手转交, learned_on: 0, secrecy: 2}
+  - {fact_id: F06, claim: 街巷见闻彼此冲突，无法拼成单一成因, confidence: 2, source: 多名抄手, learned_on: 0, secrecy: 1}
+  personality: {caution: 3, greed: 3, loyalty: 2, ambition: 4, credit: 3, risk_tolerance: 4}
+  strategies:
+  - id: N07-copy-residual-page
+    action_id: inquire
+    description: 余墨林在交出原件前抄下一份，但抄漏了表示存疑的旁注
+    public_description: 书坊正在整理一页来源不明的厂区残纸
+    from_day: 2
+    until_day: 2
+    once: true
+    conditions:
+    - {type: has_item, key: e01_original}
+    score: {base: 10, goal: 5, urgency: 5, probability: 5, information: 4, relationship: 1, cost: 1, danger: 2}
+    effects:
+    - {type: add_item, key: e01_copy, amount: 1}
+    - {type: set_flag, scope: world, target_id: world, key: press_has_e01_copy, value: "true"}
+  - id: N07-move-shop
+    action_id: explore
+    description: 余墨林把抄报材料转移回书坊
+    public_description: 余墨林将灾区见闻带回墨林书坊
+    from_day: 3
+    until_day: 3
+    duration: 1
+    once: true
+    conditions:
+    - {type: location, value: L01}
+    score: {base: 8, goal: 4, urgency: 4, probability: 5, information: 3, relationship: 1, cost: 1, danger: 1}
+    effects:
+    - {type: move, value: L04}
+  - id: N07-enter-inquest
+    action_id: explore
+    description: 余墨林带着民间长抄进入会勘公署，准备在定稿前抢先散出版本
+    public_description: 墨林书坊准备发布灾变长抄
+    from_day: 13
+    until_day: 13
+    duration: 1
+    once: true
+    conditions:
+    - {type: location, value: L04}
+    score: {base: 10, goal: 5, urgency: 5, probability: 4, information: 4, relationship: 4, cost: 1, danger: 3}
+    effects:
+    - {type: move, value: L03}
+
+- id: N08
+  name: 叶春娘
+  faction: FCT_SURVIVORS
+  public_profile: 灾区附近药铺经营者，从救治和寻人记录中整理出官册之外的姓名。
+  public_role: 灾民名册整理者
+  public_goal: 让租户、外来匠役和无名伤者不因无法核籍而从优恤记录中消失。
+  track_public_plan: true
+  public_interests:
+  - {topic: register, label: 灾民名册}
+  - {topic: relief, label: 优恤资格}
+  - {topic: survivors, label: 证人安全}
+  public_risk: 公开完整住址能帮助核验，也可能把证人直接暴露给追查者。
+  goal: 让E08在封册前获得尽可能多的承认
+  goals:
+  - {type: protect, target_id: e08_register, priority: 5, topics: [register]}
+  - {type: acquire, target_id: relief, priority: 5, topics: [relief]}
+  interests: [register, relief, survivors, witness]
+  location: L02
+  injury: 0
+  resources: {authority: 1, evidence: 4, allies: 4, exposure: 2}
+  items: [e08_register]
+  beliefs:
+  - {fact_id: F05, claim: 官册之外仍有真实居住者、伤者和失踪者, confidence: 3, source: 救治与寻人记录, learned_on: 0, secrecy: 1}
+  - {fact_id: F02, claim: 刘六安最早说过一次不合常例的操作, confidence: 2, source: N03, learned_on: 0, secrecy: 2}
+  personality: {caution: 4, greed: 1, loyalty: 5, ambition: 3, credit: 5, risk_tolerance: 3}
+  strategies:
+  - id: N08-build-register
+    action_id: inquire
+    description: 叶春娘用救治、遗物和街坊互证继续补全灾民名册
+    public_description: 春和药铺的寻人墙正在变成一份民间名册
+    from_day: 1
+    until_day: 5
+    once: true
+    conditions: []
+    score: {base: 9, goal: 5, urgency: 4, probability: 5, information: 5, relationship: 5, cost: 3, danger: 1}
+    effects:
+    - {type: adjust_resource, key: evidence, amount: 1}
+  - id: N08-submit-register
+    action_id: explore
+    description: 叶春娘携灾民名册前往会勘公署争取在封册前补名
+    public_description: 灾民代表带着民间名册进入会勘公署
+    from_day: 8
+    until_day: 8
+    duration: 1
+    once: true
+    conditions:
+    - {type: location, value: L02}
+    score: {base: 10, goal: 5, urgency: 5, probability: 4, information: 5, relationship: 4, cost: 2, danger: 1}
+    effects:
+    - {type: move, value: L03}
+  - id: N08-preserve-register
+    action_id: visit
+    description: 官册窗口关闭后，叶春娘决定把完整名册交给书坊保存
+    public_description: 未被官册接纳的姓名正在寻找另一条保存渠道
+    target_id: N07
+    from_day: 12
+    until_day: 13
+    once: true
+    conditions:
+    - {type: flag, key: relief_register_closing}
+    - {type: missing_flag, key: register_verified}
+    score: {base: 8, goal: 5, urgency: 4, probability: 4, information: 4, relationship: 4, cost: 1, danger: 2}
+    effects:
+    - {type: set_flag, scope: world, target_id: world, key: register_published, value: "true"}
+
+- id: N09
+  name: 罗三槐
+  faction: FCT_SUPPLY_SHADOW
+  public_profile: 承揽运输、仓储和临时采买的掮客，灾后主动协助寻找官物。
+  public_role: 军需掮客
+  public_goal: 保住账外周转网络，把无法解释的缺口集中到失踪库吏和灾变损毁上。
+  track_public_plan: true
+  public_interests:
+  - {topic: supply, label: 军需流转}
+  - {topic: ledger, label: 账册闭合}
+  - {topic: rumor, label: 责任转移}
+  public_risk: 他不必销毁所有证据，只要制造一个更完整、更方便的替代版本。
+  goal: 让E09进入官档并控制E01与E10
+  goals:
+  - {type: acquire, target_id: e01_original, priority: 5, topics: [ledger]}
+  - {type: protect, target_id: FCT_SUPPLY_SHADOW, priority: 5, topics: [supply]}
+  interests: [supply, ledger, forgery, rumor, inquiry]
+  location: L05
+  injury: 0
+  resources: {authority: 2, evidence: 3, allies: 3, exposure: 2}
+  items: [e09_forged_ledger]
+  beliefs:
+  - {fact_id: F01, claim: 交割残页会把账外周转与周良辅联系起来, confidence: 3, source: 灰网经手信息, learned_on: 0, secrecy: 3}
+  - {fact_id: F04, claim: 补造账册只要足够完整就会成为官署最方便的版本, confidence: 3, source: 自身安排, learned_on: 0, secrecy: 3}
+  - {fact_id: F09, claim: 奸细名单不需要被证实，只需拖走几日注意力, confidence: 3, source: 自身安排, learned_on: 0, secrecy: 3}
+  personality: {caution: 4, greed: 4, loyalty: 2, ambition: 4, credit: 2, risk_tolerance: 4}
+  strategies:
+  - id: N09-buy-original
+    action_id: visit
+    description: 罗三槐从余墨林手中收购交割残页原件
+    public_description: 军需掮客正在回收灾区散落文书
+    target_id: N07
+    from_day: 3
+    until_day: 3
+    once: true
+    conditions:
+    - {type: missing_flag, key: official_has_e01}
+    score: {base: 10, goal: 5, urgency: 5, probability: 4, information: 5, relationship: 3, cost: 2, danger: 2}
+    effects:
+    - {type: transfer_unique, from_id: N07, target_id: N09, key: e01_original}
+    - {type: set_flag, scope: world, target_id: world, key: grey_has_e01, value: "true"}
+  - id: N09-spread-spy-rumor
+    action_id: spread
+    description: 罗三槐经中间人散出来源不明的外来人员名单
+    public_description: 一份奸细名单从不明渠道进入街巷
+    from_day: 5
+    until_day: 5
+    once: true
+    conditions:
+    - {type: flag, key: spy_rumor_public}
+    score: {base: 9, goal: 5, urgency: 4, probability: 4, information: 2, relationship: 3, cost: 2, danger: 3}
+    effects:
+    - {type: set_belief, fact_id: F09, claim: 两名外来者可能参与纵火, confidence: 1, evidence_strength: 1, source: 不具名中间人, propagation: all, delay_days: 1, distortion: 1}
+  - id: N09-submit-forged-ledger
+    action_id: explore
+    description: 罗三槐把补造账册送进会勘公署核验
+    public_description: 军需网络送来一套文面完整的账册
+    from_day: 11
+    until_day: 11
+    duration: 1
+    once: true
+    conditions:
+    - {type: location, value: L05}
+    - {type: flag, key: forged_ledger_submitted}
+    score: {base: 10, goal: 5, urgency: 5, probability: 4, information: 4, relationship: 4, cost: 2, danger: 3}
+    effects:
+    - {type: move, value: L03}
+    - {type: transfer_unique, from_id: N09, target_id: N02, key: e09_forged_ledger}
+  - id: N09-return-for-zhou
+    action_id: explore
+    description: 罗三槐在送出补造账册后返回仓院追索周良辅与自陈
+    public_description: 罗三槐离开会勘公署，返回西城处理一项未了账目
+    from_day: 12
+    until_day: 12
+    duration: 1
+    once: true
+    conditions:
+    - {type: location, value: L03}
+    - {type: missing_flag, key: zhou_protected}
+    score: {base: 10, goal: 5, urgency: 5, probability: 5, information: 4, relationship: 3, cost: 1, danger: 2}
+    effects:
+    - {type: move, value: L05}
+  - id: N09-intercept-zhou
+    action_id: track
+    description: 罗三槐沿周良辅的出逃路线追到书斋，截走E10原件
+    public_description: 军需灰网正在追索一名失踪库吏
+    target_id: N01
+    from_day: 14
+    until_day: 14
+    duration: 1
+    once: true
+    conditions:
+    - {type: location, value: L05}
+    - {type: missing_flag, key: zhou_protected}
+    completion_conditions:
+    - {type: missing_flag, key: zhou_protected}
+    score: {base: 12, goal: 5, urgency: 5, probability: 4, information: 5, relationship: 3, cost: 2, danger: 4}
+    effects:
+    - {type: move, value: L06}
+    - {type: transfer_unique, from_id: N01, target_id: N09, key: e10_statement}
+    - {type: set_flag, scope: world, target_id: world, key: zhou_intercepted, value: "true"}
+    - {type: adjust_relation, from_id: N01, target_id: N09, key: fear, amount: 2}
+
+- id: N10
+  name: 胡彦清
+  faction: FCT_INQUEST
+  public_profile: 随顺天府验看死伤的仵作，坚持只记录亲眼确认的位置与伤情。
+  public_role: 现场核验者
+  public_goal: 在现场被清理前保存准确记录，并阻止自己的观察被选择性引用。
+  track_public_plan: true
+  public_interests:
+  - {topic: evidence, label: 现场记录}
+  - {topic: cause, label: 成因边界}
+  public_risk: 准确记录仍可能被不同文本各取一部分，形成相反结论。
+  goal: 保全现场位置和伤痕记录
+  goals:
+  - {type: protect, target_id: evidence, priority: 5, topics: [evidence, cause]}
+  interests: [evidence, cause, inquiry, survivors]
+  location: L01
+  injury: 0
+  resources: {authority: 1, evidence: 5, allies: 1, exposure: 1}
+  items: []
+  beliefs:
+  - {fact_id: F06, claim: 各区域破坏和伤情不同，仅凭宏观表象不能确认唯一过程, confidence: 3, source: 现场验看, learned_on: 0, secrecy: 1}
+  personality: {caution: 5, greed: 1, loyalty: 3, ambition: 1, credit: 5, risk_tolerance: 2}
+  strategies:
+  - id: N10-record-scene
+    action_id: verify
+    description: 胡彦清在清理前记录不同区域的位置与伤情
+    public_description: 仵作正在现场留下位置和伤情记录
+    from_day: 1
+    until_day: 2
+    once: true
+    conditions: []
+    score: {base: 10, goal: 5, urgency: 5, probability: 5, information: 5, relationship: 1, cost: 2, danger: 2}
+    effects:
+    - {type: adjust_resource, key: evidence, amount: 1}
+  - id: N10-enter-inquest
+    action_id: explore
+    description: 胡彦清把现场私记送入会勘公署
+    public_description: 现场核验记录进入会勘公署
+    from_day: 3
+    until_day: 3
+    duration: 1
+    once: true
+    conditions:
+    - {type: location, value: L01}
+    score: {base: 9, goal: 4, urgency: 5, probability: 5, information: 5, relationship: 2, cost: 1, danger: 0}
+    effects:
+    - {type: move, value: L03}
+  - id: N10-challenge-selection
+    action_id: visit
+    description: 胡彦清发现初稿只摘录支持失慎的一部分记录，要求保留限定
+    public_description: 现场核验者对会勘初稿提出异议
+    target_id: N02
+    from_day: 7
+    until_day: 9
+    once: true
+    conditions:
+    - {type: flag, key: negligence_draft}
+    score: {base: 8, goal: 5, urgency: 4, probability: 3, information: 5, relationship: 2, cost: 1, danger: 2}
+    effects:
+    - {type: set_belief, target_id: N02, fact_id: F06, confidence: 3, evidence_strength: 4, source: N10, propagation: private, secrecy: 1}

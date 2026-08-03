@@ -23,7 +23,7 @@ func TestContentMigrationPreviewAndApply(t *testing.T) {
 			t.Fatal(err)
 		}
 		if entry.Name() == "manifest.yml" {
-			contents = []byte(strings.Replace(string(contents), "schema_version: 3", "schema_version: 1", 1))
+			contents = []byte(strings.Replace(string(contents), "schema_version: 4", "schema_version: 1", 1))
 		}
 		if entry.Name() == "arcs.yml" {
 			lines := strings.Split(strings.ReplaceAll(string(contents), "\r\n", "\n"), "\n")
@@ -85,7 +85,7 @@ func TestContentMigrationV2AddsPresentationMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if entry.IsDir() || entry.Name() == "presentation.yml" {
+		if entry.IsDir() || entry.Name() == "presentation.yml" || entry.Name() == "dialogue.yml" {
 			continue
 		}
 		contents, err := os.ReadFile(filepath.Join(sourceDir, entry.Name()))
@@ -93,7 +93,7 @@ func TestContentMigrationV2AddsPresentationMetadata(t *testing.T) {
 			t.Fatal(err)
 		}
 		if entry.Name() == "manifest.yml" {
-			contents = []byte(strings.Replace(string(contents), "schema_version: 3", "schema_version: 2", 1))
+			contents = []byte(strings.Replace(string(contents), "schema_version: 4", "schema_version: 2", 1))
 		}
 		if err := os.WriteFile(filepath.Join(targetDir, entry.Name()), contents, 0o644); err != nil {
 			t.Fatal(err)
@@ -112,6 +112,41 @@ func TestContentMigrationV2AddsPresentationMetadata(t *testing.T) {
 	}
 	if bundle.Presentation.Brand == "" || len(bundle.Presentation.Resources) != len(bundle.DefaultPlayer.Resources) {
 		t.Fatalf("generated presentation = %+v", bundle.Presentation)
+	}
+}
+
+func TestContentMigrationV3AddsDialogueMetadata(t *testing.T) {
+	sourceDir := filepath.Join("..", "..", "data", "blackwind")
+	targetDir := t.TempDir()
+	entries, err := os.ReadDir(sourceDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || entry.Name() == "dialogue.yml" {
+			continue
+		}
+		contents, err := os.ReadFile(filepath.Join(sourceDir, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if entry.Name() == "manifest.yml" {
+			contents = []byte(strings.Replace(string(contents), "schema_version: 4", "schema_version: 3", 1))
+		}
+		if err := os.WriteFile(filepath.Join(targetDir, entry.Name()), contents, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	report, err := MigrateContent(targetDir, true)
+	if err != nil || !report.Applied {
+		t.Fatalf("apply v3 migration: report=%+v err=%v", report, err)
+	}
+	bundle, err := Load(targetDir)
+	if err != nil {
+		t.Fatalf("load migrated v3 package: %v", err)
+	}
+	if bundle.Dialogue.Context == "" || bundle.Dialogue.Style == "" {
+		t.Fatalf("generated dialogue config = %+v", bundle.Dialogue)
 	}
 }
 

@@ -1,6 +1,8 @@
 brand: 凡途
 world_title: 黑风谷山川
 objective: 青髓芝争夺将在这里落定
+intro: 三十日内，青髓芝的归属将被决定。你未必亲手夺取它，也能让一条消息改写别人的去向。
+start_action: 从白石坊市入局
 terrain: res://assets/locations/valley_edge/background.png
 resources:
 - {id: combat, label: 战力, emphasis: normal}

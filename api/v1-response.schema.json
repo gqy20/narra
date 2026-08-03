@@ -667,6 +667,12 @@
         "objective": {
           "type": "string"
         },
+        "intro": {
+          "type": "string"
+        },
+        "start_action": {
+          "type": "string"
+        },
         "terrain": {
           "type": "string"
         },

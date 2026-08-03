@@ -1,0 +1,30 @@
+- {id: inquiry_open, scope: world, description: 奉旨查勘与灾民登记已经展开, public_label: 官署开始查勘灾情}
+- {id: evidence_window_narrowing, scope: world, description: 现场清理使原始证据窗口开始收窄, public_label: 现场证据正在消失}
+- {id: revision_debate, scope: world, description: 修省与灾异解释进入朝廷讨论, public_label: 修省议论公开扩大}
+- {id: spy_rumor_public, scope: world, description: 奸细纵火说已经在街巷传播, public_label: 来源不明的奸细说正在传播}
+- {id: negligence_draft, scope: world, description: 会勘官署形成失慎初稿, public_label: 官署形成第一份会勘初稿}
+- {id: relief_register_closing, scope: world, description: 优恤官册接近封存, public_label: 灾民登记窗口即将关闭}
+- {id: forged_ledger_submitted, scope: world, description: 补造账册进入官署核验, public_label: 一套完整账册进入核验}
+- {id: official_has_e01, scope: world, description: 会勘官署取得交割残页原件}
+- {id: press_has_e01_copy, scope: world, description: 书坊保留交割残页抄件}
+- {id: grey_has_e01, scope: world, description: 军需灰网取得交割残页原件}
+- {id: witness_protected, scope: world, description: 刘六安的早期证词获得匿名保护}
+- {id: witness_pressured, scope: world, description: 刘六安在压力下改口}
+- {id: register_verified, scope: world, description: 灾民名册获得分级互证}
+- {id: register_published, scope: world, description: 灾民名册进入民间传播}
+- {id: forged_ledger_exposed, scope: world, description: 补造账册的纸墨或印记破绽被揭出, public_label: 补造账册受到公开质疑}
+- {id: systemic_caveat, scope: world, description: 会勘文本保留制度性疑点}
+- {id: zhou_intercepted, scope: world, description: 周良辅出逃后被军需灰网截住}
+- {id: zhou_protected, scope: world, description: 周良辅或其自陈已脱离灰网控制}
+- {id: e10_copy_preserved, scope: world, description: 周良辅自陈存在一份独立封存抄件}
+- {id: bounded_record_public, scope: world, description: 玩家推动一份保留证据等级的公开记录}
+- {id: accusatory_record_public, scope: world, description: 玩家推动一份强化归责的公开记录}
+- {id: player_kept_original, scope: actor, description: 玩家选择保管交割残页原件}
+- {id: player_kept_copy, scope: actor, description: 玩家只保留交割残页抄件}
+- {id: player_verified_register, scope: actor, description: 玩家帮助灾民名册完成分级核验}
+- {id: player_protected_witness, scope: actor, description: 玩家承担了保护刘六安证词的责任}
+- {id: player_protected_zhou, scope: actor, description: 玩家承担了保护周良辅与E10的责任}
+- {id: player_bounded_record, scope: actor, description: 玩家完成保留证据等级的公开记录}
+- {id: player_accusatory_record, scope: actor, description: 玩家完成强化归责的公开记录}
+- {id: player_private_record, scope: actor, description: 玩家选择只保存可核材料而不立即公开}
+- {id: prepared, scope: actor, description: 人物已经为会勘定稿形成额外筹备}

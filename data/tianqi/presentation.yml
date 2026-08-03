@@ -1,0 +1,17 @@
+brand: 天变邸抄
+world_title: 京师灾变与会勘
+objective: 第十四日前，决定哪些材料进入会勘定稿
+intro: 灾变之后，事实不会自行汇成真相。官署、内廷、臣工、书坊、灾民与军需灰网都在争夺材料的去向和解释权。
+start_action: 从王恭厂外街开始记录
+resources:
+- {id: authority, label: 权势, emphasis: accent}
+- {id: evidence, label: 证据, emphasis: success}
+- {id: allies, label: 盟援, emphasis: normal}
+- {id: exposure, label: 暴露, emphasis: normal, hide_zero: true}
+actors:
+  N02: {map_token: {color: "#8e6c48", offset: [-24, -40]}}
+  N04: {map_token: {color: "#6e5878", offset: [24, -40]}}
+  N05: {map_token: {color: "#8d4f45", offset: [-24, -52]}}
+  N07: {map_token: {color: "#3f6f73", offset: [24, -52]}}
+  N08: {map_token: {color: "#6e7d52", offset: [0, -62]}}
+  N09: {map_token: {color: "#4d4a45", offset: [0, -40]}}

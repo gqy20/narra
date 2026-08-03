@@ -70,6 +70,28 @@ func TestGenericInvestigationRespectsDiscoverableFlag(t *testing.T) {
 	}
 }
 
+func TestGenericInvestigationCanBeDisabledPerScenario(t *testing.T) {
+	npc := domain.NPCConfig{
+		ID: "N01", Name: "调查者", Location: "L01", Resources: map[string]int{"combat": 5},
+		Interests: []string{"qingsuizhi"},
+		Beliefs:   []domain.Belief{{FactID: "F02", Confidence: 1}},
+	}
+	bundle := plannerBundle(t, npc, 2)
+	bundle.Scenario.DisableGenericInvestigation = true
+	state, err := New(bundle).Run()
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if got := state.NPCs[npc.ID].Beliefs["F02"].Confidence; got != 1 {
+		t.Fatalf("disabled generic investigation changed confidence to %d", got)
+	}
+	for _, event := range state.Events {
+		if event.ActionID == "verify" {
+			t.Fatal("disabled generic investigation still generated a verify action")
+		}
+	}
+}
+
 func TestGenericInvestigationRequiresRelevantTopic(t *testing.T) {
 	npc := domain.NPCConfig{
 		ID: "N01", Name: "调查者", Location: "L01", Resources: map[string]int{"combat": 5}, Interests: []string{"market"},

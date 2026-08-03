@@ -1,0 +1,23 @@
+id: P00
+name: 无名抄手
+location: L01
+injury: 0
+resources:
+  authority: 1
+  evidence: 1
+  allies: 1
+  exposure: 0
+items: []
+beliefs:
+- fact_id: F01
+  claim: 灾区散落的一页交割残纸可能保留异常领讫戳
+  confidence: 1
+  source: 爆炸后的街巷见闻
+  learned_on: 0
+  secrecy: 1
+- fact_id: F02
+  claim: 幸存军匠刘六安曾说爆炸前有一项操作不合常例
+  confidence: 1
+  source: 救援者转述
+  learned_on: 0
+  secrecy: 1

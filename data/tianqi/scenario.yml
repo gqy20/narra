@@ -1,0 +1,103 @@
+id: tianqi_t00
+title: 天变邸抄：五月初六
+duration: 15
+planning_mode: authored_priority
+disable_generic_investigation: true
+disable_generic_contest_navigation: true
+topics: [inquiry, ledger, supply, witness, survivors, register, relief, politics, press, rumor, cause, evidence, forgery, draft, transport]
+markets: []
+directives: []
+opportunity_actions: []
+phases:
+- {id: disaster, name: 灾变与救援, from_day: 1, to_day: 2}
+- {id: collection, name: 封锁与收拢, from_day: 3, to_day: 5}
+- {id: divergence, name: 证词与文本分叉, from_day: 6, to_day: 9}
+- {id: closure, name: 归责与定稿, from_day: 10, to_day: 14}
+- {id: aftermath, name: 余波, from_day: 15, to_day: 15}
+fixed_events:
+- id: EV01
+  day: 1
+  timing: start
+  description: 王恭厂一带灾变后的救援继续进行，奉命查勘与灾损登记同时展开。
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: inquiry_open, value: "true"}
+- id: EV03
+  day: 3
+  timing: start
+  description: 官署要求上交民间捡拾的厂区文书，现场清理使原始位置关系迅速消失。
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: evidence_window_narrowing, value: "true"}
+- id: EV04
+  day: 4
+  timing: start
+  description: 修省、优恤与灾异解释进入官员讨论，灾变开始产生超出会勘本身的政治后果。
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: revision_debate, value: "true"}
+- id: EV05
+  day: 5
+  timing: start
+  description: 一份来源不明的外来人员名单在街巷传播，奸细纵火说开始获得听众。
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: spy_rumor_public, value: "true"}
+- id: EV07
+  day: 7
+  timing: start
+  description: 会勘官署形成“火药失慎、责任待核”的第一份内部稿。
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: negligence_draft, value: "true"}
+- id: EV09
+  day: 9
+  timing: start
+  description: 优恤官册接近封存，无法及时完成身份互证的姓名将失去本轮登记机会。
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: relief_register_closing, value: "true"}
+- id: EV11
+  day: 11
+  timing: start
+  description: 一套文面完整的灾后账册被作为寻回材料送进会勘公署核验。
+  effects:
+  - {type: set_flag, scope: world, target_id: world, key: forged_ledger_submitted, value: "true"}
+- id: EV15
+  day: 15
+  timing: start
+  description: 京师另一处火灾再次引发陈言；已经完成的会勘却没有自动重启。
+  effects: []
+contest:
+  day: 14
+  item_id: official_draft
+  location_id: L03
+  required_item_id: ""
+  score_resources: [authority, evidence, allies]
+  preparation_flag: prepared
+  early_outcome: "{winner}在期限前控制了会勘定稿；这只是本局形成的文书版本，不是历史定论。"
+  cancelled_outcome: "第十四日定稿程序取消：{outcome}"
+  no_winner_outcome: 会勘期限届满而无人能够提交可执行文本，官署暂以“原因未明”封存材料。
+  default_outcome: "{winner}以影响值{score}控制会勘定稿，形成‘厂内失慎、个别人员负责’的行政版本；爆炸的唯一物理原因仍未查明。"
+  outcome_rules:
+  - id: bounded-official-report
+    priority: 120
+    winner_id: N02
+    required_world_flags: [systemic_caveat]
+    template: "{winner}以影响值{score}完成有限会勘报告：确认记录冲突与管理问题，同时明确现有材料不能推出唯一爆炸成因。"
+  - id: forged-ledger-exposed
+    priority: 110
+    required_world_flags: [forged_ledger_exposed]
+    template: "{winner}以影响值{score}控制定稿，但补造账册已被揭穿，报告只能保留军需记录长期矛盾与成因未决。"
+  - id: press-version
+    priority: 100
+    winner_id: N07
+    template: "{winner}以影响值{score}抢先散出一份民间长抄；它保存了更多见闻，也混杂尚未互证的内容，官署定稿失去垄断。"
+  - id: remonstrance-version
+    priority: 90
+    winner_id: N05
+    template: "{winner}以影响值{score}使灾变材料进入陈言文本；制度问题获得政治影响，但个别材料的确定程度仍受质疑。"
+  reward_rules:
+  - id: official-source-credit
+    priority: 100
+    winner_id: N02
+    required_player_flags: [player_kept_original]
+    min_winner_trust: 1
+    suffix: 玩家因保全原件而被列为材料经手人，同时承担来源公开的风险。
+    effects:
+    - {type: adjust_resource, target_id: player, key: authority, amount: 1}
+    - {type: adjust_resource, target_id: player, key: exposure, amount: 1}

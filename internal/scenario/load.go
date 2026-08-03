@@ -15,7 +15,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const CurrentSchemaVersion = 3
+const CurrentSchemaVersion = 4
 
 type manifest struct {
 	SchemaVersion       int    `json:"schema_version"`
@@ -46,6 +46,12 @@ func Load(dir string) (domain.Bundle, error) {
 	loadedFiles = append(loadedFiles, path)
 
 	path, err = readDataFile(dir, "presentation", &bundle.Presentation)
+	if err != nil {
+		return bundle, err
+	}
+	loadedFiles = append(loadedFiles, path)
+
+	path, err = readDataFile(dir, "dialogue", &bundle.Dialogue)
 	if err != nil {
 		return bundle, err
 	}
