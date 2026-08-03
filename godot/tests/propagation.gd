@@ -30,11 +30,11 @@ func _run() -> void:
 		for action in app.current_view.get("available_actions", []):
 			visible_ids.append(str(action.get("id", "")))
 		return _fail("verified date did not expose three exchange terms: %s" % ", ".join(visible_ids))
-	app._focus_actor_actions("N03", "沈砚秋")
+	app.action_panel_controller._focus_actor_actions("N03", "沈砚秋")
 	var term_text := _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box)
 	if "选择交换条件" not in term_text or "无偿相助" not in term_text or "交换解瘴丹" not in term_text or "换取同行名额" not in term_text or "你提出的条件" not in term_text:
 		return _fail("actor workspace does not explain the three intelligence terms")
-	app._clear_action_focus()
+	app.action_panel_controller._clear_action_focus()
 	if not await _execute("tell:N03:F01:trust"):
 		return
 	if app.timing_label.text != "第21天子时 · 已核实":
@@ -64,23 +64,23 @@ func _run() -> void:
 	var threads: Array = app.current_view.get("causal_threads", [])
 	if threads.is_empty() or threads[0].get("stage", "") != "delivered":
 		return _fail("delivered information has no persistent causal thread")
-	app._open_journal()
+	app.journal_panel_controller._open_journal()
 	if app.action_canvas.visible or "情报因果线" not in _descendant_text(app.scene_box) or "等待公开回响" not in _descendant_text(app.scene_box):
 		return _fail("journal does not show the delivered causal stage")
-	app._close_journal()
+	app.journal_panel_controller._close_journal()
 	if not app.action_canvas.visible:
 		return _fail("closing the journal did not restore the location action layer")
-	app._focus_actor_actions("N03", "沈砚秋")
+	app.action_panel_controller._focus_actor_actions("N03", "沈砚秋")
 	var dossier_text: String = _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + str(app.objective_label.text)
 	if "传播风险" not in dossier_text or "正在权衡" not in dossier_text or not app.actor_focus_workspace.visible:
 		return _fail("focused actor workspace does not expose decision context and state")
-	var shen_actions: Array = app._focused_information_actions(app.available_actions_cache)
+	var shen_actions: Array = app.action_panel_controller._focused_information_actions(app.available_actions_cache)
 	for action in shen_actions:
 		if action.get("fact_id", "") == "F01":
 			return _fail("actor focus still shows the delivered clue")
 		if action.get("relevance", "") == "" or action.get("risk", "") == "":
 			return _fail("actor focus lacks public decision context")
-	app._clear_action_focus()
+	app.action_panel_controller._clear_action_focus()
 	if not await _execute("wait:next"):
 		return
 	if app.actor_expression_by_id.get("N03", "") != "decisive" or app.actor_portrait.texture != shen_profile.decisive:
@@ -93,12 +93,12 @@ func _run() -> void:
 	var causal_text := _descendant_text(app.causal_layer)
 	if "沈砚秋" not in causal_text or "原本" not in causal_text or "现在" not in causal_text:
 		return _fail("causal theatre does not show the actor and before/after change")
-	app._dismiss_causal()
+	app.presentation_controller._dismiss_causal()
 	if app.causal_layer.visible or not app.action_canvas.visible:
 		return _fail("causal theatre cannot be dismissed")
 	var saved_known_actors: Array = app.current_view.get("known_actors", [])
 	app.current_view["known_actors"] = []
-	app._present_causal_change(app.current_view.get("last_turn", {}), app.current_view.get("location", {}))
+	app.presentation_controller._present_causal_change(app.current_view.get("last_turn", {}), app.current_view.get("location", {}))
 	app.current_view["known_actors"] = saved_known_actors
 	await process_frame
 	if app.causal_layer.visible or "余波继续" not in app.presentation_director.title_label.text:
@@ -109,34 +109,34 @@ func _run() -> void:
 	if int(app.current_view.get("day", 0)) != 8:
 		return _fail("advance did not stop when the recovery route appeared")
 	var recovery := _find_action("recover:N06:antidote")
-	if recovery.is_empty() or not app._action_has_visible_entry(recovery):
+	if recovery.is_empty() or not app.action_panel_controller._action_has_visible_entry(recovery):
 		return _fail("recovery action has no frontend entry")
-	if not app._action_needs_confirmation(recovery):
+	if not app.action_panel_controller._action_needs_confirmation(recovery):
 		return _fail("irreversible recovery exchange lost its confirmation")
-	app._focus_actor_actions("N06", "苏晚照")
+	app.action_panel_controller._focus_actor_actions("N06", "苏晚照")
 	var recovery_focus_text: String = _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + _descendant_text(app.actor_focus_footer)
 	if "以情报换取解瘴丹" not in recovery_focus_text:
 		return _fail("recovery action is not visible from Su Wanzhao's dialogue")
 	if "为何停下" not in _descendant_text(app.scene_box) or "以情报换取解瘴丹" not in _descendant_text(app.scene_box):
 		return _fail("recovery interruption does not explain why time stopped")
-	app._clear_action_focus()
+	app.action_panel_controller._clear_action_focus()
 	if not await _execute("wait:next"):
 		return
 	if int(app.current_view.get("day", 0)) != 10:
 		return _fail("trust route did not stop for the sect review")
 	var vouch := _find_action("route:trust:vouch")
 	var leak := _find_action("route:trust:leak")
-	if vouch.is_empty() or leak.is_empty() or not app._action_needs_confirmation(vouch):
+	if vouch.is_empty() or leak.is_empty() or not app.action_panel_controller._action_needs_confirmation(vouch):
 		return _fail("trust route does not expose both midgame responses")
-	app._focus_actor_actions("N09", "赵鹤鸣")
+	app.action_panel_controller._focus_actor_actions("N09", "赵鹤鸣")
 	var route_text := _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + _descendant_text(app.actor_focus_footer)
 	if "回应路线考验" not in route_text or "公开担保" not in route_text or "转交计划" not in route_text or "先选择一种回应" not in route_text or "做出这个决定" in route_text:
 		return _fail("route response workspace preselected an irreversible response")
-	app._select_focused_actor_action("route:trust:vouch")
+	app.action_panel_controller._select_focused_actor_action("route:trust:vouch")
 	route_text = _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + _descendant_text(app.actor_focus_footer)
 	if "你的回应" not in route_text or "为情报来源担保 · 确认" not in route_text:
 		return _fail("route response workspace lacks the trust test and its stakes")
-	app._clear_action_focus()
+	app.action_panel_controller._clear_action_focus()
 	if not await _execute("route:trust:vouch"):
 		return
 	if not await _execute("wait:next"):
@@ -170,10 +170,10 @@ func _run() -> void:
 		return _fail("ending overlay does not expose the aftermath section")
 	if "这次选择最终为你带来了什么" not in _descendant_text(app.ending_box) or "2 点信用" not in _descendant_text(app.ending_box):
 		return _fail("ending does not surface the player's intelligence-route return")
-	app._toggle_ending_annex()
+	app.presentation_controller._toggle_ending_annex()
 	if not app.ending_annex_box.visible:
 		return _fail("ending aftermath section does not expand")
-	app._toggle_ending_annex()
+	app.presentation_controller._toggle_ending_annex()
 	print("Godot propagation journey passed: ending visible on day %d" % app.current_view.get("day", 0))
 	quit(0)
 
@@ -183,9 +183,9 @@ func _execute(action_id: String) -> bool:
 	if action.is_empty():
 		_fail("missing action: " + action_id)
 		return false
-	app._consider_action(action)
+	app.action_panel_controller._consider_action(action)
 	if app.confirmation_layer.visible:
-		app._confirm_selected_action()
+		app.action_panel_controller._confirm_selected_action()
 	if not await _wait_until_idle(15000):
 		_fail("action timed out: " + action_id)
 		return false

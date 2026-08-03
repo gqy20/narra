@@ -20,23 +20,23 @@ func _run() -> void:
 		return _fail("new game request timed out")
 
 	var initial_actions: Array = app.current_view.get("available_actions", [])
-	if app._count_tell_actions(initial_actions, "N01", "") < 1:
+	if app.action_panel_controller._count_tell_actions(initial_actions, "N01", "") < 1:
 		return _fail("actor-to-clue link has no available action")
-	app._focus_actor_actions("N01", "李玄")
-	var actor_actions: Array = app._focused_information_actions(initial_actions)
+	app.action_panel_controller._focus_actor_actions("N01", "李玄")
+	var actor_actions: Array = app.action_panel_controller._focused_information_actions(initial_actions)
 	if actor_actions.is_empty():
 		return _fail("actor action focus is empty")
 	for action in actor_actions:
 		if action.get("target_id", "") != "N01":
 			return _fail("actor action focus leaked another target")
-	app._focus_fact_actions("F02", "青髓芝将在第24天成熟")
-	var fact_actions: Array = app._focused_information_actions(initial_actions)
+	app.action_panel_controller._focus_fact_actions("F02", "青髓芝将在第24天成熟")
+	var fact_actions: Array = app.action_panel_controller._focused_information_actions(initial_actions)
 	if fact_actions.is_empty():
 		return _fail("clue-to-actor link is empty")
 	for action in fact_actions:
 		if action.get("fact_id", "") != "F02":
 			return _fail("clue action focus leaked another fact")
-	app._clear_action_focus()
+	app.action_panel_controller._clear_action_focus()
 
 	if not await _execute("buy:M01:antidote"):
 		return
@@ -90,7 +90,7 @@ func _execute_cultivation_stage() -> bool:
 	var before_combat := int(app.current_view.get("player", {}).get("resources", {}).get("combat", 0))
 	var action_text := _descendant_text(app.overview_actions_box)
 	if str(action.get("description", "")) not in action_text:
-		app._toggle_all_actions()
+		app.action_panel_controller._toggle_all_actions()
 		action_text = _descendant_text(app.overview_actions_box)
 	if str(action.get("name", "")) not in action_text or str(action.get("expected_outcomes", [""])[0]) not in action_text:
 		_fail("cultivation action does not render its server-provided outcome")
@@ -98,9 +98,9 @@ func _execute_cultivation_stage() -> bool:
 	if before_combat == 4 and "累计闭关耗费 10 灵石" not in str(action.get("description", "")):
 		_fail("high-cost cultivation does not expose cumulative spending")
 		return false
-	app._consider_action(action, "wait:complete")
+	app.action_panel_controller._consider_action(action, "wait:complete")
 	if app.confirmation_layer.visible:
-		app._confirm_selected_action()
+		app.action_panel_controller._confirm_selected_action()
 	if not await _wait_until_idle(15000):
 		_fail("cultivation stage timed out")
 		return false
@@ -116,9 +116,9 @@ func _execute(action_id: String) -> bool:
 	if action.is_empty():
 		_fail("missing action: " + action_id)
 		return false
-	app._consider_action(action)
+	app.action_panel_controller._consider_action(action)
 	if app.confirmation_layer.visible:
-		app._confirm_selected_action()
+		app.action_panel_controller._confirm_selected_action()
 	if not await _wait_until_idle(15000):
 		_fail("action timed out: " + action_id)
 		return false

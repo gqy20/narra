@@ -22,7 +22,7 @@ func _run() -> void:
 	app._new_game()
 	if not await _wait_until_idle():
 		return _fail("new game request timed out")
-	app._set_visual_mode("location")
+	app.game_screen_controller._set_visual_mode("location")
 	await _capture("01-opening-overview.png")
 
 	if not await _execute("verify:F02"):
@@ -31,25 +31,25 @@ func _run() -> void:
 		return
 	await _capture("02-verified-overview.png")
 
-	app._set_visual_mode("map")
-	app._on_map_location_selected("L02")
+	app.game_screen_controller._set_visual_mode("map")
+	app.game_screen_controller._on_map_location_selected("L02")
 	await _capture("03-route-decision.png")
 	if not await _execute("move:L02"):
 		return
 
-	app._set_visual_mode("location")
-	app._focus_actor_actions("N03", "沈砚秋")
+	app.game_screen_controller._set_visual_mode("location")
+	app.action_panel_controller._focus_actor_actions("N03", "沈砚秋")
 	await _capture("04-actor-message-choice.png")
 
 	var tell_action := _find_action("tell:N03:F01:trust")
 	if tell_action.is_empty():
 		return _fail("missing tell action")
-	app._consider_action(tell_action)
+	app.action_panel_controller._consider_action(tell_action)
 	await _settle_layout()
 	if not app.confirmation_layer.visible:
 		return _fail("tell action did not open confirmation")
 	await _capture("05-irreversible-confirmation.png")
-	app._confirm_selected_action()
+	app.action_panel_controller._confirm_selected_action()
 	if not await _wait_until_idle(15000):
 		return _fail("tell action timed out")
 
@@ -58,12 +58,12 @@ func _run() -> void:
 	if not app.causal_layer.visible:
 		return _fail("causal theatre did not open")
 	await _capture("06-visible-causal-change.png")
-	app._dismiss_causal()
-	app._open_journal()
+	app.presentation_controller._dismiss_causal()
+	app.journal_panel_controller._open_journal()
 	await _capture("07-causal-record.png")
-	app._close_journal()
+	app.journal_panel_controller._close_journal()
 
-	app._clear_action_focus()
+	app.action_panel_controller._clear_action_focus()
 	for index in 8:
 		if bool(app.current_view.get("resolved", false)):
 			break
@@ -81,10 +81,10 @@ func _execute(action_id: String) -> bool:
 	if action.is_empty():
 		_fail("missing action: " + action_id)
 		return false
-	app._consider_action(action)
+	app.action_panel_controller._consider_action(action)
 	if app.confirmation_layer.visible:
 		await _settle_layout()
-		app._confirm_selected_action()
+		app.action_panel_controller._confirm_selected_action()
 	if not await _wait_until_idle(15000):
 		_fail("action timed out: " + action_id)
 		return false

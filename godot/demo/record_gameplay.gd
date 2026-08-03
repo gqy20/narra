@@ -26,22 +26,22 @@ func _run() -> void:
 		return _fail("new game request timed out")
 	await _hold(2.0)
 
-	app._set_visual_mode("location")
+	app.game_screen_controller._set_visual_mode("location")
 	await _hold(2.0)
 	if not await _execute("verify:F02", 1.4, 1.8):
 		return
 	if not await _execute("wait:complete", 1.2, 1.8):
 		return
 
-	app._set_visual_mode("map")
-	app._on_map_location_selected("L02")
+	app.game_screen_controller._set_visual_mode("map")
+	app.game_screen_controller._on_map_location_selected("L02")
 	await _hold(2.0)
 	if not await _execute("move:L02", 1.4, 1.5):
 		return
-	app._set_visual_mode("location")
+	app.game_screen_controller._set_visual_mode("location")
 	await _hold(2.0)
 
-	app._focus_actor_actions("N03", "沈砚秋")
+	app.action_panel_controller._focus_actor_actions("N03", "沈砚秋")
 	await _hold(2.2)
 	if not await _execute("tell:N03:F01:trust", 1.5, 2.3):
 		return
@@ -50,21 +50,21 @@ func _run() -> void:
 	if not app.causal_layer.visible:
 		return _fail("causal theatre did not open")
 	await _hold(4.2)
-	app._dismiss_causal()
+	app.presentation_controller._dismiss_causal()
 	await _hold(1.0)
-	app._open_journal()
+	app.journal_panel_controller._open_journal()
 	await _hold(2.0)
-	app._select_journal_tab(1)
+	app.journal_panel_controller._select_journal_tab(1)
 	await _hold(1.4)
-	app._select_journal_tab(2)
+	app.journal_panel_controller._select_journal_tab(2)
 	await _hold(1.4)
-	app._select_journal_tab(3)
+	app.journal_panel_controller._select_journal_tab(3)
 	await _hold(2.0)
-	app._toggle_journal_travel_details()
+	app.journal_panel_controller._toggle_journal_travel_details()
 	await _hold(1.7)
-	app._close_journal()
+	app.journal_panel_controller._close_journal()
 
-	app._clear_action_focus()
+	app.action_panel_controller._clear_action_focus()
 	for index in 3:
 		if not await _execute("wait:next", 0.55, 0.9):
 			return
@@ -78,10 +78,10 @@ func _execute(action_id: String, confirmation_hold: float, result_hold: float) -
 	if action.is_empty():
 		_fail("missing action: " + action_id)
 		return false
-	app._consider_action(action)
+	app.action_panel_controller._consider_action(action)
 	if app.confirmation_layer.visible:
 		await _hold(confirmation_hold)
-		app._confirm_selected_action()
+		app.action_panel_controller._confirm_selected_action()
 	if not await _wait_until_idle(15000):
 		_fail("action timed out: " + action_id)
 		return false

@@ -17,12 +17,12 @@ func _run() -> void:
 	app._new_game()
 	if not await _wait_until_idle():
 		return _fail("new game request timed out")
-	app._set_visual_mode("location")
+	app.game_screen_controller._set_visual_mode("location")
 	await _settle_layout()
 	if not await _capture("ui-overview-2048x1152.png"):
 		return
 
-	app._focus_actor_actions("N01", "李玄")
+	app.action_panel_controller._focus_actor_actions("N01", "李玄")
 	await _settle_layout()
 	if not await _capture("ui-actor-focus-2048x1152.png"):
 		return

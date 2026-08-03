@@ -38,7 +38,7 @@ func _run() -> void:
 	if not app.location_panel.visible or app.map_panel.visible or not app.action_dock.visible:
 		return _fail("new players do not enter through the first actionable location view")
 	for action in actions:
-		if not app._action_has_visible_entry(action):
+		if not app.action_panel_controller._action_has_visible_entry(action):
 			return _fail("available backend action has no frontend entry contract: " + str(action.get("id", "")))
 	var world_map: Dictionary = app.current_view.get("world_map", {})
 	if world_map.get("locations", []).size() != 5 or world_map.get("routes", []).is_empty():
@@ -56,13 +56,13 @@ func _run() -> void:
 			break
 	if direct_route.is_empty() or app.world_map_view._route_destination(direct_route) != "L02":
 		return _fail("raised map routes are not selectable navigation targets")
-	app._set_visual_mode("map")
+	app.game_screen_controller._set_visual_mode("map")
 	var map_text := _descendant_text(app.map_detail_box)
 	if not (app.map_panel is HBoxContainer) or "立体路线沙盘" not in map_text or "点击地点或发光路径" not in map_text:
 		return _fail("world map did not expose the 2.5D sandbox and fixed route detail panel")
-	app._set_visual_mode("location")
+	app.game_screen_controller._set_visual_mode("location")
 	var action_text := _descendant_text(app.overview_actions_box)
-	var contextual_actions: Array = app._location_context_actions(actions)
+	var contextual_actions: Array = app.action_panel_controller._location_context_actions(actions)
 	if contextual_actions.is_empty() or str(contextual_actions[0].get("name", "")) not in action_text or "起手可选" not in action_text or "查证与探索" in action_text or app.active_action_category != "":
 		return _fail("compact contextual action dock fell back to dashboard categories")
 	if not app.overview_actions_box.visible or app.legacy_action_scroll.visible or app.actor_focus_workspace.visible:
@@ -88,7 +88,7 @@ func _run() -> void:
 		return _fail("initial core actor did not load its registered portrait")
 	if app.stage_actor_id != "N01" or app.actor_portrait_name.text != "李玄":
 		return _fail("location stage did not establish the first visible actor")
-	app._focus_actor_from_stage("N04", "魏无咎")
+	app.game_screen_controller._focus_actor_from_stage("N04", "魏无咎")
 	await process_frame
 	if app.stage_actor_id != "N04" or app.focused_actor_id != "N04":
 		return _fail("actor selection did not synchronize stage and action focus")
@@ -116,7 +116,7 @@ func _run() -> void:
 	for bus_name in ["Ambient", "Event", "UI"]:
 		if AudioServer.get_bus_index(bus_name) < 0:
 			return _fail("missing audio bus: " + bus_name)
-	app._open_audio_settings()
+	app.start_settings_screen_controller._open_audio_settings()
 	if not app.settings_layer.visible or app.action_canvas.visible:
 		return _fail("audio settings entry did not open")
 	var settings_text := _descendant_text(app.settings_box)
@@ -126,23 +126,23 @@ func _run() -> void:
 		return _fail("AI settings do not expose enablement, model, endpoint, and API key")
 	if not app.ai_api_key_input.secret:
 		return _fail("AI API key input is not masked")
-	if "4K" not in app._resolution_label(Vector2i(3840, 2160)):
+	if "4K" not in app.display_settings_controller._resolution_label(Vector2i(3840, 2160)):
 		return _fail("display settings do not expose a 4K output preset")
 	var original_display_mode: String = app.display_mode
 	app.display_mode = "borderless"
-	app._apply_display_settings(false)
+	app.display_settings_controller._apply_display_settings(false)
 	if not app.display_resolution_option.disabled or "原生" not in app.display_resolution_option.get_item_text(0):
 		return _fail("fullscreen display mode does not use the monitor's native resolution")
 	app.display_mode = original_display_mode
-	app._apply_display_settings(false)
-	app._toggle_motion()
+	app.display_settings_controller._apply_display_settings(false)
+	app.start_settings_screen_controller._toggle_motion()
 	if app.motion_enabled or app.world_map_view.motion_enabled or app.presentation_director.motion_enabled:
 		return _fail("reduced-motion preference did not propagate to presentation components")
-	app._toggle_motion()
-	app._close_audio_settings()
+	app.start_settings_screen_controller._toggle_motion()
+	app.start_settings_screen_controller._close_audio_settings()
 	if not app.action_canvas.visible:
 		return _fail("closing audio settings did not restore the location action layer")
-	app._on_map_location_selected("L02")
+	app.game_screen_controller._on_map_location_selected("L02")
 	if app.selected_map_location_id != "L02" or app.map_detail_box.get_child_count() == 0:
 		return _fail("map location selection has no detail state")
 	var qinglan_map_text := _descendant_text(app.map_detail_box)
@@ -150,10 +150,10 @@ func _run() -> void:
 		return _fail("map travel call to action does not name its destination")
 	if "此地人物动向" not in qinglan_map_text or "沈砚秋" not in qinglan_map_text or "当前" not in qinglan_map_text:
 		return _fail("map detail does not explain who is acting at the selected place")
-	app._set_visual_mode("location")
+	app.game_screen_controller._set_visual_mode("location")
 	if not app.location_panel.visible or app.map_panel.visible or not app.action_dock.visible:
 		return _fail("location scene mode did not replace the map")
-	app._set_visual_mode("map")
+	app.game_screen_controller._set_visual_mode("map")
 	if app.action_dock.visible:
 		return _fail("map mode keeps the narrative action dock open")
 	if app.map_mode_button.text != "◇ 地图" or app.location_mode_button.text != "◉ 当前地点":
@@ -164,29 +164,29 @@ func _run() -> void:
 		return _fail("initial phase does not explain the preparation stage")
 	if app.timing_label.text != "第24天 · 传闻":
 		return _fail("initial known timing is not visible")
-	app._open_journal()
+	app.journal_panel_controller._open_journal()
 	if not app.journal_layer.visible or app.action_canvas.visible or "烟测修士" not in _descendant_text(app.journal_panel):
 		return _fail("travel dossier does not expose the player summary")
 	if app.journal_tabs.get_tab_count() != 4 or app.journal_travel_button.text != "行装 !2":
 		return _fail("travel dossier does not expose four layered sections with blocking gear status")
-	app._select_journal_tab(2)
+	app.journal_panel_controller._select_journal_tab(2)
 	var people_text := _descendant_text(app.people_box)
 	if "局势追踪" not in people_text or "核心人物 3" not in people_text or "目标" not in people_text or "计划" not in people_text or "缘由" not in people_text:
 		return _fail("people dossier does not explain autonomous actor goals and plans")
 	var player_metrics := _descendant_text(app.player_resources_box)
 	if "战力 2" not in player_metrics or "灵石 100" not in player_metrics or "助力 0" in player_metrics or "伤势 0" in player_metrics:
 		return _fail("player summary did not hide zero-value secondary metrics")
-	app._select_journal_tab(3)
+	app.journal_panel_controller._select_journal_tab(3)
 	var travel_text := _descendant_text(app.travel_box)
 	if app.journal_tabs.current_tab != 3 or "仍缺 2 项才能成行" not in travel_text or "缺少 · 解瘴丹" not in travel_text or "购买解瘴丹 · 灵石 20" not in travel_text or "入口尚未开放" not in travel_text or "你的争夺准备" not in travel_text or "助力 0 · 当前尚未建立" not in travel_text:
 		return _fail("gear section does not prioritize blocking preparation: " + travel_text)
 	if app.journal_travel_details_box.visible:
 		return _fail("gear section exposes completed checks before the player asks")
-	app._toggle_journal_travel_details()
+	app.journal_panel_controller._toggle_journal_travel_details()
 	if not app.journal_travel_details_box.visible or "路线已发现" not in travel_text:
 		return _fail("gear section cannot reveal completed checks on demand")
-	app._select_journal_tab(0)
-	app._close_journal()
+	app.journal_panel_controller._select_journal_tab(0)
+	app.journal_panel_controller._close_journal()
 	if app.journal_layer.visible or app.action_canvas.visible != (app.visual_mode == "location"):
 		return _fail("travel dossier cannot be dismissed")
 	var found_verification := false
@@ -201,31 +201,31 @@ func _run() -> void:
 			found_verification = true
 			if int(action.get("completion_day", 0)) != 2 or "传闻口径" not in str(action.get("timing", "")) or action.get("resolves", []).is_empty():
 				return _fail("verification action lacks a player-facing decision summary")
-			if app._action_needs_confirmation(action):
+			if app.action_panel_controller._action_needs_confirmation(action):
 				return _fail("ordinary verification still uses a blocking commitment modal")
 		if action.get("id", "") == "wait:next":
-			if not app._action_needs_confirmation(action):
+			if not app.action_panel_controller._action_needs_confirmation(action):
 				return _fail("open-ended time advance lost its confirmation")
 			if int(action.get("completion_day", 0)) != 0:
 				return _fail("open-ended advance exposes a misleading completion day")
-			app._consider_action(action)
+			app.action_panel_controller._consider_action(action)
 			if not app.confirmation_layer.visible:
 				return _fail("multi-day advance has no confirmation")
 			if app.confirmation_details_box.visible:
 				return _fail("confirmation reveals secondary reasoning before the player asks")
-			app._toggle_confirmation_details()
+			app.action_panel_controller._toggle_confirmation_details()
 			if not app.confirmation_details_box.visible:
 				return _fail("confirmation reasoning disclosure cannot be opened")
 			if "仍未知" not in _descendant_text(app.confirmation_details_box):
 				return _fail("confirmation does not expose uncertainty separately")
-			app._cancel_confirmation()
+			app.action_panel_controller._cancel_confirmation()
 			break
 	if not found_verification:
 		return _fail("initial verification action is missing")
 
-	app._consider_action(actions[0])
+	app.action_panel_controller._consider_action(actions[0])
 	if app.confirmation_layer.visible:
-		app._confirm_selected_action()
+		app.action_panel_controller._confirm_selected_action()
 	if not await _wait_until_idle(12000):
 		return _fail("action or autosave request timed out")
 	if int(app.current_view.get("day", 0)) < 1:
@@ -252,13 +252,13 @@ func _run() -> void:
 	app.presentation_director.cancel()
 	if app.journal_echo_button.text != "回响 · 新" or app.journal_feedback_details_box.visible:
 		return _fail("new echo is not marked or reveals its evidence by default")
-	app._open_journal()
+	app.journal_panel_controller._open_journal()
 	if "查看推演过程" not in _descendant_text(app.scene_box):
 		return _fail("echo summary does not offer progressive disclosure")
-	app._toggle_journal_feedback_details()
+	app.journal_panel_controller._toggle_journal_feedback_details()
 	if not app.journal_feedback_details_box.visible:
 		return _fail("echo evidence cannot be expanded")
-	app._close_journal()
+	app.journal_panel_controller._close_journal()
 	if app.journal_echo_button.text != "回响":
 		return _fail("echo unread marker is not cleared after reading")
 	print("Godot integration smoke test passed: day %d, %d actions" % [app.current_view.get("day", 0), app.current_view.get("available_actions", []).size()])

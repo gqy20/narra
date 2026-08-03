@@ -430,7 +430,7 @@ func (s *Session) addRecoveryActions(options map[string]actionOption, state *dom
 			for index := 0; index <= completed; index++ {
 				cumulativeCost += cultivationCost(index)
 			}
-			description = fmt.Sprintf("第 %d 阶段闭关三日，以 %d %s稳固气机，%s提高一点；完成后累计耗费 %d %s", stage, cost, currencyLabel, combatLabel, cumulativeCost, currencyLabel)
+			description = fmt.Sprintf("第 %d 阶段闭关三日，以 %d %s稳固气机，%s提高一点；完成后累计闭关耗费 %d %s", stage, cost, currencyLabel, combatLabel, cumulativeCost, currencyLabel)
 			warnings = append(warnings, fmt.Sprintf("重复闭关已进入高耗阶段；本轮消耗 %d %s，完成后累计耗费 %d %s。", cost, currencyLabel, cumulativeCost, currencyLabel))
 		}
 		options["cultivate"] = actionOption{

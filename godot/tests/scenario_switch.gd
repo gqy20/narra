@@ -39,10 +39,10 @@ func _run() -> void:
 	for forbidden in ["战力", "灵石", "助力", "解瘴丹", "黑风谷"]:
 		if forbidden in resource_text:
 			return _fail("blackwind content leaked into tianqi resources: " + forbidden)
-	app._set_visual_mode("map")
+	app.game_screen_controller._set_visual_mode("map")
 	for location in app.current_view.get("world_map", {}).get("locations", []):
 		if bool(location.get("contest", false)):
-			app._on_map_location_selected(str(location.get("id", "")))
+			app.game_screen_controller._on_map_location_selected(str(location.get("id", "")))
 			break
 	var map_text := _descendant_text(app.map_detail_box)
 	if "第十四日前，决定哪些材料进入会勘定稿" not in map_text:

@@ -13,9 +13,9 @@ func _run() -> void:
 	root.add_child(game)
 	await process_frame
 
-	if game._redact_log_field("shutdown_token", "unsafe") != "[REDACTED]":
+	if game.runtime_logger_controller._redact_log_field("shutdown_token", "unsafe") != "[REDACTED]":
 		return _fail("sensitive client log field was not redacted")
-	if game._redact_log_text("https://example.test/path?secret=unsafe").contains("unsafe"):
+	if game.runtime_logger_controller._redact_log_text("https://example.test/path?secret=unsafe").contains("unsafe"):
 		return _fail("client log URL query was not redacted")
 
 	var original_path: String = game.client_log_path
@@ -29,17 +29,17 @@ func _run() -> void:
 	oversized = null
 	game.client_log_path = test_path
 	game.log_level = "INFO"
-	game._log_event("INFO", "rotation_test", "trigger rotation")
+	game.runtime_logger_controller._log_event("INFO", "rotation_test", "trigger rotation")
 	if not FileAccess.file_exists(test_path) or not FileAccess.get_file_as_string(test_path).contains("rotation_test"):
 		return _fail("client log was not recreated after rotation")
 	var after_archives := _client_archives(game.archived_logs_dir)
 	if after_archives.size() <= before_archives.size():
 		return _fail("oversized client log was not archived")
 
-	var current_size: int = game._file_size(test_path)
+	var current_size: int = game.runtime_logger_controller._file_size(test_path)
 	game.log_level = "ERROR"
-	game._log_event("DEBUG", "filtered_debug", "must not be written")
-	if game._file_size(test_path) != current_size:
+	game.runtime_logger_controller._log_event("DEBUG", "filtered_debug", "must not be written")
+	if game.runtime_logger_controller._file_size(test_path) != current_size:
 		return _fail("client log level did not filter DEBUG")
 
 	var original_recovery_path: String = game.recovery_log_path
@@ -48,7 +48,7 @@ func _run() -> void:
 	game.client_log_path = game.logs_dir
 	game.recovery_log_path = recovery_path
 	game.client_log_failure_reported = false
-	game._log_event("ERROR", "write_failure_test", "trigger fallback")
+	game.runtime_logger_controller._log_event("ERROR", "write_failure_test", "trigger fallback")
 	if not game.client_log_failure_reported or not FileAccess.file_exists(recovery_path):
 		return _fail("client log write failure did not use recovery output")
 

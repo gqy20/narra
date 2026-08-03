@@ -13,7 +13,7 @@ func _run() -> void:
 	var game = scene_resource.instantiate()
 	root.add_child(game)
 	await process_frame
-	var archive_path: String = game._export_diagnostics(false)
+	var archive_path: String = game.runtime_logger_controller._export_diagnostics(false)
 	if archive_path == "" or not FileAccess.file_exists(archive_path):
 		_fail("diagnostics archive was not created")
 		return
