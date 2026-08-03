@@ -27,12 +27,23 @@ type Scenario struct {
 }
 
 type StoryArc struct {
-	ID            string              `json:"id"`
-	Title         string              `json:"title"`
-	InitialState  string              `json:"initial_state"`
-	States        []string            `json:"states"`
-	Nodes         []StoryNode         `json:"nodes"`
-	ProgressRules []StoryProgressRule `json:"progress_rules,omitempty"`
+	ID               string                 `json:"id"`
+	Title            string                 `json:"title"`
+	InitialState     string                 `json:"initial_state"`
+	States           []string               `json:"states"`
+	Nodes            []StoryNode            `json:"nodes"`
+	ProgressRules    []StoryProgressRule    `json:"progress_rules,omitempty"`
+	ConsequenceRules []StoryConsequenceRule `json:"consequence_rules,omitempty"`
+}
+
+type StoryConsequenceRule struct {
+	ID             string      `json:"id"`
+	States         []string    `json:"states"`
+	Conditions     []Condition `json:"conditions,omitempty"`
+	Text           string      `json:"text"`
+	RelationFromID string      `json:"relation_from_id,omitempty"`
+	RelationToID   string      `json:"relation_to_id,omitempty"`
+	RelationMetric string      `json:"relation_metric,omitempty"`
 }
 
 type StoryProgressRule struct {

@@ -384,6 +384,30 @@ func TestValidateRejectsInvalidStoryTransition(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsInvalidStoryConsequence(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	arc := bundle.StoryArcs["qinglan_intel"]
+	arc.ConsequenceRules[0].States = []string{"missing"}
+	bundle.StoryArcs[arc.ID] = arc
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "unknown state") {
+		t.Fatalf("invalid consequence state error = %v", err)
+	}
+
+	bundle, err = Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("reload bundle: %v", err)
+	}
+	arc = bundle.StoryArcs["qinglan_intel"]
+	arc.ConsequenceRules[1].RelationMetric = "influence"
+	bundle.StoryArcs[arc.ID] = arc
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "relation interpolation") {
+		t.Fatalf("invalid consequence interpolation error = %v", err)
+	}
+}
+
 func TestValidateRejectsInvalidContestContentRule(t *testing.T) {
 	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
 	if err != nil {

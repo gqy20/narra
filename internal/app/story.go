@@ -1,6 +1,12 @@
 package app
 
-import "fantu/internal/domain"
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	"fantu/internal/domain"
+)
 
 func (s *Session) addStoryActions(options map[string]actionOption, state *domain.WorldState) {
 	for arcID, arc := range s.bundle.StoryArcs {
@@ -148,6 +154,68 @@ func (s *Session) storyRouteProgress(state *domain.WorldState) *RouteProgress {
 		ID: selected.RouteID, Label: selected.Label, Status: selected.Status, NextStep: selected.NextStep,
 		Window: selected.Window, DeadlineDay: selected.DeadlineDay, Location: location,
 		PersonalReturn: selected.PersonalReturn, Urgent: selected.Urgent, Complete: selected.Complete,
+	}
+}
+
+func (s *Session) storyConsequences(state *domain.WorldState) []string {
+	arcIDs := make([]string, 0, len(s.bundle.StoryArcs))
+	for arcID := range s.bundle.StoryArcs {
+		arcIDs = append(arcIDs, arcID)
+	}
+	sort.Strings(arcIDs)
+	result := make([]string, 0)
+	for _, arcID := range arcIDs {
+		arc := s.bundle.StoryArcs[arcID]
+		stateID := state.StoryStates[arcID]
+		for _, rule := range arc.ConsequenceRules {
+			if !containsStoryState(rule.States, stateID) || !storyConditionsMet(state, rule.Conditions) {
+				continue
+			}
+			text := rule.Text
+			if rule.RelationMetric != "" {
+				fromID := materializeStoryActorID(rule.RelationFromID, state.Player.ID)
+				toID := materializeStoryActorID(rule.RelationToID, state.Player.ID)
+				value := storyRelationMetric(state.RelationBetween(fromID, toID), rule.RelationMetric)
+				text = strings.ReplaceAll(text, "{{value}}", fmt.Sprintf("%d", value))
+			}
+			result = append(result, text)
+		}
+	}
+	return result
+}
+
+func containsStoryState(states []string, stateID string) bool {
+	for _, candidate := range states {
+		if candidate == stateID {
+			return true
+		}
+	}
+	return false
+}
+
+func materializeStoryActorID(actorID, playerID string) string {
+	if actorID == "player" {
+		return playerID
+	}
+	return actorID
+}
+
+func storyRelationMetric(relation domain.Relation, metric string) int {
+	switch metric {
+	case "trust":
+		return relation.Trust
+	case "suspicion":
+		return relation.Suspicion
+	case "fear":
+		return relation.Fear
+	case "dependence":
+		return relation.Dependence
+	case "hatred":
+		return relation.Hatred
+	case "debt":
+		return relation.Debt
+	default:
+		return 0
 	}
 }
 

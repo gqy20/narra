@@ -321,62 +321,7 @@ func (s *Session) actorContestScore(state *domain.WorldState, actorID string) in
 }
 
 func (s *Session) playerConsequences(state *domain.WorldState) []string {
-	result := make([]string, 0, 4)
-	playerID := state.Player.ID
-	if state.ActorFlag(playerID, "qinglan_intel_term_trust") {
-		trust := state.RelationBetween("N03", playerID).Trust
-		switch {
-		case state.ActorFlag(playerID, "qinglan_trust_rewarded"):
-			result = append(result, "你在宗门审核中兑现了担保；沈砚秋取得青髓芝后为你记功，你获得 2 点信用与 1 点支援。")
-		case state.ActorFlag(playerID, "qinglan_trust_betrayed"):
-			result = append(result, fmt.Sprintf("你把沈砚秋的计划转交赵鹤鸣换取 20 灵石；沈砚秋对你的最终信任为 %d。", trust))
-		case state.ActorFlag(playerID, "qinglan_trust_vouched"):
-			result = append(result, fmt.Sprintf("你公开为消息担保并完成了信任路线的履约；沈砚秋对你的最终信任为 %d。", trust))
-		default:
-			result = append(result, fmt.Sprintf("你最初无偿帮助沈砚秋，却没有回应赵鹤鸣的公开质疑；关系停留在 %d 点信任，未形成宗门记功。", trust))
-		}
-		if state.ActorFlag(playerID, "qinglan_trust_operation_joined") {
-			result = append(result, "你把公开担保兑现为行动席位，取得解瘴丹、2 点支援与额外筹备，获得亲自争夺的完整条件。")
-		} else if state.ActorFlag(playerID, "qinglan_trust_commissioned") {
-			result = append(result, "你没有占用青岚门行动席位，而是把情报与担保结算为 30 灵石和 1 点信用。")
-		}
-	}
-	if state.ActorFlag(playerID, "qinglan_intel_term_antidote") {
-		switch {
-		case state.ActorFlag(playerID, "qinglan_antidote_lent"):
-			result = append(result, "苏晚照提出队伍药物缺口后，你交回解瘴丹，放弃独行资格并换得 2 点支援与她的信任。")
-		case state.ActorFlag(playerID, "qinglan_antidote_kept"):
-			result = append(result, "你拒绝归还交易所得的解瘴丹，保留独自决定入谷时机的自由，也失去了苏晚照的信任。")
-		default:
-			result = append(result, "你用成熟日期换得解瘴丹，但没有正面回应苏晚照的借丹请求；丹药仍是你的独行筹码。")
-		}
-		if state.ActorFlag(playerID, "qinglan_antidote_scouted") {
-			result = append(result, "你用稀缺解瘴丹提前踩点，保留丹药并取得 2 点支援与额外筹备。")
-		} else if state.ActorFlag(playerID, "qinglan_antidote_liquidated") {
-			result = append(result, "你主动放弃核心争夺，把解瘴丹与独行路线转售为 60 灵石，锁定了个人交易收益。")
-		}
-	}
-	if state.ActorFlag(playerID, "qinglan_intel_term_escort") {
-		switch {
-		case state.ActorFlag(playerID, "qinglan_escort_fulfilled"):
-			result = append(result, "你通过青岚门审核并兑现同行承诺，取得随队解瘴丹与 1 点支援。")
-		case state.ActorFlag(playerID, "qinglan_escort_refused"):
-			result = append(result, "你在宗门审核时退出同行名单，放弃随队收益并保留了公开的散修身份。")
-		case state.ActorFlag(playerID, "qinglan_escort_approved"):
-			result = append(result, "你通过了青岚门审核，却没有在开谷前返回驻地集结，同行承诺最终失效。")
-		default:
-			result = append(result, "你换得同行承诺，却没有完成宗门审核，因而失去了第16日的集结资格。")
-		}
-		if state.ActorFlag(playerID, "qinglan_escort_vanguard") {
-			result = append(result, "你在集结后接下先锋分工，取得 3 点支援、额外筹备与独立指挥权。")
-		} else if state.ActorFlag(playerID, "qinglan_escort_quartermaster") {
-			result = append(result, "你选择负责随队后勤，获得 30 灵石、2 点信用与 1 点支援。")
-		}
-		if state.WorldFlag("chen_treats_player_as_qinglan") && !state.WorldFlag("player_declared_independent") {
-			result = append(result, "陈青山已经把你视为青岚门行动的一员，陈氏后续合作将以阵营关系重新评估。")
-		}
-	}
-	return result
+	return s.storyConsequences(state)
 }
 
 func confidenceLabel(confidence int) string {

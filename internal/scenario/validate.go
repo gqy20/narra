@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	"fantu/internal/domain"
 )
@@ -428,8 +429,49 @@ func validateStoryArcs(bundle domain.Bundle) error {
 				return fmt.Errorf("story arc %s progress rule %s: %w", arcID, rule.ID, err)
 			}
 		}
+		consequenceIDs := make(map[string]bool, len(arc.ConsequenceRules))
+		for _, rule := range arc.ConsequenceRules {
+			if rule.ID == "" || consequenceIDs[rule.ID] || len(rule.States) == 0 || rule.Text == "" {
+				return fmt.Errorf("story arc %s has invalid consequence rule %q", arcID, rule.ID)
+			}
+			consequenceIDs[rule.ID] = true
+			for _, stateID := range rule.States {
+				if !states[stateID] {
+					return fmt.Errorf("story arc %s consequence rule %s references unknown state %s", arcID, rule.ID, stateID)
+				}
+			}
+			for _, condition := range rule.Conditions {
+				if !validStoryCondition(condition) {
+					return fmt.Errorf("story arc %s consequence rule %s has unsupported condition %s", arcID, rule.ID, condition.Type)
+				}
+			}
+			if err := validateConditionsAndEffects(rule.Conditions, nil, nil, bundle); err != nil {
+				return fmt.Errorf("story arc %s consequence rule %s: %w", arcID, rule.ID, err)
+			}
+			hasRelation := rule.RelationFromID != "" || rule.RelationToID != "" || rule.RelationMetric != ""
+			if hasRelation {
+				if !validConsequenceActorReference(rule.RelationFromID, npcs) || !validConsequenceActorReference(rule.RelationToID, npcs) || !validRelationMetric(rule.RelationMetric) || !strings.Contains(rule.Text, "{{value}}") {
+					return fmt.Errorf("story arc %s consequence rule %s has invalid relation interpolation", arcID, rule.ID)
+				}
+			} else if strings.Contains(rule.Text, "{{value}}") {
+				return fmt.Errorf("story arc %s consequence rule %s has value placeholder without relation interpolation", arcID, rule.ID)
+			}
+		}
 	}
 	return nil
+}
+
+func validRelationMetric(metric string) bool {
+	switch metric {
+	case "trust", "suspicion", "fear", "dependence", "hatred", "debt":
+		return true
+	default:
+		return false
+	}
+}
+
+func validConsequenceActorReference(actorID string, npcs map[string]bool) bool {
+	return actorID == "player" || npcs[actorID]
 }
 
 func validStoryCondition(condition domain.Condition) bool {

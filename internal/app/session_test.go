@@ -273,6 +273,40 @@ func TestShenDateTermsProduceDistinctPersonalAndRelationshipEffects(t *testing.T
 	}
 }
 
+func TestStoryConsequencesProjectStateAndRuntimeValues(t *testing.T) {
+	session := testSession(t)
+	state := &domain.WorldState{
+		Player:      &domain.PlayerState{ID: "P00"},
+		StoryStates: map[string]string{"qinglan_intel": "trust_betrayed"},
+		ActorFlags:  map[string]map[string]bool{"P00": {}},
+		WorldFlags:  map[string]bool{},
+		Relations: map[string]domain.Relation{
+			domain.RelationKey("N03", "P00"): {From: "N03", To: "P00", Trust: -2},
+		},
+	}
+	consequences := session.storyConsequences(state)
+	if len(consequences) != 1 || !strings.Contains(consequences[0], "最终信任为 -2") {
+		t.Fatalf("trust consequence = %v", consequences)
+	}
+
+	state.StoryStates["qinglan_intel"] = "antidote_scouted"
+	consequences = session.storyConsequences(state)
+	if len(consequences) != 2 || !containsMessage(consequences, "拒绝归还") || !containsMessage(consequences, "提前踩点") {
+		t.Fatalf("antidote consequences = %v", consequences)
+	}
+
+	state.StoryStates["qinglan_intel"] = "escort_vanguard"
+	state.WorldFlags["chen_treats_player_as_qinglan"] = true
+	consequences = session.storyConsequences(state)
+	if len(consequences) != 3 || !containsMessage(consequences, "兑现同行承诺") || !containsMessage(consequences, "先锋分工") || !containsMessage(consequences, "视为青岚门行动的一员") {
+		t.Fatalf("escort consequences = %v", consequences)
+	}
+	state.WorldFlags["player_declared_independent"] = true
+	if consequences = session.storyConsequences(state); len(consequences) != 2 || containsMessage(consequences, "视为青岚门行动的一员") {
+		t.Fatalf("independent escort consequences = %v", consequences)
+	}
+}
+
 func TestShenTrustChangesHisImmediateStrategy(t *testing.T) {
 	session := testSession(t)
 	executeMany(t, session, []string{"verify:F02", "wait:complete", "move:L02", "tell:N03:F01:trust", "wait:next"})
