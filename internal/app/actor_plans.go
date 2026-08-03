@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"sort"
 
 	"fantu/internal/domain"
@@ -128,32 +127,32 @@ func (s *Session) visiblePlanReason(state *domain.WorldState, npc *domain.NPCSta
 				continue
 			}
 			if belief.Source == state.Player.ID {
-				return fmt.Sprintf("采用了你提供的消息：“%s”", belief.Claim)
+				return s.uiText("plan_player_information", "claim", belief.Claim)
 			}
 			if _, known := state.Player.Beliefs[condition.Key]; known {
-				return fmt.Sprintf("依据双方都已掌握的线索：“%s”", belief.Claim)
+				return s.uiText("plan_shared_information", "claim", belief.Claim)
 			}
-			return "依据自己掌握、但尚未向你公开的消息"
+			return s.uiText("plan_private_information")
 		case "flag":
-			return "局势条件已经满足：" + s.planFlagLabel(condition)
+			return s.uiText("plan_flag_ready", "condition", s.planFlagLabel(condition))
 		case "has_item":
 			name := condition.Key
 			if item, ok := s.bundle.Items[condition.Key]; ok {
 				name = item.Name
 			}
-			return "手中已有行动所需的" + name
+			return s.uiText("plan_has_item", "name", name)
 		case "missing_item":
 			name := condition.Key
 			if item, ok := s.bundle.Items[condition.Key]; ok {
 				name = item.Name
 			}
-			return "为了补足缺少的" + name
+			return s.uiText("plan_missing_item", "name", name)
 		}
 	}
 	if strategy.Description != "" {
-		return "这项行动最符合其当前公开目标"
+		return s.uiText("plan_public_goal")
 	}
-	return "尚未形成可以观察的公开计划"
+	return s.uiText("plan_unavailable")
 }
 
 func (s *Session) planFlagLabel(condition domain.Condition) string {
@@ -164,7 +163,7 @@ func (s *Session) planFlagLabel(condition domain.Condition) string {
 	if flag, ok := s.bundle.Flags[scope+":"+condition.Key]; ok && flag.PublicLabel != "" {
 		return flag.PublicLabel
 	}
-	return "局势条件已经发生变化"
+	return s.uiText("plan_flag_changed")
 }
 
 func (s *Session) playerPlanInfluence(state *domain.WorldState, npc *domain.NPCState, strategy domain.Strategy, decision *domain.DecisionRecord) (bool, bool, string) {

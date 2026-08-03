@@ -32,7 +32,7 @@ func (s *Session) advanceUntilDecision(before *domain.WorldState, actionID, acti
 		stopReason := ""
 		switch {
 		case next.Outcome != "":
-			stop, stopReason = true, "核心争夺已经产生结果"
+			stop, stopReason = true, s.uiText("advance_outcome")
 		case next.Day >= s.bundle.Scenario.Duration:
 			stop, stopReason = true, "局势已经推进到本章末日"
 		case len(step.Influence) > 0:

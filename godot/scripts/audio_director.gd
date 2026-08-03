@@ -3,17 +3,25 @@ extends Node
 const BUS_NAMES := ["Music", "Ambient", "Event", "UI"]
 
 var ambient_players: Array[AudioStreamPlayer] = []
+var music_player: AudioStreamPlayer
 var event_player: AudioStreamPlayer
 var ui_player: AudioStreamPlayer
+var music_tween: Tween
+var music_target_db := -10.0
 var active_ambient := 0
 var current_scene_key := ""
 var enabled := true
 var output_available := true
+var location_audio: Dictionary = {}
 
 
 func _ready() -> void:
 	output_available = DisplayServer.get_name() != "headless"
 	_ensure_buses()
+	music_player = AudioStreamPlayer.new()
+	music_player.bus = "Music"
+	music_player.volume_db = -60.0
+	add_child(music_player)
 	for index in 2:
 		var player := AudioStreamPlayer.new()
 		player.bus = "Ambient"
@@ -26,6 +34,57 @@ func _ready() -> void:
 	ui_player = AudioStreamPlayer.new()
 	ui_player.bus = "UI"
 	add_child(ui_player)
+
+
+func configure_music(stream: AudioStream, target_volume_db := -10.0) -> void:
+	music_target_db = target_volume_db
+	var same_stream := music_player.stream == stream
+	if not same_stream and music_player.stream != null and stream != null:
+		same_stream = music_player.stream.resource_path != "" and music_player.stream.resource_path == stream.resource_path
+	if same_stream:
+		if music_player.playing and enabled:
+			music_player.volume_db = music_target_db
+		return
+	_kill_music_tween()
+	music_player.stop()
+	music_player.stream = stream
+	music_player.volume_db = -60.0
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+
+
+func configure_locations(value: Dictionary) -> void:
+	location_audio = value.duplicate(true)
+
+
+func play_music(fade_duration := 1.4) -> void:
+	if not output_available or music_player.stream == null:
+		return
+	_kill_music_tween()
+	if not music_player.playing:
+		music_player.volume_db = -60.0
+		music_player.play()
+	var target := music_target_db if enabled else -60.0
+	if fade_duration <= 0.0:
+		music_player.volume_db = target
+		return
+	music_tween = create_tween()
+	music_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	music_tween.tween_property(music_player, "volume_db", target, fade_duration)
+
+
+func stop_music(fade_duration := 1.0) -> void:
+	if not music_player.playing:
+		return
+	_kill_music_tween()
+	if fade_duration <= 0.0 or not output_available:
+		music_player.stop()
+		music_player.volume_db = -60.0
+		return
+	music_tween = create_tween()
+	music_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	music_tween.tween_property(music_player, "volume_db", -60.0, fade_duration)
+	music_tween.tween_callback(music_player.stop)
 
 
 func set_scene(scene_key: String) -> void:
@@ -77,6 +136,16 @@ func set_enabled(value: bool) -> void:
 	var target := -31.0 if enabled else -60.0
 	if not ambient_players.is_empty():
 		create_tween().tween_property(ambient_players[active_ambient], "volume_db", target, 0.3)
+	if music_player and music_player.playing:
+		_kill_music_tween()
+		music_tween = create_tween()
+		music_tween.tween_property(music_player, "volume_db", music_target_db if enabled else -60.0, 0.3)
+
+
+func _kill_music_tween() -> void:
+	if music_tween and music_tween.is_valid():
+		music_tween.kill()
+	music_tween = null
 
 
 func _ensure_buses() -> void:
@@ -87,24 +156,9 @@ func _ensure_buses() -> void:
 
 
 func _ambient_stream(scene_key: String) -> AudioStreamWAV:
-	var frequency: float
-	var air: float
-	match scene_key:
-		"qinglan":
-			frequency = 72.0
-			air = 0.16
-		"apothecary":
-			frequency = 64.0
-			air = 0.08
-		"valley_edge":
-			frequency = 48.0
-			air = 0.20
-		"inner_valley":
-			frequency = 42.0
-			air = 0.24
-		_:
-			frequency = 58.0
-			air = 0.10
+	var entry: Dictionary = location_audio.get(scene_key, {})
+	var frequency := float(entry.get("ambient_frequency", 58.0))
+	var air := float(entry.get("ambient_air", 0.10))
 	return _generated_wave(frequency, 4.0, air, true)
 
 

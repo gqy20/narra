@@ -35,6 +35,71 @@ var contentMigrations = map[int]contentMigration{
 	2: migrateContentV2ToV3,
 	3: migrateContentV3ToV4,
 	4: migrateContentV4ToV5,
+	5: migrateContentV5ToV6,
+}
+
+func migrateContentV5ToV6(_ string, files map[string][]byte, report *ContentMigrationReport) error {
+	manifestSource := string(files["manifest.yml"])
+	files["manifest.yml"] = []byte(strings.Replace(manifestSource, "schema_version: 5", "schema_version: 6", 1))
+	report.Changes = append(report.Changes, "manifest schema_version: 5 -> 6")
+
+	var dialogue domain.DialogueConfig
+	if err := yaml.Unmarshal(files["dialogue.yml"], &dialogue); err != nil {
+		return fmt.Errorf("decode dialogue.yml for language policy: %w", err)
+	}
+	applyDefaultDialoguePolicy(&dialogue)
+	encoded, err := yaml.Marshal(dialogue)
+	if err != nil {
+		return fmt.Errorf("encode dialogue.yml: %w", err)
+	}
+	files["dialogue.yml"] = encoded
+	report.Changes = append(report.Changes, "dialogue.yml: add typed language, voice, confidence, and relation policy")
+
+	var presentation domain.ScenarioPresentation
+	if err := yaml.Unmarshal(files["presentation.yml"], &presentation); err != nil {
+		return fmt.Errorf("decode presentation.yml for UI terminology: %w", err)
+	}
+	if presentation.UI == nil {
+		presentation.UI = make(map[string]string)
+	}
+	for key, value := range map[string]string{
+		"default_player_name": "无名旅人", "term_clue": "线索", "term_clues": "线索", "term_verify": "核验",
+	} {
+		if presentation.UI[key] == "" {
+			presentation.UI[key] = value
+		}
+	}
+	encoded, err = yaml.Marshal(presentation)
+	if err != nil {
+		return fmt.Errorf("encode presentation.yml: %w", err)
+	}
+	files["presentation.yml"] = encoded
+	report.Changes = append(report.Changes, "presentation.yml: add authoritative UI terminology")
+	return nil
+}
+
+func applyDefaultDialoguePolicy(dialogue *domain.DialogueConfig) {
+	dialogue.Language = domain.DialogueLanguageConfig{
+		Locale: "zh-CN", MinCharacters: 1, PreferredMaxCharacters: 60, HardMaxCharacters: 80, MaxSentences: 1,
+		UncertaintyMarkers:     []string{"听说", "传闻", "据说", "尚未核实", "尚未证实", "真假", "若消息属实", "是否属实"},
+		ForbiddenSelfAddresses: []string{"老夫", "贫道", "小老儿", "妾身"},
+	}
+	dialogue.ConfidenceLabels = domain.DialogueConfidenceLabels{Confirmed: "确信", Plausible: "较为相信", Rumored: "只是听说"}
+	dialogue.PrivateDrives = map[string]string{
+		"secret": "正在保守与当前局势有关的信息，不会主动说明秘密内容", "protect": "优先保护重要的人或资源",
+		"profit": "会衡量消息和交易是否对自己有利", "avoid": "倾向避免自己承担无法控制的损失", "status": "在意自己的地位和他人评价",
+	}
+	dialogue.PersonalityGuidance = map[string]string{
+		"caution": "措辞谨慎，先确认来意和消息来源", "greed": "说话时会自然衡量交换价值",
+		"loyalty": "重视阵营责任，不轻易作出越权承诺", "ambition": "表达直接，关注事情能否推动自己的目标",
+		"credit": "重视承诺和消息是否可靠", "default": "保持克制，不主动作出没有依据的承诺",
+	}
+	dialogue.Relations = domain.DialogueRelationLanguage{
+		DefaultAttitude: "保持礼貌而克制", GuardedAttitude: "明显戒备，不愿拉近距离",
+		TrustingAttitude: "愿意认真听取对方的话", SuspiciousAttitude: "对对方的动机和来源保持怀疑",
+		TrustBands:   []string{"信任较低", "尚未建立信任", "已有一定信任"},
+		ConcernBands: []string{"没有明显怀疑", "仍在观察", "怀疑较强"},
+	}
 }
 
 func migrateContentV4ToV5(_ string, files map[string][]byte, report *ContentMigrationReport) error {

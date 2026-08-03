@@ -84,10 +84,10 @@ func _build_start_layer() -> void:
 	content.add_child(divider)
 
 	host.name_input = LineEdit.new()
-	var name_prompt = host.game_screen_controller._text(content, "你以何名入谷", true, 13)
+	var name_prompt = host.game_screen_controller._text(content, host._ui_text("player_name_prompt"), true, 13)
 	name_prompt.add_theme_color_override("font_color", Color(host.COLORS.accent, 0.84))
 	host.name_input.placeholder_text = "留下名号"
-	host.name_input.text = "无名修士"
+	host.name_input.text = host._ui_text("default_player_name")
 	host.name_input.add_theme_font_size_override("font_size", host.TYPE_SCALE.metric)
 	host.name_input.custom_minimum_size.y = 52
 	var name_style = host.game_screen_controller._input_style(Color("111812c2"), Color(host.COLORS.line, 0.58))
@@ -278,6 +278,8 @@ func _toggle_motion() -> void:
 		host.world_map_view.set_motion_enabled(host.motion_enabled)
 	if host.presentation_director:
 		host.presentation_director.motion_enabled = host.motion_enabled
+	if host.cinematic_director:
+		host.cinematic_director.set_enabled(host.motion_enabled)
 
 
 func _open_audio_settings() -> void:

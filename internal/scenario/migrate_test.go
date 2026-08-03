@@ -23,7 +23,7 @@ func TestContentMigrationPreviewAndApply(t *testing.T) {
 			t.Fatal(err)
 		}
 		if entry.Name() == "manifest.yml" {
-			contents = []byte(strings.Replace(string(contents), "schema_version: 5", "schema_version: 1", 1))
+			contents = []byte(strings.Replace(string(contents), "schema_version: 6", "schema_version: 1", 1))
 		}
 		if entry.Name() == "arcs.yml" {
 			lines := strings.Split(strings.ReplaceAll(string(contents), "\r\n", "\n"), "\n")
@@ -46,7 +46,7 @@ func TestContentMigrationPreviewAndApply(t *testing.T) {
 	if err != nil {
 		t.Fatalf("preview migration: %v", err)
 	}
-	if preview.FromVersion != 1 || preview.ToVersion != CurrentSchemaVersion || preview.Applied || len(preview.Files) != 2 || len(preview.Changes) < 2 {
+	if preview.FromVersion != 1 || preview.ToVersion != CurrentSchemaVersion || preview.Applied || len(preview.Files) != 4 || len(preview.Changes) < 2 {
 		t.Fatalf("preview report = %+v", preview)
 	}
 	manifestAfterPreview, _ := os.ReadFile(filepath.Join(targetDir, "manifest.yml"))
@@ -93,7 +93,7 @@ func TestContentMigrationV2AddsPresentationMetadata(t *testing.T) {
 			t.Fatal(err)
 		}
 		if entry.Name() == "manifest.yml" {
-			contents = []byte(strings.Replace(string(contents), "schema_version: 5", "schema_version: 2", 1))
+			contents = []byte(strings.Replace(string(contents), "schema_version: 6", "schema_version: 2", 1))
 		}
 		if err := os.WriteFile(filepath.Join(targetDir, entry.Name()), contents, 0o644); err != nil {
 			t.Fatal(err)
@@ -131,7 +131,7 @@ func TestContentMigrationV3AddsDialogueMetadata(t *testing.T) {
 			t.Fatal(err)
 		}
 		if entry.Name() == "manifest.yml" {
-			contents = []byte(strings.Replace(string(contents), "schema_version: 5", "schema_version: 3", 1))
+			contents = []byte(strings.Replace(string(contents), "schema_version: 6", "schema_version: 3", 1))
 		}
 		if err := os.WriteFile(filepath.Join(targetDir, entry.Name()), contents, 0o644); err != nil {
 			t.Fatal(err)
@@ -179,7 +179,7 @@ func TestContentMigrationV4AddsWorldRules(t *testing.T) {
 			t.Fatal(err)
 		}
 		if entry.Name() == "manifest.yml" {
-			contents = []byte(strings.Replace(string(contents), "schema_version: 5", "schema_version: 4", 1))
+			contents = []byte(strings.Replace(string(contents), "schema_version: 6", "schema_version: 4", 1))
 		}
 		if err := os.WriteFile(filepath.Join(targetDir, entry.Name()), contents, 0o644); err != nil {
 			t.Fatal(err)
@@ -193,7 +193,7 @@ func TestContentMigrationV4AddsWorldRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load migrated v4 package: %v", err)
 	}
-	if bundle.Content.SchemaVersion != 5 {
+	if bundle.Content.SchemaVersion != CurrentSchemaVersion {
 		t.Fatalf("migrated metadata = %+v", bundle.Content)
 	}
 	if _, err := os.Stat(filepath.Join(targetDir, "rules.yml")); err != nil {

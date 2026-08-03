@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"sort"
 	"strconv"
 	"unicode"
@@ -19,14 +18,14 @@ func (s *Session) travelGuidance(state *domain.WorldState) *TravelGuidance {
 	if !ok {
 		return &TravelGuidance{
 			Destination: destination.Name,
-			Blockers:    []string{"尚未发现可行路线"},
-			Checks:      []TravelCheck{{Label: "可用路线已发现", Ready: false}},
+			Blockers:    []string{s.uiText("travel_no_route")},
+			Checks:      []TravelCheck{{Label: s.uiText("travel_route_found"), Ready: false}},
 		}
 	}
 	guidance := &TravelGuidance{
 		Destination: destination.Name,
 		TravelDays:  days,
-		Checks:      []TravelCheck{{Label: "可用路线已发现", Ready: true}},
+		Checks:      []TravelCheck{{Label: s.uiText("travel_route_found"), Ready: true}},
 	}
 	if current, found := s.bundle.Locations[state.Player.Location]; found {
 		guidance.Route = append(guidance.Route, current.Name)
@@ -43,9 +42,9 @@ func (s *Session) travelGuidance(state *domain.WorldState) *TravelGuidance {
 				name = item.Name
 			}
 			hasItem := state.Player.Items[route.RequiredItem] > 0
-			appendTravelCheck(&guidance.Checks, seenChecks, "携带"+name, hasItem)
+			appendTravelCheck(&guidance.Checks, seenChecks, s.uiText("travel_carry_item", "name", name), hasItem)
 			if !hasItem {
-				appendBlocker(&guidance.Blockers, seen, "缺少"+name)
+				appendBlocker(&guidance.Blockers, seen, s.uiText("travel_missing_item", "name", name))
 			}
 		}
 		if route.RequiredFlag != "" {
@@ -119,28 +118,29 @@ func (s *Session) shortestPublicRoute(from, to string) ([]domain.Route, int, boo
 
 func (s *Session) travelTiming(state *domain.WorldState, travelDays int) string {
 	if travelDays == 0 {
-		return "你已经到达核心争夺地点。"
+		return s.uiText("travel_already_arrived")
 	}
 	knownDay, basis, known := playerKnownDate(state.Player.Beliefs, s.bundle.Scenario.Contest)
 	if !known {
-		return "成熟时间尚未查明，无法判断最晚出发时间。"
+		return s.uiText("travel_date_unknown")
 	}
 	latestDeparture := knownDay - travelDays
+	basis = s.uiText("confidence_" + basis)
 	if state.Day <= latestDeparture {
-		return fmt.Sprintf("按%s，最晚应在第 %d 天结束前出发。", basis, latestDeparture)
+		return s.uiText("travel_departure_deadline", "basis", basis, "day", intText(latestDeparture))
 	}
-	return fmt.Sprintf("按%s，即使立即出发也可能来不及。", basis)
+	return s.uiText("travel_departure_late", "basis", basis)
 }
 
 func playerKnownDate(beliefs map[string]domain.Belief, contest domain.Contest) (int, string, bool) {
 	if belief, ok := beliefs[contest.VerifiedDateFactID]; contest.VerifiedDateFactID != "" && ok && belief.Confidence >= 3 {
 		if day, found := firstNumber(belief.Claim); found {
-			return day, "已核实日期", true
+			return day, "confirmed", true
 		}
 	}
 	if belief, ok := beliefs[contest.RumoredDateFactID]; contest.RumoredDateFactID != "" && ok && belief.Confidence > 0 && belief.Confidence < 3 {
 		if day, found := firstNumber(belief.Claim); found {
-			return day, "未经核实的传闻", true
+			return day, "rumored", true
 		}
 	}
 	return 0, "", false
@@ -182,12 +182,12 @@ func (s *Session) routeFlagLabel(flag string) string {
 	if definition, ok := s.bundle.Flags["world:"+flag]; ok && definition.BlockedLabel != "" {
 		return definition.BlockedLabel
 	}
-	return "路线条件尚未满足"
+	return s.uiText("travel_condition_blocked")
 }
 
 func (s *Session) routeFlagCheckLabel(flag string) string {
 	if definition, ok := s.bundle.Flags["world:"+flag]; ok && definition.PublicLabel != "" {
 		return definition.PublicLabel
 	}
-	return "路线条件满足"
+	return s.uiText("travel_condition_ready")
 }

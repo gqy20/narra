@@ -31,7 +31,7 @@ func TestLoadBlackwindBundle(t *testing.T) {
 	if len(bundle.Scenario.Markets) == 0 || bundle.Scenario.Markets[0].Currency != "spirit_stones" {
 		t.Fatalf("market currency = %+v", bundle.Scenario.Markets)
 	}
-	if bundle.Content.SchemaVersion != CurrentSchemaVersion || bundle.Content.Version != "1.5.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
+	if bundle.Content.SchemaVersion != CurrentSchemaVersion || bundle.Content.Version != "1.6.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
 		t.Fatalf("content metadata = %+v", bundle.Content)
 	}
 	if bundle.Presentation.Brand != "凡途" || bundle.Presentation.WorldTitle != "黑风谷山川" || len(bundle.Presentation.Resources) != 4 || len(bundle.Presentation.Locations) != 5 || len(bundle.Presentation.Actors) != 10 {
@@ -62,6 +62,26 @@ func TestLoadBlackwindBundle(t *testing.T) {
 		if npc.PublicProfile == "" || npc.PublicRole == "" || len(npc.PublicInterests) == 0 || npc.PublicRisk == "" {
 			t.Fatalf("NPC %s lacks complete public decision context", npc.ID)
 		}
+	}
+}
+
+func TestDialogueAndPresentationPoliciesAreScenarioAuthored(t *testing.T) {
+	blackwind, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tianqi, err := Load(filepath.Join("..", "..", "data", "tianqi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if blackwind.Dialogue.ConfidenceLabels.Rumored != "只是听说" || tianqi.Dialogue.ConfidenceLabels.Rumored != "仅是传言" {
+		t.Fatalf("scenario confidence language was not loaded: blackwind=%+v tianqi=%+v", blackwind.Dialogue.ConfidenceLabels, tianqi.Dialogue.ConfidenceLabels)
+	}
+	if blackwind.Presentation.UI["default_player_name"] != "无名修士" || tianqi.Presentation.UI["default_player_name"] != "无名记录者" || blackwind.Presentation.UI["term_clue"] == tianqi.Presentation.UI["term_clue"] {
+		t.Fatalf("scenario UI terminology was not loaded: blackwind=%v tianqi=%v", blackwind.Presentation.UI, tianqi.Presentation.UI)
+	}
+	if blackwind.Presentation.Locations["qinglan"].FallbackKind != "camp" || blackwind.Presentation.Locations["qinglan"].AmbientFrequency != 72 {
+		t.Fatalf("location fallback presentation was not loaded: %+v", blackwind.Presentation.Locations["qinglan"])
 	}
 }
 

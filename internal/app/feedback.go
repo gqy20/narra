@@ -16,7 +16,7 @@ func (s *Session) turnFeedback(actionID, actionName string, before, after *domai
 		feedback.Journal = append(feedback.Journal, storyFeedback.Journal...)
 	}
 	if before.Phase != after.Phase && after.Phase != "" {
-		feedback.Messages = append(feedback.Messages, "局势进入“"+after.Phase+"”阶段。")
+		feedback.Messages = append(feedback.Messages, s.uiText("feedback_phase_changed", "phase", after.Phase))
 	}
 
 	if after.Player.Pending != nil {
@@ -25,42 +25,41 @@ func (s *Session) turnFeedback(actionID, actionName string, before, after *domai
 			feedback.Status = "progressing"
 		}
 		feedback.Messages = append(feedback.Messages,
-			fmt.Sprintf("%s仍在进行，预计第 %d 天完成。", after.Player.Pending.Intent.Strategy.Description, after.Player.Pending.CompleteDay))
+			s.uiText("feedback_action_progress", "action", after.Player.Pending.Intent.Strategy.Description, "day", intText(after.Player.Pending.CompleteDay)))
 	} else if before.Player.Pending != nil {
-		feedback.Messages = append(feedback.Messages, "持续行动已经完成。")
+		feedback.Messages = append(feedback.Messages, s.uiText("feedback_action_completed"))
 	}
 
 	if before.Player.Location != after.Player.Location {
-		feedback.Messages = append(feedback.Messages, "抵达"+s.visibleLocation(after.Player.Location).Name+"。")
+		feedback.Messages = append(feedback.Messages, s.uiText("feedback_arrived", "name", s.visibleLocation(after.Player.Location).Name))
 	}
 	if before.Player.Location == after.Player.Location {
 		feedback.Messages = append(feedback.Messages, s.visibleActorChanges(before, after)...)
 	}
 	if before.Player.Injury != after.Player.Injury {
-		feedback.Messages = append(feedback.Messages,
-			fmt.Sprintf("伤势由 %d 变为 %d。", before.Player.Injury, after.Player.Injury))
+		feedback.Messages = append(feedback.Messages, s.uiText("feedback_injury_changed", "before", intText(before.Player.Injury), "after", intText(after.Player.Injury)))
 	}
 	feedback.Messages = append(feedback.Messages, s.resourceChanges(before.Player.Resources, after.Player.Resources)...)
 	feedback.Messages = append(feedback.Messages, s.itemChanges(before.Player.Items, after.Player.Items)...)
-	feedback.Messages = append(feedback.Messages, beliefChanges(before.Player.Beliefs, after.Player.Beliefs)...)
+	feedback.Messages = append(feedback.Messages, s.beliefChanges(before.Player.Beliefs, after.Player.Beliefs)...)
 
 	for _, event := range after.Events[len(before.Events):] {
 		if event.ActorID == "world" || event.TargetID == after.Player.ID {
 			feedback.Messages = append(feedback.Messages, event.Description)
 		} else if event.ActorID == after.Player.ID && event.ActionID == s.bundle.Rules.Player.ShareInformation.ActionID {
-			feedback.Messages = append(feedback.Messages, "情报已经送达"+s.actorName(after, event.TargetID)+"。")
-			feedback.Messages = append(feedback.Messages, "对方是否改变行动，会在后续局势变化时显现。")
+			feedback.Messages = append(feedback.Messages, s.uiText("feedback_information_delivered", "name", s.actorName(after, event.TargetID)))
+			feedback.Messages = append(feedback.Messages, s.uiText("feedback_information_pending"))
 		}
 	}
 	if before.Outcome != after.Outcome && after.Outcome != "" {
-		feedback.Messages = append(feedback.Messages, "核心争夺结果："+visibleOutcome(after.Outcome))
+		feedback.Messages = append(feedback.Messages, s.uiText("feedback_outcome", "outcome", visibleOutcome(after.Outcome)))
 	}
 	feedback.Influence = s.visibleInfluence(after, after.Decisions[len(before.Decisions):], false)
 	if len(feedback.Messages) == 0 {
 		if actionID == "wait" {
 			feedback.Messages = append(feedback.Messages, quietWaitMessage)
 		} else {
-			feedback.Messages = append(feedback.Messages, actionName+"已经结算。")
+			feedback.Messages = append(feedback.Messages, s.uiText("feedback_settled", "action", actionName))
 		}
 	}
 	feedback.Messages = uniqueStrings(feedback.Messages)
@@ -126,7 +125,7 @@ func (s *Session) resourceChanges(before, after map[string]int) []string {
 	result := make([]string, 0, len(keys))
 	for _, key := range keys {
 		delta := after[key] - before[key]
-		result = append(result, fmt.Sprintf("%s %+d，现有 %d。", s.resourceName(key), delta, after[key]))
+		result = append(result, s.uiText("feedback_resource_changed", "resource", s.resourceName(key), "delta", fmt.Sprintf("%+d", delta), "value", intText(after[key])))
 	}
 	return result
 }
@@ -151,12 +150,12 @@ func (s *Session) itemChanges(before, after map[string]int) []string {
 			name = item.Name
 		}
 		delta := after[key] - before[key]
-		result = append(result, fmt.Sprintf("物品 %s %+d，现有 %d。", name, delta, after[key]))
+		result = append(result, s.uiText("feedback_item_changed", "name", name, "delta", fmt.Sprintf("%+d", delta), "value", intText(after[key])))
 	}
 	return result
 }
 
-func beliefChanges(before, after map[string]domain.Belief) []string {
+func (s *Session) beliefChanges(before, after map[string]domain.Belief) []string {
 	keys := make([]string, 0)
 	for key, belief := range after {
 		previous, existed := before[key]
@@ -168,17 +167,17 @@ func beliefChanges(before, after map[string]domain.Belief) []string {
 	result := make([]string, 0, len(keys))
 	for _, key := range keys {
 		belief := after[key]
-		result = append(result, fmt.Sprintf("线索更新为%s：%s", confidenceLabel(belief.Confidence), belief.Claim))
+		result = append(result, s.uiText("feedback_belief_changed", "confidence", s.confidenceText(belief.Confidence), "claim", belief.Claim))
 	}
 	return result
 }
 
 func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) []string {
 	if state.Outcome != "" {
-		return []string{"核心争夺已经结算；你可以继续观察局势余波直到场景结束。"}
+		return []string{s.uiText("guidance_outcome_settled")}
 	}
 	if state.Player.Pending != nil {
-		return []string{fmt.Sprintf("当前行动还需等待到第 %d 天完成。", state.Player.Pending.CompleteDay)}
+		return []string{s.uiText("guidance_pending", "day", intText(state.Player.Pending.CompleteDay))}
 	}
 
 	available := make(map[string]bool, len(actions))
@@ -188,7 +187,7 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 	var result []string
 	rumoredFactID := s.bundle.Scenario.Contest.RumoredDateFactID
 	if belief, ok := state.Player.Beliefs[rumoredFactID]; rumoredFactID != "" && ok && belief.Confidence < 3 && available["verify:"+rumoredFactID] {
-		result = append(result, "关键时间目前只是传闻，核验后再据此安排路线更稳妥。")
+		result = append(result, s.uiText("guidance_verify_date"))
 	}
 	requiredItemID := s.bundle.Scenario.Contest.RequiredItemID
 	if requiredItemID != "" && state.Player.Items[requiredItemID] == 0 {
@@ -204,21 +203,21 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 			}
 		}
 		if marketOpen {
-			result = append(result, itemName+"仍可从市场取得；它是参与核心目标的必要条件，供应可能随局势变化。")
+			result = append(result, s.uiText("guidance_item_market", "name", itemName))
 		} else {
-			message := "当前仍缺少" + itemName + "；留意人物回应与路线进展中是否出现新的获取方式。"
+			message := s.uiText("guidance_item_missing", "name", itemName)
 			verifiedFactID := s.bundle.Scenario.Contest.VerifiedDateFactID
 			if belief, ok := state.Player.Beliefs[verifiedFactID]; verifiedFactID != "" && ok && belief.Confidence >= 3 {
-				message = "你已掌握经过核实的关键时间，但当前仍缺少" + itemName + "；留意人物回应中出现的新获取方式。"
+				message = s.uiText("guidance_verified_item_missing", "name", itemName)
 			}
 			result = append(result, message)
 		}
 	}
 	if s.lastTurn != nil && strings.HasPrefix(s.lastTurn.ActionID, "tell:") {
-		result = append(result, "情报已经送达；等待局势变化可以观察它是否改变对方的选择。")
+		result = append(result, s.uiText("guidance_information_sent"))
 	}
 	if len(result) == 0 {
-		result = append(result, "没有必须执行的行动；根据已知线索决定调查、交涉、准备或等待。")
+		result = append(result, s.uiText("guidance_default"))
 	}
 	return result
 }
@@ -239,20 +238,20 @@ func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 		counts[category]++
 	}
 	ending.Highlights = append(ending.Highlights,
-		fmt.Sprintf("局势推进到第 %d 天；你做出 %d 次决策，其中主动行动 %d 次、推进时间 %d 次。", state.Day, s.metrics.DecisionInputs, s.metrics.ActiveActions, s.metrics.WaitActions))
+		s.uiText("ending_metrics", "day", intText(state.Day), "decisions", intText(s.metrics.DecisionInputs), "active", intText(s.metrics.ActiveActions), "waits", intText(s.metrics.WaitActions)))
 	for _, entry := range []struct {
 		key  string
 		text string
-	}{{"verify", "核验情报"}, {"tell", "分享情报"}, {"route", "回应路线考验"}, {"buy", "购买物品"}, {"move", "移动"}, {"cultivate", "修炼"}, {"heal", "疗伤"}} {
+	}{{"verify", s.uiText("ending_action_verify")}, {"tell", s.uiText("ending_action_tell")}, {"route", s.uiText("ending_action_route")}, {"buy", s.uiText("ending_action_buy")}, {"move", s.uiText("ending_action_move")}, {"cultivate", s.uiText("ending_action_growth")}, {"heal", s.uiText("ending_action_recovery")}} {
 		if counts[entry.key] > 0 {
-			ending.Highlights = append(ending.Highlights, fmt.Sprintf("%s %d 次。", entry.text, counts[entry.key]))
+			ending.Highlights = append(ending.Highlights, s.uiText("ending_action_count", "action", entry.text, "count", intText(counts[entry.key])))
 		}
 	}
 	resourceSummary := make([]string, 0, len(s.bundle.Presentation.Resources))
 	for _, resource := range s.bundle.Presentation.Resources {
 		resourceSummary = append(resourceSummary, fmt.Sprintf("%s %d", resource.Label, state.Player.Resources[resource.ID]))
 	}
-	status := fmt.Sprintf("终局时你位于%s，伤势 %d", s.visibleLocation(state.Player.Location).Name, state.Player.Injury)
+	status := s.uiText("ending_status", "location", s.visibleLocation(state.Player.Location).Name, "injury", intText(state.Player.Injury))
 	if len(resourceSummary) > 0 {
 		status += "，" + strings.Join(resourceSummary, "，")
 	}
@@ -270,7 +269,7 @@ func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 	}
 	ending.ActorPlanChanges = uniqueStrings(ending.ActorPlanChanges)
 	if changedDecisions > 0 {
-		ending.Highlights = append([]string{fmt.Sprintf("你传递的消息改变了 %d 个关键选择，并影响了最终归属。", changedDecisions)}, ending.Highlights...)
+		ending.Highlights = append([]string{s.uiText("ending_influence", "count", intText(changedDecisions))}, ending.Highlights...)
 	}
 	return ending
 }
@@ -288,30 +287,30 @@ func (s *Session) endingReview(state *domain.WorldState) []string {
 		playerScore++
 	}
 	if owner == player.ID {
-		result = append(result, fmt.Sprintf("你满足了核心目标的参与条件，并以 %d 点综合准备取得最终归属。", playerScore))
+		result = append(result, s.uiText("ending_review_won", "score", intText(playerScore)))
 	} else {
 		if contest.RequiredItemID != "" && player.Items[contest.RequiredItemID] <= 0 {
 			itemName := contest.RequiredItemID
 			if item, ok := s.bundle.Items[contest.RequiredItemID]; ok {
 				itemName = item.Name
 			}
-			result = append(result, "你在结算时没有"+itemName+"，因此没有取得核心目标的参与资格。")
+			result = append(result, s.uiText("ending_review_missing_item", "name", itemName))
 		}
 		if player.Location != contest.LocationID {
-			result = append(result, fmt.Sprintf("你没有在第 %d 日前抵达%s，因此没有进入最终候选。", contest.Day, s.visibleLocation(contest.LocationID).Name))
+			result = append(result, s.uiText("ending_review_late", "day", intText(contest.Day), "name", s.visibleLocation(contest.LocationID).Name))
 		}
 		if len(result) == 0 {
 			winnerScore := s.actorContestScore(state, owner)
 			if winnerScore > playerScore {
-				result = append(result, fmt.Sprintf("你具备争夺资格，但综合准备为 %d；胜者%s达到 %d，领先 %d 点。", playerScore, s.actorName(state, owner), winnerScore, winnerScore-playerScore))
+				result = append(result, s.uiText("ending_review_lost", "score", intText(playerScore), "winner", s.actorName(state, owner), "winner_score", intText(winnerScore), "lead", intText(winnerScore-playerScore)))
 			} else {
-				result = append(result, fmt.Sprintf("你具备争夺资格，综合准备为 %d；同分时先完成局势占位的争夺者取得归属。", playerScore))
+				result = append(result, s.uiText("ending_review_tie", "score", intText(playerScore)))
 			}
 		}
 	}
 	if s.metrics.ActiveActions == 0 {
-		result = append(result, "本局没有进行主动行动；等待让你跳过了平静日，也同时放弃了调查、交涉和准备窗口。")
-		result = append(result, "下一局可先核验线索并观察人物计划，再决定亲自介入、扶持盟友或保全其他成果。")
+		result = append(result, s.uiText("ending_review_passive"))
+		result = append(result, s.uiText("ending_review_next"))
 	}
 	return result
 }

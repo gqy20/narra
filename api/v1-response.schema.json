@@ -47,6 +47,18 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "AudioPresentation": {
+      "properties": {
+        "music": {
+          "type": "string"
+        },
+        "music_volume_db": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "AvailableAction": {
       "properties": {
         "id": {
@@ -265,6 +277,18 @@
           "type": "string"
         },
         "background": {
+          "type": "string"
+        },
+        "fallback_kind": {
+          "type": "string"
+        },
+        "ambient_frequency": {
+          "type": "number"
+        },
+        "ambient_air": {
+          "type": "number"
+        },
+        "stage_label": {
           "type": "string"
         }
       },
@@ -687,6 +711,9 @@
         },
         "ending_event": {
           "type": "string"
+        },
+        "audio": {
+          "$ref": "#/$defs/AudioPresentation"
         },
         "terrain": {
           "type": "string"

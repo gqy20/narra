@@ -146,6 +146,7 @@ type ScenarioPresentation struct {
 	AssetRoot    string                          `json:"asset_root,omitempty" yaml:"asset_root,omitempty"`
 	OpeningEvent string                          `json:"opening_event,omitempty" yaml:"opening_event,omitempty"`
 	EndingEvent  string                          `json:"ending_event,omitempty" yaml:"ending_event,omitempty"`
+	Audio        AudioPresentation               `json:"audio,omitempty" yaml:"audio,omitempty"`
 	Terrain      string                          `json:"terrain,omitempty" yaml:"terrain,omitempty"`
 	Resources    []ResourcePresentation          `json:"resources" yaml:"resources"`
 	Locations    map[string]LocationPresentation `json:"locations,omitempty" yaml:"locations,omitempty"`
@@ -156,10 +157,54 @@ type ScenarioPresentation struct {
 	UI           map[string]string               `json:"ui,omitempty" yaml:"ui,omitempty"`
 }
 
+type AudioPresentation struct {
+	Music         string  `json:"music,omitempty" yaml:"music,omitempty"`
+	MusicVolumeDB float64 `json:"music_volume_db,omitempty" yaml:"music_volume_db,omitempty"`
+}
+
 type DialogueConfig struct {
-	Context       string `json:"context,omitempty" yaml:"context,omitempty"`
-	PlayerAddress string `json:"player_address,omitempty" yaml:"player_address,omitempty"`
-	Style         string `json:"style,omitempty" yaml:"style,omitempty"`
+	Context             string                         `json:"context,omitempty" yaml:"context,omitempty"`
+	PlayerAddress       string                         `json:"player_address,omitempty" yaml:"player_address,omitempty"`
+	Style               string                         `json:"style,omitempty" yaml:"style,omitempty"`
+	Language            DialogueLanguageConfig         `json:"language" yaml:"language"`
+	ConfidenceLabels    DialogueConfidenceLabels       `json:"confidence_labels" yaml:"confidence_labels"`
+	PrivateDrives       map[string]string              `json:"private_drives" yaml:"private_drives"`
+	PersonalityGuidance map[string]string              `json:"personality_guidance" yaml:"personality_guidance"`
+	Relations           DialogueRelationLanguage       `json:"relations" yaml:"relations"`
+	Actors              map[string]ActorDialogueConfig `json:"actors,omitempty" yaml:"actors,omitempty"`
+}
+
+type DialogueLanguageConfig struct {
+	Locale                 string   `json:"locale" yaml:"locale"`
+	MinCharacters          int      `json:"min_characters" yaml:"min_characters"`
+	PreferredMaxCharacters int      `json:"preferred_max_characters" yaml:"preferred_max_characters"`
+	HardMaxCharacters      int      `json:"hard_max_characters" yaml:"hard_max_characters"`
+	MaxSentences           int      `json:"max_sentences" yaml:"max_sentences"`
+	UncertaintyMarkers     []string `json:"uncertainty_markers" yaml:"uncertainty_markers"`
+	ForbiddenSelfAddresses []string `json:"forbidden_self_addresses,omitempty" yaml:"forbidden_self_addresses,omitempty"`
+}
+
+type DialogueConfidenceLabels struct {
+	Confirmed string `json:"confirmed" yaml:"confirmed"`
+	Plausible string `json:"plausible" yaml:"plausible"`
+	Rumored   string `json:"rumored" yaml:"rumored"`
+}
+
+type DialogueRelationLanguage struct {
+	DefaultAttitude    string   `json:"default_attitude" yaml:"default_attitude"`
+	GuardedAttitude    string   `json:"guarded_attitude" yaml:"guarded_attitude"`
+	TrustingAttitude   string   `json:"trusting_attitude" yaml:"trusting_attitude"`
+	SuspiciousAttitude string   `json:"suspicious_attitude" yaml:"suspicious_attitude"`
+	TrustBands         []string `json:"trust_bands" yaml:"trust_bands"`
+	ConcernBands       []string `json:"concern_bands" yaml:"concern_bands"`
+}
+
+type ActorDialogueConfig struct {
+	SelfAddress    string   `json:"self_address,omitempty" yaml:"self_address,omitempty"`
+	PlayerAddress  string   `json:"player_address,omitempty" yaml:"player_address,omitempty"`
+	Style          string   `json:"style,omitempty" yaml:"style,omitempty"`
+	Guidance       []string `json:"guidance,omitempty" yaml:"guidance,omitempty"`
+	ForbiddenTerms []string `json:"forbidden_terms,omitempty" yaml:"forbidden_terms,omitempty"`
 }
 
 type ResourcePresentation struct {
@@ -170,8 +215,12 @@ type ResourcePresentation struct {
 }
 
 type LocationPresentation struct {
-	Profile    string `json:"profile,omitempty" yaml:"profile,omitempty"`
-	Background string `json:"background,omitempty" yaml:"background,omitempty"`
+	Profile          string  `json:"profile,omitempty" yaml:"profile,omitempty"`
+	Background       string  `json:"background,omitempty" yaml:"background,omitempty"`
+	FallbackKind     string  `json:"fallback_kind,omitempty" yaml:"fallback_kind,omitempty"`
+	AmbientFrequency float64 `json:"ambient_frequency,omitempty" yaml:"ambient_frequency,omitempty"`
+	AmbientAir       float64 `json:"ambient_air,omitempty" yaml:"ambient_air,omitempty"`
+	StageLabel       string  `json:"stage_label,omitempty" yaml:"stage_label,omitempty"`
 }
 
 type ActorPresentation struct {

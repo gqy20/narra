@@ -237,11 +237,11 @@ func (s *Session) visibleBeliefs(state *domain.WorldState) []VisibleBelief {
 func (s *Session) visibleSource(state *domain.WorldState, source string) string {
 	switch source {
 	case "player-investigation":
-		return "亲自核验"
+		return s.uiText("source_investigation")
 	case "player-investigation-lead":
-		return "核验所得线索"
+		return s.uiText("source_investigation_lead")
 	case "wandering-broker":
-		return "路过游商"
+		return s.uiText("source_broker")
 	case state.Player.ID:
 		return "你"
 	}
@@ -249,7 +249,7 @@ func (s *Session) visibleSource(state *domain.WorldState, source string) string 
 		return npc.Name
 	}
 	if source == "" {
-		return "来源不明"
+		return s.uiText("source_unknown")
 	}
 	return source
 }

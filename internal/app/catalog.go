@@ -80,7 +80,7 @@ func renderRuleText(template string, values map[string]string) string {
 
 func (s *Session) withDecisionContext(state *domain.WorldState, action AvailableAction) AvailableAction {
 	if action.ID == "wait:next" {
-		action.Timing = "停止日期取决于下一次值得关注的变化，无法预先保证剩余时间。"
+		action.Timing = s.uiText("decision_wait_timing")
 	} else {
 		action.CompletionDay = state.Day + maxInt(1, action.Duration)
 		action.Timing = s.actionTiming(state, action)
@@ -88,55 +88,55 @@ func (s *Session) withDecisionContext(state *domain.WorldState, action Available
 
 	switch action.Kind {
 	case "verify":
-		action.ExpectedOutcomes = []string{"把这条线索核验为可靠结论，并整理关联线索"}
-		action.Resolves = []string{"这条线索尚未核实"}
-		action.KnownConditions = []string{"你持有这条线索", "线索仍待核实"}
+		action.ExpectedOutcomes = []string{s.uiText("decision_verify_outcome")}
+		action.Resolves = []string{s.uiText("decision_verify_resolves")}
+		action.KnownConditions = []string{s.uiText("decision_verify_has_clue"), s.uiText("decision_verify_pending")}
 	case "opportunity":
-		action.ExpectedOutcomes = []string{"消耗这次短暂机会，获得一条新的可追查消息"}
-		action.KnownConditions = []string{"该世界机会仍然开放", "你正在机会所在地"}
-		action.Unknowns = []string{"新消息可能仍需要进一步核验"}
+		action.ExpectedOutcomes = []string{s.uiText("decision_opportunity_outcome")}
+		action.KnownConditions = []string{s.uiText("decision_opportunity_open"), s.uiText("decision_opportunity_location")}
+		action.Unknowns = []string{s.uiText("decision_opportunity_unknown")}
 		action.Irreversible = true
 	case "buy":
-		action.ExpectedOutcomes = []string{"获得 1 件" + action.TargetName}
-		action.KnownConditions = []string{"当前仍有库存", "持有足够的交易资源"}
+		action.ExpectedOutcomes = []string{s.uiText("decision_buy_outcome", "name", action.TargetName)}
+		action.KnownConditions = []string{s.uiText("decision_buy_stock"), s.uiText("decision_buy_funds")}
 		if action.TargetID == s.bundle.Scenario.Contest.RequiredItemID {
-			action.ExpectedOutcomes = []string{"获得" + action.TargetName + "，满足核心目标的必要条件"}
-			action.Resolves = []string{"缺少" + action.TargetName}
+			action.ExpectedOutcomes = []string{s.uiText("decision_buy_required_outcome", "name", action.TargetName)}
+			action.Resolves = []string{s.uiText("decision_missing_item", "name", action.TargetName)}
 		}
 	case "move":
-		action.ExpectedOutcomes = []string{"抵达" + action.TargetName}
-		action.Resolves = []string{"尚未抵达" + action.TargetName}
-		action.KnownConditions = []string{"路线的公开条件均已满足"}
-		action.Unknowns = []string{"途中局势仍会按日推进"}
+		action.ExpectedOutcomes = []string{s.uiText("decision_move_outcome", "name", action.TargetName)}
+		action.Resolves = []string{s.uiText("decision_move_resolves", "name", action.TargetName)}
+		action.KnownConditions = []string{s.uiText("decision_move_ready")}
+		action.Unknowns = []string{s.uiText("decision_move_unknown")}
 	case "tell":
 		if len(action.ExpectedOutcomes) == 0 {
-			action.ExpectedOutcomes = []string{"让" + action.TargetName + "获得这条线索", "可能改变对方的后续选择"}
+			action.ExpectedOutcomes = []string{s.uiText("decision_tell_outcome", "name", action.TargetName), s.uiText("decision_tell_influence")}
 		}
-		action.KnownConditions = []string{"对方就在此地", "你持有这条线索"}
-		action.Unknowns = []string{"对方是否采用消息，只能从之后的公开行动判断"}
+		action.KnownConditions = []string{s.uiText("decision_tell_location"), s.uiText("decision_tell_has_clue")}
+		action.Unknowns = []string{s.uiText("decision_tell_unknown")}
 		action.Irreversible = true
 	case "escort":
 		action.KnownConditions = append(action.KnownConditions, "同行承诺和出发条件仍然有效")
 		action.Unknowns = append(action.Unknowns, "同行期间的局势仍可能改变")
 	case "route":
-		action.KnownConditions = []string{"此前的情报条件已经引发回应", "这项选择只在当前路线窗口内有效"}
+		action.KnownConditions = []string{s.uiText("decision_route_triggered"), s.uiText("decision_route_window")}
 		action.Unknowns = []string{"表态会改变其他人物之后如何看待你"}
 	case "recover":
 		action.KnownConditions = append(action.KnownConditions, "此前条件已经打开这条补救路线")
 		action.Unknowns = append(action.Unknowns, "交换对象之后如何使用所得信息仍需观察")
 	case "heal":
 		if len(action.ExpectedOutcomes) == 0 {
-			action.ExpectedOutcomes = []string{"伤势降低 1 级"}
+			action.ExpectedOutcomes = []string{s.uiText("decision_heal_outcome")}
 		}
-		action.Resolves = []string{"当前伤势"}
-		action.KnownConditions = []string{"当前带伤", "疗伤条件允许"}
-		action.Unknowns = []string{"疗伤期间局势仍会按日推进"}
+		action.Resolves = []string{s.uiText("decision_heal_resolves")}
+		action.KnownConditions = []string{s.uiText("decision_heal_injured"), s.uiText("decision_heal_ready")}
+		action.Unknowns = []string{s.uiText("decision_heal_unknown")}
 	case "cultivate":
 		if len(action.ExpectedOutcomes) == 0 {
 			action.ExpectedOutcomes = []string{"完成这次成长行动"}
 		}
-		action.KnownConditions = []string{"当前没有伤势妨碍闭关"}
-		action.Unknowns = []string{"闭关期间局势仍会按日推进"}
+		action.KnownConditions = []string{s.uiText("decision_growth_ready")}
+		action.Unknowns = []string{s.uiText("decision_growth_unknown")}
 	case "advance":
 		if action.ID == "wait:complete" {
 			action.ExpectedOutcomes = []string{"完成当前行动，或在重要变化出现时提前停下"}
@@ -156,9 +156,9 @@ func (s *Session) actionTiming(state *domain.WorldState, action AvailableAction)
 	if !known {
 		return "日期未知 · 无法判断是否挤压亲自抵达窗口"
 	}
-	timingBasis := "传闻口径"
-	if basis == "已核实日期" {
-		timingBasis = "已核实"
+	timingBasis := s.uiText("timing_rumored")
+	if basis == "confirmed" {
+		timingBasis = s.uiText("timing_confirmed")
 	}
 
 	locationID := state.Player.Location
@@ -186,7 +186,7 @@ func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOptio
 	options := make(map[string]actionOption)
 	if state.Player.Pending != nil {
 		options["wait:complete"] = actionOption{
-			view:        AvailableAction{ID: "wait:complete", Kind: "advance", Category: "time", Name: "继续到行动完成", Description: "逐日推进，遇到需要处理的变化会提前停下", Duration: maxInt(1, state.Player.Pending.CompleteDay-state.Day)},
+			view:        AvailableAction{ID: "wait:complete", Kind: "advance", Category: "time", Name: s.uiText("action_wait_complete_name"), Description: s.uiText("action_wait_complete_description"), Duration: maxInt(1, state.Player.Pending.CompleteDay-state.Day)},
 			advanceMode: "complete",
 		}
 		return options
@@ -199,7 +199,7 @@ func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOptio
 	s.addStoryActions(options, state)
 	s.addRecoveryActions(options, state)
 	options["wait:next"] = actionOption{
-		view:        AvailableAction{ID: "wait:next", Kind: "advance", Category: "time", Name: "等待局势变化", Description: "逐日推演并在下一次值得关注的变化处停下，可能跨越多个平静日", Duration: 1, Warnings: s.advanceWarnings(state)},
+		view:        AvailableAction{ID: "wait:next", Kind: "advance", Category: "time", Name: s.uiText("action_wait_next_name"), Description: s.uiText("action_wait_next_description"), Duration: 1, Warnings: s.advanceWarnings(state)},
 		advanceMode: "next",
 	}
 	return options
@@ -269,9 +269,9 @@ func (s *Session) addInvestigationActions(options map[string]actionOption, state
 			})
 		}
 		options[id] = actionOption{
-			view: AvailableAction{ID: id, Kind: "verify", Category: "investigate", Name: "核验线索", Description: "核验：“" + belief.Claim + "”", Duration: action.Duration, FactID: factID, FactClaim: belief.Claim},
+			view: AvailableAction{ID: id, Kind: "verify", Category: "investigate", Name: s.uiText("action_verify_name"), Description: s.uiText("action_verify_description", "claim", belief.Claim), Duration: action.Duration, FactID: factID, FactClaim: belief.Claim},
 			command: &domain.PlayerCommand{
-				ActionID: rule.ActionID, Description: "核验线索：“" + belief.Claim + "”",
+				ActionID: rule.ActionID, Description: s.uiText("command_verify", "claim", belief.Claim),
 				Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "belief_max", Key: factID, MaxConfidence: 2}},
 				Effects:    effects,
 			},
@@ -314,9 +314,9 @@ func (s *Session) addMarketActions(options map[string]actionOption, state *domai
 			}
 			id := fmt.Sprintf("buy:%s:%s", marketID, itemID)
 			options[id] = actionOption{
-				view: AvailableAction{ID: id, Kind: "buy", Category: "trade", Name: "购买" + name, Description: fmt.Sprintf("库存 %d，当前价格 %d %s", market.Stock[itemID], price, s.resourceName(market.Currency)), Duration: action.Duration, Costs: map[string]int{market.Currency: price}, TargetID: itemID, TargetName: name},
+				view: AvailableAction{ID: id, Kind: "buy", Category: "trade", Name: s.uiText("action_buy_name", "name", name), Description: s.uiText("action_buy_description", "stock", intText(market.Stock[itemID]), "price", intText(price), "currency", s.resourceName(market.Currency)), Duration: action.Duration, Costs: map[string]int{market.Currency: price}, TargetID: itemID, TargetName: name},
 				command: &domain.PlayerCommand{
-					ActionID: rule.ActionID, Description: "玩家购买" + name,
+					ActionID: rule.ActionID, Description: s.uiText("command_buy", "name", name),
 					Conditions: []domain.Condition{{Type: "location", Value: market.LocationID}, {Type: "resource_at_least", Key: market.Currency, MinConfidence: price}},
 					Costs:      map[string]int{market.Currency: price}, Effects: []domain.Effect{{Type: "market_buy", Value: marketID, Key: itemID, Amount: 1}},
 				},
@@ -345,8 +345,8 @@ func (s *Session) addMovementActions(options map[string]actionOption, state *dom
 			conditions = append(conditions, domain.Condition{Type: "flag", Key: route.RequiredFlag})
 		}
 		options[id] = actionOption{
-			view:    AvailableAction{ID: id, Kind: "move", Category: "move", Name: "前往" + destination.Name, Description: fmt.Sprintf("耗时 %d 天，危险度 %d", route.Duration, route.Danger), Duration: route.Duration, TargetID: route.To, TargetName: destination.Name},
-			command: &domain.PlayerCommand{ActionID: rule.ActionID, Duration: route.Duration, Description: "玩家前往" + destination.Name, Conditions: conditions, Effects: []domain.Effect{{Type: "move", Value: route.To}}},
+			view:    AvailableAction{ID: id, Kind: "move", Category: "move", Name: s.uiText("action_move_name", "name", destination.Name), Description: s.uiText("action_move_description", "days", intText(route.Duration), "danger", intText(route.Danger)), Duration: route.Duration, TargetID: route.To, TargetName: destination.Name},
+			command: &domain.PlayerCommand{ActionID: rule.ActionID, Duration: route.Duration, Description: s.uiText("command_move", "name", destination.Name), Conditions: conditions, Effects: []domain.Effect{{Type: "move", Value: route.To}}},
 		}
 	}
 }
@@ -372,22 +372,22 @@ func (s *Session) addInformationActions(options map[string]actionOption, state *
 			id := fmt.Sprintf("tell:%s:%s", actor.ID, factID)
 			claim := belief.Claim
 			if claim == "" {
-				claim = "玩家转述的线索"
+				claim = s.uiText("information_unknown_claim")
 			}
 			relevance, risk := s.publicInformationContext(actor.ID, s.bundle.Facts[factID])
 			warnings := make([]string, 0, 1)
 			if belief.Confidence < 3 {
-				warnings = append(warnings, "这条线索尚未核实；对方可能据此改变行动。")
+				warnings = append(warnings, s.uiText("information_unverified_warning"))
 			}
 			options[id] = actionOption{
 				view: AvailableAction{
-					ID: id, Kind: "tell", Category: "information", Name: "告知" + actor.Name + "一条线索",
-					Description: "分享：“" + claim + "”", Duration: action.Duration,
+					ID: id, Kind: "tell", Category: "information", Name: s.uiText("action_tell_name", "name", actor.Name),
+					Description: s.uiText("action_tell_description", "claim", claim), Duration: action.Duration,
 					TargetID: actor.ID, TargetName: actor.Name, TargetRole: actor.PublicRole,
 					FactID: factID, FactClaim: claim, Relevance: relevance, Risk: risk, Warnings: warnings,
 				},
 				command: &domain.PlayerCommand{
-					ActionID: rule.ActionID, TargetID: actor.ID, Description: "玩家向" + actor.Name + "分享消息：“" + claim + "”",
+					ActionID: rule.ActionID, TargetID: actor.ID, Description: s.uiText("command_tell", "name", actor.Name, "claim", claim),
 					Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "location", Value: state.Player.Location}},
 					Effects:    []domain.Effect{{Type: "set_belief", TargetID: actor.ID, FactID: factID, Claim: claim, Confidence: belief.Confidence, EvidenceStrength: belief.EvidenceStrength, Source: state.Player.ID, Propagation: "private", Secrecy: belief.Secrecy}},
 				},
@@ -410,17 +410,17 @@ func (s *Session) publicInformationContext(actorID string, fact domain.Fact) (st
 				}
 			}
 		}
-		relevance := "从公开信息看，这条线索与对方当前关注的事项关联不明显。"
+		relevance := s.uiText("information_relevance_low")
 		if len(matched) > 0 {
-			relevance = "直接相关 · 对方公开关注：" + strings.Join(matched, "、")
+			relevance = s.uiText("information_relevance_high", "topics", strings.Join(matched, "、"))
 		}
 		risk := actor.PublicRisk
 		if risk == "" {
-			risk = "公开信息不足，暂时无法判断对方可能如何使用这条消息。"
+			risk = s.uiText("information_risk_unknown")
 		}
 		return relevance, risk
 	}
-	return "尚不了解对方为何会在意这条线索。", "尚不了解对方可能如何使用这条消息。"
+	return s.uiText("information_relevance_unknown"), s.uiText("information_use_unknown")
 }
 
 func (s *Session) advanceWarnings(state *domain.WorldState) []string {
@@ -436,7 +436,7 @@ func (s *Session) advanceWarnings(state *domain.WorldState) []string {
 				if item, ok := s.bundle.Items[requiredItemID]; ok {
 					itemName = item.Name
 				}
-				warnings = append(warnings, "你尚未持有"+itemName+"；继续等待可能错过当前获取机会。")
+				warnings = append(warnings, s.uiText("wait_missing_item_warning", "name", itemName))
 				break
 			}
 		}
@@ -595,7 +595,7 @@ func (s *Session) playerActionOutcomes(effects []domain.Effect) []string {
 		case domain.EffectAdjustResource:
 			result = append(result, fmt.Sprintf("%s%+d 点", s.resourceName(effect.Key), effect.Amount))
 		case domain.EffectAdjustInjury:
-			result = append(result, fmt.Sprintf("伤势%+d 级", effect.Amount))
+			result = append(result, s.uiText("effect_injury", "amount", fmt.Sprintf("%+d", effect.Amount)))
 		case domain.EffectAddItem:
 			name := effect.Key
 			if item, ok := s.bundle.Items[effect.Key]; ok {

@@ -15,7 +15,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const CurrentSchemaVersion = 5
+const CurrentSchemaVersion = 6
 
 type manifest struct {
 	SchemaVersion       int    `json:"schema_version"`

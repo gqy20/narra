@@ -308,7 +308,7 @@ func _render_focused_actor_summary(focused_actions: Array) -> void:
 	host.game_screen_controller._text(content, str(actor.get("public_profile", "公开资料尚未收集")), false, 14)
 	var state_names = {"neutral": "平静", "alert": "正在留意你", "troubled": "正在权衡消息", "decisive": "已经形成决断"}
 	var expression = str(host.actor_expression_by_id.get(host.focused_actor_id, "alert"))
-	var state_line = host.game_screen_controller._text(content, "当前状态 · %s · 可谈线索 %d 条" % [state_names.get(expression, expression), focused_actions.size()], false, 13)
+	var state_line = host.game_screen_controller._text(content, host._ui_text("dialogue_available_clues") % [state_names.get(expression, expression), focused_actions.size()], false, 13)
 	state_line.add_theme_color_override("font_color", host.COLORS.success if expression == "decisive" else host.COLORS.muted)
 	var details = VBoxContainer.new()
 	details.add_theme_constant_override("separation", 5)
@@ -366,7 +366,7 @@ func _add_focused_information_actions(actions: Array) -> void:
 				host.game_screen_controller._text(host.actions_box, str(action.get("name", "行动")), false, 16)
 				host.game_screen_controller._text(host.actions_box, str(action.get("description", "执行当前行动")), true, 13)
 			else:
-				host.game_screen_controller._text(host.actions_box, str(action.get("fact_claim", "未知线索")), false, 16)
+				host.game_screen_controller._text(host.actions_box, str(action.get("fact_claim", host._ui_text("unknown_clue"))), false, 16)
 		else:
 			host.game_screen_controller._text(host.actions_box, "%s · %s" % [action.get("target_name", "某人"), action.get("target_role", "可交谈人物")], false, 16)
 		var relevance = host.game_screen_controller._text(host.actions_box, str(action.get("relevance", "尚不了解这条消息会在对方心里留下什么")), false, 13)
@@ -382,7 +382,7 @@ func _add_focused_information_actions(actions: Array) -> void:
 			button_label = str(action.get("name", "做出路线决定"))
 		else:
 			var term_label = str(action.get("term_label", ""))
-			button_label = ("按“%s”交付情报" % term_label) if term_label != "" else ("把这句话告诉他" if host.focused_actor_id != "" else "告诉%s" % action.get("target_name", "对方"))
+			button_label = (host._ui_text("deliver_term") % term_label) if term_label != "" else (host._ui_text("tell_focused_actor") if host.focused_actor_id != "" else host._ui_text("tell_actor") % action.get("target_name", "对方"))
 		if int(action.get("completion_day", 0)) > 0:
 			button_label += " · %d 日" % int(action.get("duration", 1))
 		var tell_button = host.game_screen_controller._action_button(button_label, host.action_panel_controller._consider_action.bind(action))
@@ -490,19 +490,19 @@ func _add_information_actions(actions: Array) -> void:
 		var facts: Array = tell_groups[target]
 		if facts.size() == 1:
 			var action: Dictionary = facts[0]
-			var button = host.game_screen_controller._action_button("向%s传递线索" % target, host.action_panel_controller._consider_action.bind(action))
+			var button = host.game_screen_controller._action_button(host._ui_text("action_send_clue") % target, host.action_panel_controller._consider_action.bind(action))
 			button.tooltip_text = "%s\n%s\n%s" % [action.get("description", ""), action.get("relevance", ""), action.get("risk", "")]
 			host.actions_box.add_child(button)
-			host.game_screen_controller._text(host.actions_box, "“%s”" % action.get("fact_claim", "未知线索"), true, 14)
+			host.game_screen_controller._text(host.actions_box, "“%s”" % action.get("fact_claim", host._ui_text("unknown_clue")), true, 14)
 			host.action_panel_controller._add_action_decision_context(host.actions_box, action, true)
 		else:
 			var menu = MenuButton.new()
-			menu.text = "向%s传递线索…（%d 条）" % [target, facts.size()]
+			menu.text = host._ui_text("action_send_clues_menu") % [target, facts.size()]
 			menu.custom_minimum_size.y = 42
 			host.game_screen_controller._style_menu_button(menu)
 			menu.get_popup().id_pressed.connect(host.action_panel_controller._on_tell_fact_selected.bind(facts))
 			for index in facts.size():
-				menu.get_popup().add_item(str(facts[index].get("fact_claim", "一条线索")), index)
+				menu.get_popup().add_item(str(facts[index].get("fact_claim", host._ui_text("one_clue"))), index)
 			host.actions_box.add_child(menu)
 
 

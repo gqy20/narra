@@ -86,7 +86,7 @@ func (s *Service) GenerateConversationTurn(ctx context.Context, snapshot app.Dia
 	}
 	draft, _, err := s.provider.GenerateDialogue(callCtx, GenerationRequest{
 		System:           npcConversationSystemPrompt,
-		Input:            fmt.Sprintf("以下是经过游戏规则裁剪的对话上下文。生成 NPC 的下一句回应：\n%s", input),
+		Input:            fmt.Sprintf("This is the dialogue context redacted by the authoritative game rules. Generate the NPC's next response:\n%s", input),
 		AllowedFactIDs:   allowedFactIDs,
 		AllowedActionIDs: allowedActionIDs,
 	})

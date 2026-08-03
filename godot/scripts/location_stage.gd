@@ -59,27 +59,28 @@ func _notification(what: int) -> void:
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("101814"), true)
-	var key := str(location.get("scene_key", "market"))
+	var key := str(location.get("scene_key", ""))
+	var fallback_kind := registry.location_fallback_kind(key)
 	if has_formal_asset():
 		_draw_cover_texture(visual_profile.background)
 		_draw_vignette()
 		return
-	_draw_sky(key)
-	_draw_mountains(key)
-	match key:
+	_draw_sky(fallback_kind)
+	_draw_mountains(fallback_kind)
+	match fallback_kind:
 		"market":
 			_draw_market()
-		"qinglan":
+		"camp":
 			_draw_camp()
 		"apothecary":
 			_draw_apothecary()
-		"valley_edge":
+		"valley":
 			_draw_valley(false)
 		"inner_valley":
 			_draw_valley(true)
 		_:
 			_draw_market()
-	_draw_mist(key)
+	_draw_mist(fallback_kind)
 	_draw_vignette()
 
 

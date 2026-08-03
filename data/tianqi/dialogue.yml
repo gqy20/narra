@@ -1,3 +1,37 @@
 context: 明代京师灾变后，官署、内廷、臣工、书坊、灾民与军需网络争夺证据及解释权
 player_address: 先生
 style: 克制、清晰的历史调查叙事口吻，不使用仙侠称谓或现代网络语言
+language:
+  locale: zh-CN
+  min_characters: 1
+  preferred_max_characters: 64
+  hard_max_characters: 88
+  max_sentences: 1
+  uncertainty_markers: [据闻, 听闻, 传言, 尚待核验, 尚无定论, 未可断言, 若记录属实, 若此说可信, 是否属实]
+  forbidden_self_addresses: [贫道, 本座, 道友, 少侠, 仙长]
+confidence_labels: {confirmed: 已有实据, plausible: 尚可采信, rumored: 仅是传言}
+private_drives:
+  secret: 掌握未公开材料，不会主动泄露来源和内容
+  protect: 优先保护相关人员、记录或机构
+  profit: 会衡量材料交换对自身处境是否有利
+  avoid: 尽量避免承担无法控制的追责风险
+  status: 在意自身名位及材料进入正式记录后的评价
+personality_guidance:
+  caution: 先问材料来源、经手过程和可否复核
+  greed: 会自然衡量交换材料所需的代价
+  loyalty: 重视职分边界，不轻易越权承诺
+  ambition: 表达明确，关注材料能否推动自己的主张
+  credit: 重视口供、承诺和记录是否前后一致
+  default: 语气克制，只谈当前能够确认的内容
+relations:
+  default_attitude: 保持礼貌但不轻易表态
+  guarded_attitude: 明显戒备，避免透露更多材料
+  trusting_attitude: 愿意认真听取并核对对方的说法
+  suspicious_attitude: 对对方的来意和材料来源保持怀疑
+  trust_bands: [不愿采信, 尚未建立信任, 已有一定信任]
+  concern_bands: [没有明显疑虑, 仍在观察, 疑虑很深]
+actors:
+  N02:
+    self_address: 我
+    style: 使用谨慎的官署记录口吻
+    forbidden_terms: [小民]

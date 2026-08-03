@@ -35,7 +35,12 @@ func (p *fakeProvider) GenerateDialogue(ctx context.Context, request GenerationR
 func dialogueTestSnapshot() app.DialogueSnapshot {
 	return app.DialogueSnapshot{
 		Revision: "blackwind:0:0:N01", ScenarioID: "blackwind", Situation: "focus",
-		Scenario:         app.DialogueScenario{Title: "测试场景", Context: "架空城邦调查", PlayerAddress: "先生", Style: "克制的调查叙事口吻"},
+		Scenario: app.DialogueScenario{
+			Title: "测试场景", Context: "架空城邦调查", PlayerAddress: "先生", Style: "克制的调查叙事口吻",
+			Locale: "zh-CN", MinCharacters: 1, PreferredMaxCharacters: 60, HardMaxCharacters: 80, MaxSentences: 1,
+			RumoredConfidence: "只是听说", UncertaintyMarkers: []string{"听说", "传闻", "尚未核实", "真假"},
+			ForbiddenTerms: []string{"老夫", "贫道", "小老儿", "妾身"},
+		},
 		Actor:            app.DialogueActor{ID: "N01", Name: "李玄", SpeechGuidance: []string{"保持克制"}},
 		Player:           app.DialoguePlayer{ID: "P00", Name: "测试玩家"},
 		AllowedClaims:    []app.DialogueClaim{{FactID: "F02", Claim: "一条传闻", Confidence: "只是听说"}},
@@ -131,6 +136,22 @@ func TestDialogueRejectsUnsupportedSelfAddress(t *testing.T) {
 	}
 	if err := validateDialogue(dialogueTestSnapshot(), &draft); err == nil {
 		t.Fatal("unsupported self-address was accepted")
+	}
+}
+
+func TestDialogueUsesScenarioUncertaintyVocabulary(t *testing.T) {
+	snapshot := dialogueTestSnapshot()
+	snapshot.Scenario.RumoredConfidence = "仅是传言"
+	snapshot.Scenario.UncertaintyMarkers = []string{"尚待核验"}
+	snapshot.AllowedClaims[0].Confidence = "仅是传言"
+	invalid := DialogueDraft{Utterance: "这份记录完全可信。", Emotion: "neutral", DialogueAct: "acknowledge", ReferencedFacts: []string{"F02"}}
+	if err := validateDialogue(snapshot, &invalid); err == nil {
+		t.Fatal("dialogue accepted a rumored claim without the scenario marker")
+	}
+	valid := invalid
+	valid.Utterance = "这份记录尚待核验。"
+	if err := validateDialogue(snapshot, &valid); err != nil {
+		t.Fatalf("dialogue rejected the scenario uncertainty vocabulary: %v", err)
 	}
 }
 

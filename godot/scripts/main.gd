@@ -14,6 +14,7 @@ const LocationStageScript = preload("res://scripts/location_stage.gd")
 const PresentationDirectorScript = preload("res://scripts/presentation_director.gd")
 const PresentationRegistryScript = preload("res://scripts/presentation_registry.gd")
 const AudioDirectorScript = preload("res://scripts/audio_director.gd")
+const CinematicDirectorScript = preload("res://scripts/cinematic_director.gd")
 const CausalSealTexture = preload("res://assets/ui/causal/causal-seal.png")
 const DecisionFrameTexture = preload("res://assets/ui/causal/decision-frame.png")
 const TimelineArrowTexture = preload("res://assets/ui/causal/timeline-arrow.png")
@@ -99,6 +100,7 @@ var presentation_controller
 var current_view: Dictionary = {}
 var scenario_info: Dictionary = {}
 var scenario_presentation: Dictionary = {}
+var interface_built := false
 var dialogue_client
 var api_response_adapter = APIResponseAdapterScript.new()
 var local_server_process
@@ -141,6 +143,8 @@ var ai_model := "step-3.7-flash"
 var ai_base_url := "https://api.stepfun.com/step_plan/v1/messages"
 var ai_api_key := ""
 var presentation_busy := false
+var opening_cinematic_active := false
+var ending_cinematic_presented := false
 var active_action_category := ""
 var show_all_actions := false
 var focused_actor_details_visible := false
@@ -258,6 +262,7 @@ var world_map_view: Control
 var location_stage: Control
 var presentation_director: Control
 var audio_director: Node
+var cinematic_director: Control
 var actor_portrait_frame: PanelContainer
 var actor_portrait: TextureRect
 var actor_portrait_name: Label
@@ -321,7 +326,9 @@ func _ready() -> void:
 	game_client = GameClientScript.new(API_BASE)
 	add_child(game_client)
 	game_client.request_completed.connect(_on_request_completed)
-	game_screen_controller._build_interface()
+	cinematic_director = CinematicDirectorScript.new()
+	add_child(cinematic_director)
+	cinematic_director.set_enabled(motion_enabled)
 	if runtime_warning != "":
 		_show_error(runtime_warning)
 	local_server_process.start({
@@ -410,7 +417,7 @@ func _request(operation: String, method: HTTPClient.Method, path: String, payloa
 	if footer_label:
 		footer_label.text = _operation_label(operation) + "…"
 		footer_label.add_theme_color_override("font_color", COLORS.accent)
-	if start_layer.visible and connection_label:
+	if start_layer and start_layer.visible and connection_label:
 		connection_label.text = "正在确认旅途入口…"
 	var error: Error = game_client.send(method, path, payload)
 	if error != OK:
@@ -478,6 +485,10 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		retry_button.hide()
 	if operation == "health":
 		_apply_scenario_info(parsed.get("scenario", {}))
+		if not interface_built:
+			game_screen_controller._build_interface()
+			interface_built = true
+			_apply_scenario_info(parsed.get("scenario", {}))
 		var capabilities: Dictionary = parsed.get("capabilities", {})
 		ai_server_enabled = bool(capabilities.get("ai_dialogue", false))
 		var server_ai_settings: Dictionary = parsed.get("ai_settings", {})
@@ -541,7 +552,11 @@ func _apply_scenario_presentation(value: Variant) -> void:
 	if not value is Dictionary or value.is_empty():
 		return
 	scenario_presentation = value.duplicate(true)
+	journal_tab_labels[1] = _ui_text("term_clues")
 	presentation_registry.configure(scenario_presentation)
+	audio_director.configure_locations(scenario_presentation.get("locations", {}))
+	if audio_director:
+		audio_director.configure_music(presentation_registry.background_music(), presentation_registry.music_volume_db())
 	if start_scene:
 		var opening_key := str(scenario_presentation.get("opening_event", ""))
 		var opening_texture: Texture2D = presentation_registry.event_texture(opening_key) if opening_key != "" else null
@@ -579,10 +594,18 @@ func _show_footer_message(message: String) -> void:
 	presentation_controller._clear_footer_message_later(message)
 
 
+func _ui_text(key: String) -> String:
+	var ui: Dictionary = scenario_presentation.get("ui", {})
+	var value := str(ui.get(key, "")).strip_edges()
+	if value == "":
+		push_error("Missing required presentation UI text: %s" % key)
+	return value
+
+
 func _new_game() -> void:
 	var player_name := name_input.text.strip_edges()
 	if player_name == "":
-		player_name = "无名修士"
+		player_name = _ui_text("default_player_name")
 	actor_expression_by_id.clear()
 	causal_change_count_by_actor.clear()
 	causal_actor_id_by_name.clear()
@@ -594,10 +617,21 @@ func _new_game() -> void:
 	active_action_category = ""
 	selected_followup_action_id = ""
 	queued_followup_action_id = ""
+	ending_cinematic_presented = false
 	action_panel_controller._reset_action_focus()
 	ending_layer.hide()
 	game_screen_controller._set_visual_mode("location")
+	var opening_event_key := str(scenario_presentation.get("opening_event", ""))
+	var opening_video: VideoStream = presentation_registry.event_video(opening_event_key) if opening_event_key != "" else null
+	opening_cinematic_active = cinematic_director != null and cinematic_director.play(opening_video, opening_event_key, _on_opening_cinematic_finished)
 	_request("new", HTTPClient.METHOD_POST, "/game/new", {"player_name": player_name})
+
+
+func _on_opening_cinematic_finished(_skipped: bool) -> void:
+	opening_cinematic_active = false
+	game_screen_controller._sync_action_canvas_visibility()
+	if game_layer.visible:
+		audio_director.play_music()
 
 
 func _retry_connection() -> void:
@@ -655,6 +689,8 @@ func _show_start() -> void:
 	rendered_location_id = ""
 	view_before_action = {}
 	presentation_busy = false
+	opening_cinematic_active = false
+	ending_cinematic_presented = false
 	causal_change_count_by_actor.clear()
 	causal_actor_id_by_name.clear()
 	last_causal_actor_id = ""
@@ -666,6 +702,9 @@ func _show_start() -> void:
 	settings_layer.hide()
 	causal_layer.hide()
 	ending_layer.hide()
+	if cinematic_director and cinematic_director.active:
+		cinematic_director.skip()
+	audio_director.stop_music(0.8)
 	if presentation_director:
 		presentation_director.cancel()
 	start_layer.show()
@@ -675,6 +714,8 @@ func _show_start() -> void:
 func _show_game() -> void:
 	start_layer.hide()
 	game_layer.show()
+	if not opening_cinematic_active:
+		audio_director.play_music()
 	game_screen_controller._sync_action_canvas_visibility()
 
 

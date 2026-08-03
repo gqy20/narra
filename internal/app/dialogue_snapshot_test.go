@@ -18,6 +18,9 @@ func TestDialogueSnapshotRedactsPrivateBeliefsAndWorldInternals(t *testing.T) {
 	if snapshot.Scenario.Title == "" || snapshot.Scenario.Context == "" || snapshot.Scenario.PlayerAddress == "" || snapshot.Scenario.Style == "" {
 		t.Fatalf("scenario dialogue presentation is incomplete: %+v", snapshot.Scenario)
 	}
+	if snapshot.Scenario.Locale != "zh-CN" || snapshot.Scenario.HardMaxCharacters != 80 || snapshot.Scenario.RumoredConfidence != "只是听说" || len(snapshot.Scenario.UncertaintyMarkers) == 0 || len(snapshot.Scenario.ForbiddenTerms) == 0 {
+		t.Fatalf("scenario dialogue language policy is incomplete: %+v", snapshot.Scenario)
+	}
 	for _, claim := range snapshot.AllowedClaims {
 		if claim.FactID == "F01" || claim.FactID == "F10" {
 			t.Fatalf("private belief leaked into allowed claims: %+v", snapshot.AllowedClaims)

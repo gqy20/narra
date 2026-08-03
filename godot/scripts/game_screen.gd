@@ -730,6 +730,7 @@ func _sync_action_canvas_visibility() -> void:
 		and not host.settings_layer.visible
 		and not host.causal_layer.visible
 		and not host.ending_layer.visible
+		and not (host.cinematic_director and host.cinematic_director.active)
 	)
 	host.action_canvas.visible = should_show
 	host.action_dock.visible = should_show
@@ -831,12 +832,7 @@ func _render_location_stage(location: Dictionary, actors: Array, actions: Array)
 	host.audio_director.set_scene(str(location.get("scene_key", "")))
 	host.game_screen_controller._render_actor_portrait(actors)
 	host.game_screen_controller._clear(host.location_detail_box)
-	var phase_marker = ""
-	match str(location.get("scene_key", "")):
-		"valley_edge":
-			phase_marker = "第一段 · 谷口判断"
-		"inner_valley":
-			phase_marker = "第二段 · 核心争夺"
+	var phase_marker: String = str(host.presentation_registry.location_stage_label(str(location.get("scene_key", ""))))
 	var place_title = "%s" % ["安稳" if bool(location.get("safe", false)) else "险地"]
 	if phase_marker != "":
 		place_title += " · %s" % phase_marker
@@ -1084,8 +1080,9 @@ func _add_status_chip(parent: Container, value: String, color: Color) -> void:
 
 func _known_timing(clues: Array) -> String:
 	var best: Dictionary = {}
+	var configured_keyword: String = str(host._ui_text("timing_keyword"))
 	for clue in clues:
-		if "成熟" not in str(clue.get("claim", "")):
+		if configured_keyword != "" and configured_keyword not in str(clue.get("claim", "")):
 			continue
 		if best.is_empty() or int(clue.get("confidence", 0)) > int(best.get("confidence", 0)):
 			best = clue
@@ -1093,23 +1090,18 @@ func _known_timing(clues: Array) -> String:
 		return "尚未查明"
 	var timing := str(best.get("claim", "未知"))
 	var timing_start := timing.find("第")
-	var timing_end := timing.find("成熟", timing_start + 1) if timing_start >= 0 else -1
+	var timing_keyword: String = str(host._ui_text("timing_keyword"))
+	var timing_end := timing.find(timing_keyword, timing_start + 1) if timing_start >= 0 and timing_keyword != "" else -1
 	if timing_start >= 0 and timing_end > timing_start:
 		timing = timing.substr(timing_start, timing_end - timing_start)
 	var confidence := int(best.get("confidence", 0))
-	var status := "已核实" if confidence >= 3 else ("较可信" if confidence == 2 else "传闻")
+	var status: String = str(host._ui_text("timing_status_confirmed") if confidence >= 3 else (host._ui_text("timing_status_plausible") if confidence == 2 else host._ui_text("timing_status_rumored")))
 	return "%s · %s" % [timing, status]
 
 
 func _phase_display(phase: String) -> String:
-	match phase:
-		"准备":
-			return "筹备期"
-		"扩散":
-			return "消息扩散期"
-		"入谷":
-			return "入谷争夺期"
-	return "筹备期" if phase == "" else phase
+	var configured: String = host._ui_text("phase_" + phase) if host.scenario_presentation.get("ui", {}).has("phase_" + phase) else host._ui_text("phase_default")
+	return configured
 
 
 func _header_day(day: int, duration: int) -> String:

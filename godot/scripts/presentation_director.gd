@@ -158,36 +158,36 @@ func _compose_echo(feedback: Dictionary, from_location: String, to_location: Str
 
 	if kind == "focus":
 		if action_id.begins_with("verify:"):
-			return {"title": "开始查证", "message": "线索已交付核验", "placement": "peripheral"}
+			return {"title": presentation_registry.ui_text("cue_verify_title"), "message": presentation_registry.ui_text("cue_verify_message"), "placement": "peripheral"}
 		if action_id.begins_with("cultivate"):
-			return {"title": "静心吐纳", "message": _first_meaningful_message(messages, "这一日没有虚度"), "placement": "peripheral"}
+			return {"title": presentation_registry.ui_text("cue_growth_title"), "message": _first_meaningful_message(messages, presentation_registry.ui_text("cue_growth_message")), "placement": "peripheral"}
 		return {"title": action, "message": _first_meaningful_message(messages, "行动已经开始"), "placement": "peripheral"}
 
 	if kind == "reveal":
 		return {
-			"title": "线索有了定论",
-			"message": _preferred_message(messages, ["线索更新", "确信", "可信"], "判断已经更新"),
+			"title": presentation_registry.ui_text("cue_reveal_title"),
+			"message": _preferred_message(messages, [presentation_registry.ui_text("term_clue"), presentation_registry.ui_text("confidence_confirmed"), presentation_registry.ui_text("confidence_plausible")], presentation_registry.ui_text("cue_reveal_message")),
 			"placement": "peripheral",
 		}
 
 	if kind == "acquire":
 		return {
-			"title": "收入行囊",
-			"message": _preferred_message(messages, ["物品 ", "灵石"], "所得已经收好"),
+			"title": presentation_registry.ui_text("cue_acquire_title"),
+			"message": _first_meaningful_message(messages, presentation_registry.ui_text("cue_acquire_message")),
 			"placement": "peripheral",
 		}
 
 	if kind == "recovery":
 		return {
-			"title": "伤势缓和",
-			"message": _preferred_message(messages, ["伤势"], "气息渐渐平稳"),
+			"title": presentation_registry.ui_text("cue_recovery_title"),
+			"message": _first_meaningful_message(messages, presentation_registry.ui_text("cue_recovery_message")),
 			"placement": "peripheral",
 		}
 
 	if kind == "danger":
 		return {
-			"title": "伤势加重",
-			"message": _preferred_message(messages, ["伤势"], "继续行动会更加危险"),
+			"title": presentation_registry.ui_text("cue_danger_title"),
+			"message": _first_meaningful_message(messages, presentation_registry.ui_text("cue_danger_message")),
 			"placement": "peripheral",
 		}
 
@@ -220,10 +220,10 @@ func _feedback_messages(feedback: Dictionary) -> Array[String]:
 
 
 func _delivered_actor(messages: Array[String]) -> String:
-	const PREFIX := "情报已经送达"
+	var prefix: String = str(presentation_registry.ui_text("feedback_delivery_prefix"))
 	for message in messages:
-		if message.begins_with(PREFIX):
-			return message.trim_prefix(PREFIX).trim_suffix("。").strip_edges()
+		if message.begins_with(prefix):
+			return message.trim_prefix(prefix).trim_suffix("。").strip_edges()
 	return ""
 
 

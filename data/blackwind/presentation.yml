@@ -10,11 +10,11 @@ resources:
 - {id: support, label: 助力, emphasis: success, hide_zero: true}
 - {id: credit, label: 信用, emphasis: normal, hide_zero: true}
 locations:
-  market: {profile: res://assets/locations/market/profile.tres, background: res://assets/locations/market/background.png}
-  qinglan: {profile: res://assets/locations/qinglan/profile.tres, background: res://assets/locations/qinglan/background.png}
-  apothecary: {profile: res://assets/locations/apothecary/profile.tres, background: res://assets/locations/apothecary/background.png}
-  valley_edge: {profile: res://assets/locations/valley_edge/profile.tres, background: res://assets/locations/valley_edge/background.png}
-  inner_valley: {profile: res://assets/locations/inner_valley/profile.tres, background: res://assets/locations/inner_valley/background.png}
+  market: {profile: res://assets/locations/market/profile.tres, background: res://assets/locations/market/background.png, fallback_kind: market, ambient_frequency: 58, ambient_air: 0.10}
+  qinglan: {profile: res://assets/locations/qinglan/profile.tres, background: res://assets/locations/qinglan/background.png, fallback_kind: camp, ambient_frequency: 72, ambient_air: 0.16}
+  apothecary: {profile: res://assets/locations/apothecary/profile.tres, background: res://assets/locations/apothecary/background.png, fallback_kind: apothecary, ambient_frequency: 64, ambient_air: 0.08}
+  valley_edge: {profile: res://assets/locations/valley_edge/profile.tres, background: res://assets/locations/valley_edge/background.png, fallback_kind: valley, ambient_frequency: 48, ambient_air: 0.20, stage_label: 第一段 · 谷口判断}
+  inner_valley: {profile: res://assets/locations/inner_valley/profile.tres, background: res://assets/locations/inner_valley/background.png, fallback_kind: inner_valley, ambient_frequency: 42, ambient_air: 0.24, stage_label: 第二段 · 核心争夺}
 actors:
   N01: {profile: res://assets/characters/N01/profile.tres}
   N02: {profile: res://assets/characters/N02/profile.tres}
@@ -26,3 +26,189 @@ actors:
   N08: {profile: res://assets/characters/N08/profile.tres}
   N09: {profile: res://assets/characters/N09/profile.tres, map_token: {color: "#b86757", offset: [29, -42]}}
   N10: {profile: res://assets/characters/N10/profile.tres}
+ui:
+  default_player_name: 无名修士
+  term_clue: 线索
+  term_clues: 线索
+  term_verify: 核验
+  journal_empty_clues: 尚未掌握线索。先观察人物或调查地点。
+  journal_unverified_count: ' · %d 条待核验'
+  journal_verify_clue: 核验这条线索
+  dialogue_available_clues: 当前状态 · %s · 可谈线索 %d 条
+  action_send_clue: 向%s传递线索
+  action_send_clues_menu: 向%s传递线索…（%d 条）
+  action_wait_complete_name: 继续到行动完成
+  action_wait_complete_description: 逐日推进，遇到需要处理的变化会提前停下
+  action_wait_next_name: 等待局势变化
+  action_wait_next_description: 逐日推演并在下一次值得关注的变化处停下，可能跨越多个平静日
+  action_verify_name: 核验线索
+  action_verify_description: 核验：“{claim}”
+  command_verify: 核验线索：“{claim}”
+  action_buy_name: 购买{name}
+  action_buy_description: 库存 {stock}，当前价格 {price} {currency}
+  command_buy: 购买{name}
+  action_move_name: 前往{name}
+  action_move_description: 耗时 {days} 天，危险度 {danger}
+  command_move: 前往{name}
+  action_tell_name: 告知{name}一条线索
+  action_tell_description: 分享：“{claim}”
+  command_tell: 向{name}分享消息：“{claim}”
+  information_unknown_claim: 转述的线索
+  information_unverified_warning: 这条线索尚未核实；对方可能据此改变行动。
+  information_relevance_low: 从公开信息看，这条线索与对方当前关注的事项关联不明显。
+  information_relevance_high: 直接相关 · 对方公开关注：{topics}
+  information_risk_unknown: 公开信息不足，暂时无法判断对方可能如何使用这条消息。
+  information_relevance_unknown: 尚不了解对方为何会在意这条线索。
+  information_use_unknown: 尚不了解对方可能如何使用这条消息。
+  wait_missing_item_warning: 你尚未持有{name}；继续等待可能错过当前获取机会。
+  feedback_phase_changed: 局势进入“{phase}”阶段。
+  feedback_action_progress: “{action}”仍在进行，预计第 {day} 天完成。
+  feedback_action_completed: 持续行动已经完成。
+  feedback_arrived: 抵达{name}。
+  feedback_injury_changed: 伤势由 {before} 变为 {after}。
+  feedback_information_delivered: 情报已经送达{name}。
+  feedback_information_pending: 对方是否改变行动，会在后续局势变化时显现。
+  feedback_outcome: 青髓芝归属：{outcome}
+  feedback_settled: “{action}”已经结算。
+  feedback_resource_changed: '{resource} {delta}，现有 {value}。'
+  feedback_item_changed: '物品 {name} {delta}，现有 {value}。'
+  feedback_belief_changed: 线索更新为{confidence}：{claim}
+  guidance_outcome_settled: 青髓芝归属已经结算；你可以继续观察局势余波直到场景结束。
+  guidance_pending: 当前行动还需等待到第 {day} 天完成。
+  guidance_verify_date: 成熟时间目前只是传闻，核验后再据此安排路线更稳妥。
+  guidance_item_market: '{name}仍可从市场取得；它是入谷争夺的必要条件，供应可能随局势变化。'
+  guidance_item_missing: 当前仍缺少{name}；留意人物回应与路线进展中是否出现新的获取方式。
+  guidance_verified_item_missing: 你已掌握经过核实的成熟时间，但当前仍缺少{name}；留意人物回应中出现新的获取方式。
+  guidance_information_sent: 情报已经送达；等待局势变化可以观察它是否改变对方的选择。
+  guidance_default: 没有必须执行的行动；根据已知线索决定调查、交涉、准备或等待。
+  confidence_confirmed: 已核实日期
+  confidence_plausible: 较可信
+  confidence_rumored: 未经核实
+  timing_confirmed: 已核实
+  timing_rumored: 传闻口径
+  decision_wait_timing: 停止日期取决于下一次值得关注的变化，无法预先保证剩余时间。
+  decision_verify_outcome: 把这条线索核验为可靠结论，并整理关联线索
+  decision_verify_resolves: 这条线索尚未核实
+  decision_verify_has_clue: 你持有这条线索
+  decision_verify_pending: 线索仍待核实
+  decision_opportunity_outcome: 消耗这次短暂机会，获得一条新的可追查消息
+  decision_opportunity_open: 该世界机会仍然开放
+  decision_opportunity_location: 你正在机会所在地
+  decision_opportunity_unknown: 新消息可能仍需要进一步核验
+  decision_buy_outcome: 获得 1 件{name}
+  decision_buy_stock: 当前仍有库存
+  decision_buy_funds: 持有足够的交易资源
+  decision_buy_required_outcome: 获得{name}，满足核心目标（入谷争夺）的必要条件
+  decision_missing_item: 缺少{name}
+  decision_move_outcome: 抵达{name}
+  decision_move_resolves: 尚未抵达{name}
+  decision_move_ready: 路线的公开条件均已满足
+  decision_move_unknown: 途中局势仍会按日推进
+  decision_tell_outcome: 让{name}获得这条线索
+  decision_tell_influence: 可能改变对方的后续选择
+  decision_tell_location: 对方就在此地
+  decision_tell_has_clue: 你持有这条线索
+  decision_tell_unknown: 对方是否采用消息，只能从之后的公开行动判断
+  decision_heal_outcome: 伤势降低 1 级
+  decision_heal_resolves: 当前伤势
+  decision_heal_injured: 当前带伤
+  decision_heal_ready: 疗伤条件允许
+  decision_heal_unknown: 疗伤期间局势仍会按日推进
+  decision_growth_ready: 当前没有伤势妨碍闭关
+  decision_growth_unknown: 闭关期间局势仍会按日推进
+  ending_metrics: 局势推进到第 {day} 天；你做出 {decisions} 次决策，其中主动行动 {active} 次、推进时间 {waits} 次。
+  ending_action_verify: 核验情报
+  ending_action_tell: 分享情报
+  ending_action_route: 回应路线考验
+  ending_action_buy: 购买物品
+  ending_action_move: 移动
+  ending_action_growth: 修炼
+  ending_action_recovery: 疗伤
+  ending_action_count: '{action} {count} 次。'
+  ending_status: 终局时你位于{location}，伤势 {injury}
+  ending_influence: 你传递的消息改变了 {count} 个关键选择，并影响了最终归属。
+  ending_review_won: 你满足了青髓芝争夺条件，并以 {score} 点综合准备取得最终归属。
+  ending_review_missing_item: 你在结算时没有{name}，因此没有取得入谷争夺资格。
+  ending_review_late: 你没有在第 {day} 日前抵达{name}，因此没有进入最终候选。
+  ending_review_lost: 你具备争夺资格，但综合准备为 {score}；胜者{winner}达到 {winner_score}，领先 {lead} 点。
+  ending_review_tie: 你具备争夺资格，综合准备为 {score}；同分时先完成局势占位的争夺者取得归属。
+  ending_review_passive: 本局没有进行主动行动；等待让你跳过了平静日，也同时放弃了调查、交涉和准备窗口。
+  ending_review_next: 下一局可先核验线索并观察人物计划，再决定亲自介入、扶持盟友或保全其他成果。
+  source_investigation: 亲自核验
+  source_investigation_lead: 核验所得线索
+  source_broker: 路过游商
+  source_unknown: 来源不明
+  advance_outcome: 青髓芝争夺已经产生结果
+  timing_keyword: 成熟
+  timing_status_confirmed: 已核实
+  timing_status_plausible: 较可信
+  timing_status_rumored: 传闻
+  phase_default: 筹备期
+  phase_准备: 筹备期
+  phase_扩散: 消息扩散期
+  phase_入谷: 入谷争夺期
+  map_contest_location: 争夺地
+  cue_verify_title: 开始查证
+  cue_verify_message: 线索已交付核验
+  cue_growth_title: 静心吐纳
+  cue_growth_message: 这一日没有虚度
+  cue_reveal_title: 线索有了定论
+  cue_reveal_message: 判断已经更新
+  cue_acquire_title: 收入行囊
+  cue_acquire_message: 所得已经收好
+  cue_recovery_title: 伤势缓和
+  cue_recovery_message: 气息渐渐平稳
+  cue_danger_title: 伤势加重
+  cue_danger_message: 继续行动会更加危险
+  feedback_delivery_prefix: 情报已经送达
+  unknown_clue: 未知线索
+  one_clue: 一条线索
+  deliver_term: 按“%s”交付情报
+  tell_focused_actor: 把这句话告诉他
+  tell_actor: 告诉%s
+  information_causal_heading: 情报因果线
+  preparation_heading: 你的争夺准备
+  preparation_explanation: 基线来自已知主要争夺者的公开实力，只用于判断是否值得正面入局。
+  people_information_hint: 他们会依照自己掌握的消息行动；你的情报可能改变这些安排。
+  people_talk_clues: 交谈 · %d 条线索可用
+  people_view: 查看人物
+  player_name_prompt: 你以何名入谷
+  plan_player_information: 采用了你提供的消息：“{claim}”
+  plan_shared_information: 依据双方都已掌握的线索：“{claim}”
+  plan_private_information: 依据自己掌握、但尚未向你公开的消息
+  plan_flag_ready: 局势条件已经满足：{condition}
+  plan_has_item: 手中已有行动所需的{name}
+  plan_missing_item: 为了补足缺少的{name}
+  plan_public_goal: 这项行动最符合其当前公开目标
+  plan_unavailable: 尚未形成可以观察的公开计划
+  plan_flag_changed: 局势条件已经发生变化
+  decision_route_triggered: 此前的情报条件已经引发回应
+  decision_route_window: 这项选择只在当前路线窗口内有效
+  effect_injury: 伤势{amount}级
+  preparation_resource_empty: 当前尚未建立
+  preparation_resource_ready: 会计入你自己的争夺准备
+  preparation_extra_label: 额外筹备
+  preparation_extra_ready: 已形成一项额外准备
+  preparation_item_missing: 尚未备齐；没有它不能参与青髓芝争夺
+  preparation_item_ready: 已经备齐，可满足入谷条件
+  preparation_location_missing: 尚未抵达；必须在结算前到达
+  preparation_location_ready: 已经抵达核心争夺地点
+  preparation_rating_strong: 优势明显
+  preparation_detail_strong: 综合准备已经超过已知争夺基线；满足入谷条件后，有较大把握正面争夺。
+  preparation_rating_even: 具备竞争力
+  preparation_detail_even: 综合准备达到已知争夺基线；同分时仍可能受对手行动与伤势影响。
+  preparation_rating_low: 胜算偏低
+  preparation_detail_low: 已经有部分准备，但距离稳定参与正面争夺仍有差距。
+  preparation_rating_poor: 明显不足
+  preparation_detail_poor: 即使进入内谷，目前也很难压过主要争夺者。
+  preparation_ineligible_suffix: ' 当前还没有同时满足丹药与抵达条件。'
+  travel_no_route: 尚未发现可行路线
+  travel_route_found: 可用路线已发现
+  travel_carry_item: 携带{name}
+  travel_missing_item: 缺少{name}
+  travel_already_arrived: 你已经到达核心争夺地点。
+  travel_date_unknown: 成熟时间尚未查明，无法判断最晚出发时间。
+  travel_departure_deadline: 按{basis}，最晚应在第 {day} 天结束前出发。
+  travel_departure_late: 按{basis}，即使立即出发也可能来不及。
+  travel_condition_blocked: 路线条件尚未满足
+  travel_condition_ready: 路线条件满足

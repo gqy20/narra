@@ -339,7 +339,7 @@ func _draw_location(location: Dictionary, bounds: Rect2) -> void:
 	if current and not travel_active:
 		draw_string(font, beacon + Vector2(-26, -25), "此刻", HORIZONTAL_ALIGNMENT_CENTER, 52, 12, ACCENT)
 	elif contest:
-		draw_string(font, beacon + Vector2(-30, -25), "争夺地", HORIZONTAL_ALIGNMENT_CENTER, 60, 12, Color("d87761"))
+		draw_string(font, beacon + Vector2(-30, -25), presentation_registry.ui_text("map_contest_location"), HORIZONTAL_ALIGNMENT_CENTER, 60, 12, Color("d87761"))
 	var actor_count := int(location.get("actor_count", 0))
 	if actor_count > 0 and not travel_active:
 		draw_string(font, position + Vector2(-36, 59), "%d 人在场" % actor_count, HORIZONTAL_ALIGNMENT_CENTER, 72, 11, MUTED)

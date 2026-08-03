@@ -29,10 +29,18 @@ type DialogueSnapshot struct {
 }
 
 type DialogueScenario struct {
-	Title         string `json:"title"`
-	Context       string `json:"context,omitempty"`
-	PlayerAddress string `json:"player_address,omitempty"`
-	Style         string `json:"style,omitempty"`
+	Title                  string   `json:"title"`
+	Context                string   `json:"context,omitempty"`
+	PlayerAddress          string   `json:"player_address,omitempty"`
+	Style                  string   `json:"style,omitempty"`
+	Locale                 string   `json:"locale"`
+	MinCharacters          int      `json:"min_characters"`
+	PreferredMaxCharacters int      `json:"preferred_max_characters"`
+	HardMaxCharacters      int      `json:"hard_max_characters"`
+	MaxSentences           int      `json:"max_sentences"`
+	UncertaintyMarkers     []string `json:"uncertainty_markers"`
+	ForbiddenTerms         []string `json:"forbidden_terms,omitempty"`
+	RumoredConfidence      string   `json:"rumored_confidence"`
 }
 
 type DialogueActor struct {
@@ -43,6 +51,7 @@ type DialogueActor struct {
 	PublicProfile  string   `json:"public_profile"`
 	PublicFocus    []string `json:"public_focus,omitempty"`
 	SpeechGuidance []string `json:"speech_guidance,omitempty"`
+	SelfAddress    string   `json:"self_address,omitempty"`
 }
 
 type DialoguePlayer struct {
@@ -97,25 +106,34 @@ func (s *Session) DialogueSnapshotFor(actorID, situation string) (DialogueSnapsh
 	}
 
 	config := s.actorConfig(actorID)
+	voice := s.bundle.Dialogue.Actors[actorID]
 	visible := s.visibleActorForDialogue(state, actorID)
 	relation := state.RelationBetween(actorID, state.Player.ID)
 	snapshot := DialogueSnapshot{
 		Revision: s.dialogueRevision(state, actorID), ScenarioID: s.bundle.Scenario.ID,
 		Scenario: DialogueScenario{
 			Title: s.bundle.Scenario.Title, Context: s.bundle.Dialogue.Context,
-			PlayerAddress: s.bundle.Dialogue.PlayerAddress, Style: s.bundle.Dialogue.Style,
+			PlayerAddress: dialoguePlayerAddress(s.bundle.Dialogue, voice), Style: dialogueActorStyle(s.bundle.Dialogue, voice),
+			Locale: s.bundle.Dialogue.Language.Locale, MinCharacters: s.bundle.Dialogue.Language.MinCharacters,
+			PreferredMaxCharacters: s.bundle.Dialogue.Language.PreferredMaxCharacters,
+			HardMaxCharacters:      s.bundle.Dialogue.Language.HardMaxCharacters,
+			MaxSentences:           s.bundle.Dialogue.Language.MaxSentences,
+			UncertaintyMarkers:     append([]string(nil), s.bundle.Dialogue.Language.UncertaintyMarkers...),
+			ForbiddenTerms:         append(append([]string(nil), s.bundle.Dialogue.Language.ForbiddenSelfAddresses...), voice.ForbiddenTerms...),
+			RumoredConfidence:      s.bundle.Dialogue.ConfidenceLabels.Rumored,
 		},
 		Day: state.Day, Situation: situation,
 		Actor: DialogueActor{
 			ID: actorID, Name: npc.Name, Faction: npc.Faction,
 			PublicRole: visible.PublicRole, PublicProfile: visible.PublicProfile,
 			PublicFocus:    append([]string(nil), visible.PublicFocus...),
-			SpeechGuidance: dialogueSpeechGuidance(npc.Personality),
+			SpeechGuidance: dialogueSpeechGuidance(s.bundle.Dialogue, npc.Personality, voice),
+			SelfAddress:    voice.SelfAddress,
 		},
 		Player:        DialoguePlayer{ID: state.Player.ID, Name: state.Player.Name},
-		Relation:      dialogueRelation(relation),
-		AllowedClaims: dialogueAllowedClaims(state, npc),
-		PrivateDrives: dialoguePrivateDrives(config, npc),
+		Relation:      dialogueRelation(s.bundle.Dialogue, relation),
+		AllowedClaims: dialogueAllowedClaims(s.bundle.Dialogue, state, npc),
+		PrivateDrives: dialoguePrivateDrives(s.bundle.Dialogue, config, npc),
 		AllowedActs:   s.dialogueAllowedActs(state, actorID),
 	}
 	for _, option := range s.actionCatalog(state) {
@@ -136,6 +154,20 @@ func (s *Session) DialogueSnapshotFor(actorID, situation string) (DialogueSnapsh
 		snapshot.RecentEvents = append(snapshot.RecentEvents, DialogueEvent{Day: event.Day, Description: event.Description})
 	}
 	return snapshot, nil
+}
+
+func dialoguePlayerAddress(config domain.DialogueConfig, actor domain.ActorDialogueConfig) string {
+	if actor.PlayerAddress != "" {
+		return actor.PlayerAddress
+	}
+	return config.PlayerAddress
+}
+
+func dialogueActorStyle(config domain.DialogueConfig, actor domain.ActorDialogueConfig) string {
+	if actor.Style != "" {
+		return config.Style + "；" + actor.Style
+	}
+	return config.Style
 }
 
 func (s *Session) dialogueRevision(state *domain.WorldState, actorID string) string {

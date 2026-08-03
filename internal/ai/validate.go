@@ -13,8 +13,16 @@ var validDialogueActs = map[string]bool{"greet": true, "invite": true, "question
 
 func validateDialogue(snapshot app.DialogueSnapshot, draft *DialogueDraft) error {
 	draft.Utterance = strings.TrimSpace(draft.Utterance)
-	if draft.Utterance == "" || utf8.RuneCountInString(draft.Utterance) > 80 {
-		return fmt.Errorf("dialogue utterance must contain 1 to 80 characters")
+	maxCharacters := snapshot.Scenario.HardMaxCharacters
+	if maxCharacters <= 0 {
+		return fmt.Errorf("dialogue language policy has no positive hard character limit")
+	}
+	length := utf8.RuneCountInString(draft.Utterance)
+	if draft.Utterance == "" || length < snapshot.Scenario.MinCharacters || length > maxCharacters {
+		return fmt.Errorf("dialogue utterance must contain %d to %d characters", snapshot.Scenario.MinCharacters, maxCharacters)
+	}
+	if countSentences(draft.Utterance) > snapshot.Scenario.MaxSentences {
+		return fmt.Errorf("dialogue utterance exceeds the configured %d sentence limit", snapshot.Scenario.MaxSentences)
 	}
 	if !validEmotions[draft.Emotion] {
 		return fmt.Errorf("invalid dialogue emotion %q", draft.Emotion)
@@ -36,7 +44,7 @@ func validateDialogue(snapshot app.DialogueSnapshot, draft *DialogueDraft) error
 			return fmt.Errorf("dialogue references fact %q more than once", factID)
 		}
 		seen[factID] = true
-		if claim.Confidence == "只是听说" && !containsAny(draft.Utterance, []string{"听说", "传闻", "据说", "尚未核实", "尚未证实", "真假", "若消息属实", "若此事属实", "若是真的", "是否属实"}) {
+		if claim.Confidence == snapshot.Scenario.RumoredConfidence && !containsAny(draft.Utterance, snapshot.Scenario.UncertaintyMarkers) {
 			return fmt.Errorf("dialogue states rumored fact %q without uncertainty", factID)
 		}
 	}
@@ -60,12 +68,27 @@ func validateDialogue(snapshot app.DialogueSnapshot, draft *DialogueDraft) error
 			return fmt.Errorf("dialogue contains internal term %q", forbidden)
 		}
 	}
-	for _, unsupportedSelfAddress := range []string{"老夫", "贫道", "小老儿", "妾身"} {
-		if strings.Contains(draft.Utterance, unsupportedSelfAddress) {
-			return fmt.Errorf("dialogue uses unsupported self-address %q", unsupportedSelfAddress)
+	for _, forbidden := range snapshot.Scenario.ForbiddenTerms {
+		if strings.Contains(draft.Utterance, forbidden) {
+			return fmt.Errorf("dialogue uses scenario-forbidden term %q", forbidden)
 		}
 	}
 	return nil
+}
+
+func countSentences(value string) int {
+	count, previousTerminator := 0, false
+	for _, character := range value {
+		terminator := strings.ContainsRune("。！？.!?", character)
+		if terminator && !previousTerminator {
+			count++
+		}
+		previousTerminator = terminator
+	}
+	if count == 0 && strings.TrimSpace(value) != "" {
+		return 1
+	}
+	return count
 }
 
 func containsAny(value string, candidates []string) bool {

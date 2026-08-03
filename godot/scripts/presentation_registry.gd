@@ -66,6 +66,22 @@ func location_background(scene_key: String) -> Texture2D:
 	return profile.background if profile else null
 
 
+func location_fallback_kind(scene_key: String) -> String:
+	return str(_entry("locations", scene_key).get("fallback_kind", "generic"))
+
+
+func location_stage_label(scene_key: String) -> String:
+	return str(_entry("locations", scene_key).get("stage_label", ""))
+
+
+func location_ambient(scene_key: String) -> Dictionary:
+	var entry := _entry("locations", scene_key)
+	return {
+		"frequency": float(entry.get("ambient_frequency", 58.0)),
+		"air": float(entry.get("ambient_air", 0.10)),
+	}
+
+
 func evidence_texture(evidence_id: String) -> Texture2D:
 	var entry := _entry("evidence", evidence_id)
 	var explicit := _resource(str(entry.get("image", ""))) as Texture2D
@@ -109,6 +125,26 @@ func event_texture_for_action(action_id: String) -> Texture2D:
 	return event_texture(best_event) if best_event != "" else null
 
 
+func event_video(event_key: String) -> VideoStream:
+	if event_key == "":
+		return null
+	return _conventional_resource("videos/events/%s.ogv" % event_key) as VideoStream
+
+
+func background_music() -> AudioStream:
+	var audio := _section("audio")
+	var value := str(audio.get("music", "")).strip_edges()
+	if value == "":
+		return null
+	if ResourceLoader.exists(value):
+		return _resource(value) as AudioStream
+	return _conventional_resource("audio/music/%s.ogg" % value.trim_suffix(".ogg")) as AudioStream
+
+
+func music_volume_db(fallback := -10.0) -> float:
+	return float(_section("audio").get("music_volume_db", fallback))
+
+
 func ui_texture(key: String) -> Texture2D:
 	var value: Variant = _section("ui").get(key, "")
 	if str(value) != "":
@@ -122,6 +158,13 @@ func ui_texture(key: String) -> Texture2D:
 		"title_seal": "ui/brand/title-seal.png",
 	}
 	return _conventional_texture(str(conventional.get(key, "")))
+
+
+func ui_text(key: String) -> String:
+	var value := str(_section("ui").get(key, "")).strip_edges()
+	if value == "":
+		push_error("Missing required presentation UI text: %s" % key)
+	return value
 
 
 func actor_token_color(actor_id: String, fallback: Color) -> Color:
@@ -173,13 +216,17 @@ func _resource(path: String) -> Resource:
 
 
 func _conventional_texture(relative_path: String) -> Texture2D:
+	return _conventional_resource(relative_path) as Texture2D
+
+
+func _conventional_resource(relative_path: String) -> Resource:
 	var root := str(manifest.get("asset_root", "")).trim_suffix("/")
 	if root == "" or relative_path == "":
 		return null
 	var path := "%s/%s" % [root, relative_path.trim_prefix("/")]
 	if not ResourceLoader.exists(path):
 		return null
-	return _resource(path) as Texture2D
+	return _resource(path)
 
 
 func _conventional_entry_count(section_path: String, required_file: String) -> int:

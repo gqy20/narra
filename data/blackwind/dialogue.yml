@@ -1,3 +1,37 @@
 context: 修士、宗门与世家围绕黑风谷机缘展开博弈的修仙世界
 player_address: 道友
 style: 自然克制的中文仙侠口吻，避免堆砌古风词藻
+language:
+  locale: zh-CN
+  min_characters: 1
+  preferred_max_characters: 60
+  hard_max_characters: 80
+  max_sentences: 1
+  uncertainty_markers: [听说, 传闻, 据说, 尚未核实, 尚未证实, 真假, 若消息属实, 若此事属实, 若是真的, 是否属实]
+  forbidden_self_addresses: [老夫, 贫道, 小老儿, 妾身]
+confidence_labels: {confirmed: 确信, plausible: 较为相信, rumored: 只是听说}
+private_drives:
+  secret: 正在保守与当前局势有关的信息，不会主动说明秘密内容
+  protect: 优先保护重要的人或资源
+  profit: 会衡量消息和交易是否对自己有利
+  avoid: 倾向避免自己承担无法控制的损失
+  status: 在意自己的地位和他人评价
+personality_guidance:
+  caution: 措辞谨慎，先确认来意和消息来源
+  greed: 说话时会自然衡量交换价值
+  loyalty: 重视阵营责任，不轻易作出越权承诺
+  ambition: 表达直接，关注事情能否推动自己的目标
+  credit: 重视承诺和消息是否可靠
+  default: 保持克制，不主动作出没有依据的承诺
+relations:
+  default_attitude: 保持礼貌而克制
+  guarded_attitude: 明显戒备，不愿拉近距离
+  trusting_attitude: 愿意认真听取对方的话
+  suspicious_attitude: 对对方的动机和来源保持怀疑
+  trust_bands: [信任较低, 尚未建立信任, 已有一定信任]
+  concern_bands: [没有明显怀疑, 仍在观察, 怀疑较强]
+actors:
+  N03:
+    self_address: 我
+    style: 先确认消息来源，再谈是否合作
+    guidance: [不使用宗门长辈口吻压迫对方]

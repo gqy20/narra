@@ -25,8 +25,8 @@ func Validate(bundle domain.Bundle) error {
 	if err := validatePresentation(bundle); err != nil {
 		return err
 	}
-	if strings.TrimSpace(bundle.Dialogue.Context) == "" || strings.TrimSpace(bundle.Dialogue.Style) == "" {
-		return fmt.Errorf("dialogue requires context and style")
+	if err := validateDialogueConfig(bundle); err != nil {
+		return err
 	}
 	if err := validateTopics(bundle); err != nil {
 		return err
@@ -175,6 +175,53 @@ func Validate(bundle domain.Bundle) error {
 					return fmt.Errorf("location %s route to %s requires unknown item %s", id, route.To, route.RequiredItem)
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func validateDialogueConfig(bundle domain.Bundle) error {
+	config := bundle.Dialogue
+	if strings.TrimSpace(config.Context) == "" || strings.TrimSpace(config.Style) == "" {
+		return fmt.Errorf("dialogue requires context and style")
+	}
+	language := config.Language
+	if language.Locale == "" || language.MinCharacters < 1 || language.PreferredMaxCharacters < language.MinCharacters || language.HardMaxCharacters < language.PreferredMaxCharacters || language.MaxSentences < 1 {
+		return fmt.Errorf("dialogue has invalid language locale or length policy")
+	}
+	if len(language.UncertaintyMarkers) == 0 {
+		return fmt.Errorf("dialogue language requires uncertainty_markers")
+	}
+	for _, value := range []string{config.ConfidenceLabels.Confirmed, config.ConfidenceLabels.Plausible, config.ConfidenceLabels.Rumored,
+		config.Relations.DefaultAttitude, config.Relations.GuardedAttitude, config.Relations.TrustingAttitude, config.Relations.SuspiciousAttitude} {
+		if strings.TrimSpace(value) == "" {
+			return fmt.Errorf("dialogue confidence and relation language must be complete")
+		}
+	}
+	for _, requirement := range []struct {
+		name string
+		set  map[string]string
+		keys []string
+	}{
+		{"private_drives", config.PrivateDrives, []string{"secret", "protect", "profit", "avoid", "status"}},
+		{"personality_guidance", config.PersonalityGuidance, []string{"caution", "greed", "loyalty", "ambition", "credit", "default"}},
+	} {
+		for _, key := range requirement.keys {
+			if strings.TrimSpace(requirement.set[key]) == "" {
+				return fmt.Errorf("dialogue %s requires %s", requirement.name, key)
+			}
+		}
+	}
+	if len(config.Relations.TrustBands) != 3 || len(config.Relations.ConcernBands) != 3 {
+		return fmt.Errorf("dialogue relation bands must each contain exactly three labels")
+	}
+	npcs := make(map[string]bool, len(bundle.NPCs))
+	for _, npc := range bundle.NPCs {
+		npcs[npc.ID] = true
+	}
+	for actorID := range config.Actors {
+		if !npcs[actorID] {
+			return fmt.Errorf("dialogue actor voice references unknown NPC %s", actorID)
 		}
 	}
 	return nil
@@ -409,8 +456,14 @@ func validatePresentation(bundle domain.Bundle) error {
 		}
 	}
 	for sceneKey, location := range presentation.Locations {
-		if sceneKey == "" || location.Profile == "" && location.Background == "" {
+		if sceneKey == "" || location.Profile == "" && location.Background == "" && location.FallbackKind == "" {
 			return fmt.Errorf("presentation has invalid location entry %q", sceneKey)
+		}
+		if location.FallbackKind != "" && location.FallbackKind != "generic" && location.FallbackKind != "market" && location.FallbackKind != "camp" && location.FallbackKind != "apothecary" && location.FallbackKind != "valley" && location.FallbackKind != "inner_valley" {
+			return fmt.Errorf("presentation location %s has invalid fallback kind %q", sceneKey, location.FallbackKind)
+		}
+		if location.AmbientFrequency < 0 || location.AmbientAir < 0 || location.AmbientAir > 1 {
+			return fmt.Errorf("presentation location %s has invalid ambient parameters", sceneKey)
 		}
 		if !sceneKeys[sceneKey] {
 			return fmt.Errorf("presentation references unknown location scene key %s", sceneKey)
@@ -422,6 +475,11 @@ func validatePresentation(bundle domain.Bundle) error {
 		}
 		if len(actor.MapToken.Offset) != 0 && len(actor.MapToken.Offset) != 2 {
 			return fmt.Errorf("presentation actor %s map token offset requires two values", actorID)
+		}
+	}
+	for _, key := range []string{"default_player_name", "term_clue", "term_clues", "term_verify"} {
+		if strings.TrimSpace(presentation.UI[key]) == "" {
+			return fmt.Errorf("presentation ui requires %s", key)
 		}
 	}
 	return nil

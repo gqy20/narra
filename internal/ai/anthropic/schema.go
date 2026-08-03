@@ -4,7 +4,7 @@ func dialogueSchemaFor(allowedFactIDs, allowedActionIDs []string) map[string]any
 	factItems := map[string]any{"type": "string"}
 	factList := map[string]any{
 		"type":        "array",
-		"description": "台词实际直接引用的 allowed_claims ID；未引用时为空数组",
+		"description": "IDs from allowed_claims that are directly used in the utterance; empty when none are used",
 		"items":       factItems,
 	}
 	if len(allowedFactIDs) == 0 {
@@ -15,7 +15,7 @@ func dialogueSchemaFor(allowedFactIDs, allowedActionIDs []string) map[string]any
 	actionItems := map[string]any{"type": "string"}
 	actionList := map[string]any{
 		"type": "array", "maxItems": 3,
-		"description": "与本句意图匹配的 available_actions ID；不代表已经执行",
+		"description": "Up to three available_actions IDs that fit the utterance; suggestions do not execute actions",
 		"items":       actionItems,
 	}
 	if len(allowedActionIDs) == 0 {
@@ -28,7 +28,7 @@ func dialogueSchemaFor(allowedFactIDs, allowedActionIDs []string) map[string]any
 		"properties": map[string]any{
 			"utterance": map[string]any{
 				"type":        "string",
-				"description": "人物当前说出的一句简短中文台词",
+				"description": "One short NPC utterance in snapshot.scenario.locale",
 			},
 			"emotion": map[string]any{
 				"type": "string",

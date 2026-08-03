@@ -6,6 +6,9 @@ start_action: 从王恭厂外街开始记录
 asset_root: res://assets/tianqi
 opening_event: opening-blast
 ending_event: final-verdict
+audio:
+  music: tianqi-investigation-theme-loop
+  music_volume_db: -10
 resources:
 - {id: authority, label: 权势, emphasis: accent}
 - {id: evidence, label: 证据, emphasis: success}
@@ -34,3 +37,186 @@ event_cues:
   "route:e09:": forged-ledger-reveal
   "route:final:caveat": official-draft
   "route:final:expose-forgery": forged-ledger-reveal
+ui:
+  default_player_name: 无名记录者
+  term_clue: 材料
+  term_clues: 材料
+  term_verify: 核验
+  journal_empty_clues: 尚未掌握材料。先观察人物或调查地点。
+  journal_unverified_count: ' · %d 份待核验'
+  journal_verify_clue: 核验这份材料
+  dialogue_available_clues: 当前状态 · %s · 可谈材料 %d 份
+  action_send_clue: 向%s转交材料
+  action_send_clues_menu: 向%s转交材料…（%d 份）
+  action_wait_complete_name: 继续到处理完成
+  action_wait_complete_description: 逐日推进，遇到需要处理的变化会提前停下
+  action_wait_next_name: 等待局势变化
+  action_wait_next_description: 逐日推演并在下一次值得关注的变化处停下，可能跨越多个平静日
+  action_verify_name: 核验材料
+  action_verify_description: 核验：“{claim}”
+  command_verify: 核验材料：“{claim}”
+  action_buy_name: 取得{name}
+  action_buy_description: 尚有 {stock} 份，所需代价 {price} {currency}
+  command_buy: 取得{name}
+  action_move_name: 前往{name}
+  action_move_description: 耗时 {days} 天，风险度 {danger}
+  command_move: 前往{name}
+  action_tell_name: 向{name}提交一份材料
+  action_tell_description: 转交：“{claim}”
+  command_tell: 向{name}转交材料：“{claim}”
+  information_unknown_claim: 转述的材料
+  information_unverified_warning: 这份材料尚未核实；对方可能据此改变行动。
+  information_relevance_low: 从公开信息看，这份材料与对方当前关注的事项关联不明显。
+  information_relevance_high: 直接相关 · 对方公开关注：{topics}
+  information_risk_unknown: 公开信息不足，暂时无法判断对方可能如何使用这份材料。
+  information_relevance_unknown: 尚不了解对方为何会在意这份材料。
+  information_use_unknown: 尚不了解对方可能如何使用这份材料。
+  wait_missing_item_warning: 你尚未持有{name}；继续等待可能错过当前取得机会。
+  feedback_phase_changed: 局势进入“{phase}”阶段。
+  feedback_action_progress: “{action}”仍在进行，预计第 {day} 天完成。
+  feedback_action_completed: 持续处理已经完成。
+  feedback_arrived: 抵达{name}。
+  feedback_injury_changed: 状态损耗由 {before} 变为 {after}。
+  feedback_information_delivered: 材料已经送达{name}。
+  feedback_information_pending: 对方是否改变行动，会在后续局势变化时显现。
+  feedback_outcome: 会勘结果：{outcome}
+  feedback_settled: “{action}”已经结算。
+  feedback_resource_changed: '{resource} {delta}，现有 {value}。'
+  feedback_item_changed: '材料 {name} {delta}，现有 {value}。'
+  feedback_belief_changed: 材料判断更新为{confidence}：{claim}
+  guidance_outcome_settled: 会勘结果已经形成；你可以继续观察记录产生的余波。
+  guidance_pending: 当前处理还需等待到第 {day} 天完成。
+  guidance_verify_date: 关键时点目前只有传言，核验后再安排行动更稳妥。
+  guidance_item_market: '{name}仍可取得；它是参与定稿的必要条件，来源可能随局势变化。'
+  guidance_item_missing: 当前仍缺少{name}；留意人物回应与路线进展中是否出现新的取得方式。
+  guidance_verified_item_missing: 你已掌握核实后的关键时点，但当前仍缺少{name}；留意人物回应中的新取得方式。
+  guidance_information_sent: 材料已经送达；等待局势变化可以观察它是否改变对方的选择。
+  guidance_default: 没有必须执行的行动；根据已有材料决定核验、交涉、准备或等待。
+  confidence_confirmed: 已有实据
+  confidence_plausible: 尚可采信
+  confidence_rumored: 仅是传言
+  timing_confirmed: 已核实材料
+  timing_rumored: 传言口径
+  decision_wait_timing: 停止日期取决于下一次值得关注的变化，无法预先保证剩余时间。
+  decision_verify_outcome: 把这份材料核验为可靠记录，并整理关联材料
+  decision_verify_resolves: 这份材料尚未核实
+  decision_verify_has_clue: 你持有这份材料
+  decision_verify_pending: 材料仍待核实
+  decision_opportunity_outcome: 使用这次短暂机会，获得一份新的可追查材料
+  decision_opportunity_open: 该机会仍然开放
+  decision_opportunity_location: 你正在机会所在地
+  decision_opportunity_unknown: 新材料可能仍需要进一步核验
+  decision_buy_outcome: 取得 1 份{name}
+  decision_buy_stock: 当前仍可取得
+  decision_buy_funds: 持有足够的交换资源
+  decision_buy_required_outcome: 取得{name}，满足进入定稿的必要条件
+  decision_missing_item: 缺少{name}
+  decision_move_outcome: 抵达{name}
+  decision_move_resolves: 尚未抵达{name}
+  decision_move_ready: 路线的公开条件均已满足
+  decision_move_unknown: 途中局势仍会按日推进
+  decision_tell_outcome: 让{name}取得这份材料
+  decision_tell_influence: 可能改变对方的后续选择
+  decision_tell_location: 对方就在此地
+  decision_tell_has_clue: 你持有这份材料
+  decision_tell_unknown: 对方是否采用材料，只能从之后的公开行动判断
+  decision_heal_outcome: 状态损耗降低 1 级
+  decision_heal_resolves: 当前状态损耗
+  decision_heal_injured: 当前状态受损
+  decision_heal_ready: 恢复条件允许
+  decision_heal_unknown: 恢复期间局势仍会按日推进
+  decision_growth_ready: 当前状态允许继续整理材料
+  decision_growth_unknown: 整理期间局势仍会按日推进
+  ending_metrics: 局势推进到第 {day} 天；你做出 {decisions} 次决策，其中主动行动 {active} 次、推进时间 {waits} 次。
+  ending_action_verify: 核验材料
+  ending_action_tell: 转交材料
+  ending_action_route: 回应路线考验
+  ending_action_buy: 取得材料
+  ending_action_move: 移动
+  ending_action_growth: 整理准备
+  ending_action_recovery: 恢复状态
+  ending_action_count: '{action} {count} 次。'
+  ending_status: 终局时你位于{location}，状态损耗 {injury}
+  ending_influence: 你转交的材料改变了 {count} 个关键选择，并影响了最终记录。
+  ending_review_won: 你满足了进入定稿的条件，并以 {score} 点综合准备影响了最终记录。
+  ending_review_missing_item: 你在结算时没有{name}，因此没有取得定稿参与资格。
+  ending_review_late: 你没有在第 {day} 日前抵达{name}，因此没有进入最终会勘。
+  ending_review_lost: 你具备参与资格，但综合准备为 {score}；{winner}达到 {winner_score}，领先 {lead} 点。
+  ending_review_tie: 你具备参与资格，综合准备为 {score}；同分时先完成公开占位的一方影响最终记录。
+  ending_review_passive: 本局没有进行主动行动；等待让你跳过了平静日，也同时放弃了核验、交涉和准备窗口。
+  ending_review_next: 下一局可先核验材料并观察人物计划，再决定亲自介入、扶持同道或保全其他成果。
+  source_investigation: 亲自核验
+  source_investigation_lead: 核验所得材料
+  source_broker: 临时消息来源
+  source_unknown: 来源不明
+  advance_outcome: 会勘已经产生结果
+  timing_keyword: 定稿
+  timing_status_confirmed: 已有实据
+  timing_status_plausible: 尚可采信
+  timing_status_rumored: 仅是传言
+  phase_default: 灾后查证期
+  map_contest_location: 会勘地
+  cue_verify_title: 开始核验
+  cue_verify_message: 材料已进入核验
+  cue_growth_title: 整理材料
+  cue_growth_message: 这一日用于补足记录
+  cue_reveal_title: 材料有了定论
+  cue_reveal_message: 对材料的判断已经更新
+  cue_acquire_title: 收存材料
+  cue_acquire_message: 所得材料已经收好
+  cue_recovery_title: 状态缓和
+  cue_recovery_message: 压力暂时有所缓解
+  cue_danger_title: 风险上升
+  cue_danger_message: 继续行动会承担更高风险
+  feedback_delivery_prefix: 材料已经送达
+  unknown_clue: 未知材料
+  one_clue: 一份材料
+  deliver_term: 按“%s”提交材料
+  tell_focused_actor: 把这份材料交给他
+  tell_actor: 转交给%s
+  information_causal_heading: 材料因果线
+  preparation_heading: 你的会勘准备
+  preparation_explanation: 基线来自已知主要参与者的公开条件，只用于判断是否值得正面介入。
+  people_information_hint: 他们会依照自己掌握的材料行动；你提交的记录可能改变这些安排。
+  people_talk_clues: 交谈 · %d 份材料可用
+  people_view: 查看人物
+  player_name_prompt: 你以何名参与查证
+  plan_player_information: 采用了你提供的材料：“{claim}”
+  plan_shared_information: 依据双方都已掌握的材料：“{claim}”
+  plan_private_information: 依据自己掌握、但尚未向你公开的材料
+  plan_flag_ready: 局势条件已经满足：{condition}
+  plan_has_item: 手中已有行动所需的{name}
+  plan_missing_item: 为了补足缺少的{name}
+  plan_public_goal: 这项行动最符合其当前公开目标
+  plan_unavailable: 尚未形成可以观察的公开计划
+  plan_flag_changed: 局势条件已经发生变化
+  decision_route_triggered: 此前的材料条件已经引发回应
+  decision_route_window: 这项选择只在当前路线窗口内有效
+  effect_injury: 状态损耗{amount}级
+  preparation_resource_empty: 当前尚未建立
+  preparation_resource_ready: 会计入你的会勘准备
+  preparation_extra_label: 额外准备
+  preparation_extra_ready: 已形成一项额外准备
+  preparation_item_missing: 尚未备齐；没有它不能进入最终定稿
+  preparation_item_ready: 已经备齐，可满足定稿条件
+  preparation_location_missing: 尚未抵达；必须在定稿前到达
+  preparation_location_ready: 已经抵达会勘地点
+  preparation_rating_strong: 依据充分
+  preparation_detail_strong: 综合准备已经超过已知定稿基线，足以主动影响最终记录。
+  preparation_rating_even: 可以参与
+  preparation_detail_even: 综合准备达到已知定稿基线，仍可能受其他材料和人物行动影响。
+  preparation_rating_low: 依据偏弱
+  preparation_detail_low: 已经有部分准备，但距离稳定影响定稿仍有差距。
+  preparation_rating_poor: 明显不足
+  preparation_detail_poor: 即使进入会勘，目前也很难压过主要意见。
+  preparation_ineligible_suffix: ' 当前还没有同时满足材料与抵达条件。'
+  travel_no_route: 尚未发现可行路线
+  travel_route_found: 可用路线已发现
+  travel_carry_item: 携带{name}
+  travel_missing_item: 缺少{name}
+  travel_already_arrived: 你已经到达会勘地点。
+  travel_date_unknown: 关键时点尚未查明，无法判断最晚出发时间。
+  travel_departure_deadline: 按{basis}，最晚应在第 {day} 天结束前出发。
+  travel_departure_late: 按{basis}，即使立即出发也可能来不及。
+  travel_condition_blocked: 路线条件尚未满足
+  travel_condition_ready: 路线条件满足

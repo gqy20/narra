@@ -79,7 +79,7 @@ func _build_reference_tabs(parent: VBoxContainer) -> void:
 	navigation.add_theme_constant_override("separation", 2)
 	parent.add_child(navigation)
 	host.journal_echo_button = host.journal_panel_controller._journal_tab_button("回响", 0)
-	host.journal_clues_button = host.journal_panel_controller._journal_tab_button("线索", 1)
+	host.journal_clues_button = host.journal_panel_controller._journal_tab_button(host._ui_text("term_clues"), 1)
 	host.journal_people_button = host.journal_panel_controller._journal_tab_button("人物", 2)
 	host.journal_travel_button = host.journal_panel_controller._journal_tab_button("行装", 3)
 	for button in [host.journal_echo_button, host.journal_clues_button, host.journal_people_button, host.journal_travel_button]:
@@ -89,7 +89,7 @@ func _build_reference_tabs(parent: VBoxContainer) -> void:
 	host.journal_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	parent.add_child(host.journal_tabs)
 	host.scene_box = host.journal_panel_controller._reference_tab(host.journal_tabs, "回响")
-	host.clues_box = host.journal_panel_controller._reference_tab(host.journal_tabs, "线索")
+	host.clues_box = host.journal_panel_controller._reference_tab(host.journal_tabs, host._ui_text("term_clues"))
 	host.people_box = host.journal_panel_controller._reference_tab(host.journal_tabs, "人物")
 	host.travel_box = host.journal_panel_controller._reference_tab(host.journal_tabs, "行装")
 	host.journal_panel_controller._refresh_journal_tab_styles()
@@ -139,7 +139,8 @@ func _render_journal_tab_states(clues: Array, actors: Array, travel, feedback, a
 		var fact_id = str(clue.get("fact_id", ""))
 		if host.journal_panel_controller._has_action_for_fact(actions, fact_id):
 			actionable_clues += 1
-	host.journal_tab_labels[1] = "线索 · %d" % actionable_clues if actionable_clues > 0 else "线索"
+	var clue_term: String = str(host._ui_text("term_clues"))
+	host.journal_tab_labels[1] = "%s · %d" % [clue_term, actionable_clues] if actionable_clues > 0 else clue_term
 	host.journal_tab_colors[1] = host.COLORS.muted
 	var talkable_people = 0
 	for actor in actors:
@@ -210,7 +211,7 @@ func _close_journal() -> void:
 func _render_clues(clues: Array, actions: Array) -> void:
 	host.game_screen_controller._clear(host.clues_box)
 	if clues.is_empty():
-		host.game_screen_controller._text(host.clues_box, "尚未掌握线索。先观察人物或调查地点。", true)
+		host.game_screen_controller._text(host.clues_box, host._ui_text("journal_empty_clues"), true)
 		return
 	var unverified = 0
 	for clue in clues:
@@ -218,7 +219,7 @@ func _render_clues(clues: Array, actions: Array) -> void:
 			unverified += 1
 	var overview = "%d 条已知" % clues.size()
 	if unverified > 0:
-		overview += " · %d 条待核验" % unverified
+		overview += host._ui_text("journal_unverified_count") % unverified
 	var overview_label = host.game_screen_controller._text(host.clues_box, overview, true, host.TYPE_SCALE.meta)
 	overview_label.add_theme_color_override("font_color", host.COLORS.accent if unverified > 0 else host.COLORS.success)
 	for index in clues.size():
@@ -247,7 +248,7 @@ func _render_clues(clues: Array, actions: Array) -> void:
 		var verify_action = host.journal_panel_controller._action_for_fact(actions, fact_id, "verify")
 		var target_count = host.action_panel_controller._count_tell_actions(actions, "", fact_id)
 		if not verify_action.is_empty() and confidence < 3:
-			var verify_link = host.game_screen_controller._action_button("核验这条线索", host.action_panel_controller._consider_action.bind(verify_action))
+			var verify_link = host.game_screen_controller._action_button(host._ui_text("journal_verify_clue"), host.action_panel_controller._consider_action.bind(verify_action))
 			verify_link.custom_minimum_size.y = 36
 			host.clues_box.add_child(verify_link)
 		elif target_count > 0:
@@ -311,7 +312,7 @@ func _render_scene(events: Array, guidance: Array, travel, feedback, causal_thre
 func _render_causal_threads(parent: VBoxContainer, threads: Array) -> void:
 	if threads.is_empty():
 		return
-	var heading = host.game_screen_controller._text(parent, "情报因果线", true, host.TYPE_SCALE.meta)
+	var heading = host.game_screen_controller._text(parent, host._ui_text("information_causal_heading"), true, host.TYPE_SCALE.meta)
 	heading.add_theme_color_override("font_color", host.COLORS.accent)
 	var first = maxi(0, threads.size() - 2)
 	for index in range(threads.size() - 1, first - 1, -1):
@@ -416,7 +417,7 @@ func _render_travel_readiness(travel, preparation = {}, route_progress = null) -
 	if preparation is Dictionary:
 		var score_sources: Array = preparation.get("score_sources", [])
 		if not score_sources.is_empty():
-			var preparation_heading = host.game_screen_controller._text(host.travel_box, "你的争夺准备", true, host.TYPE_SCALE.meta)
+			var preparation_heading = host.game_screen_controller._text(host.travel_box, host._ui_text("preparation_heading"), true, host.TYPE_SCALE.meta)
 			preparation_heading.add_theme_color_override("font_color", host.COLORS.accent)
 			var rating = str(preparation.get("rating", "尚未判断"))
 			var total_score = int(preparation.get("total_score", 0))
@@ -427,7 +428,7 @@ func _render_travel_readiness(travel, preparation = {}, route_progress = null) -
 			for factor in score_sources:
 				var factor_line = host.game_screen_controller._text(host.travel_box, "%s %d · %s" % [factor.get("label", "准备"), int(factor.get("value", 0)), factor.get("status", "")], false, 14)
 				factor_line.add_theme_color_override("font_color", host.COLORS.success if bool(factor.get("ready", false)) else host.COLORS.muted)
-			host.game_screen_controller._text(host.travel_box, "基线来自已知主要争夺者的公开实力，只用于判断是否值得正面入局。", true, 13)
+			host.game_screen_controller._text(host.travel_box, host._ui_text("preparation_explanation"), true, 13)
 	var timing = str(travel.get("timing", ""))
 	if timing != "":
 		var timing_line = host.game_screen_controller._text(host.travel_box, timing, true, 13)
@@ -569,7 +570,7 @@ func _render_people(actors: Array, actions: Array) -> void:
 	if not tracked_plans.is_empty():
 		var tracking_heading = host.game_screen_controller._text(host.people_box, "局势追踪 · 核心人物 %d" % tracked_plans.size(), false, 16)
 		tracking_heading.add_theme_color_override("font_color", host.COLORS.accent)
-		host.game_screen_controller._text(host.people_box, "他们会依照自己掌握的消息行动；你的情报可能改变这些安排。", true, 12)
+		host.game_screen_controller._text(host.people_box, host._ui_text("people_information_hint"), true, 12)
 		for plan in tracked_plans:
 			var title = "%s · %s · %s" % [plan.get("name", "无名者"), plan.get("location_name", "位置不明"), plan.get("status", "观望")]
 			host.game_screen_controller._text(host.people_box, title, false, 14)
@@ -601,7 +602,7 @@ func _render_people(actors: Array, actions: Array) -> void:
 			host.game_screen_controller._text(host.people_box, "缘由 · %s" % local_plan.get("reason", "尚未公开"), true, 12)
 		var actor_id = str(actor.get("id", ""))
 		var clue_count = host.action_panel_controller._count_tell_actions(actions, actor_id, "")
-		var link_text = "交谈 · %d 条线索可用" % clue_count if clue_count > 0 else "查看人物"
+		var link_text = host._ui_text("people_talk_clues") % clue_count if clue_count > 0 else host._ui_text("people_view")
 		var link = host.game_screen_controller._action_button(link_text, host.action_panel_controller._focus_actor_from_reference.bind(actor_id, actor_name))
 		link.custom_minimum_size.y = 36
 		host.people_box.add_child(link)

@@ -1,6 +1,6 @@
 # 世界规则内容层
 
-世界规则采用“YAML 声明策略，Go 执行通用算法”的边界。内容包当前使用 schema v5，并且必须提供 `rules.yml`。
+世界规则采用“YAML 声明策略，Go 执行通用算法”的边界。内容包当前使用 schema v6，并且必须提供 `rules.yml`。
 
 ## 文件职责
 
@@ -55,4 +55,4 @@ navigation:
   contest: {enabled: false}
 ```
 
-老版本内容包可以通过 `go run ./cmd/content-migrate -data <目录> -write` 升级。v4 到 v5 的迁移会创建一份全部关闭的显式规则文件，不会擅自推断故事行为。
+老版本内容包可以通过 `go run ./cmd/content-migrate -data <目录> -write` 升级。v4 到 v5 的迁移会创建一份全部关闭的显式规则文件；v5 到 v6 会增加类型化对话语言策略与基础 UI 术语，不会擅自推断人物声音或故事行为。
