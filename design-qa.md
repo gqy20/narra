@@ -60,7 +60,7 @@ No actionable P0, P1, or P2 issue remains in the implemented path.
 - Layout: the default state exposes location, people, guidance, and three primary actions without an inner vertical scroll. The actor state expands into a two-column workspace while preserving the persistent header and portrait.
 - Hierarchy: gold headings and selected states retain the target’s restrained wuxia HUD treatment; secondary explanations use muted text and do not compete with the primary decision.
 - Information completeness: each overview choice exposes duration and outcome in one scan line. Actor focus exposes relevance, likely impact, propagation risk, timing, and an irreversible-action warning before submission.
-- Interaction states: person selection, focused message selection, back navigation, legacy fact focus, confirmation, map/location switching, and action execution remain wired to the existing game behavior.
+- Interaction states: person selection, focused message selection, back navigation, fact focus, confirmation, map/location switching, and action execution remain wired to the current game behavior.
 - Fixed action area: the actor CTA, duration, and warning remain visible at the bottom while the detail column can scroll when content grows.
 - Viewport stability: the decision layer is isolated from the dashboard layout, so expanded content cannot displace or cover the persistent header. Both reference states were visually inspected at the project’s 1280 × 800 logical viewport.
 - Typography and contrast: display/body font roles, line spacing, selected borders, semantic danger color, and dark translucent surfaces remain legible over the scene artwork.

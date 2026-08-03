@@ -217,7 +217,7 @@ var journal_travel_details_box: VBoxContainer
 var journal_travel_details_button: Button
 var actions_box: VBoxContainer
 var overview_actions_box: VBoxContainer
-var legacy_action_scroll: ScrollContainer
+var fact_action_scroll: ScrollContainer
 var actor_focus_workspace: HBoxContainer
 var actor_focus_message_list: VBoxContainer
 var actor_focus_detail_scroll: ScrollContainer

@@ -496,8 +496,10 @@ func renderWaitNextPreview(output io.Writer, view app.PlayerView) {
 	if view.Travel != nil && view.Travel.Timing != "" {
 		fmt.Fprintln(output, "  - "+view.Travel.Timing)
 	}
-	if view.RouteProgress != nil && view.RouteProgress.Window != "" {
-		fmt.Fprintf(output, "  - 当前路线窗口：%s\n", view.RouteProgress.Window)
+	for _, progress := range view.RouteProgresses {
+		if progress.Window != "" {
+			fmt.Fprintf(output, "  - %s路线窗口：%s\n", progress.Label, progress.Window)
+		}
 	}
 	fmt.Fprintln(output, "确认后请输入 wait next confirm；也可用 wait 只等待一天。")
 }

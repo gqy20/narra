@@ -249,14 +249,14 @@ func _build_dashboard() -> void:
 	host.actor_focus_detail_box.add_theme_constant_override("separation", 9)
 	host.actor_focus_detail_scroll.add_child(host.actor_focus_detail_box)
 
-	host.legacy_action_scroll = ScrollContainer.new()
-	host.legacy_action_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	host.legacy_action_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	decision_column.add_child(host.legacy_action_scroll)
+	host.fact_action_scroll = ScrollContainer.new()
+	host.fact_action_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	host.fact_action_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	decision_column.add_child(host.fact_action_scroll)
 	host.actions_box = VBoxContainer.new()
 	host.actions_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	host.actions_box.add_theme_constant_override("separation", 7)
-	host.legacy_action_scroll.add_child(host.actions_box)
+	host.fact_action_scroll.add_child(host.actions_box)
 
 	host.actor_focus_footer = HBoxContainer.new()
 	host.actor_focus_footer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -264,7 +264,7 @@ func _build_dashboard() -> void:
 	decision_column.add_child(host.actor_focus_footer)
 	host.overview_actions_box.hide()
 	host.actor_focus_workspace.hide()
-	host.legacy_action_scroll.hide()
+	host.fact_action_scroll.hide()
 	host.actor_focus_footer.hide()
 	host.action_dock.hide()
 
@@ -680,7 +680,7 @@ func _render_view() -> void:
 	host.journal_panel_controller._render_clues(known_facts, host.available_actions_cache)
 	host.journal_panel_controller._render_scene(host.current_view.get("recent_events", []), guidance.slice(1), travel, host.current_view.get("last_turn", null), host.current_view.get("causal_threads", []), str(player.get("name", "旅人")))
 	host.journal_panel_controller._render_people(known_actors, host.available_actions_cache)
-	host.journal_panel_controller._render_travel_readiness(travel, host.current_view.get("preparation", {}), host.current_view.get("route_progress", null))
+	host.journal_panel_controller._render_travel_readiness(travel, host.current_view.get("preparation", {}))
 	host.journal_panel_controller._render_journal_tab_states(known_facts, known_actors, travel, host.current_view.get("last_turn", null), host.available_actions_cache)
 	host.action_panel_controller._render_actions(host.available_actions_cache)
 	host.game_screen_controller._render_world_map(host.current_view.get("world_map", {}), location, host.available_actions_cache)
@@ -773,7 +773,7 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 		contest_line.add_theme_color_override("font_color", host.COLORS.accent)
 	host.game_screen_controller._render_map_actor_plans(host.map_detail_box, world_map.get("actors", []), host.selected_map_location_id)
 	if bool(selected.get("current", false)):
-		host.journal_panel_controller._render_route_progresses(host.map_detail_box, host.current_view.get("route_progresses", []), host.current_view.get("route_progress", null), true)
+		host.journal_panel_controller._render_route_progresses(host.map_detail_box, host.current_view.get("route_progresses", []), true)
 		var hint = host.game_screen_controller._text(host.map_detail_box, "沙盘上的金色道路当前可以通行。", true, 12)
 		hint.add_theme_color_override("font_color", host.COLORS.muted)
 		var enter_button = host.game_screen_controller._utility_button("回到眼前", host.game_screen_controller._set_visual_mode.bind("location"))

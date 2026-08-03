@@ -65,7 +65,7 @@ func _run() -> void:
 	var contextual_actions: Array = app.action_panel_controller._location_context_actions(actions)
 	if contextual_actions.is_empty() or str(contextual_actions[0].get("name", "")) not in action_text or "起手可选" not in action_text or "查证与探索" in action_text or app.active_action_category != "":
 		return _fail("compact contextual action dock fell back to dashboard categories")
-	if not app.overview_actions_box.visible or app.legacy_action_scroll.visible or app.actor_focus_workspace.visible:
+	if not app.overview_actions_box.visible or app.fact_action_scroll.visible or app.actor_focus_workspace.visible:
 		return _fail("default location state is not the compact non-scrolling overview")
 	if str(app.location_stage.location.get("scene_key", "")) != "market":
 		return _fail("location stage did not render the current place")
@@ -109,7 +109,7 @@ func _run() -> void:
 	if app.actor_portrait_name.text != "魏无咎" or not app.location_panel.visible:
 		return _fail("actor selection did not update the visible stage caption")
 	var actor_focus_text := _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + _descendant_text(app.actor_focus_footer)
-	if not app.actor_focus_workspace.visible or app.legacy_action_scroll.visible or "选择要传达的话" not in actor_focus_text or "传播风险" not in actor_focus_text or "送出后不可撤回" not in actor_focus_text:
+	if not app.actor_focus_workspace.visible or app.fact_action_scroll.visible or "选择要传达的话" not in actor_focus_text or "传播风险" not in actor_focus_text or "送出后不可撤回" not in actor_focus_text:
 		return _fail("actor focus does not expose selection, decision context, and fixed commitment footer")
 	if app.location_detail_box.visible or app.stage_people_box.visible:
 		return _fail("actor focus keeps unrelated location chrome above the dialogue action")

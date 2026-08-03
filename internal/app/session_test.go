@@ -280,7 +280,7 @@ func TestShenDateTermsProduceDistinctPersonalAndRelationshipEffects(t *testing.T
 			if got := state.StoryStates["qinglan_intel"]; got != test.wantState {
 				t.Fatalf("story state = %s, want %s", got, test.wantState)
 			}
-			progress := session.View().RouteProgress
+			progress := routeProgressWithID(session.View().RouteProgresses, test.term)
 			if progress == nil || progress.ID != test.term || progress.NextStep == "" || progress.PersonalReturn == "" {
 				t.Fatalf("route %s has no persistent progress summary: %+v", test.term, progress)
 			}
@@ -457,8 +457,9 @@ func TestRouteMidgameAlternativesCarryTheirCosts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if view.Player.Resources["support"] != 2 || view.Preparation.TotalScore != 5 || view.RouteProgress == nil || !view.RouteProgress.Complete {
-			t.Fatalf("antidote scouting did not create usable preparation: player=%+v preparation=%+v route=%+v", view.Player, view.Preparation, view.RouteProgress)
+		progress := routeProgressWithID(view.RouteProgresses, "antidote")
+		if view.Player.Resources["support"] != 2 || view.Preparation.TotalScore != 5 || progress == nil || !progress.Complete {
+			t.Fatalf("antidote scouting did not create usable preparation: player=%+v preparation=%+v routes=%+v", view.Player, view.Preparation, view.RouteProgresses)
 		}
 	})
 
@@ -499,6 +500,15 @@ func actionWithID(actions []AvailableAction, id string) *AvailableAction {
 	for index := range actions {
 		if actions[index].ID == id {
 			return &actions[index]
+		}
+	}
+	return nil
+}
+
+func routeProgressWithID(progresses []RouteProgress, id string) *RouteProgress {
+	for index := range progresses {
+		if progresses[index].ID == id {
+			return &progresses[index]
 		}
 	}
 	return nil
@@ -563,39 +573,18 @@ func TestSaveBindsReplayToContentHash(t *testing.T) {
 	}
 }
 
-func TestLoadSessionAcceptsLegacyVersionOneSave(t *testing.T) {
+func TestLoadSessionRejectsNonCurrentSaveVersions(t *testing.T) {
 	session := testSession(t)
-	legacy, err := json.Marshal(SaveData{
-		Version: 1, ScenarioID: session.bundle.Scenario.ID, Player: clonePlayerConfig(session.initial),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := LoadSession(session.bundle, bytes.NewReader(legacy)); err != nil {
-		t.Fatalf("load legacy save: %v", err)
-	}
-}
-
-func TestSaveMigrationChainBindsLegacySaveToLoadedContent(t *testing.T) {
-	session := testSession(t)
-	legacy := SaveData{Version: 1, ScenarioID: session.bundle.Scenario.ID, Player: clonePlayerConfig(session.initial)}
-	migrated, err := migrateSaveData(legacy, session.bundle)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if migrated.Version != currentSaveVersion || migrated.ContentVersion != session.bundle.Content.Version || migrated.ContentHash != session.bundle.Content.Hash {
-		t.Fatalf("migrated save metadata = %+v", migrated)
-	}
-	if legacy.Version != 1 || legacy.ContentHash != "" {
-		t.Fatalf("migration mutated source value: %+v", legacy)
-	}
-}
-
-func TestSaveMigrationRejectsFutureVersion(t *testing.T) {
-	session := testSession(t)
-	_, err := migrateSaveData(SaveData{Version: currentSaveVersion + 1}, session.bundle)
-	if err == nil || !strings.Contains(err.Error(), "unsupported save version") {
-		t.Fatalf("future save version error = %v", err)
+	for _, version := range []int{1, 2, currentSaveVersion + 1} {
+		encoded, err := json.Marshal(SaveData{
+			Version: version, ScenarioID: session.bundle.Scenario.ID, Player: clonePlayerConfig(session.initial),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := LoadSession(session.bundle, bytes.NewReader(encoded)); err == nil || !strings.Contains(err.Error(), "unsupported save version") {
+			t.Fatalf("save version %d error = %v", version, err)
+		}
 	}
 }
 
@@ -831,7 +820,7 @@ func TestSaveLoadsByDeterministicReplay(t *testing.T) {
 	}
 }
 
-func TestSaveReplayAcceptsVersionOneHistoryAfterCoreResolution(t *testing.T) {
+func TestSaveReplayPreservesPostResolutionHistory(t *testing.T) {
 	session := testSession(t)
 	executeUntilResolved(t, session)
 	for session.engine.State().Day < 30 {
@@ -852,7 +841,7 @@ func TestSaveReplayAcceptsVersionOneHistoryAfterCoreResolution(t *testing.T) {
 		t.Fatal(err)
 	}
 	if restored.engine.State().Day != 30 || restored.metrics.PostResultInputs != 9 {
-		t.Fatalf("restored legacy history day/metrics = %d/%+v", restored.engine.State().Day, restored.metrics)
+		t.Fatalf("restored post-resolution history day/metrics = %d/%+v", restored.engine.State().Day, restored.metrics)
 	}
 }
 

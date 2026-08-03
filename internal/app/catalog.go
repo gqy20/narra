@@ -425,9 +425,7 @@ func (s *Session) publicInformationContext(actorID string, fact domain.Fact) (st
 
 func (s *Session) advanceWarnings(state *domain.WorldState) []string {
 	warnings := make([]string, 0, 3)
-	if warning := routeProgressWarning(s.routeProgress(state), state.Day); warning != "" {
-		warnings = append(warnings, warning)
-	}
+	warnings = append(warnings, routeProgressWarnings(s.routeProgresses(state), state.Day)...)
 	requiredItemID := s.bundle.Scenario.Contest.RequiredItemID
 	if requiredItemID != "" && state.Player.Items[requiredItemID] <= 0 {
 		for _, market := range state.Markets {

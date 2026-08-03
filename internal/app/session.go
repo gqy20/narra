@@ -84,7 +84,6 @@ func (s *Session) View() PlayerView {
 	view.LastTurn = cloneTurnFeedback(s.lastTurn)
 	view.Metrics = s.metricsView(state)
 	view.Preparation = s.preparationSummary(state)
-	view.RouteProgress = s.routeProgress(state)
 	view.RouteProgresses = s.routeProgresses(state)
 	return view
 }

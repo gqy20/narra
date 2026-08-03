@@ -42,9 +42,8 @@ func LoadSession(bundle domain.Bundle, reader io.Reader) (*Session, error) {
 	if data.ScenarioID != bundle.Scenario.ID {
 		return nil, fmt.Errorf("save scenario %s does not match %s", data.ScenarioID, bundle.Scenario.ID)
 	}
-	data, err := migrateSaveData(data, bundle)
-	if err != nil {
-		return nil, err
+	if data.Version != currentSaveVersion {
+		return nil, fmt.Errorf("unsupported save version %d; expected %d", data.Version, currentSaveVersion)
 	}
 	if data.ContentVersion == "" || data.ContentHash == "" {
 		return nil, fmt.Errorf("save is missing content version metadata")

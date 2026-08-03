@@ -136,15 +136,6 @@ func (s *Session) addStoryInformationActions(options map[string]actionOption, st
 	return added
 }
 
-func (s *Session) storyRouteProgress(state *domain.WorldState) *RouteProgress {
-	progresses := s.storyRouteProgresses(state)
-	if len(progresses) == 0 {
-		return nil
-	}
-	selected := progresses[0]
-	return &selected
-}
-
 func (s *Session) storyRouteProgresses(state *domain.WorldState) []RouteProgress {
 	type candidate struct {
 		arcID string

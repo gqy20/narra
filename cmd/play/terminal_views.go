@@ -327,10 +327,10 @@ func renderJournal(output io.Writer, view app.PlayerView, debug bool) {
 		}
 		fmt.Fprintf(output, "  - %s：%s\n", factor.Label, mark)
 	}
-	if view.RouteProgress != nil {
-		fmt.Fprintf(output, "个人路线：%s · %s\n", view.RouteProgress.Label, view.RouteProgress.Status)
-		if view.RouteProgress.NextStep != "" {
-			fmt.Fprintf(output, "  下一步：%s\n", view.RouteProgress.NextStep)
+	for _, progress := range view.RouteProgresses {
+		fmt.Fprintf(output, "个人路线：%s · %s\n", progress.Label, progress.Status)
+		if progress.NextStep != "" {
+			fmt.Fprintf(output, "  下一步：%s\n", progress.NextStep)
 		}
 	}
 	if len(view.KnownFacts) > 0 {

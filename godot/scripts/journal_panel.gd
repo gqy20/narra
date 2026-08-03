@@ -383,9 +383,9 @@ func _feedback_signature(feedback) -> String:
 	return "%s|%s|%s" % [feedback.get("day", ""), feedback.get("action_id", ""), feedback.get("status", "")]
 
 
-func _render_travel_readiness(travel, preparation = {}, route_progress = null) -> void:
+func _render_travel_readiness(travel, preparation = {}) -> void:
 	host.game_screen_controller._clear(host.travel_box)
-	host.journal_panel_controller._render_route_progresses(host.travel_box, host.current_view.get("route_progresses", []), route_progress, false)
+	host.journal_panel_controller._render_route_progresses(host.travel_box, host.current_view.get("route_progresses", []), false)
 	if not travel is Dictionary:
 		host.game_screen_controller._text(host.travel_box, "还没有明确的远行目标。", true)
 		return
@@ -469,7 +469,7 @@ func _render_route_progress(parent: VBoxContainer, route_progress, compact: bool
 		host.game_screen_controller._text(parent, "个人收益 · %s" % personal_return, true, 13)
 
 
-func _render_route_progresses(parent: VBoxContainer, route_progresses, fallback_progress = null, compact: bool = false) -> void:
+func _render_route_progresses(parent: VBoxContainer, route_progresses, compact: bool = false) -> void:
 	if route_progresses is Array and not route_progresses.is_empty():
 		var heading = host.game_screen_controller._text(parent, "并行路线 · %d 项" % route_progresses.size(), true, host.TYPE_SCALE.meta)
 		heading.add_theme_color_override("font_color", host.COLORS.accent)
@@ -478,8 +478,6 @@ func _render_route_progresses(parent: VBoxContainer, route_progresses, fallback_
 			_render_route_progress(parent, route_progresses[index], compact)
 		if compact and route_progresses.size() > visible_count:
 			host.game_screen_controller._text(parent, "另有 %d 条路线，详见卷宗。" % (route_progresses.size() - visible_count), true, 12)
-		return
-	_render_route_progress(parent, fallback_progress, compact)
 
 
 func _toggle_journal_travel_details() -> void:

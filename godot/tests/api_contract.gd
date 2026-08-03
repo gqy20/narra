@@ -5,13 +5,24 @@ func _initialize() -> void:
 	var adapter = load("res://scripts/api_response_adapter.gd").new()
 	var valid: Dictionary = adapter.decode(200, JSON.stringify({
 		"api_version": "v1",
-		"view": {"scenario_id": "sample", "day": 1, "available_actions": []},
+		"view": {
+			"scenario_id": "sample", "title": "Sample", "phase": "opening", "day": 1, "duration": 30,
+			"ended": false, "resolved": false, "known_actors": [], "known_facts": [], "recent_events": [],
+			"available_actions": [], "player": {}, "location": {}, "world_map": {}, "metrics": {},
+			"preparation": {}, "presentation": {},
+		},
 	}).to_utf8_buffer())
 	if not valid.get("ok", false):
 		return _fail("valid response was rejected")
 	var view: Dictionary = valid.get("payload", {}).get("view", {})
 	if view.get("scenario_id", "") != "sample" or not view.get("known_actors", null) is Array or not view.get("player", null) is Dictionary:
-		return _fail("player view defaults were not normalized")
+		return _fail("valid player view changed during decoding")
+
+	var incomplete: Dictionary = adapter.decode(200, JSON.stringify({
+		"api_version": "v1", "view": {"scenario_id": "sample", "day": 1, "available_actions": []},
+	}).to_utf8_buffer())
+	if incomplete.get("ok", true) or incomplete.get("error_code", "") != "invalid_player_view":
+		return _fail("incomplete player view was accepted")
 
 	var wrong_version: Dictionary = adapter.decode(200, JSON.stringify({"api_version": "v2"}).to_utf8_buffer())
 	if wrong_version.get("ok", true) or wrong_version.get("error_code", "") != "unsupported_api_version":

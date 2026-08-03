@@ -18,9 +18,8 @@ import (
 const CurrentSchemaVersion = 6
 
 type manifest struct {
-	SchemaVersion       int    `json:"schema_version"`
-	ContentVersion      string `json:"content_version"`
-	EngineCompatibility string `json:"engine_compatibility,omitempty"`
+	SchemaVersion  int    `json:"schema_version"`
+	ContentVersion string `json:"content_version"`
 }
 
 func Load(dir string) (domain.Bundle, error) {
@@ -32,7 +31,7 @@ func Load(dir string) (domain.Bundle, error) {
 		return bundle, err
 	}
 	if metadata.SchemaVersion != CurrentSchemaVersion {
-		return bundle, fmt.Errorf("manifest uses unsupported schema version %d; run content-migrate", metadata.SchemaVersion)
+		return bundle, fmt.Errorf("manifest uses unsupported schema version %d; expected %d", metadata.SchemaVersion, CurrentSchemaVersion)
 	}
 	if strings.TrimSpace(metadata.ContentVersion) == "" {
 		return bundle, fmt.Errorf("manifest requires content_version")
@@ -163,10 +162,7 @@ func Load(dir string) (domain.Bundle, error) {
 	if err != nil {
 		return bundle, err
 	}
-	bundle.Content = domain.ContentMetadata{
-		SchemaVersion: metadata.SchemaVersion, Version: metadata.ContentVersion,
-		Hash: hash, EngineCompatibility: metadata.EngineCompatibility,
-	}
+	bundle.Content = domain.ContentMetadata{SchemaVersion: metadata.SchemaVersion, Version: metadata.ContentVersion, Hash: hash}
 
 	if err := Validate(bundle); err != nil {
 		return bundle, err

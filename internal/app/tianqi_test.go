@@ -144,9 +144,6 @@ func TestTianqiShowsConcurrentRouteDeadlines(t *testing.T) {
 			t.Fatalf("concurrent route %s missing: %+v", routeID, view.RouteProgresses)
 		}
 	}
-	if view.RouteProgress == nil || view.RouteProgress.ID != view.RouteProgresses[0].ID {
-		t.Fatalf("legacy route progress does not mirror first concurrent route: legacy=%+v all=%+v", view.RouteProgress, view.RouteProgresses)
-	}
 }
 
 func TestTianqiActionWarnsBeforeCrossingExposureThreshold(t *testing.T) {

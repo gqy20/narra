@@ -48,7 +48,7 @@ func _render_actions(actions: Array) -> void:
 	host.overview_actions_box.visible = not has_action_focus
 	host.actor_focus_workspace.visible = host.focused_actor_id != ""
 	host.actor_focus_footer.visible = host.focused_actor_id != "" and not focused_actions.is_empty()
-	host.legacy_action_scroll.visible = host.focused_fact_id != ""
+	host.fact_action_scroll.visible = host.focused_fact_id != ""
 	if host.focused_actor_id != "":
 		host.action_dock_title.text = "与%s说话" % host.focused_actor_name
 		host.action_panel_controller._render_actor_focus_workspace(focused_actions)
@@ -75,7 +75,7 @@ func _render_actions(actions: Array) -> void:
 	if eligible.is_empty():
 		host.game_screen_controller._text(host.overview_actions_box, "想赶路就翻开地图；想传话就先选中一个人。", true, 14)
 		return
-	host.journal_panel_controller._render_route_progresses(host.overview_actions_box, host.current_view.get("route_progresses", []), host.current_view.get("route_progress", null), true)
+	host.journal_panel_controller._render_route_progresses(host.overview_actions_box, host.current_view.get("route_progresses", []), true)
 	host.action_panel_controller._render_first_day_route_compass(eligible, host.overview_actions_box)
 	var visible_count = eligible.size() if host.show_all_actions else mini(3, eligible.size())
 	for index in visible_count:

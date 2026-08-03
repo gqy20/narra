@@ -680,10 +680,9 @@ type Bundle struct {
 }
 
 type ContentMetadata struct {
-	SchemaVersion       int    `json:"schema_version"`
-	Version             string `json:"content_version"`
-	Hash                string `json:"content_hash"`
-	EngineCompatibility string `json:"engine_compatibility,omitempty"`
+	SchemaVersion int    `json:"schema_version"`
+	Version       string `json:"content_version"`
+	Hash          string `json:"content_hash"`
 }
 
 type RunPlan struct {

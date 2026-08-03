@@ -20,28 +20,34 @@ func decode(response_code: int, body: PackedByteArray) -> Dictionary:
 	if payload.has("view"):
 		if not payload["view"] is Dictionary:
 			return _failure("invalid_player_view", "本地服务返回的玩家视图无效。", payload)
-		payload["view"] = _normalize_view(payload["view"])
+		var validation_error := _validate_view(payload["view"] as Dictionary)
+		if validation_error != "":
+			return _failure("invalid_player_view", "本地服务返回的玩家视图缺少当前契约字段：%s。" % validation_error, payload)
 	if payload.has("scenario") and not payload["scenario"] is Dictionary:
 		return _failure("invalid_scenario", "本地服务返回的场景信息无效。", payload)
 	return {"ok": true, "error_code": "", "message": "", "payload": payload}
 
 
-func _normalize_view(source: Dictionary) -> Dictionary:
-	var view := source.duplicate(true)
-	for key in ["known_actors", "known_facts", "recent_events", "causal_threads", "available_actions", "guidance", "route_progresses"]:
-		if not view.has(key) or not view.get(key) is Array:
-			view[key] = []
+func _validate_view(view: Dictionary) -> String:
+	for key in ["scenario_id", "title", "phase"]:
+		if not view.has(key) or not view[key] is String:
+			return key
+	for key in ["day", "duration"]:
+		if not view.has(key) or typeof(view[key]) not in [TYPE_INT, TYPE_FLOAT]:
+			return key
+	for key in ["ended", "resolved"]:
+		if not view.has(key) or not view[key] is bool:
+			return key
+	for key in ["known_actors", "known_facts", "recent_events", "available_actions"]:
+		if not view.has(key) or not view[key] is Array:
+			return key
 	for key in ["player", "location", "world_map", "metrics", "preparation", "presentation"]:
-		if not view.has(key) or not view.get(key) is Dictionary:
-			view[key] = {}
-	view["scenario_id"] = str(view.get("scenario_id", ""))
-	view["title"] = str(view.get("title", ""))
-	view["phase"] = str(view.get("phase", ""))
-	view["day"] = int(view.get("day", 0))
-	view["duration"] = int(view.get("duration", 0))
-	view["ended"] = bool(view.get("ended", false))
-	view["resolved"] = bool(view.get("resolved", false))
-	return view
+		if not view.has(key) or not view[key] is Dictionary:
+			return key
+	for key in ["causal_threads", "guidance", "route_progresses"]:
+		if view.has(key) and not view[key] is Array:
+			return key
+	return ""
 
 
 func _failure(code: String, message: String, payload := {}) -> Dictionary:

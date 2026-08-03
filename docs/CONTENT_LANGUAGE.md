@@ -48,4 +48,4 @@ Godot 只读取这些字段，不再识别 `qinglan` 等故事专属场景键。
 
 Schema v6 要求完整的对话语言策略，以及 UI 契约登记的全部玩家可见术语和模板。
 
-`go run ./cmd/content-migrate -data <目录> -write` 会把 v5 内容升级到 v6。迁移不会从题材名称猜测角色声音；旧内容缺少完整 UI 语义时会在写入前明确失败，作者必须补齐 `presentation.ui`，不会静默套用其他故事的默认文案。
+加载器只接受 Schema v6，不提供旧内容自动迁移。旧内容必须由作者在仓库外显式升级并补齐 `dialogue.yml` 与 `presentation.ui`，再通过 `fantu-content validate` 验证；运行时不会推断或补写故事语义。

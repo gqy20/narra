@@ -55,4 +55,4 @@ navigation:
   contest: {enabled: false}
 ```
 
-老版本内容包可以通过 `go run ./cmd/content-migrate -data <目录> -write` 升级。v4 到 v5 的迁移会创建一份全部关闭的显式规则文件；v5 到 v6 会增加类型化对话语言策略与基础 UI 术语，不会擅自推断人物声音或故事行为。
+加载器只接受当前内容 Schema。旧内容包必须由作者显式补齐规则、对话语言策略和 UI 术语后重新验证，不提供会生成默认故事语义的兼容迁移。
