@@ -134,6 +134,21 @@ func TestWorldMapExposesCoreActorPlansWithoutPrivateStrategyData(t *testing.T) {
 	}
 }
 
+func TestActorPlanPresentationComesFromContent(t *testing.T) {
+	session := testSession(t)
+	if got := session.planFlagLabel(domain.Condition{Type: "flag", Key: "qinglan_review"}); got != "青岚门进入公开审核" {
+		t.Fatalf("public flag label = %q", got)
+	}
+	if got := session.planFlagLabel(domain.Condition{Type: "flag", Key: "rumor_public"}); got != "局势条件已经发生变化" {
+		t.Fatalf("private flag fallback = %q", got)
+	}
+	config := session.actorConfig("N09")
+	strategy := strategyByID(config.Strategies, "N09-spread-false-date")
+	if !config.TrackPublicPlan || config.PublicGoal != "维护宗门审核与内部秩序" || strategy.PublicDescription != "把一则成熟日期传闻带入坊市" {
+		t.Fatalf("content-backed actor plan = config %+v strategy %+v", config, strategy)
+	}
+}
+
 func TestActionMetadataAndPublicProfilesArePlayerFacing(t *testing.T) {
 	session := testSession(t)
 	view := session.View()

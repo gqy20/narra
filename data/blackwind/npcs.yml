@@ -399,6 +399,8 @@
   injury: 0
   public_profile: 青岚门此次行动的负责人，行事谨慎，正在核对青髓芝消息与入谷准备。
   public_role: 青岚门行动负责人
+  public_goal: 代表青岚门完成入谷准备并取得灵药
+  track_public_plan: true
   public_interests:
   - topic: qingsuizhi
     label: 成熟时机
@@ -784,6 +786,8 @@
   injury: 0
   public_profile: 青岚门药理弟子，关注灵药保存与移植，对正面争夺兴趣不大。
   public_role: 药理与移植研究者
+  public_goal: 保存青髓芝药性并争取研究机会
+  track_public_plan: true
   public_interests:
   - topic: qingsuizhi
     label: 灵药归属
@@ -1194,6 +1198,8 @@
   injury: 0
   public_profile: 青岚门弟子，热衷传播坊市消息，与沈砚秋在门内存在竞争。
   public_role: 门内竞争者
+  public_goal: 维护宗门审核与内部秩序
+  track_public_plan: true
   public_interests:
   - topic: qinglan
     label: 门内声望
@@ -1231,6 +1237,7 @@
   - id: N09-spread-false-date
     action_id: spread
     description: 赵鹤鸣把第24天成熟的错误消息传入坊市
+    public_description: 把一则成熟日期传闻带入坊市
     from_day: 3
     until_day: 3
     once: true
@@ -1254,6 +1261,7 @@
   - id: N09-challenge-player-source
     action_id: visit
     description: 赵鹤鸣借宗门审核公开质疑玩家与沈砚秋的情报往来
+    public_description: 公开质疑玩家与沈砚秋的消息来源
     target_id: P00
     from_day: 10
     until_day: 12

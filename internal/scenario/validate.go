@@ -76,6 +76,9 @@ func Validate(bundle domain.Bundle) error {
 		if len(npc.PublicInterests) > 0 && (npc.PublicRole == "" || npc.PublicRisk == "") {
 			return fmt.Errorf("NPC %s public context requires role and risk", npc.ID)
 		}
+		if npc.TrackPublicPlan && npc.PublicGoal == "" {
+			return fmt.Errorf("NPC %s tracked public plan requires public goal", npc.ID)
+		}
 		if _, ok := bundle.Locations[npc.Location]; !ok {
 			return fmt.Errorf("NPC %s references unknown location %s", npc.ID, npc.Location)
 		}

@@ -32,7 +32,7 @@
 - {id: N07_disinherited, scope: world, description: 周景明已被家族剥夺资格}
 - {id: N07_fugitive, scope: world, description: 周景明已成为逃亡者}
 - {id: ambush_open, scope: world, description: 伏击机会已经出现}
-- {id: antidote_blockade, scope: world, description: 坊市解瘴丹供应已封锁}
+- {id: antidote_blockade, scope: world, description: 坊市解瘴丹供应已封锁, public_label: 坊市解瘴丹供应被封锁}
 - {id: antidote_demand_visible, scope: world, description: 解瘴丹需求已公开显现}
 - {id: betrayal_exposed, scope: world, description: 背叛行为已经公开}
 - {id: caravan_protected, scope: world, description: 商队已获得保护}
@@ -45,15 +45,15 @@
 - {id: li_hunts_player, scope: world, description: 李寒鸦开始追猎玩家}
 - {id: n09_challenges_player_source, scope: world, description: 赵鹤鸣公开质疑玩家消息来源}
 - {id: outer_valley_crowded, scope: world, description: 黑风谷外围人员拥挤}
-- {id: player_backed_shen, scope: world, description: 玩家公开支持沈砚秋}
+- {id: player_backed_shen, scope: world, description: 玩家公开支持沈砚秋, public_label: 你已公开支持沈砚秋}
 - {id: player_declared_independent, scope: world, description: 玩家公开声明保持独立}
 - {id: player_joining_qinglan, scope: world, description: 玩家准备加入青岚行动}
-- {id: player_took_shen_antidote, scope: world, description: 玩家取走沈砚秋的解瘴丹}
+- {id: player_took_shen_antidote, scope: world, description: 玩家取走沈砚秋的解瘴丹, public_label: 你带走了青岚门的解瘴丹}
 - {id: qinglan_chen_alliance, scope: world, description: 青岚门与陈氏达成合作}
-- {id: qinglan_review, scope: world, description: 青岚门启动公开审核}
+- {id: qinglan_review, scope: world, description: 青岚门启动公开审核, public_label: 青岚门进入公开审核}
 - {id: route_changed, scope: world, description: 黑风谷公开路线已经变化}
 - {id: rumor_public, scope: world, description: 青髓芝传闻已经公开}
 - {id: su_requests_antidote, scope: world, description: 苏晚照请求取回解瘴丹}
-- {id: transplant_backed, scope: world, description: 移植方案已获得支持}
+- {id: transplant_backed, scope: world, description: 移植方案已获得支持, public_label: 提前移植方案获得支持}
 - {id: transplant_window, scope: world, description: 青髓芝移植窗口已经出现}
-- {id: valley_open, scope: world, description: 黑风谷已经开放}
+- {id: valley_open, scope: world, description: 黑风谷已经开放, public_label: 黑风谷入口已经开放}

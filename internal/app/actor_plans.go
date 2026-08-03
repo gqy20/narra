@@ -7,20 +7,21 @@ import (
 	"fantu/internal/domain"
 )
 
-var trackedActorPlanIDs = map[string]bool{"N03": true, "N06": true, "N09": true}
-
 func (s *Session) visibleActorPlans(state *domain.WorldState) []VisibleActorPlan {
-	result := make([]VisibleActorPlan, 0, len(trackedActorPlanIDs))
-	for actorID := range trackedActorPlanIDs {
+	result := make([]VisibleActorPlan, 0)
+	for _, config := range s.bundle.NPCs {
+		if !config.TrackPublicPlan {
+			continue
+		}
+		actorID := config.ID
 		npc, ok := state.NPCs[actorID]
 		if !ok {
 			continue
 		}
-		config := s.actorConfig(actorID)
 		plan := VisibleActorPlan{
 			ID: actorID, Name: npc.Name, Faction: npc.Faction,
 			LocationID: npc.Location, LocationName: s.visibleLocation(npc.Location).Name,
-			PublicGoal: publicActorGoal(actorID, config.Goal), Status: "观望",
+			PublicGoal: config.PublicGoal, Status: "观望",
 			Plan: "观察各方动向", Reason: "尚未掌握足以改变公开安排的可靠消息",
 		}
 
@@ -49,7 +50,10 @@ func (s *Session) visibleActorPlans(state *domain.WorldState) []VisibleActorPlan
 		}
 
 		if strategy.Description != "" && !strategy.Generated {
-			plan.Plan = publicPlanLabel(strategy.ID, strategy.Description)
+			plan.Plan = strategy.Description
+			if strategy.PublicDescription != "" {
+				plan.Plan = strategy.PublicDescription
+			}
 			plan.Reason = s.visiblePlanReason(state, npc, strategy)
 			if plan.ExpectedDay == 0 {
 				plan.ExpectedDay = state.Day + maxInt(0, s.strategyDuration(strategy)-1)
@@ -115,30 +119,6 @@ func strategyDestination(strategy domain.Strategy) string {
 	return ""
 }
 
-func publicActorGoal(actorID, fallback string) string {
-	switch actorID {
-	case "N03":
-		return "代表青岚门完成入谷准备并取得灵药"
-	case "N06":
-		return "保存青髓芝药性并争取研究机会"
-	case "N09":
-		return "维护宗门审核与内部秩序"
-	default:
-		return fallback
-	}
-}
-
-func publicPlanLabel(strategyID, fallback string) string {
-	switch strategyID {
-	case "N09-spread-false-date":
-		return "把一则成熟日期传闻带入坊市"
-	case "N09-challenge-player-source":
-		return "公开质疑玩家与沈砚秋的消息来源"
-	default:
-		return fallback
-	}
-}
-
 func (s *Session) visiblePlanReason(state *domain.WorldState, npc *domain.NPCState, strategy domain.Strategy) string {
 	for _, condition := range strategy.Conditions {
 		switch condition.Type {
@@ -155,7 +135,7 @@ func (s *Session) visiblePlanReason(state *domain.WorldState, npc *domain.NPCSta
 			}
 			return "依据自己掌握、但尚未向你公开的消息"
 		case "flag":
-			return "局势条件已经满足：" + planFlagLabel(condition.Key)
+			return "局势条件已经满足：" + s.planFlagLabel(condition)
 		case "has_item":
 			name := condition.Key
 			if item, ok := s.bundle.Items[condition.Key]; ok {
@@ -176,14 +156,13 @@ func (s *Session) visiblePlanReason(state *domain.WorldState, npc *domain.NPCSta
 	return "尚未形成可以观察的公开计划"
 }
 
-func planFlagLabel(flag string) string {
-	labels := map[string]string{
-		"valley_open": "黑风谷入口已经开放", "transplant_backed": "提前移植方案获得支持",
-		"qinglan_review": "青岚门进入公开审核", "player_backed_shen": "你已公开支持沈砚秋",
-		"antidote_blockade": "坊市解瘴丹供应被封锁", "player_took_shen_antidote": "你带走了青岚门的解瘴丹",
+func (s *Session) planFlagLabel(condition domain.Condition) string {
+	scope := condition.Scope
+	if scope == "" {
+		scope = "world"
 	}
-	if label, ok := labels[flag]; ok {
-		return label
+	if flag, ok := s.bundle.Flags[scope+":"+condition.Key]; ok && flag.PublicLabel != "" {
+		return flag.PublicLabel
 	}
 	return "局势条件已经发生变化"
 }

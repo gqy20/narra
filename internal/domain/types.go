@@ -105,6 +105,7 @@ type FlagDefinition struct {
 	ID          string `json:"id"`
 	Scope       string `json:"scope"`
 	Description string `json:"description"`
+	PublicLabel string `json:"public_label,omitempty"`
 }
 
 // OpportunityActionDefinition maps an open world opportunity to a normal
@@ -260,6 +261,8 @@ type NPCConfig struct {
 	Faction         string           `json:"faction"`
 	PublicProfile   string           `json:"public_profile,omitempty"`
 	PublicRole      string           `json:"public_role,omitempty"`
+	PublicGoal      string           `json:"public_goal,omitempty"`
+	TrackPublicPlan bool             `json:"track_public_plan,omitempty"`
 	PublicInterests []PublicInterest `json:"public_interests,omitempty"`
 	PublicRisk      string           `json:"public_risk,omitempty"`
 	Goal            string           `json:"goal"`
@@ -290,6 +293,7 @@ type Strategy struct {
 	ID                   string         `json:"id"`
 	ActionID             string         `json:"action_id"`
 	Description          string         `json:"description"`
+	PublicDescription    string         `json:"public_description,omitempty"`
 	TargetID             string         `json:"target_id"`
 	FromDay              int            `json:"from_day"`
 	UntilDay             int            `json:"until_day"`
