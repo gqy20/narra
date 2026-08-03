@@ -503,7 +503,7 @@ func TestSaveBindsReplayToContentHash(t *testing.T) {
 	if err := json.Unmarshal(encoded.Bytes(), &saved); err != nil {
 		t.Fatal(err)
 	}
-	if saved.Version != 2 || saved.ContentVersion != session.bundle.Content.Version || saved.ContentHash != session.bundle.Content.Hash {
+	if saved.Version != currentSaveVersion || saved.ContentVersion != session.bundle.Content.Version || saved.ContentHash != session.bundle.Content.Hash {
 		t.Fatalf("save metadata = %+v, bundle = %+v", saved, session.bundle.Content)
 	}
 
@@ -524,6 +524,29 @@ func TestLoadSessionAcceptsLegacyVersionOneSave(t *testing.T) {
 	}
 	if _, err := LoadSession(session.bundle, bytes.NewReader(legacy)); err != nil {
 		t.Fatalf("load legacy save: %v", err)
+	}
+}
+
+func TestSaveMigrationChainBindsLegacySaveToLoadedContent(t *testing.T) {
+	session := testSession(t)
+	legacy := SaveData{Version: 1, ScenarioID: session.bundle.Scenario.ID, Player: clonePlayerConfig(session.initial)}
+	migrated, err := migrateSaveData(legacy, session.bundle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if migrated.Version != currentSaveVersion || migrated.ContentVersion != session.bundle.Content.Version || migrated.ContentHash != session.bundle.Content.Hash {
+		t.Fatalf("migrated save metadata = %+v", migrated)
+	}
+	if legacy.Version != 1 || legacy.ContentHash != "" {
+		t.Fatalf("migration mutated source value: %+v", legacy)
+	}
+}
+
+func TestSaveMigrationRejectsFutureVersion(t *testing.T) {
+	session := testSession(t)
+	_, err := migrateSaveData(SaveData{Version: currentSaveVersion + 1}, session.bundle)
+	if err == nil || !strings.Contains(err.Error(), "unsupported save version") {
+		t.Fatalf("future save version error = %v", err)
 	}
 }
 
