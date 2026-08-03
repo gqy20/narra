@@ -79,6 +79,10 @@ contest:
     winner_id: N02
     required_world_flags: [systemic_caveat]
     template: "{winner}以影响值{score}完成有限会勘报告：确认记录冲突与管理问题，同时明确现有材料不能推出唯一爆炸成因。"
+  - id: correlated-ledger-report
+    priority: 115
+    required_world_flags: [forged_ledger_exposed, ledger_chain_correlated]
+    template: "{winner}以影响值{score}控制定稿；E01格式破绽与E10经手自陈已形成独立串证，报告确认长期改账与灾后补造，但仍不把它冒充为爆炸成因。"
   - id: forged-ledger-exposed
     priority: 110
     required_world_flags: [forged_ledger_exposed]
