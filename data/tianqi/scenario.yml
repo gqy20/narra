@@ -150,7 +150,7 @@ contest:
   - id: correlated-ledger-report
     priority: 115
     required_world_flags: [forged_ledger_exposed, ledger_chain_correlated]
-    template: "{winner}以影响值{score}控制定稿；E01格式破绽与E10经手自陈已形成独立串证，报告确认长期改账与灾后补造，但仍不把它冒充为爆炸成因。"
+    template: "{winner}以影响值{score}控制定稿；交割残页与补造账册的格式比对结果和周良辅经手自陈已形成独立串证，报告确认长期改账与灾后补造，但仍不把它冒充为爆炸成因。"
   - id: forged-ledger-exposed
     priority: 110
     required_world_flags: [forged_ledger_exposed]

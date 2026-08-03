@@ -9,7 +9,7 @@
   - {topic: ledger, label: 账册去向}
   - {topic: supply, label: 军需责任}
   public_risk: 他参与过假账，任何公开接触都可能同时威胁他和接触者。
-  goal: 保住E10并退出军需灰网
+  goal: 保住周良辅自陈并退出军需灰网
   goals:
   - {type: protect, target_id: e10_statement, priority: 5, topics: [ledger]}
   - {type: avoid, target_id: N09, priority: 5, topics: [supply]}
@@ -150,7 +150,7 @@
     conditions: []
     score: {base: 9, goal: 4, urgency: 5, probability: 4, information: 5, relationship: 4, cost: 1, danger: 2}
     effects:
-    - {type: set_belief, target_id: N08, fact_id: F02, claim: 刘六安说周良辅曾叫停一次不合常例的操作, confidence: 2, evidence_strength: 2, source: N03, propagation: private, secrecy: 2}
+    - {type: set_belief, target_id: N08, fact_id: F02, claim: 刘六安说周良辅曾叫停一次不合常例的操作, confidence: 2, evidence_strength: 2, source: 刘六安, propagation: private, secrecy: 2}
   - id: N03-revise-account
     action_id: visit
     description: 刘六安在压力下把“不合常例”改称“临时调整”
@@ -165,7 +165,7 @@
     score: {base: 10, goal: 5, urgency: 5, probability: 5, information: 1, relationship: 2, cost: 1, danger: 3}
     effects:
     - {type: set_flag, scope: world, target_id: world, key: witness_pressured, value: "true"}
-    - {type: set_belief, target_id: N02, fact_id: F02, claim: 当夜只是临时调整，没有超出常见失误, confidence: 2, evidence_strength: 1, source: N03, propagation: private, secrecy: 1}
+    - {type: set_belief, target_id: N02, fact_id: F02, claim: 当夜只是临时调整，没有超出常见失误, confidence: 2, evidence_strength: 1, source: 刘六安, propagation: private, secrecy: 1}
 
 - id: N04
   name: 梁进忠
@@ -362,7 +362,7 @@
     - {type: belief, key: F06, min_confidence: 3}
     score: {base: 10, goal: 5, urgency: 5, probability: 4, information: 5, relationship: 2, cost: 1, danger: 2}
     effects:
-    - {type: set_belief, target_id: N02, fact_id: F06, claim: 现有材料不足以确认唯一爆炸成因, confidence: 3, evidence_strength: 4, source: N06, propagation: private, secrecy: 1}
+    - {type: set_belief, target_id: N02, fact_id: F06, claim: 现有材料不足以确认唯一爆炸成因, confidence: 3, evidence_strength: 4, source: 沈惟实, propagation: private, secrecy: 1}
 
 - id: N07
   name: 余墨林
@@ -442,7 +442,7 @@
   - {topic: relief, label: 优恤资格}
   - {topic: survivors, label: 证人安全}
   public_risk: 公开完整住址能帮助核验，也可能把证人直接暴露给追查者。
-  goal: 让E08在封册前获得尽可能多的承认
+  goal: 让灾民自建名册在封册前获得尽可能多的承认
   goals:
   - {type: protect, target_id: e08_register, priority: 5, topics: [register]}
   - {type: acquire, target_id: relief, priority: 5, topics: [relief]}
@@ -453,7 +453,7 @@
   items: [e08_register]
   beliefs:
   - {fact_id: F05, claim: 官册之外仍有真实居住者、伤者和失踪者, confidence: 3, source: 救治与寻人记录, learned_on: 0, secrecy: 1}
-  - {fact_id: F02, claim: 刘六安最早说过一次不合常例的操作, confidence: 2, source: N03, learned_on: 0, secrecy: 2}
+  - {fact_id: F02, claim: 刘六安最早说过一次不合常例的操作, confidence: 2, source: 刘六安, learned_on: 0, secrecy: 2}
   personality: {caution: 4, greed: 1, loyalty: 5, ambition: 3, credit: 5, risk_tolerance: 3}
   strategies:
   - id: N08-build-register
@@ -507,7 +507,7 @@
   - {topic: ledger, label: 账册闭合}
   - {topic: rumor, label: 责任转移}
   public_risk: 他不必销毁所有证据，只要制造一个更完整、更方便的替代版本。
-  goal: 让E09进入官档并控制E01与E10
+  goal: 让补造账册进入官档，并控制交割残页与周良辅自陈
   goals:
   - {type: acquire, target_id: e01_original, priority: 5, topics: [ledger]}
   - {type: protect, target_id: FCT_SUPPLY_SHADOW, priority: 5, topics: [supply]}
@@ -579,7 +579,7 @@
     - {type: move, value: L05}
   - id: N09-intercept-zhou
     action_id: track
-    description: 罗三槐沿周良辅的出逃路线追到书斋，截走E10原件
+    description: 罗三槐沿周良辅的出逃路线追到书斋，截走周良辅自陈原件
     public_description: 军需灰网正在追索一名失踪库吏
     target_id: N01
     from_day: 14
@@ -657,4 +657,4 @@
     - {type: flag, key: negligence_draft}
     score: {base: 8, goal: 5, urgency: 4, probability: 3, information: 5, relationship: 2, cost: 1, danger: 2}
     effects:
-    - {type: set_belief, target_id: N02, fact_id: F06, confidence: 3, evidence_strength: 4, source: N10, propagation: private, secrecy: 1}
+    - {type: set_belief, target_id: N02, fact_id: F06, confidence: 3, evidence_strength: 4, source: 胡彦清, propagation: private, secrecy: 1}

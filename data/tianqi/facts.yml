@@ -1,5 +1,5 @@
 - id: F01
-  truth: E01交割残页确有一处异常领讫戳，但不能证明实物去向或爆炸成因
+  truth: 周良辅交割残页确有一处异常领讫戳，但不能证明实物去向或爆炸成因
   discoverable: true
   topics: [ledger, supply, inquiry]
   investigation_leads:
@@ -15,7 +15,7 @@
   discoverable: true
   topics: [ledger, supply]
 - id: F04
-  truth: E09是一套灾后补造的自洽账册，存在纸墨、印记和流转时间破绽
+  truth: 这套完整账册是灾后补造的自洽文本，存在纸墨、印记和流转时间破绽
   discoverable: true
   topics: [ledger, forgery, inquiry]
   investigation_leads:

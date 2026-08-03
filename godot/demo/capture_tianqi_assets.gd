@@ -59,9 +59,9 @@ func _wait_until_idle(timeout_ms := 12000) -> bool:
 	var deadline := Time.get_ticks_msec() + timeout_ms
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
-		if app.pending_operation == "" and not app.presentation_busy:
+		if app.pending_operation == "" and not app.presentation_busy and not app.cinematic_director.active:
 			await process_frame
-			if app.pending_operation == "" and not app.presentation_busy:
+			if app.pending_operation == "" and not app.presentation_busy and not app.cinematic_director.active:
 				return true
 	return false
 

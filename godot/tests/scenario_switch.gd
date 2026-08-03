@@ -52,6 +52,19 @@ func _run() -> void:
 		return _fail("three-claims event cue was not auto-loaded")
 	if app.presentation_registry.event_texture_for_action("route:e09:format-check") == null:
 		return _fail("forged-ledger event cue was not auto-loaded")
+	var opening_video: VideoStream = app.presentation_registry.event_video("opening-blast")
+	var ending_video: VideoStream = app.presentation_registry.event_video("final-verdict")
+	if opening_video == null or "opening-blast.ogv" not in opening_video.resource_path:
+		return _fail("tianqi opening video was not auto-loaded")
+	if ending_video == null or "final-verdict.ogv" not in ending_video.resource_path:
+		return _fail("tianqi ending video was not auto-loaded")
+	var music: AudioStream = app.presentation_registry.background_music()
+	if music == null or "tianqi-investigation-theme-loop.ogg" not in music.resource_path:
+		return _fail("tianqi background music was not auto-loaded")
+	if app.audio_director.music_player.stream != music or app.audio_director.music_target_db != -10.0:
+		return _fail("tianqi background music was not configured on the music bus")
+	if app.cinematic_director.video_player == null or app.cinematic_director.skip_button == null:
+		return _fail("cinematic playback overlay was not initialized")
 	if app.actor_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
 		return _fail("stage portrait still crops the actor's head")
 	if app.causal_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED or app.ending_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
@@ -65,6 +78,11 @@ func _run() -> void:
 		return _fail("new game returned the wrong scenario")
 	if app.current_view.get("presentation", {}).get("world_title", "") != "京师灾变与会勘":
 		return _fail("player view did not carry tianqi presentation metadata")
+	var internal_story_id_pattern := RegEx.new()
+	internal_story_id_pattern.compile("(^|[^A-Za-z0-9_])[EFN][0-9]{2}([^A-Za-z0-9_]|$)")
+	var leaked_story_id := internal_story_id_pattern.search(_descendant_text(app))
+	if leaked_story_id != null:
+		return _fail("internal story id leaked into player-visible text: " + leaked_story_id.get_string())
 	var resource_text := _descendant_text(app.player_resources_box)
 	for expected in ["权势", "证据", "盟援"]:
 		if expected not in resource_text:

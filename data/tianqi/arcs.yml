@@ -1,5 +1,5 @@
 - id: residual_page
-  title: E01交割残页
+  title: 周良辅交割残页
   initial_state: unclaimed
   states: [unclaimed, original_held, copy_held, delivered_official, format_verified, delivered_grey, published_bounded, published_sensational]
   nodes:
@@ -17,11 +17,11 @@
       term_label: 保管原件
       name: 接下交割残页原件
       description: 余墨林愿意把刚取得的残页交给你辨认；原件能留下存疑旁注，也会把追查风险带到你身上。
-      command_description: 玩家从余墨林处接下E01原件
-      personal_outcome: 获得E01原件，证据+1、暴露+1；书坊暂时失去原件控制。
+      command_description: 玩家从余墨林处接下交割残页原件
+      personal_outcome: 获得交割残页原件，证据+1、暴露+1；书坊暂时失去原件控制。
       relevance: 残页可能连接灾前交割记录与灾后补账，但单页不能证明爆炸成因。
       risk: 原件经手人可能同时受到官署收缴与灰网追索。
-      expected_outcomes: [取得E01原件, 保留原页存疑旁注, 打开官署与灰网两条交付路线]
+      expected_outcomes: [取得交割残页原件, 保留原页存疑旁注, 打开官署与灰网两条交付路线]
       warnings: [原件只能由一方持有，转交后不能自动取回。]
       irreversible: true
       effects:
@@ -29,16 +29,16 @@
       - {type: adjust_resource, target_id: player, key: evidence, amount: 1}
       - {type: adjust_resource, target_id: player, key: exposure, amount: 1}
       - {type: set_flag, target_id: player, key: player_kept_original, value: "true"}
-      - {type: set_belief, target_id: player, fact_id: F01, claim: E01交割残页确有异常领讫戳，但单页不能证明实物流向或爆炸成因, confidence: 2, evidence_strength: 3, source: E01原件辨认, propagation: private, secrecy: 2}
+      - {type: set_belief, target_id: player, fact_id: F01, claim: 周良辅交割残页确有异常领讫戳，但单页不能证明实物流向或爆炸成因, confidence: 2, evidence_strength: 3, source: 交割残页原件辨认, propagation: private, secrecy: 2}
       to_state: original_held
-      feedback: {messages: [你接下了交割残页原件，旁注中的存疑语气仍然清楚。], journal: [E01原件由余墨林转交给你；它只能证明一处记录异常。], presentation: {kind: acquire, intensity: 2, subject: player}}
+      feedback: {messages: [你接下了交割残页原件，旁注中的存疑语气仍然清楚。], journal: [交割残页原件由余墨林转交给你；它只能证明一处记录异常。], presentation: {kind: acquire, intensity: 2, subject: player}}
     - id: route:e01:copy-only
       term_id: copy_only
       term_label: 只留抄件
       name: 只抄一份，不碰原件
       description: 你逐字抄下残页并保留限定语，让余墨林继续处置原件。
-      command_description: 玩家只抄录E01并拒绝保管原件
-      personal_outcome: 获得E01抄件，盟援+1；避免成为原件经手人，但无法控制原件去向。
+      command_description: 玩家只抄录交割残页并拒绝保管原件
+      personal_outcome: 获得交割残页抄件，盟援+1；避免成为原件经手人，但无法控制原件去向。
       relevance: 抄件可以传播内容，却难以独立证明纸张、印戳和来源。
       risk: 原件若落入灰网，抄件会面对来源质疑。
       expected_outcomes: [取得一份保留限定语的抄件, 余墨林继续持有原件]
@@ -49,9 +49,9 @@
       - {type: adjust_resource, target_id: player, key: allies, amount: 1}
       - {type: set_flag, target_id: player, key: player_kept_copy, value: "true"}
       - {type: set_flag, scope: world, target_id: world, key: press_has_e01_copy, value: "true"}
-      - {type: set_belief, target_id: player, fact_id: F01, claim: E01抄件显示一处异常领讫戳，但无法独立核验纸张、印戳与来源, confidence: 2, evidence_strength: 1, source: E01逐字抄件, propagation: private, secrecy: 1}
+      - {type: set_belief, target_id: player, fact_id: F01, claim: 交割残页抄件显示一处异常领讫戳，但无法独立核验纸张、印戳与来源, confidence: 2, evidence_strength: 1, source: 交割残页逐字抄件, propagation: private, secrecy: 1}
       to_state: copy_held
-      feedback: {messages: [你留下了保留限定语的抄件，却放弃控制原件去向。], journal: [E01抄件形成；原件仍在余墨林手中。], presentation: {kind: acquire, intensity: 1, subject: player}}
+      feedback: {messages: [你留下了保留限定语的抄件，却放弃控制原件去向。], journal: [交割残页抄件形成；原件仍在余墨林手中。], presentation: {kind: acquire, intensity: 1, subject: player}}
 
   - id: deliver_original_to_office
     from_state: original_held
@@ -68,11 +68,11 @@
       term_label: 原件入档
       name: 把原件交给裴慎行核验
       description: 让残页进入会勘材料，并要求在登记中保留“只能证明记录异常”的边界。
-      command_description: 玩家将E01原件交给会勘官署
+      command_description: 玩家将交割残页原件交给会勘官署
       personal_outcome: 权势+1，裴慎行信任+1；你成为公开材料经手人。
       relevance: 官署能够核验印戳与格式，也可能把残页压缩为支持既有初稿的一句话。
       risk: 原件进入官档后，你无法再决定它是否公开。
-      expected_outcomes: [官署取得E01原件, 打开E09格式核验线索, 裴慎行信任+1]
+      expected_outcomes: [官署取得交割残页原件, 打开补造账册格式核验线索, 裴慎行信任+1]
       warnings: [交官后无法把原件再交给书坊或灰网。]
       irreversible: true
       effects:
@@ -80,9 +80,9 @@
       - {type: set_flag, scope: world, target_id: world, key: official_has_e01, value: "true"}
       - {type: adjust_resource, target_id: player, key: authority, amount: 1}
       - {type: adjust_relation, from_id: target, target_id: player, key: trust, amount: 1}
-      - {type: set_belief, target_id: player, fact_id: F04, claim: 新送入官署的完整账册可能存在纸墨与印记问题, confidence: 1, evidence_strength: 1, source: N02, propagation: private, secrecy: 2}
+      - {type: set_belief, target_id: player, fact_id: F04, claim: 新送入官署的完整账册可能存在纸墨与印记问题, confidence: 1, evidence_strength: 1, source: 裴慎行, propagation: private, secrecy: 2}
       to_state: delivered_official
-      feedback: {messages: [E01原件进入会勘登记，裴慎行承诺先核验格式再引用。], journal: [将E01原件交官；同时得知一套过于完整的新账册即将送入。], presentation: {kind: reveal, intensity: 2, subject: fact}}
+      feedback: {messages: [交割残页原件进入会勘登记，裴慎行承诺先核验格式再引用。], journal: [将交割残页原件交官；同时得知一套过于完整的新账册即将送入。], presentation: {kind: reveal, intensity: 2, subject: fact}}
 
   - id: verify_e09_with_e01_original
     from_state: delivered_official
@@ -99,24 +99,24 @@
     - id: route:e09:format-check
       term_id: format_check
       term_label: 原件比对
-      name: 请沈惟实用E01核验E09格式
-      description: 调取E01登记拓样，与新送账册的纸墨、印记和流转时间逐项比对。
-      command_description: 玩家与沈惟实用E01原件登记核验E09格式
-      personal_outcome: 证据+1、暴露+1；取得F04高可信核验，打开正式揭穿补造账册的路线。
-      relevance: 格式比对能够证明E09形成于灾后，却仍不能证明改账者制造了爆炸。
+      name: 请沈惟实用交割残页核验补造账册格式
+      description: 调取交割残页登记拓样，与新送账册的纸墨、印记和流转时间逐项比对。
+      command_description: 玩家与沈惟实用交割残页原件登记核验补造账册格式
+      personal_outcome: 证据+1、暴露+1；取得高可信格式核验结论，打开正式揭穿补造账册的路线。
+      relevance: 格式比对能够证明补造账册形成于灾后，却仍不能证明改账者制造了爆炸。
       risk: 原件经手记录会把玩家与官署核验链公开连接。
-      expected_outcomes: [确认E09灾后形成, 取得F04高可信核验, 打开E10串证机会]
+      expected_outcomes: [确认补造账册灾后形成, 取得高可信格式核验结论, 打开周良辅自陈串证机会]
       warnings: [核验结论只针对账册形成时间与格式。]
       irreversible: true
       effects:
       - {type: set_flag, scope: world, target_id: world, key: e09_format_verified, value: "true"}
-      - {type: set_belief, target_id: player, fact_id: F04, claim: E09的纸墨、印记与流转时间证明它是灾后补造账册, confidence: 3, evidence_strength: 4, source: E01原件与E09格式比对, propagation: private, secrecy: 2}
-      - {type: set_belief, target_id: N06, fact_id: F04, claim: E09的纸墨、印记与流转时间证明它是灾后补造账册, confidence: 3, evidence_strength: 4, source: E01原件与E09格式比对, propagation: private, secrecy: 2}
+      - {type: set_belief, target_id: player, fact_id: F04, claim: 新送账册的纸墨、印记与流转时间证明它形成于灾后，是后补文本, confidence: 3, evidence_strength: 4, source: 交割残页原件与补造账册格式比对, propagation: private, secrecy: 2}
+      - {type: set_belief, target_id: N06, fact_id: F04, claim: 新送账册的纸墨、印记与流转时间证明它形成于灾后，是后补文本, confidence: 3, evidence_strength: 4, source: 交割残页原件与补造账册格式比对, propagation: private, secrecy: 2}
       - {type: adjust_resource, target_id: player, key: evidence, amount: 1}
       - {type: adjust_resource, target_id: player, key: exposure, amount: 1}
       - {type: adjust_relation, from_id: target, target_id: player, key: trust, amount: 1}
       to_state: format_verified
-      feedback: {messages: [E09的形成时间与格式破绽得到高可信核验；这证明灾后补造，不证明爆炸成因。], journal: [以E01原件核出E09格式破绽，打开正式揭穿与E10串证路线。], presentation: {kind: reveal, intensity: 3, subject: fact}}
+      feedback: {messages: [补造账册的形成时间与格式破绽得到高可信核验；这证明灾后补造，不证明爆炸成因。], journal: [以交割残页原件核出补造账册格式破绽，打开正式揭穿与周良辅自陈串证路线。], presentation: {kind: reveal, intensity: 3, subject: fact}}
 
   - id: deliver_original_to_grey_network
     from_state: original_held
@@ -133,12 +133,12 @@
       term_label: 换取保护
       name: 把原件交给罗三槐
       description: 以原件换取灰网的临时保护和两点盟援，但放弃追查账目来源。
-      command_description: 玩家把E01原件交给罗三槐换取保护
+      command_description: 玩家把交割残页原件交给罗三槐换取保护
       personal_outcome: 盟援+2、暴露-1；罗三槐信任+1，官署失去原件核验机会。
       relevance: 罗三槐最清楚残页会伤到谁，也最有能力让它从公开材料中消失。
       risk: 这会帮助补造账册成为最完整的官方候选版本。
-      expected_outcomes: [获得灰网临时保护, 罗三槐控制E01原件]
-      warnings: [原件交出后，揭穿E09将更困难。]
+      expected_outcomes: [获得灰网临时保护, 罗三槐控制交割残页原件]
+      warnings: [原件交出后，揭穿补造账册将更困难。]
       irreversible: true
       effects:
       - {type: transfer_unique, from_id: player, target_id: target, key: e01_original}
@@ -147,7 +147,7 @@
       - {type: adjust_resource, target_id: player, key: exposure, amount: -1}
       - {type: adjust_relation, from_id: target, target_id: player, key: trust, amount: 1}
       to_state: delivered_grey
-      feedback: {messages: [罗三槐收走原件并给出临时保护，残页从公开核验链中消失。], journal: [以E01原件换取灰网保护；补造账册获得更大空间。], presentation: {kind: danger, intensity: 3, subject: target}}
+      feedback: {messages: [罗三槐收走原件并给出临时保护，残页从公开核验链中消失。], journal: [以交割残页原件换取灰网保护；补造账册获得更大空间。], presentation: {kind: danger, intensity: 3, subject: target}}
 
   - id: publish_e01_copy
     from_state: copy_held
@@ -164,11 +164,11 @@
       term_label: 保留限定
       name: 按证据等级编入抄报
       description: 明写残页只能证明记录异常，不能推出实物流向与爆炸成因。
-      command_description: 玩家要求余墨林按证据等级刊载E01抄件
+      command_description: 玩家要求余墨林按证据等级刊载交割残页抄件
       personal_outcome: 盟援+1、证据+1；传播较慢，但文本更能经受质疑。
       relevance: 抄报能保存官档之外的材料，也会放大排版和措辞造成的影响。
       risk: 来源仍可能被追查，抄件也无法完成纸墨核验。
-      expected_outcomes: [保留E01限定语, 余墨林信任+1]
+      expected_outcomes: [保留交割残页限定语, 余墨林信任+1]
       warnings: [公开传播会增加消息来源暴露。]
       irreversible: true
       effects:
@@ -177,40 +177,40 @@
       - {type: adjust_resource, target_id: player, key: exposure, amount: 1}
       - {type: adjust_relation, from_id: target, target_id: player, key: trust, amount: 1}
       to_state: published_bounded
-      feedback: {messages: [抄报保留了“只能证明记录异常”的限定。], journal: [以分级措辞公开E01抄件。], presentation: {kind: reveal, intensity: 2, subject: fact}}
+      feedback: {messages: [抄报保留了“只能证明记录异常”的限定。], journal: [以分级措辞公开交割残页抄件。], presentation: {kind: reveal, intensity: 2, subject: fact}}
     - id: route:e01:sensational-copy
       term_id: sensational
       term_label: 强化因果
       name: 把残页写成军需侵盗实证
       description: 删除限定语，让抄报直接把账面异常写成官物被侵盗。
-      command_description: 玩家允许余墨林把E01写成军需侵盗实证
+      command_description: 玩家允许余墨林把交割残页写成军需侵盗实证
       personal_outcome: 权势+2、暴露+2；传播更快，但混淆账面异常与实物流向。
       relevance: 强烈结论更容易进入政治讨论，也更容易被一处反证整体击穿。
       risk: 这是对现有证据的过度表述。
       expected_outcomes: [快速扩大政治影响, 提高后续反驳风险]
-      warnings: [这项表述超过E01实际能够证明的范围。]
+      warnings: [这项表述超过交割残页实际能够证明的范围。]
       irreversible: true
       effects:
       - {type: adjust_resource, target_id: player, key: authority, amount: 2}
       - {type: adjust_resource, target_id: player, key: exposure, amount: 2}
       - {type: adjust_relation, from_id: N06, target_id: player, key: suspicion, amount: 2}
       to_state: published_sensational
-      feedback: {messages: [限定语被删去，残页开始被当作军需侵盗的直接证明。], journal: [选择用超过证据边界的措辞扩大E01影响。], presentation: {kind: danger, intensity: 3, subject: fact}}
+      feedback: {messages: [限定语被删去，残页开始被当作军需侵盗的直接证明。], journal: [选择用超过证据边界的措辞扩大交割残页影响。], presentation: {kind: danger, intensity: 3, subject: fact}}
   progress_rules:
   - {id: e01-unclaimed, priority: 100, from_day: 1, until_day: 2, conditions: [{type: missing_flag, scope: actor, key: player_kept_original}, {type: missing_flag, scope: actor, key: player_kept_copy}], route_id: e01, label: 交割残页, status: 原件仍在余墨林手中, next_step: 前往王恭厂外街决定是否接手, window: 第2日前, deadline_day: 2, location_id: L01, personal_return: 取得一条可进入官署、书坊或灰网的关键材料, urgent: true}
   - {id: e01-original-held, priority: 110, conditions: [{type: flag, scope: actor, key: player_kept_original}], route_id: e01, label: 交割残页, status: 你正在保管原件, next_step: 核验后决定交官、交给灰网或继续持有, window: 第10日前价值最高, deadline_day: 10, personal_return: 原件具有最高核验价值，也带来最高暴露, urgent: true}
   consequence_rules:
-  - {id: e01-unclaimed-result, states: [unclaimed], text: 玩家没有接手E01；原件按默认链条落入军需灰网，书坊只留下缺少物证能力的抄件。}
-  - {id: e01-held-result, states: [original_held], text: 玩家保留E01原件直到定稿，材料没有被任何机构正式核验，也使玩家成为唯一公开风险承担者。}
-  - {id: e01-copy-held-result, states: [copy_held], text: 玩家保留E01抄件却没有决定传播方式，原件去向与抄件可信度同时失去控制。}
-  - {id: e01-official-result, states: [delivered_official], text: E01原件进入官署核验链，补造账册更难成为唯一完整版本。}
-  - {id: e01-format-result, states: [format_verified], text: E01原件被用于核出E09的灾后形成痕迹；玩家取得揭穿补造账册所需的高可信格式证据。}
-  - {id: e01-grey-result, states: [delivered_grey], text: 军需灰网控制E01原件，玩家获得保护但削弱了公开核验。}
-  - {id: e01-bounded-result, states: [published_bounded], text: E01抄件保留限定语流传，形成官档之外较可信但来源较弱的版本。}
-  - {id: e01-sensational-result, states: [published_sensational], text: E01被过度表述，政治影响上升，整份文本也更容易被反驳。}
+  - {id: e01-unclaimed-result, states: [unclaimed], text: 玩家没有接手交割残页；原件按默认链条落入军需灰网，书坊只留下缺少物证能力的抄件。}
+  - {id: e01-held-result, states: [original_held], text: 玩家保留交割残页原件直到定稿，材料没有被任何机构正式核验，也使玩家成为唯一公开风险承担者。}
+  - {id: e01-copy-held-result, states: [copy_held], text: 玩家保留交割残页抄件却没有决定传播方式，原件去向与抄件可信度同时失去控制。}
+  - {id: e01-official-result, states: [delivered_official], text: 交割残页原件进入官署核验链，补造账册更难成为唯一完整版本。}
+  - {id: e01-format-result, states: [format_verified], text: 交割残页原件被用于核出补造账册的灾后形成痕迹；玩家取得揭穿补造账册所需的高可信格式证据。}
+  - {id: e01-grey-result, states: [delivered_grey], text: 军需灰网控制交割残页原件，玩家获得保护但削弱了公开核验。}
+  - {id: e01-bounded-result, states: [published_bounded], text: 交割残页抄件保留限定语流传，形成官档之外较可信但来源较弱的版本。}
+  - {id: e01-sensational-result, states: [published_sensational], text: 交割残页被过度表述，政治影响上升，整份文本也更容易被反驳。}
 
 - id: witness_route
-  title: E07幸存者证词
+  title: 刘六安的幸存者证词
   initial_state: unresolved
   states: [unresolved, protected, officialized]
   nodes:
@@ -243,7 +243,7 @@
       - {type: adjust_resource, target_id: player, key: allies, amount: 1}
       - {type: adjust_relation, from_id: N08, target_id: player, key: trust, amount: 1}
       to_state: protected
-      feedback: {messages: [刘六安第一版证词被按时间匿名保存，住处暂未写入公开材料。], journal: [保护E07早期版本，拒绝用公开姓名换取即时权威。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
+      feedback: {messages: [刘六安第一版证词被按时间匿名保存，住处暂未写入公开材料。], journal: [保护刘六安证词早期版本，拒绝用公开姓名换取即时权威。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
     - id: route:e07:official
       term_id: official
       term_label: 立即入档
@@ -262,16 +262,16 @@
       - {type: adjust_resource, target_id: player, key: exposure, amount: 1}
       - {type: adjust_relation, from_id: target, target_id: player, key: suspicion, amount: 1}
       to_state: officialized
-      feedback: {messages: [刘六安进入正式询问流程，他的证词开始被整理成官样文本。], journal: [选择E07立即入档，换取行政效力并承担证词污染风险。], presentation: {kind: danger, intensity: 2, subject: target}}
+      feedback: {messages: [刘六安进入正式询问流程，他的证词开始被整理成官样文本。], journal: [选择刘六安证词立即入档，换取行政效力并承担证词污染风险。], presentation: {kind: danger, intensity: 2, subject: target}}
   progress_rules:
   - {id: witness-window, priority: 105, from_day: 2, until_day: 6, conditions: [{type: missing_flag, key: witness_protected}, {type: missing_flag, key: witness_pressured}], route_id: e07, label: 刘六安证词, status: 第一版口述尚未获得独立保全, next_step: 第6日前前往春和药铺决定匿名保全或立即入档, window: 第2日至第6日, deadline_day: 6, location_id: L02, personal_return: 决定证词版本与证人安全谁优先, urgent: true}
   consequence_rules:
-  - {id: witness-unresolved-result, states: [unresolved], text: 玩家没有介入E07；刘六安在压力下改口，官署只保留更适合失慎归责的版本。}
+  - {id: witness-unresolved-result, states: [unresolved], text: 玩家没有介入刘六安证词；刘六安在压力下改口，官署只保留更适合失慎归责的版本。}
   - {id: witness-protected-result, states: [protected], text: 刘六安第一版证词与后续口供并存，官署无法把改口当作唯一版本。}
   - {id: witness-official-result, states: [officialized], text: 刘六安取得有限官署保护，但整理后的口供在公共叙事中覆盖了早期说法。}
 
 - id: survivor_register
-  title: E08灾民自建名册
+  title: 灾民自建名册
   initial_state: collecting
   states: [collecting, verified, published]
   nodes:
@@ -290,11 +290,11 @@
       term_label: 分级核名
       name: 帮叶春娘分级核实名册
       description: 把姓名分成双重互证、单一证言和待认领三层，先争取部分人进入官册。
-      command_description: 玩家帮助叶春娘分级核验E08
+      command_description: 玩家帮助叶春娘分级核验灾民自建名册
       personal_outcome: 证据+1、盟援+2；获得灾民信任，但占用名册关闭前的行动时间。
       relevance: 民间名册不是完整死亡数字，却能证明官册之外存在具体的人。
       risk: 核名越细，越要谨慎处理住址和证人身份。
-      expected_outcomes: [部分无籍者取得行政承认, E08保留证据等级, 灾民盟援+2]
+      expected_outcomes: [部分无籍者取得行政承认, 灾民自建名册保留证据等级, 灾民盟援+2]
       warnings: [名册工作不会直接解释爆炸成因。]
       irreversible: true
       conditions:
@@ -306,17 +306,17 @@
       - {type: adjust_resource, target_id: player, key: allies, amount: 2}
       - {type: adjust_relation, from_id: target, target_id: player, key: trust, amount: 2}
       to_state: verified
-      feedback: {messages: [名册被分成三层，第一批双重互证姓名可以递交官署。], journal: [帮助E08分级核名，让一部分现实救济先发生。], presentation: {kind: recovery, intensity: 2, subject: target}}
+      feedback: {messages: [名册被分成三层，第一批双重互证姓名可以递交官署。], journal: [帮助灾民自建名册分级核名，让一部分现实救济先发生。], presentation: {kind: recovery, intensity: 2, subject: target}}
     - id: route:e08:verify-protected
       term_id: protected_verification
       term_label: 匿名互证
       name: 用匿名证词网络分级核实名册
       description: 利用已经保全的早期证词，把互证关系编码留档，只向官署递交完成双重互证的姓名。
-      command_description: 玩家用受保护的证词网络分级核验E08
+      command_description: 玩家用受保护的证词网络分级核验灾民自建名册
       personal_outcome: 证据+2、盟援+2；兼顾部分优恤与证人安全，但放弃公开完整互证关系。
       relevance: 先保护证人让名册核验不必以公开住址和互证者姓名为代价。
       risk: 匿名编码降低了外部人员立即复核整份名册的便利。
-      expected_outcomes: [部分无籍者取得行政承认, 互证者身份继续受保护, E08证据等级提高]
+      expected_outcomes: [部分无籍者取得行政承认, 互证者身份继续受保护, 灾民自建名册证据等级提高]
       warnings: [匿名互证仍需保留一份可由可信第三方复核的对应表。]
       irreversible: true
       conditions:
@@ -329,13 +329,13 @@
       - {type: adjust_resource, target_id: player, key: allies, amount: 2}
       - {type: adjust_relation, from_id: target, target_id: player, key: trust, amount: 2}
       to_state: verified
-      feedback: {messages: [受保护的证词网络帮助E08完成匿名互证，部分姓名进入官册而互证者没有随之公开。], journal: [先保护证人，再以匿名编码完成名册核验。], presentation: {kind: recovery, intensity: 3, subject: target}}
+      feedback: {messages: [受保护的证词网络帮助灾民自建名册完成匿名互证，部分姓名进入官册而互证者没有随之公开。], journal: [先保护证人，再以匿名编码完成名册核验。], presentation: {kind: recovery, intensity: 3, subject: target}}
     - id: route:e08:publish
       term_id: publish_register
       term_label: 整体刊出
       name: 把完整名册交给书坊
       description: 不等待官署逐一核籍，先把所有姓名与失踪记录交给余墨林保存。
-      command_description: 玩家推动E08完整进入书坊传播
+      command_description: 玩家推动灾民自建名册完整进入书坊传播
       personal_outcome: 权势+1、暴露+2；姓名更难消失，但住址与互证关系会被追查。
       relevance: 民间传播擅长保存记忆，不等于能够立即改变行政分配。
       risk: 未匿名的住址和证人可能随文本一起暴露。
@@ -350,13 +350,13 @@
       - {type: adjust_resource, target_id: player, key: authority, amount: 1}
       - {type: adjust_resource, target_id: player, key: exposure, amount: 2}
       to_state: published
-      feedback: {messages: [E08完整副本进入书坊网络，姓名得到保存，住址与互证关系也进入了追查视野。], journal: [未经匿名处理公开E08；保存记忆并暴露部分来源。], presentation: {kind: danger, intensity: 3, subject: target}}
+      feedback: {messages: [灾民自建名册完整副本进入书坊网络，姓名得到保存，住址与互证关系也进入了追查视野。], journal: [未经匿名处理公开灾民自建名册；保存记忆并暴露部分来源。], presentation: {kind: danger, intensity: 3, subject: target}}
     - id: route:e08:publish-redacted
       term_id: redacted_register
       term_label: 匿名刊出
       name: 刊出隐去来源的灾民名册
       description: 借助已经保全的证词版本，只刊姓名、状态和证据等级，隐去住址与互证者。
-      command_description: 玩家推动E08以匿名分级版本进入书坊传播
+      command_description: 玩家推动灾民自建名册以匿名分级版本进入书坊传播
       personal_outcome: 权势+1、盟援+1；保存姓名并降低来源暴露，但公开文本无法独立复核全部关系。
       relevance: 证词保护使“保存姓名”和“公开来源”不再是同一件事。
       risk: 匿名版可能被官署批评为缺少可立即查验的对应关系。
@@ -371,14 +371,14 @@
       - {type: adjust_resource, target_id: player, key: authority, amount: 1}
       - {type: adjust_resource, target_id: player, key: allies, amount: 1}
       to_state: published
-      feedback: {messages: [匿名分级名册进入书坊；姓名被保存，住址和互证者仍留在受保护对应表中。], journal: [利用证词保护网络公开E08匿名版。], presentation: {kind: reveal, intensity: 2, subject: target}}
+      feedback: {messages: [匿名分级名册进入书坊；姓名被保存，住址和互证者仍留在受保护对应表中。], journal: [利用证词保护网络公开灾民自建名册匿名版。], presentation: {kind: reveal, intensity: 2, subject: target}}
   progress_rules:
   - {id: register-window, priority: 95, from_day: 2, until_day: 8, conditions: [{type: missing_flag, key: register_verified}, {type: missing_flag, key: register_published}], route_id: e08, label: 灾民自建名册, status: 叶春娘仍在整理官册外姓名, next_step: 第8日前前往春和药铺决定分级核名或民间刊存, window: 第2日至第8日, deadline_day: 8, location_id: L02, personal_return: 影响无籍者优恤与姓名保存方式, urgent: true}
   consequence_rules:
-  - {id: register-unresolved-result, states: [collecting], text: 玩家没有帮助E08进入行政或传播渠道；官册封存后，大量官册外姓名只留在叶春娘手中的民间记录。}
-  - {id: register-verified-result, states: [verified], text: 一部分无籍者凭分级互证进入官册，E08同时保留未能核实者。}
-  - {id: register-published-exposed-result, states: [published], conditions: [{type: flag, key: witness_identity_exposed}], text: E08完整保存了官册外姓名，但公开住址和互证关系使刘六安、叶春娘及消息来源受到追查，多数人也未赶上本轮优恤。}
-  - {id: register-published-protected-result, states: [published], conditions: [{type: flag, key: protected_register_network}], text: E08匿名版保存了官册外姓名与证据等级，未公开住址和互证者；完整对应表仍需被安全保管。}
+  - {id: register-unresolved-result, states: [collecting], text: 玩家没有帮助灾民自建名册进入行政或传播渠道；官册封存后，大量官册外姓名只留在叶春娘手中的民间记录。}
+  - {id: register-verified-result, states: [verified], text: 一部分无籍者凭分级互证进入官册，灾民自建名册同时保留未能核实者。}
+  - {id: register-published-exposed-result, states: [published], conditions: [{type: flag, key: witness_identity_exposed}], text: 灾民自建名册完整保存了官册外姓名，但公开住址和互证关系使刘六安、叶春娘及消息来源受到追查，多数人也未赶上本轮优恤。}
+  - {id: register-published-protected-result, states: [published], conditions: [{type: flag, key: protected_register_network}], text: 灾民自建名册匿名版保存了官册外姓名与证据等级，未公开住址和互证者；完整对应表仍需被安全保管。}
 
 - id: final_caveat
   title: 定稿中的证据边界
@@ -425,13 +425,13 @@
     - id: route:final:expose-forgery
       term_id: expose_forgery
       term_label: 揭穿补造
-      name: 提交E09格式核验结果
+      name: 提交补造账册格式核验结果
       description: 指出纸墨、印记和流转时间破绽，证明有人灾后补造账册影响会勘。
-      command_description: 玩家向裴慎行提交E09补造证据
+      command_description: 玩家向裴慎行提交账册灾后补造的格式证据
       personal_outcome: 权势+1、证据+2、暴露+2；罗三槐敌意上升。
       relevance: 灾后造假能够证明有人影响会勘，但仍不能证明其制造爆炸。
       risk: 揭穿越晚，官署信誉和玩家安全代价越高。
-      expected_outcomes: [E09退出可信材料核心, 会勘保留账册矛盾, 罗三槐敌意+2]
+      expected_outcomes: [补造账册退出可信材料核心, 会勘保留账册矛盾, 罗三槐敌意+2]
       warnings: [不要把灾后造假直接写成灾前纵火。]
       irreversible: true
       effects:
@@ -441,14 +441,14 @@
       - {type: adjust_resource, target_id: player, key: exposure, amount: 2}
       - {type: adjust_relation, from_id: N09, target_id: player, key: hatred, amount: 2}
       to_state: forgery_exposed
-      feedback: {messages: [E09的纸墨与印记破绽被正式记录；补造事实成立，爆炸成因仍未因此确定。], journal: [揭穿灾后补造账册，同时保留对爆炸因果的限定。], presentation: {kind: reveal, intensity: 3, subject: fact}}
+      feedback: {messages: [补造账册的纸墨与印记破绽被正式记录；补造事实成立，爆炸成因仍未因此确定。], journal: [揭穿灾后补造账册，同时保留对爆炸因果的限定。], presentation: {kind: reveal, intensity: 3, subject: fact}}
   consequence_rules:
   - {id: final-open-result, states: [open], text: 玩家没有把证据边界送入最终文本；会勘采用了更便于结案的确定措辞。}
   - {id: caveat-result, states: [caveat_lodged], text: 最终材料明确区分管理积弊与爆炸成因，未知没有被伪装成结论。}
-  - {id: forgery-result, states: [forgery_exposed], text: E09被证明为灾后补造；这改变会勘可信度，却没有被误写成纵火证据。}
+  - {id: forgery-result, states: [forgery_exposed], text: 补造账册被证明为灾后补造；这改变会勘可信度，却没有被误写成纵火证据。}
 
 - id: zhou_statement
-  title: E10周良辅自陈
+  title: 周良辅自陈
   initial_state: unreached
   states: [unreached, original_protected, copy_preserved]
   nodes:
@@ -466,12 +466,12 @@
       term_id: correlate_original
       term_label: 串证护送
       name: 当面串证，由沈惟实递交核验
-      description: 用已经核出的E09格式破绽逐项询问周良辅，在互不提示的情况下记录经手细节；沈惟实携核验结果赴公署，你接走证人与原件。
-      command_description: 玩家完成E09与E10串证，委托沈惟实递交核验并护送周良辅
+      description: 用已经核出的补造账册格式破绽逐项询问周良辅，在互不提示的情况下记录经手细节；沈惟实携核验结果赴公署，你接走证人与原件。
+      command_description: 玩家完成补造账册与周良辅自陈串证，委托沈惟实递交核验并护送周良辅
       personal_outcome: 证据+3、盟援+1、暴露+3；形成两条独立材料的串证，同时承担证人保护与来源公开风险。
       relevance: 串证能够证明长期改账和灾后补造相互衔接，仍然不能证明这些行为造成爆炸。
       risk: 这是对灰网威胁最大的证据组合；周良辅本人仍需为参与假账负责。
-      expected_outcomes: [取得E10原件, E01格式核验与E10形成独立串证, 沈惟实递交补造证据, 阻止灰网截回周良辅]
+      expected_outcomes: [取得周良辅自陈原件, 账册格式比对与周良辅自陈形成独立串证, 沈惟实递交补造证据, 阻止灰网截回周良辅]
       warnings: [串证结论仅限账册操纵，不得外推为爆炸原因。]
       irreversible: true
       conditions:
@@ -483,24 +483,24 @@
       - {type: set_flag, scope: world, target_id: world, key: forged_ledger_exposed, value: "true"}
       - {type: set_flag, target_id: player, key: player_protected_zhou, value: "true"}
       - {type: set_story_state, key: final_caveat, value: forgery_exposed}
-      - {type: set_belief, target_id: player, fact_id: F10, claim: 周良辅的独立经手细节与E09格式破绽相互吻合，证明长期改账与灾后补造, confidence: 3, evidence_strength: 4, source: E09格式问题与E10当面串证, propagation: private, secrecy: 3}
+      - {type: set_belief, target_id: player, fact_id: F10, claim: 周良辅的独立经手细节与补造账册格式破绽相互吻合，证明长期改账与灾后补造, confidence: 3, evidence_strength: 4, source: 补造账册格式问题与周良辅自陈当面串证, propagation: private, secrecy: 3}
       - {type: adjust_resource, target_id: player, key: evidence, amount: 3}
       - {type: adjust_resource, target_id: player, key: allies, amount: 1}
       - {type: adjust_resource, target_id: player, key: exposure, amount: 3}
       - {type: adjust_relation, from_id: target, target_id: player, key: trust, amount: 2}
       - {type: adjust_relation, from_id: N09, target_id: player, key: hatred, amount: 2}
       to_state: original_protected
-      feedback: {messages: [周良辅说出的经手细节与E09格式破绽相互吻合；沈惟实携结果赴公署，你接走证人与原件。], journal: [完成E01、E09与E10串证，分工递交核验并护送周良辅。], presentation: {kind: danger, intensity: 3, subject: target}}
+      feedback: {messages: [周良辅说出的经手细节与补造账册格式破绽相互吻合；沈惟实携结果赴公署，你接走证人与原件。], journal: [完成交割残页、补造账册与周良辅自陈串证，分工递交核验并护送周良辅。], presentation: {kind: danger, intensity: 3, subject: target}}
     - id: route:e10:protect-original
       term_id: protect_original
       term_label: 带走原件
-      name: 接走周良辅和E10原件
+      name: 接走周良辅和自陈原件
       description: 在灰网追来前接走自陈原件，并承担保护一个参与过假账的证人所带来的风险。
-      command_description: 玩家接走周良辅与E10原件
-      personal_outcome: 证据+2、盟援+1、暴露+2；E10脱离灰网，周良辅获得暂时保护。
-      relevance: E10能证明持续改账和周良辅的参与，却不能解释爆炸如何发生。
+      command_description: 玩家接走周良辅与他的自陈原件
+      personal_outcome: 证据+2、盟援+1、暴露+2；自陈原件脱离灰网，周良辅获得暂时保护。
+      relevance: 这份自陈能证明持续改账和周良辅的参与，却不能解释爆炸如何发生。
       risk: 周良辅不是无辜者；保护证人不等于替他免除责任。
-      expected_outcomes: [取得E10原件, 阻止灰网截回周良辅, 打开持续改账的互证路径]
+      expected_outcomes: [取得周良辅自陈原件, 阻止灰网截回周良辅, 打开持续改账的互证路径]
       warnings: [你将同时面对会勘官署与军需灰网的来源追查。]
       irreversible: true
       conditions:
@@ -514,17 +514,17 @@
       - {type: adjust_resource, target_id: player, key: exposure, amount: 2}
       - {type: adjust_relation, from_id: target, target_id: player, key: trust, amount: 2}
       to_state: original_protected
-      feedback: {messages: [你接走E10原件，也接下了保护周良辅和追究其责任的双重负担。], journal: [E10原件脱离灰网；它证明持续改账，不证明爆炸成因。], presentation: {kind: danger, intensity: 3, subject: target}}
+      feedback: {messages: [你接走自陈原件，也接下了保护周良辅和追究其责任的双重负担。], journal: [周良辅的自陈原件脱离灰网；它证明持续改账，不证明爆炸成因。], presentation: {kind: danger, intensity: 3, subject: target}}
     - id: route:e10:sealed-copy
       term_id: sealed_copy
       term_label: 封存抄件
       name: 留下密封抄件，不带走周良辅
       description: 当面抄录自陈并由周良辅留下只有经手人才知道的错误，原件仍由他保管。
-      command_description: 玩家封存E10抄件但不接走周良辅
-      personal_outcome: 获得E10封存抄件、证据+1；灰网仍可能截回原件和周良辅。
+      command_description: 玩家封存周良辅自陈抄件但不接走周良辅
+      personal_outcome: 获得周良辅自陈封存抄件、证据+1；灰网仍可能截回原件和周良辅。
       relevance: 独立抄件能防止内容完全消失，却不能证明原件最终保管链。
       risk: 放弃护送意味着周良辅仍会被追上。
-      expected_outcomes: [保留一份E10独立抄件, 原件仍处于追索风险]
+      expected_outcomes: [保留一份周良辅自陈独立抄件, 原件仍处于追索风险]
       warnings: [抄件不能替代原件完成纸墨与形成时间核验。]
       irreversible: true
       effects:
@@ -532,14 +532,14 @@
       - {type: set_flag, scope: world, target_id: world, key: e10_copy_preserved, value: "true"}
       - {type: adjust_resource, target_id: player, key: evidence, amount: 1}
       to_state: copy_preserved
-      feedback: {messages: [E10形成独立封存抄件；原件和周良辅仍留在追索链上。], journal: [保全E10内容但放弃护送周良辅。], presentation: {kind: acquire, intensity: 2, subject: player}}
+      feedback: {messages: [周良辅自陈形成独立封存抄件；原件和周良辅仍留在追索链上。], journal: [保全周良辅自陈内容但放弃护送周良辅。], presentation: {kind: acquire, intensity: 2, subject: player}}
   progress_rules:
   - {id: e10-window, priority: 130, from_day: 12, until_day: 13, conditions: [{type: missing_flag, key: zhou_protected}, {type: missing_flag, key: zhou_intercepted}], route_id: e10, label: 周良辅自陈, status: 周良辅正在怀朴书斋等待接应, next_step: 第13日前前往书斋决定护送或只留抄件, window: 仅剩两日, deadline_day: 13, location_id: L06, personal_return: 取得持续改账的内部证词, urgent: true}
   consequence_rules:
-  - {id: e10-unreached-result, states: [unreached], text: 玩家没有赶到书斋；罗三槐截回E10原件，周良辅失去独立申辩渠道。}
-  - {id: e10-protected-result, states: [original_protected], conditions: [{type: missing_flag, key: ledger_chain_correlated}], text: E10原件与周良辅脱离灰网；持续改账可以被追查，但周本人仍需为参与行为承担责任。}
-  - {id: e10-correlated-result, states: [original_protected], conditions: [{type: flag, key: ledger_chain_correlated}], text: E01、E09与E10形成独立串证，确认长期改账和灾后补造；周良辅获得保护，同时仍需为参与行为承担责任。}
-  - {id: e10-copy-result, states: [copy_preserved], text: E10留下独立抄件后原件仍被灰网截回；内容没有完全消失，来源证明却更加困难。}
+  - {id: e10-unreached-result, states: [unreached], text: 玩家没有赶到书斋；罗三槐截回周良辅自陈原件，周良辅失去独立申辩渠道。}
+  - {id: e10-protected-result, states: [original_protected], conditions: [{type: missing_flag, key: ledger_chain_correlated}], text: 周良辅和他的自陈原件脱离灰网；持续改账可以被追查，但周本人仍需为参与行为承担责任。}
+  - {id: e10-correlated-result, states: [original_protected], conditions: [{type: flag, key: ledger_chain_correlated}], text: 交割残页、补造账册与周良辅自陈形成独立串证，确认长期改账和灾后补造；周良辅获得保护，同时仍需为参与行为承担责任。}
+  - {id: e10-copy-result, states: [copy_preserved], text: 周良辅自陈留下独立抄件后原件仍被灰网截回；内容没有完全消失，来源证明却更加困难。}
 
 - id: final_record
   title: 编成你的邸抄

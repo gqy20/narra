@@ -15,8 +15,8 @@
 - {id: protected_register_network, scope: world, description: 名册公开时隐去了证人与互证者身份, public_label: 灾民名册采用匿名互证方式公开}
 - {id: witness_identity_exposed, scope: world, description: 未经匿名处理的名册暴露了证人与互证者身份, public_label: 名册来源正在受到追查}
 - {id: forged_ledger_exposed, scope: world, description: 补造账册的纸墨或印记破绽被揭出, public_label: 补造账册受到公开质疑}
-- {id: e09_format_verified, scope: world, description: E01原件已被用于核验E09的纸墨、印记和流转时间}
-- {id: ledger_chain_correlated, scope: world, description: E01格式核验与E10经手自陈形成相互独立的账册串证, public_label: 两条独立材料共同指向长期改账}
+- {id: e09_format_verified, scope: world, description: 交割残页原件已被用于核验补造账册的纸墨、印记和流转时间}
+- {id: ledger_chain_correlated, scope: world, description: 交割残页与补造账册的格式比对结果和周良辅经手自陈形成相互独立的账册串证, public_label: 两条独立材料共同指向长期改账}
 - {id: systemic_caveat, scope: world, description: 会勘文本保留制度性疑点}
 - {id: zhou_intercepted, scope: world, description: 周良辅出逃后被军需灰网截住}
 - {id: zhou_protected, scope: world, description: 周良辅或其自陈已脱离灰网控制}
@@ -34,7 +34,7 @@
 - {id: player_kept_copy, scope: actor, description: 玩家只保留交割残页抄件}
 - {id: player_verified_register, scope: actor, description: 玩家帮助灾民名册完成分级核验}
 - {id: player_protected_witness, scope: actor, description: 玩家承担了保护刘六安证词的责任}
-- {id: player_protected_zhou, scope: actor, description: 玩家承担了保护周良辅与E10的责任}
+- {id: player_protected_zhou, scope: actor, description: 玩家承担了保护周良辅与其自陈原件的责任}
 - {id: player_bounded_record, scope: actor, description: 玩家完成保留证据等级的公开记录}
 - {id: player_accusatory_record, scope: actor, description: 玩家完成强化归责的公开记录}
 - {id: player_private_record, scope: actor, description: 玩家选择只保存可核材料而不立即公开}

@@ -400,6 +400,21 @@ func _render_ending(ending: Dictionary) -> void:
 	return_button.custom_minimum_size = Vector2(132, 62)
 	return_button.add_theme_font_size_override("font_size", 16)
 	ending_actions.add_child(return_button)
+	host.audio_director.stop_music(2.4)
+	if not host.ending_cinematic_presented:
+		host.ending_cinematic_presented = true
+		var ending_video: VideoStream = host.presentation_registry.event_video(ending_event_key) if ending_event_key != "" else null
+		if host.cinematic_director.play(ending_video, ending_event_key, host.presentation_controller._show_ending_after_cinematic):
+			host.ending_layer.hide()
+			host.game_screen_controller._sync_action_canvas_visibility()
+			return
+	if host.cinematic_director.active and host.cinematic_director.current_event_key == ending_event_key:
+		host.ending_layer.hide()
+		return
+	host.presentation_controller._show_ending_after_cinematic(false)
+
+
+func _show_ending_after_cinematic(_skipped: bool) -> void:
 	host.ending_layer.show()
 	host.game_screen_controller._sync_action_canvas_visibility()
 

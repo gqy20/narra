@@ -56,6 +56,18 @@
 - `ui/textures/ink-vignette.png`：水墨暗角底纹
 - `ui/brand/title-seal.png`：无文字残损朱砂印记
 
+## 剧情视频（2）
+
+- `videos/events/opening-blast.ogv`：4 秒灾变片头，末尾保留纯黑转场；同目录 MP4 用于审阅和分发。
+- `videos/events/final-verdict.ogv`：10 秒结案片尾，末尾保留纯黑承接结局文字；同目录 MP4 用于审阅和分发。
+
+两条视频均为 1920×1080、24 fps。Godot 运行时优先使用 OGV，不直接加载 MP4 审阅副本。
+
+## 背景音乐（1）
+
+- `audio/music/tianqi-investigation-theme.mp3`：MMX Music 生成的 2 分 42 秒原始母版。
+- `audio/music/tianqi-investigation-theme-loop.ogg`：约 2 分 36 秒、约 -23 LUFS 的游戏循环版，首尾采用 6 秒交叉衔接。
+
 ## 使用约束
 
 - 人物正式图为透明背景 PNG；同一人物状态图应按相同基准框对齐。
