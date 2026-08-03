@@ -86,7 +86,13 @@ func set_motion_enabled(value: bool) -> void:
 
 
 func has_formal_assets() -> bool:
-	return presentation_registry.terrain_texture() != null and presentation_registry.location_count() == 5
+	if presentation_registry.terrain_texture() == null:
+		return false
+	for location in locations:
+		var scene_key := str(location.get("scene_key", ""))
+		if scene_key != "" and not presentation_registry.has_location(scene_key):
+			return false
+	return true
 
 
 func has_actor_plan_presentation() -> bool:

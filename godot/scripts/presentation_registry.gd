@@ -1,25 +1,12 @@
 extends RefCounted
 
-const MANIFEST_PATH := "res://data/presentation.json"
-
 var manifest: Dictionary = {}
 var resource_cache: Dictionary = {}
 
 
-func _init() -> void:
-	_load_manifest()
-
-
-func _load_manifest() -> void:
-	var file := FileAccess.open(MANIFEST_PATH, FileAccess.READ)
-	if file == null:
-		push_error("Presentation manifest is missing: %s" % MANIFEST_PATH)
-		return
-	var parsed = JSON.parse_string(file.get_as_text())
-	if not parsed is Dictionary or int(parsed.get("schema_version", 0)) != 1:
-		push_error("Presentation manifest has an unsupported schema")
-		return
-	manifest = parsed
+func configure(value: Dictionary) -> void:
+	manifest = value.duplicate(true)
+	resource_cache.clear()
 
 
 func location_profile(scene_key: String) -> LocationVisualProfile:

@@ -79,6 +79,8 @@ const COLORS := {
 
 
 var current_view: Dictionary = {}
+var scenario_info: Dictionary = {}
+var scenario_presentation: Dictionary = {}
 var dialogue_client
 var api_response_adapter = APIResponseAdapterScript.new()
 var local_server_process
@@ -159,6 +161,12 @@ var client_log_failure_reported := false
 
 var start_layer: Control
 var game_layer: Control
+var header_brand_label: Label
+var header_world_title_label: Label
+var start_eyebrow_label: Label
+var start_title_label: Label
+var start_intro_label: Label
+var start_begin_button: Button
 var name_input: LineEdit
 var connection_label: Label
 var retry_button: Button
@@ -722,18 +730,18 @@ func _build_header() -> void:
 	row.add_theme_constant_override("separation", 14)
 	header.add_child(row)
 
-	var brand := Label.new()
-	brand.text = "凡途"
-	brand.add_theme_font_override("font", display_font)
-	brand.add_theme_font_size_override("font_size", 24)
-	brand.add_theme_color_override("font_color", COLORS.accent)
-	row.add_child(brand)
-	var world_title := Label.new()
-	world_title.text = "·  黑风谷山川"
-	world_title.add_theme_font_override("font", display_font)
-	world_title.add_theme_font_size_override("font_size", 16)
-	world_title.add_theme_color_override("font_color", Color(COLORS.accent, 0.78))
-	row.add_child(world_title)
+	header_brand_label = Label.new()
+	header_brand_label.text = "游戏"
+	header_brand_label.add_theme_font_override("font", display_font)
+	header_brand_label.add_theme_font_size_override("font_size", 24)
+	header_brand_label.add_theme_color_override("font_color", COLORS.accent)
+	row.add_child(header_brand_label)
+	header_world_title_label = Label.new()
+	header_world_title_label.text = ""
+	header_world_title_label.add_theme_font_override("font", display_font)
+	header_world_title_label.add_theme_font_size_override("font_size", 16)
+	header_world_title_label.add_theme_color_override("font_color", Color(COLORS.accent, 0.78))
+	row.add_child(header_world_title_label)
 	var header_spacer := Control.new()
 	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(header_spacer)
@@ -954,6 +962,7 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	stage_canvas.clip_contents = true
 	location_panel.add_child(stage_canvas)
 	location_stage = LocationStageScript.new()
+	location_stage.registry = presentation_registry
 	location_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	stage_canvas.add_child(location_stage)
 	actor_portrait_frame = PanelContainer.new()
@@ -1042,27 +1051,28 @@ func _build_start_layer() -> void:
 	content.add_theme_constant_override("separation", 18)
 	card.add_child(content)
 
-	var eyebrow := Label.new()
-	eyebrow.text = "黑风谷异动　·　三十日局势"
-	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	eyebrow.add_theme_color_override("font_color", COLORS.accent)
-	eyebrow.add_theme_font_override("font", medium_font)
-	eyebrow.add_theme_font_size_override("font_size", TYPE_SCALE.meta)
-	content.add_child(eyebrow)
-	var title := Label.new()
-	title.text = "凡途"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	title.add_theme_font_override("font", display_font)
-	title.add_theme_font_size_override("font_size", 62)
-	title.add_theme_color_override("font_color", COLORS.ink)
-	content.add_child(title)
-	var subtitle := Label.new()
-	subtitle.text = "三十日内，青髓芝的归属将被决定。\n你未必亲手夺取它，也能让一条消息改写别人的去向。"
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	subtitle.add_theme_color_override("font_color", COLORS.muted)
-	subtitle.add_theme_font_size_override("font_size", TYPE_SCALE.body)
-	subtitle.add_theme_constant_override("line_spacing", 7)
-	content.add_child(subtitle)
+	start_eyebrow_label = Label.new()
+	start_eyebrow_label.text = "正在读取场景"
+	start_eyebrow_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	start_eyebrow_label.add_theme_color_override("font_color", COLORS.accent)
+	start_eyebrow_label.add_theme_font_override("font", medium_font)
+	start_eyebrow_label.add_theme_font_size_override("font_size", TYPE_SCALE.meta)
+	content.add_child(start_eyebrow_label)
+	start_title_label = Label.new()
+	start_title_label.text = "游戏"
+	start_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	start_title_label.add_theme_font_override("font", display_font)
+	start_title_label.add_theme_font_size_override("font_size", 62)
+	start_title_label.add_theme_color_override("font_color", COLORS.ink)
+	content.add_child(start_title_label)
+	start_intro_label = Label.new()
+	start_intro_label.text = "等待本地服务载入场景内容。"
+	start_intro_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	start_intro_label.add_theme_color_override("font_color", COLORS.muted)
+	start_intro_label.add_theme_font_size_override("font_size", TYPE_SCALE.body)
+	start_intro_label.add_theme_constant_override("line_spacing", 7)
+	start_intro_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(start_intro_label)
 	var divider := HSeparator.new()
 	divider.modulate = Color(COLORS.accent, 0.48)
 	content.add_child(divider)
@@ -1082,9 +1092,9 @@ func _build_start_layer() -> void:
 	name_input.add_theme_stylebox_override("focus", name_focus_style)
 	name_input.add_theme_constant_override("minimum_character_width", 8)
 	content.add_child(name_input)
-	var begin_button := _ornate_button("从白石坊市入局", _new_game)
-	begin_button.custom_minimum_size.y = 66
-	content.add_child(begin_button)
+	start_begin_button = _ornate_button("开始新故事", _new_game)
+	start_begin_button.custom_minimum_size.y = 66
+	content.add_child(start_begin_button)
 	var continue_button := _utility_button("翻开旧卷", _load_game)
 	continue_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	content.add_child(continue_button)
@@ -2132,6 +2142,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		connection_label.add_theme_color_override("font_color", COLORS.success)
 		retry_button.hide()
 	if operation == "health":
+		_apply_scenario_info(parsed.get("scenario", {}))
 		var capabilities: Dictionary = parsed.get("capabilities", {})
 		ai_server_enabled = bool(capabilities.get("ai_dialogue", false))
 		var server_ai_settings: Dictionary = parsed.get("ai_settings", {})
@@ -2158,6 +2169,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 	if parsed.has("view") and operation not in ["autosave", "save"]:
 		var previous_view := view_before_action if operation == "action" else current_view
 		current_view = view_model.accept(parsed["view"], operation == "action")
+		_apply_scenario_presentation(current_view.get("presentation", {}))
 		if operation == "action":
 			_apply_feedback_actor_state(current_view.get("last_turn", {}))
 		_show_game()
@@ -2178,6 +2190,36 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		_render_actions(available_actions_cache)
 	else:
 		footer_label.text = ""
+
+
+func _apply_scenario_info(value: Variant) -> void:
+	if not value is Dictionary:
+		return
+	scenario_info = value.duplicate(true)
+	_apply_scenario_presentation(scenario_info.get("presentation", {}))
+	var title := str(scenario_info.get("title", ""))
+	if start_eyebrow_label:
+		start_eyebrow_label.text = title if title != "" else str(scenario_info.get("id", "场景内容"))
+
+
+func _apply_scenario_presentation(value: Variant) -> void:
+	if not value is Dictionary or value.is_empty():
+		return
+	scenario_presentation = value.duplicate(true)
+	presentation_registry.configure(scenario_presentation)
+	if location_stage:
+		location_stage.registry = presentation_registry
+	if header_brand_label:
+		header_brand_label.text = str(scenario_presentation.get("brand", "游戏"))
+	if header_world_title_label:
+		var world_title := str(scenario_presentation.get("world_title", ""))
+		header_world_title_label.text = ("·  " + world_title) if world_title != "" else ""
+	if start_title_label:
+		start_title_label.text = str(scenario_presentation.get("brand", "游戏"))
+	if start_intro_label:
+		start_intro_label.text = str(scenario_presentation.get("intro", scenario_presentation.get("objective", "开始一段新的故事。")))
+	if start_begin_button:
+		start_begin_button.text = str(scenario_presentation.get("start_action", "开始新故事"))
 
 
 func _show_footer_message(message: String) -> void:
@@ -2675,7 +2717,8 @@ func _on_map_location_selected(location_id: String) -> void:
 
 func _render_map_detail(world_map: Dictionary, current_location: Dictionary, actions: Array) -> void:
 	_clear(map_detail_box)
-	var eyebrow := _text(map_detail_box, "黑风谷 · 立体路线沙盘", true, 12)
+	var map_title := str(scenario_presentation.get("world_title", current_view.get("title", "世界地图")))
+	var eyebrow := _text(map_detail_box, "%s · 立体路线沙盘" % map_title, true, 12)
 	eyebrow.add_theme_color_override("font_color", COLORS.accent)
 	var guidance := _text(map_detail_box, "点击地点或发光路径，查看目的地、耗时与阻碍。", true, 12)
 	guidance.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2693,13 +2736,8 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 	state_line.add_theme_color_override("font_color", COLORS.success if bool(selected.get("safe", false)) else COLORS.danger)
 	_text(map_detail_box, str(selected.get("description", "尚无公开地点资料")), true, 13)
 	if bool(selected.get("contest", false)):
-		var contest_line := _text(map_detail_box, "核心目标 · 青髓芝争夺将在这里落定", false, 13)
+		var contest_line := _text(map_detail_box, "核心目标 · %s" % scenario_presentation.get("objective", "目标将在这里落定"), false, 13)
 		contest_line.add_theme_color_override("font_color", COLORS.accent)
-	match str(selected.get("scene_key", "")):
-		"valley_edge":
-			_text(map_detail_box, "推进阶段 · 第一段：谷口判断", true, 13)
-		"inner_valley":
-			_text(map_detail_box, "推进阶段 · 第二段：核心争夺", true, 13)
 	_render_map_actor_plans(map_detail_box, world_map.get("actors", []), selected_map_location_id)
 	if bool(selected.get("current", false)):
 		_render_route_progress(map_detail_box, current_view.get("route_progress", null), true)
@@ -2946,22 +2984,29 @@ func _render_player(player: Dictionary) -> void:
 	var items: Array = player.get("items", [])
 	player_summary_label.text = "%s · %s" % [player.get("name", "旅人"), state]
 	_clear(player_resources_box)
-	_add_status_chip(player_resources_box, "战力 %s" % _compact_number(resources.get("combat", 0)), COLORS.ink)
-	_add_status_chip(player_resources_box, "灵石 %s" % _compact_number(resources.get("spirit_stones", 0)), COLORS.accent)
-	var support := float(resources.get("support", 0))
-	if support > 0.0:
-		_add_status_chip(player_resources_box, "助力 %s" % _compact_number(support), COLORS.success)
+	var rendered_resources := {}
+	for definition in scenario_presentation.get("resources", []):
+		if not definition is Dictionary:
+			continue
+		var resource_id := str(definition.get("id", ""))
+		if resource_id == "" or not resources.has(resource_id):
+			continue
+		rendered_resources[resource_id] = true
+		var amount := float(resources.get(resource_id, 0))
+		if bool(definition.get("hide_zero", false)) and amount == 0.0:
+			continue
+		_add_status_chip(player_resources_box, "%s %s" % [definition.get("label", resource_id), _compact_number(amount)], _resource_emphasis_color(str(definition.get("emphasis", "normal"))))
+	var extra_resource_ids: Array = resources.keys()
+	extra_resource_ids.sort()
+	for resource_id in extra_resource_ids:
+		if not rendered_resources.has(resource_id):
+			_add_status_chip(player_resources_box, "%s %s" % [_resource_label(str(resource_id)), _compact_number(resources[resource_id])], COLORS.ink)
 	var injury := int(player.get("injury", 0))
 	if injury > 0:
 		_add_status_chip(player_resources_box, "伤势 %d" % injury, COLORS.danger)
 	for index in range(mini(items.size(), 2)):
 		var item: Dictionary = items[index]
 		var item_name := str(item.get("name", "物品"))
-		match str(item.get("id", "")):
-			"healing_pill":
-				item_name += " · 治伤"
-			"antidote":
-				item_name += " · 入谷"
 		_add_status_chip(player_resources_box, "%s ×%d" % [item_name, int(item.get("amount", 1))], COLORS.muted)
 	if items.size() > 2:
 		_add_status_chip(player_resources_box, "行囊 %d 种" % items.size(), COLORS.muted)
@@ -2972,6 +3017,22 @@ func _compact_number(value: Variant) -> String:
 	if is_equal_approx(numeric, round(numeric)):
 		return str(int(round(numeric)))
 	return "%.1f" % numeric
+
+
+func _resource_label(resource_id: String) -> String:
+	for definition in scenario_presentation.get("resources", []):
+		if definition is Dictionary and str(definition.get("id", "")) == resource_id:
+			return str(definition.get("label", resource_id))
+	return resource_id
+
+
+func _resource_emphasis_color(emphasis: String) -> Color:
+	match emphasis:
+		"accent":
+			return COLORS.accent
+		"success":
+			return COLORS.success
+	return COLORS.ink
 
 
 func _add_status_chip(parent: Container, value: String, color: Color) -> void:
@@ -3217,14 +3278,11 @@ func _render_travel_readiness(travel, preparation = {}, route_progress = null) -
 			var check_label := str(check.get("label", "路线条件"))
 			var missing_line := _text(travel_box, _travel_blocker_text(check_label), false, 15)
 			missing_line.add_theme_color_override("font_color", COLORS.danger)
-			if check_label.contains("解瘴丹"):
-				var resolution_action := _travel_resolution_action(available_actions_cache)
-				if not resolution_action.is_empty():
-					var resolution_button := _action_button(_travel_resolution_label(resolution_action), _consider_action_from_journal.bind(resolution_action))
-					resolution_button.custom_minimum_size.y = 38
-					travel_box.add_child(resolution_button)
-			elif check_label.contains("入口开放"):
-				_text(travel_box, "入口会随局势开放；眼下可以核验、交涉或继续准备。", true, 13)
+			var resolution_action := _travel_resolution_action(available_actions_cache, check_label)
+			if not resolution_action.is_empty():
+				var resolution_button := _action_button(_travel_resolution_label(resolution_action), _consider_action_from_journal.bind(resolution_action))
+				resolution_button.custom_minimum_size.y = 38
+				travel_box.add_child(resolution_button)
 	if preparation is Dictionary:
 		var score_sources: Array = preparation.get("score_sources", [])
 		if not score_sources.is_empty():
@@ -3288,28 +3346,25 @@ func _toggle_journal_travel_details() -> void:
 		journal_travel_details_button.text = "收起完整行装" if journal_travel_details_visible else "查看已备与路线"
 
 
-func _travel_resolution_action(actions: Array) -> Dictionary:
+func _travel_resolution_action(actions: Array, check_label: String) -> Dictionary:
+	var subject := check_label.trim_prefix("携带").strip_edges()
 	for action in actions:
-		if str(action.get("kind", "")) == "recover":
-			return action
-	for action in actions:
-		if str(action.get("kind", "")) == "buy" and str(action.get("target_id", "")) == "antidote":
-			return action
-	for action in actions:
-		if str(action.get("kind", "")) == "move" and str(action.get("target_id", "")) == "L01":
+		var searchable := "%s %s %s %s" % [action.get("name", ""), action.get("description", ""), _joined_action_values(action.get("resolves", [])), _joined_action_values(action.get("expected_outcomes", []))]
+		if subject != "" and searchable.contains(subject):
 			return action
 	return {}
 
 
 func _travel_resolution_label(action: Dictionary) -> String:
-	match str(action.get("kind", "")):
-		"recover":
-			return str(action.get("name", "处理缺项"))
-		"buy":
-			return "现在购买解瘴丹 · %d 灵石" % int(action.get("costs", {}).get("spirit_stones", 0))
-		"move":
-			return "返回白石坊市寻找解瘴丹"
-	return str(action.get("name", "处理缺项"))
+	var label := str(action.get("name", "处理缺项"))
+	var costs: Dictionary = action.get("costs", {})
+	var cost_parts: Array[String] = []
+	for key in costs:
+		if int(costs[key]) > 0:
+			cost_parts.append("%s %d" % [_resource_label(str(key)), int(costs[key])])
+	if not cost_parts.is_empty():
+		label += " · " + "、".join(cost_parts)
+	return label
 
 
 func _consider_action_from_journal(action: Dictionary) -> void:
@@ -3483,19 +3538,6 @@ func _configure_action_dock_layout(has_action_focus: bool) -> void:
 
 func _add_overview_choice(action: Dictionary, index: int) -> void:
 	var label := str(action.get("name", "做一件事"))
-	if action.get("id", "") == "verify:F02":
-		label = "查明日期 · 核验成熟传闻"
-	elif action.get("kind", "") == "buy" and action.get("target_id", "") == "antidote":
-		label = "备好入谷药 · 购买解瘴丹"
-	elif action.get("kind", "") == "recover":
-		label = "交出已核实日期 → 获得解瘴丹"
-	elif action.get("kind", "") == "escort":
-		label = "兑现同行承诺 · 随青岚队伍入谷"
-	elif action.get("kind", "") == "cultivate":
-		var combat := int(current_view.get("player", {}).get("resources", {}).get("combat", 0))
-		label = "修炼至下一阶段 · 战力 %d → %d" % [combat, combat + 1]
-	if action.get("id", "") == "wait:next":
-		label = "静候下一阵风声"
 	var meta: Array[String] = []
 	if int(action.get("completion_day", 0)) > 0:
 		meta.append("%d日" % int(action.get("duration", 1)))
@@ -3548,7 +3590,7 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 		var action_id := str(action.get("id", ""))
 		var claim := str(action.get("term_label", ""))
 		if claim == "":
-			claim = str(action.get("name", "以情报换取解瘴丹")) if action.get("kind", "") in ["recover", "escort"] else str(action.get("fact_claim", action.get("name", "一条消息")))
+			claim = str(action.get("fact_claim", action.get("name", "一条消息")))
 		var selected := action_id == str(focused_choice.get("id", ""))
 		var suggested := action_id in suggested_action_ids
 		var prefix := "◆  " if selected else ("✦  " if suggested else "　")
@@ -3593,8 +3635,6 @@ func _render_actor_focus_detail(action: Dictionary) -> void:
 	var claim := str(action.get("fact_claim", action.get("name", "一条消息")))
 	if action.get("kind", "") == "route":
 		claim = str(action.get("name", "回应眼前局势"))
-	if action.get("kind", "") in ["recover", "escort"] and str(action.get("term_label", "")) == "":
-		claim = str(action.get("name", "以情报换取解瘴丹"))
 	var title := _text(actor_focus_detail_box, claim, false, 19)
 	title.add_theme_color_override("font_color", COLORS.accent)
 	var term_label := str(action.get("term_label", ""))
@@ -3618,11 +3658,7 @@ func _render_actor_focus_detail(action: Dictionary) -> void:
 	if timing != "":
 		_text(actor_focus_detail_box, "时机 · %s" % timing, true, 14)
 
-	var primary_label := "按此条件交付情报" if term_label != "" else ("以情报换取解瘴丹" if action.get("kind", "") == "recover" else "把这句话告诉他")
-	if action.get("kind", "") == "escort":
-		primary_label = "按约随队出发"
-	elif action.get("kind", "") == "route":
-		primary_label = "%s · 确认" % action.get("name", "确认路线选择")
+	var primary_label := "%s · 确认" % action.get("name", "确认行动")
 	var primary := _ornate_button(primary_label, _consider_action.bind(action))
 	primary.custom_minimum_size = Vector2(300, 54)
 	actor_focus_footer.add_child(primary)
@@ -3652,13 +3688,7 @@ func _render_first_day_route_compass(actions: Array, parent: VBoxContainer = nul
 		return
 	if parent == null:
 		parent = actions_box
-	var has_verify := not _action_by_id(actions, "verify:F02").is_empty()
-	var has_antidote := false
-	for action in actions:
-		if str(action.get("kind", "")) == "buy" and str(action.get("target_id", "")) == "antidote":
-			has_antidote = true
-			break
-	if not has_verify and not has_antidote:
+	if actions.size() < 2:
 		return
 	var panel := PanelContainer.new()
 	var style := _panel_style(Color(COLORS.panel_alt, 0.26), 0, 2, Color.TRANSPARENT, 10, 4)
@@ -3668,7 +3698,10 @@ func _render_first_day_route_compass(actions: Array, parent: VBoxContainer = nul
 	var content := HBoxContainer.new()
 	content.add_theme_constant_override("separation", 10)
 	panel.add_child(content)
-	var heading := _text(content, "起手任选 · 查日期 / 备丹药 / 找人传话　—　情报可靠 / 保留入谷 / 影响人物安排", false, 12)
+	var opening_names: Array[String] = []
+	for index in range(mini(3, actions.size())):
+		opening_names.append(str(actions[index].get("name", "行动")))
+	var heading := _text(content, "起手可选 · %s" % " / ".join(opening_names), false, 12)
 	heading.autowrap_mode = TextServer.AUTOWRAP_OFF
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.add_theme_color_override("font_color", COLORS.accent)
@@ -3677,18 +3710,7 @@ func _render_first_day_route_compass(actions: Array, parent: VBoxContainer = nul
 
 func _add_contextual_choice(action: Dictionary) -> void:
 	var label := str(action.get("name", "做一件事"))
-	if action.get("id", "") == "verify:F02":
-		label = "查明日期 · 核验成熟传闻"
-	elif action.get("kind", "") == "buy" and action.get("target_id", "") == "antidote":
-		label = "备好入谷药 · 购买解瘴丹"
-	elif action.get("kind", "") == "recover":
-		label = "交出已核实日期 → 获得解瘴丹"
-	elif action.get("kind", "") == "cultivate":
-		var combat := int(current_view.get("player", {}).get("resources", {}).get("combat", 0))
-		label = "修炼至下一阶段 · 战力 %d → %d" % [combat, combat + 1]
-	if action.get("id", "") == "wait:next":
-		label = "静候下一阵风声"
-	elif int(action.get("completion_day", 0)) > 0:
+	if int(action.get("completion_day", 0)) > 0:
 		label += "　·　%d 日 · 第 %d 日完成" % [int(action.get("duration", 1)), int(action.get("completion_day", 0))]
 	var callback := _consider_action.bind(action, "wait:complete") if action.get("kind", "") == "cultivate" else _consider_action.bind(action)
 	var button := _action_button(label, callback)
@@ -3777,8 +3799,8 @@ func _add_focused_information_actions(actions: Array) -> void:
 		var action: Dictionary = actions[index]
 		if focused_actor_id != "":
 			if action.get("kind", "") in ["recover", "escort", "route"]:
-				_text(actions_box, str(action.get("name", "以情报换取解瘴丹")), false, 16)
-				_text(actions_box, str(action.get("description", "交出情报并换取入谷所需物品")), true, 13)
+				_text(actions_box, str(action.get("name", "行动")), false, 16)
+				_text(actions_box, str(action.get("description", "执行当前行动")), true, 13)
 			else:
 				_text(actions_box, str(action.get("fact_claim", "未知线索")), false, 16)
 		else:
@@ -3787,7 +3809,7 @@ func _add_focused_information_actions(actions: Array) -> void:
 		relevance.add_theme_color_override("font_color", COLORS.accent)
 		var button_label := ""
 		if action.get("kind", "") == "recover":
-			button_label = "交出已核实日期 → 获得解瘴丹"
+			button_label = str(action.get("name", "确认行动"))
 			var warning_line := _text(actions_box, "代价 · 消息送出后不可撤回", false, 13)
 			warning_line.add_theme_color_override("font_color", COLORS.danger)
 		elif action.get("kind", "") == "escort":
@@ -4043,8 +4065,9 @@ func _add_action_button(action: Dictionary) -> void:
 	else:
 		label += "　· %d 日" % duration
 	var list_costs: Dictionary = action.get("costs", {})
-	if int(list_costs.get("spirit_stones", 0)) > 0:
-		label += "　· 灵石 %d" % int(list_costs.get("spirit_stones", 0))
+	for key in list_costs:
+		if int(list_costs[key]) > 0:
+			label += "　· %s %d" % [_resource_label(str(key)), int(list_costs[key])]
 	var button := _action_button(label, _consider_action.bind(action))
 	button.tooltip_text = str(action.get("description", ""))
 	actions_box.add_child(button)
@@ -4127,10 +4150,9 @@ func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 		irreversible_line.add_theme_color_override("font_color", COLORS.danger)
 	var costs: Dictionary = action.get("costs", {})
 	if not costs.is_empty():
-		var cost_names := {"spirit_stones": "灵石", "credit": "信用", "combat": "战力", "support": "助力"}
 		var cost_parts: Array[String] = []
 		for key in costs:
-			cost_parts.append("%s %s" % [cost_names.get(key, key), costs[key]])
+			cost_parts.append("%s %s" % [_resource_label(str(key)), costs[key]])
 		var cost_line := _text(confirmation_box, "消耗：" + "、".join(cost_parts), false, 15)
 		cost_line.add_theme_color_override("font_color", COLORS.danger)
 	confirmation_details_button = _utility_button("展开盘算", _toggle_confirmation_details)

@@ -62,7 +62,8 @@ func _run() -> void:
 		return _fail("world map did not expose the 2.5D sandbox and fixed route detail panel")
 	app._set_visual_mode("location")
 	var action_text := _descendant_text(app.overview_actions_box)
-	if "核验" not in action_text or "起手任选" not in action_text or "保留入谷" not in action_text or "查证与探索" in action_text or app.active_action_category != "":
+	var contextual_actions: Array = app._location_context_actions(actions)
+	if contextual_actions.is_empty() or str(contextual_actions[0].get("name", "")) not in action_text or "起手可选" not in action_text or "查证与探索" in action_text or app.active_action_category != "":
 		return _fail("compact contextual action dock fell back to dashboard categories")
 	if not app.overview_actions_box.visible or app.legacy_action_scroll.visible or app.actor_focus_workspace.visible:
 		return _fail("default location state is not the compact non-scrolling overview")
@@ -177,7 +178,7 @@ func _run() -> void:
 		return _fail("player summary did not hide zero-value secondary metrics")
 	app._select_journal_tab(3)
 	var travel_text := _descendant_text(app.travel_box)
-	if app.journal_tabs.current_tab != 3 or "仍缺 2 项才能成行" not in travel_text or "缺少 · 解瘴丹" not in travel_text or "现在购买解瘴丹" not in travel_text or "入口尚未开放" not in travel_text or "你的争夺准备" not in travel_text or "助力 0 · 当前尚未建立" not in travel_text:
+	if app.journal_tabs.current_tab != 3 or "仍缺 2 项才能成行" not in travel_text or "缺少 · 解瘴丹" not in travel_text or "购买解瘴丹 · 灵石 20" not in travel_text or "入口尚未开放" not in travel_text or "你的争夺准备" not in travel_text or "助力 0 · 当前尚未建立" not in travel_text:
 		return _fail("gear section does not prioritize blocking preparation: " + travel_text)
 	if app.journal_travel_details_box.visible:
 		return _fail("gear section exposes completed checks before the player asks")

@@ -40,7 +40,7 @@ func (s *Session) turnFeedback(actionID, actionName string, before, after *domai
 		feedback.Messages = append(feedback.Messages,
 			fmt.Sprintf("伤势由 %d 变为 %d。", before.Player.Injury, after.Player.Injury))
 	}
-	feedback.Messages = append(feedback.Messages, resourceChanges(before.Player.Resources, after.Player.Resources)...)
+	feedback.Messages = append(feedback.Messages, s.resourceChanges(before.Player.Resources, after.Player.Resources)...)
 	feedback.Messages = append(feedback.Messages, s.itemChanges(before.Player.Items, after.Player.Items)...)
 	feedback.Messages = append(feedback.Messages, beliefChanges(before.Player.Beliefs, after.Player.Beliefs)...)
 
@@ -115,7 +115,7 @@ func (s *Session) presentationCue(actionID string, before, after *domain.WorldSt
 	}
 }
 
-func resourceChanges(before, after map[string]int) []string {
+func (s *Session) resourceChanges(before, after map[string]int) []string {
 	keys := make([]string, 0)
 	for key, value := range after {
 		if before[key] != value {
@@ -126,7 +126,7 @@ func resourceChanges(before, after map[string]int) []string {
 	result := make([]string, 0, len(keys))
 	for _, key := range keys {
 		delta := after[key] - before[key]
-		result = append(result, fmt.Sprintf("%s %+d，现有 %d。", resourceName(key), delta, after[key]))
+		result = append(result, fmt.Sprintf("%s %+d，现有 %d。", s.resourceName(key), delta, after[key]))
 	}
 	return result
 }
@@ -473,19 +473,13 @@ func appendUniqueChange(changes []VisibleDecisionChange, candidate VisibleDecisi
 	return append(changes, candidate)
 }
 
-func resourceName(key string) string {
-	switch key {
-	case "combat":
-		return "战力"
-	case "support":
-		return "助力"
-	case "spirit_stones":
-		return "灵石"
-	case "credit":
-		return "信誉"
-	default:
-		return key
+func (s *Session) resourceName(key string) string {
+	for _, resource := range s.bundle.Presentation.Resources {
+		if resource.ID == key {
+			return resource.Label
+		}
 	}
+	return key
 }
 
 func (s *Session) actorName(state *domain.WorldState, actorID string) string {

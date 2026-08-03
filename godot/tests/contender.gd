@@ -92,8 +92,8 @@ func _execute_cultivation_stage() -> bool:
 	if str(action.get("description", "")) not in action_text:
 		app._toggle_all_actions()
 		action_text = _descendant_text(app.overview_actions_box)
-	if ("修炼至下一阶段 · 战力 %d → %d" % [before_combat, before_combat + 1]) not in action_text:
-		_fail("cultivation action does not explain the next visible stage")
+	if str(action.get("name", "")) not in action_text or str(action.get("expected_outcomes", [""])[0]) not in action_text:
+		_fail("cultivation action does not render its server-provided outcome")
 		return false
 	if before_combat == 4 and "累计闭关耗费 10 灵石" not in str(action.get("description", "")):
 		_fail("high-cost cultivation does not expose cumulative spending")

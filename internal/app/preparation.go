@@ -19,7 +19,7 @@ func (s *Session) preparationSummary(state *domain.WorldState) PreparationSummar
 			status = "会计入你自己的争夺准备"
 		}
 		summary.ScoreSources = append(summary.ScoreSources, PreparationFactor{
-			Key: resource, Label: resourceName(resource), Value: value, Status: status, Ready: value > 0,
+			Key: resource, Label: s.resourceName(resource), Value: value, Status: status, Ready: value > 0,
 		})
 	}
 	if contest.PreparationFlag != "" && state.ActorFlag(state.Player.ID, contest.PreparationFlag) {

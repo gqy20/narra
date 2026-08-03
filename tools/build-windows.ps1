@@ -112,7 +112,7 @@ Files:
 - Disable-Crash-Dumps.cmd: remove the native minidump opt-in
 - fantu-server.exe: local rules service
 - build-info.json: release version and source revision
-- data/blackwind: game scenario data
+- data/: switchable scenario packages (select with --scenario=<directory-name>)
 "@
     Set-Content -LiteralPath (Join-Path $packageDir "README.txt") -Value $releaseNotes -Encoding utf8
 

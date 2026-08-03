@@ -21,6 +21,8 @@ func decode(response_code: int, body: PackedByteArray) -> Dictionary:
 		if not payload["view"] is Dictionary:
 			return _failure("invalid_player_view", "本地服务返回的玩家视图无效。", payload)
 		payload["view"] = _normalize_view(payload["view"])
+	if payload.has("scenario") and not payload["scenario"] is Dictionary:
+		return _failure("invalid_scenario", "本地服务返回的场景信息无效。", payload)
 	return {"ok": true, "error_code": "", "message": "", "payload": payload}
 
 
@@ -29,7 +31,7 @@ func _normalize_view(source: Dictionary) -> Dictionary:
 	for key in ["known_actors", "known_facts", "recent_events", "causal_threads", "available_actions", "guidance"]:
 		if not view.has(key) or not view.get(key) is Array:
 			view[key] = []
-	for key in ["player", "location", "world_map", "metrics", "preparation"]:
+	for key in ["player", "location", "world_map", "metrics", "preparation", "presentation"]:
 		if not view.has(key) or not view.get(key) is Dictionary:
 			view[key] = {}
 	view["scenario_id"] = str(view.get("scenario_id", ""))
