@@ -1,0 +1,32 @@
+{
+  "id": "tianqi-evidence-route",
+  "scenario_id": "tianqi_t00",
+  "player_name": "听风客",
+  "min_duration_seconds": 55,
+  "steps": [
+    {"type": "hold", "seconds": 2.0},
+    {"type": "new_game", "after": 2.5},
+    {"type": "mode", "value": "location", "after": 2.0},
+    {"type": "action", "id": "route:e01:keep-original", "preview": 2.2, "result": 3.0, "causal": 2.5},
+    {"type": "journal", "tab": 1, "after": 2.8},
+    {"type": "close_journal", "after": 1.2},
+    {"type": "mode", "value": "map", "after": 1.8},
+    {"type": "select_location", "id": "L03", "after": 1.8},
+    {"type": "action", "id": "move:L03", "preview": 1.8, "result": 2.6, "causal": 2.2},
+    {"type": "advance_until", "day": 3, "preview": 1.2, "result": 2.0, "causal": 2.0},
+    {"type": "action", "id": "route:e01:official", "preview": 2.2, "result": 3.0, "causal": 2.5},
+    {"type": "mode", "value": "map", "after": 1.5},
+    {"type": "select_location", "id": "L06", "after": 1.8},
+    {"type": "action", "id": "move:L06", "preview": 1.8, "result": 2.6, "causal": 2.2},
+    {"type": "advance_until", "day": 8, "preview": 1.0, "result": 1.8, "causal": 1.8},
+    {"type": "action", "id": "route:e09:format-check", "preview": 2.4, "result": 3.2, "causal": 2.6},
+    {"type": "journal", "tab": 1, "after": 3.0},
+    {"type": "close_journal", "after": 1.2},
+    {"type": "advance_until", "day": 12, "preview": 1.0, "result": 1.8, "causal": 1.8},
+    {"type": "action", "id": "route:e10:correlate-and-protect", "preview": 2.6, "result": 3.4, "causal": 2.8},
+    {"type": "journal", "tab": 0, "after": 3.0},
+    {"type": "close_journal", "after": 1.2},
+    {"type": "advance_until_resolved", "preview": 0.9, "result": 1.6, "causal": 1.6, "max_actions": 12},
+    {"type": "hold", "seconds": 5.0}
+  ]
+}

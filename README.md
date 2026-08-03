@@ -161,7 +161,7 @@ Godot 的开始页和游戏内都可以打开“体验设置 → 大模型”，
 ./tools/record-gameplay.ps1
 ```
 
-脚本会依次展示开局、地点场景、日期核验、地图赶路、沈砚秋交涉、决策变化和结局，并将 H.264 MP4 写入 `artifacts/video/fantu-gameplay-demo.mp4`。
+默认路线由 `godot/demo/recordings/tianqi-evidence-route.json` 定义，依次展示天启片头、交割残页入手、官署登记、补造账册格式比对、周良辅自陈串证和最终裁定。脚本使用独立临时存档，自动等待服务就绪、录制游戏音轨、转码为 1080p H.264/AAC、校验时长和流信息，并将 MP4、日志及录制清单写入 `artifacts/recordings/tianqi/<时间-路线>/`。可通过 `-Route` 选择其他路线配置，通过 `-OutputDirectory` 指定固定输出目录。
 
 ## 构建 Windows 发行包
 
