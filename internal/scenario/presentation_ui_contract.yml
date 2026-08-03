@@ -1,0 +1,326 @@
+dynamic_prefixes:
+    - phase_
+keys:
+    action_buy_description:
+        named:
+            - currency
+            - price
+            - stock
+    action_buy_name:
+        named:
+            - name
+    action_move_description:
+        named:
+            - danger
+            - days
+    action_move_name:
+        named:
+            - name
+    action_send_clue:
+        printf:
+            - s
+    action_send_clues_menu:
+        printf:
+            - s
+            - d
+    action_tell_description:
+        named:
+            - claim
+    action_tell_name:
+        named:
+            - name
+    action_verify_description:
+        named:
+            - claim
+    action_verify_name: {}
+    action_wait_complete_description: {}
+    action_wait_complete_name: {}
+    action_wait_next_description: {}
+    action_wait_next_name: {}
+    advance_outcome: {}
+    command_buy:
+        named:
+            - name
+    command_move:
+        named:
+            - name
+    command_tell:
+        named:
+            - claim
+            - name
+    command_verify:
+        named:
+            - claim
+    confidence_confirmed: {}
+    confidence_plausible: {}
+    confidence_rumored: {}
+    cue_acquire_message: {}
+    cue_acquire_title: {}
+    cue_danger_message: {}
+    cue_danger_title: {}
+    cue_growth_message: {}
+    cue_growth_title: {}
+    cue_recovery_message: {}
+    cue_recovery_title: {}
+    cue_reveal_message: {}
+    cue_reveal_title: {}
+    cue_verify_message: {}
+    cue_verify_title: {}
+    decision_buy_funds: {}
+    decision_buy_outcome:
+        named:
+            - name
+    decision_buy_required_outcome:
+        named:
+            - name
+    decision_buy_stock: {}
+    decision_growth_ready: {}
+    decision_growth_unknown: {}
+    decision_heal_injured: {}
+    decision_heal_outcome: {}
+    decision_heal_ready: {}
+    decision_heal_resolves: {}
+    decision_heal_unknown: {}
+    decision_missing_item:
+        named:
+            - name
+    decision_move_outcome:
+        named:
+            - name
+    decision_move_ready: {}
+    decision_move_resolves:
+        named:
+            - name
+    decision_move_unknown: {}
+    decision_opportunity_location: {}
+    decision_opportunity_open: {}
+    decision_opportunity_outcome: {}
+    decision_opportunity_unknown: {}
+    decision_route_triggered: {}
+    decision_route_window: {}
+    decision_tell_has_clue: {}
+    decision_tell_influence: {}
+    decision_tell_location: {}
+    decision_tell_outcome:
+        named:
+            - name
+    decision_tell_unknown: {}
+    decision_verify_has_clue: {}
+    decision_verify_outcome: {}
+    decision_verify_pending: {}
+    decision_verify_resolves: {}
+    decision_wait_timing: {}
+    default_player_name: {}
+    deliver_term:
+        printf:
+            - s
+    dialogue_available_clues:
+        printf:
+            - s
+            - d
+    effect_injury:
+        named:
+            - amount
+    ending_action_buy: {}
+    ending_action_count:
+        named:
+            - action
+            - count
+    ending_action_growth: {}
+    ending_action_move: {}
+    ending_action_recovery: {}
+    ending_action_route: {}
+    ending_action_tell: {}
+    ending_action_verify: {}
+    ending_influence:
+        named:
+            - count
+    ending_metrics:
+        named:
+            - active
+            - day
+            - decisions
+            - waits
+    ending_review_late:
+        named:
+            - day
+            - name
+    ending_review_lost:
+        named:
+            - lead
+            - score
+            - winner
+            - winner_score
+    ending_review_missing_item:
+        named:
+            - name
+    ending_review_next: {}
+    ending_review_passive: {}
+    ending_review_tie:
+        named:
+            - score
+    ending_review_won:
+        named:
+            - score
+    ending_status:
+        named:
+            - injury
+            - location
+    feedback_action_completed: {}
+    feedback_action_progress:
+        named:
+            - action
+            - day
+    feedback_arrived:
+        named:
+            - name
+    feedback_belief_changed:
+        named:
+            - claim
+            - confidence
+    feedback_delivery_prefix: {}
+    feedback_information_delivered:
+        named:
+            - name
+    feedback_information_pending: {}
+    feedback_injury_changed:
+        named:
+            - after
+            - before
+    feedback_item_changed:
+        named:
+            - delta
+            - name
+            - value
+    feedback_outcome:
+        named:
+            - outcome
+    feedback_phase_changed:
+        named:
+            - phase
+    feedback_resource_changed:
+        named:
+            - delta
+            - resource
+            - value
+    feedback_settled:
+        named:
+            - action
+    guidance_default: {}
+    guidance_information_sent: {}
+    guidance_item_market:
+        named:
+            - name
+    guidance_item_missing:
+        named:
+            - name
+    guidance_outcome_settled: {}
+    guidance_pending:
+        named:
+            - day
+    guidance_verified_item_missing:
+        named:
+            - name
+    guidance_verify_date: {}
+    information_causal_heading: {}
+    information_relevance_high:
+        named:
+            - topics
+    information_relevance_low: {}
+    information_relevance_unknown: {}
+    information_risk_unknown: {}
+    information_unknown_claim: {}
+    information_unverified_warning: {}
+    information_use_unknown: {}
+    journal_empty_clues: {}
+    journal_unverified_count:
+        printf:
+            - d
+    journal_verify_clue: {}
+    map_contest_location: {}
+    one_clue: {}
+    people_information_hint: {}
+    people_talk_clues:
+        printf:
+            - d
+    people_view: {}
+    phase_default: {}
+    plan_flag_changed: {}
+    plan_flag_ready:
+        named:
+            - condition
+    plan_has_item:
+        named:
+            - name
+    plan_missing_item:
+        named:
+            - name
+    plan_player_information:
+        named:
+            - claim
+    plan_private_information: {}
+    plan_public_goal: {}
+    plan_shared_information:
+        named:
+            - claim
+    plan_unavailable: {}
+    player_name_prompt: {}
+    preparation_detail_even: {}
+    preparation_detail_low: {}
+    preparation_detail_poor: {}
+    preparation_detail_strong: {}
+    preparation_explanation: {}
+    preparation_extra_label: {}
+    preparation_extra_ready: {}
+    preparation_heading: {}
+    preparation_ineligible_suffix: {}
+    preparation_item_missing: {}
+    preparation_item_ready: {}
+    preparation_location_missing: {}
+    preparation_location_ready: {}
+    preparation_rating_even: {}
+    preparation_rating_low: {}
+    preparation_rating_poor: {}
+    preparation_rating_strong: {}
+    preparation_resource_empty: {}
+    preparation_resource_ready: {}
+    source_broker: {}
+    source_investigation: {}
+    source_investigation_lead: {}
+    source_unknown: {}
+    tell_actor:
+        printf:
+            - s
+    tell_focused_actor: {}
+    term_clue: {}
+    term_clues: {}
+    term_verify: {}
+    timing_confirmed: {}
+    timing_keyword: {}
+    timing_rumored: {}
+    timing_status_confirmed: {}
+    timing_status_plausible: {}
+    timing_status_rumored: {}
+    travel_already_arrived: {}
+    travel_carry_item:
+        named:
+            - name
+    travel_condition_blocked: {}
+    travel_condition_ready: {}
+    travel_date_unknown: {}
+    travel_departure_deadline:
+        named:
+            - basis
+            - day
+    travel_departure_late:
+        named:
+            - basis
+    travel_missing_item:
+        named:
+            - name
+    travel_no_route: {}
+    travel_route_found: {}
+    unknown_clue: {}
+    wait_missing_item_warning:
+        named:
+            - name

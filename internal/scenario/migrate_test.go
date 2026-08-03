@@ -77,7 +77,7 @@ func TestContentMigrationPreviewAndApply(t *testing.T) {
 	}
 }
 
-func TestContentMigrationV2AddsPresentationMetadata(t *testing.T) {
+func TestContentMigrationV2RequiresAuthoredPresentationUI(t *testing.T) {
 	sourceDir := filepath.Join("..", "..", "data", "blackwind")
 	targetDir := t.TempDir()
 	entries, err := os.ReadDir(sourceDir)
@@ -100,18 +100,11 @@ func TestContentMigrationV2AddsPresentationMetadata(t *testing.T) {
 		}
 	}
 	report, err := MigrateContent(targetDir, true)
-	if err != nil {
-		t.Fatalf("apply v2 migration: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "presentation ui requires") {
+		t.Fatalf("migration without authored UI contract error = %v, report = %+v", err, report)
 	}
-	if !report.Applied {
-		t.Fatalf("migration report = %+v", report)
-	}
-	bundle, err := Load(targetDir)
-	if err != nil {
-		t.Fatalf("load migrated v2 package: %v", err)
-	}
-	if bundle.Presentation.Brand == "" || len(bundle.Presentation.Resources) != len(bundle.DefaultPlayer.Resources) {
-		t.Fatalf("generated presentation = %+v", bundle.Presentation)
+	if report.Applied {
+		t.Fatalf("incomplete semantic migration was applied: %+v", report)
 	}
 }
 

@@ -102,7 +102,7 @@ Godot 地图/场景/行动视图 <── PlayerView <─────────
 
 可选 AI 对话是这条权威链路旁边的非权威表现支路：`internal/app` 先从当前 Session 构造不可变的 `DialogueSnapshot`，仅包含同地人物的公开资料、玩家已经获知或亲自告知的说法、抽象化动机、公开事件与当前可见交涉；`internal/ai` 再通过 Anthropic 官方 Go SDK 请求受 JSON Schema 约束的多轮回应。每次最多注入同一局势 revision 下最近 8 轮历史，模型只能建议当前公开行动，不能执行行动。对话记录随存档保存，但不参与世界回放和规则结算。服务不会把 `WorldState`、事实真值、秘密认知、策略评分或内部标记交给模型。模型调用不持有 Session 锁，返回时若局势 revision 已变化则丢弃旧结果；取消、超时、网络错误、越权事实或行动引用、空响应及格式错误都会作为失败返回，不生成替代台词。
 
-题材语言、置信度措辞、称谓、性格指导、关系语言和人物声音全部由内容包 `dialogue.yml` 声明；系统 Prompt 不固定中文或仙侠词表。应用和 Godot 的行动、反馈、准备、旅行、终局及线索术语统一读取 `presentation.yml` 的 `ui` 模板。地点程序背景和环境音 fallback 读取地点表现参数，不按故事场景 ID 分支。详见 [内容语言与表现配置](CONTENT_LANGUAGE.md)。
+题材语言、置信度措辞、称谓、性格指导、关系语言和人物声音全部由内容包 `dialogue.yml` 声明；系统 Prompt 不固定中文或仙侠词表。应用和 Godot 的行动、反馈、准备、旅行、终局及线索术语统一读取 `presentation.yml` 的 `ui` 模板。完整必需键和占位符签名登记在 `internal/scenario/presentation_ui_contract.yml`，场景加载与源码契约测试共同阻止内容包和调用端发生漂移。地点程序背景和环境音 fallback 读取地点表现参数，不按故事场景 ID 分支。详见 [内容语言与表现配置](CONTENT_LANGUAGE.md)。
 
 `cmd/play` 与 `cmd/server` 通过 `internal/aiconfig` 共享 `.env` 加载、模型参数和 provider 构建。终端的 `talk` 命令直接读取同一个 Session 的脱敏快照，不经过本地 HTTP；Godot 则通过独立 HTTP 通道访问。两条路径最终复用同一个 `internal/ai.Service`，并遵守相同的结构化输出校验和显式错误规则。未启用模型时 provider 不会被构造，对话能力明确标记为不可用。
 

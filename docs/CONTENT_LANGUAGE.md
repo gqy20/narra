@@ -19,6 +19,8 @@
 
 `presentation.ui` 是 CLI、Go 应用投影和 Godot 的权威术语/模板表。模板使用 `{name}`、`{claim}`、`{day}` 等命名占位符；Godot 自带 `%s`/`%d` 的局部格式化文本仍保留对应占位符。
 
+所有运行时必需键及其占位符签名统一登记在 `internal/scenario/presentation_ui_contract.yml`。场景加载器会一次性检查完整键集、命名占位符和 `%s`/`%d` 顺序；源码契约测试还会扫描 Go 与 Godot 的调用，阻止新增调用绕过登记。`phase_` 是已登记的动态扩展前缀，内容包可以按自身阶段名称增加别名，并以 `phase_default` 作为通用显示值。
+
 地点表现还可以声明：
 
 - `fallback_kind`：缺少正式背景时使用的通用程序绘制类型；
@@ -29,6 +31,6 @@ Godot 只读取这些字段，不再识别 `qinglan` 等故事专属场景键。
 
 ## 内容 Schema v6
 
-Schema v6 要求完整的对话语言策略，以及 `default_player_name`、`term_clue`、`term_clues`、`term_verify` 四项基础 UI 术语。
+Schema v6 要求完整的对话语言策略，以及 UI 契约登记的全部玩家可见术语和模板。
 
-`go run ./cmd/content-migrate -data <目录> -write` 会把 v5 内容升级到 v6，并写入中性的中文默认策略。迁移不会从题材名称猜测角色声音；作者应在迁移后审阅并替换默认文本。
+`go run ./cmd/content-migrate -data <目录> -write` 会把 v5 内容升级到 v6。迁移不会从题材名称猜测角色声音；旧内容缺少完整 UI 语义时会在写入前明确失败，作者必须补齐 `presentation.ui`，不会静默套用其他故事的默认文案。

@@ -477,10 +477,8 @@ func validatePresentation(bundle domain.Bundle) error {
 			return fmt.Errorf("presentation actor %s map token offset requires two values", actorID)
 		}
 	}
-	for _, key := range []string{"default_player_name", "term_clue", "term_clues", "term_verify"} {
-		if strings.TrimSpace(presentation.UI[key]) == "" {
-			return fmt.Errorf("presentation ui requires %s", key)
-		}
+	if err := validatePresentationUI(presentation.UI); err != nil {
+		return err
 	}
 	return nil
 }
