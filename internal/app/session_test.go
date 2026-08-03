@@ -203,7 +203,7 @@ func TestActionMetadataAndPublicProfilesArePlayerFacing(t *testing.T) {
 		t.Fatalf("initial verification summary = %+v", verify)
 	}
 	antidote := actionWithID(view.AvailableActions, "buy:M01:antidote")
-	if antidote == nil || !containsMessage(antidote.Resolves, "缺少解瘴丹") || !containsMessage(antidote.ExpectedOutcomes, "亲自入谷路线") {
+	if antidote == nil || !containsMessage(antidote.Resolves, "缺少解瘴丹") || !containsMessage(antidote.ExpectedOutcomes, "核心目标") {
 		t.Fatalf("antidote purchase summary = %+v", antidote)
 	}
 	if strings.Contains(string(encoded), "按已核实日期") || strings.Contains(string(encoded), "青髓芝将在第21天成熟") {
@@ -708,7 +708,7 @@ func TestMissedMarketCanRecoverPersonalRouteThroughInformationTrade(t *testing.T
 	if view.Day != 8 || recovery == nil || !recovery.Irreversible || !containsMessage(recovery.Resolves, "坊市封锁") || len(recovery.Unknowns) == 0 {
 		t.Fatalf("day 8 recovery action = %+v at day %d", recovery, view.Day)
 	}
-	if !containsMessage(view.Guidance, "苏晚照") || !containsMessage(view.Guidance, "恢复路线") {
+	if !containsMessage(view.Guidance, "核实") || !containsMessage(view.Guidance, "解瘴丹") {
 		t.Fatalf("recovery guidance = %v", view.Guidance)
 	}
 	view, err := session.Execute(recovery.ID)
@@ -994,7 +994,7 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	if !strings.Contains(view.LastTurn.StopReason, "消息改变") {
 		t.Fatalf("day 5 advance does not explain why it stopped: %+v", view.LastTurn)
 	}
-	if !containsMessage(view.Guidance, "返回坊市购买") {
+	if !containsMessage(view.Guidance, "市场") || !containsMessage(view.Guidance, "解瘴丹") {
 		t.Fatalf("day 5 guidance did not preserve the personal route choice: %v", view.Guidance)
 	}
 	for _, wantDay := range []int{8, 10} {

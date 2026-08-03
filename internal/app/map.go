@@ -74,7 +74,7 @@ func (s *Session) visibleRouteBlockers(state *domain.WorldState, route domain.Ro
 		blockers = append(blockers, "缺少"+name)
 	}
 	if route.RequiredFlag != "" && !state.WorldFlag(route.RequiredFlag) {
-		blockers = append(blockers, routeFlagLabel(route.RequiredFlag))
+		blockers = append(blockers, s.routeFlagLabel(route.RequiredFlag))
 	}
 	return blockers
 }

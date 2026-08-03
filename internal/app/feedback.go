@@ -186,30 +186,32 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 		available[action.ID] = true
 	}
 	var result []string
-	if belief, ok := state.Player.Beliefs["F02"]; ok && belief.Confidence < 3 && available["verify:F02"] {
-		result = append(result, "第24天成熟目前只是传闻，核验后再据此安排路线更稳妥。")
+	rumoredFactID := s.bundle.Scenario.Contest.RumoredDateFactID
+	if belief, ok := state.Player.Beliefs[rumoredFactID]; rumoredFactID != "" && ok && belief.Confidence < 3 && available["verify:"+rumoredFactID] {
+		result = append(result, "关键时间目前只是传闻，核验后再据此安排路线更稳妥。")
 	}
-	if state.Player.Items["antidote"] == 0 {
+	requiredItemID := s.bundle.Scenario.Contest.RequiredItemID
+	if requiredItemID != "" && state.Player.Items[requiredItemID] == 0 {
+		itemName := requiredItemID
+		if item, ok := s.bundle.Items[requiredItemID]; ok {
+			itemName = item.Name
+		}
 		marketOpen := false
 		for _, market := range state.Markets {
-			if market.Stock["antidote"] > 0 && (market.BlockadeFlag == "" || !state.WorldFlag(market.BlockadeFlag)) {
+			if market.Stock[requiredItemID] > 0 && (market.BlockadeFlag == "" || !state.WorldFlag(market.BlockadeFlag)) {
 				marketOpen = true
 				break
 			}
 		}
-		switch {
-		case available["buy:M01:antidote"]:
-			result = append(result, "解瘴丹目前仍可购买；进入黑风谷需要它，市场供应可能随局势变化。")
-		case marketOpen:
-			result = append(result, "白石坊市仍有解瘴丹出售；若想亲自入谷，需要先返回坊市购买。")
-		default:
-			if available["recover:N06:antidote"] {
-				result = append(result, "坊市已经封锁，亲自入谷路线受阻；可把已核实的成熟日期交给苏晚照，换取一枚解瘴丹并恢复路线。")
-			} else if belief, ok := state.Player.Beliefs["F01"]; ok && belief.Confidence >= 3 {
-				result = append(result, "坊市已经封锁，亲自入谷路线受阻；带着已核实的成熟日期前往青岚门驻地，可向苏晚照换取一枚解瘴丹。")
-			} else {
-				result = append(result, "坊市已经封锁，亲自入谷路线受阻；核实成熟日期后前往青岚门驻地，可尝试以情报换取解瘴丹；也可继续通过传播影响最终归属。")
+		if marketOpen {
+			result = append(result, itemName+"仍可从市场取得；它是参与核心目标的必要条件，供应可能随局势变化。")
+		} else {
+			message := "当前仍缺少" + itemName + "；留意人物回应与路线进展中是否出现新的获取方式。"
+			verifiedFactID := s.bundle.Scenario.Contest.VerifiedDateFactID
+			if belief, ok := state.Player.Beliefs[verifiedFactID]; verifiedFactID != "" && ok && belief.Confidence >= 3 {
+				message = "你已掌握经过核实的关键时间，但当前仍缺少" + itemName + "；留意人物回应中出现的新获取方式。"
 			}
+			result = append(result, message)
 		}
 	}
 	if s.lastTurn != nil && strings.HasPrefix(s.lastTurn.ActionID, "tell:") {
@@ -246,8 +248,15 @@ func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 			ending.Highlights = append(ending.Highlights, fmt.Sprintf("%s %d 次。", entry.text, counts[entry.key]))
 		}
 	}
-	ending.Highlights = append(ending.Highlights,
-		fmt.Sprintf("终局时你位于%s，战力 %d，伤势 %d。", s.visibleLocation(state.Player.Location).Name, state.Player.Resources["combat"], state.Player.Injury))
+	resourceSummary := make([]string, 0, len(s.bundle.Presentation.Resources))
+	for _, resource := range s.bundle.Presentation.Resources {
+		resourceSummary = append(resourceSummary, fmt.Sprintf("%s %d", resource.Label, state.Player.Resources[resource.ID]))
+	}
+	status := fmt.Sprintf("终局时你位于%s，伤势 %d", s.visibleLocation(state.Player.Location).Name, state.Player.Injury)
+	if len(resourceSummary) > 0 {
+		status += "，" + strings.Join(resourceSummary, "，")
+	}
+	ending.Highlights = append(ending.Highlights, status+"。")
 	ending.Influence = s.visibleInfluence(state, state.Decisions, true)
 	changedDecisions := 0
 	for _, influence := range ending.Influence {
@@ -279,13 +288,17 @@ func (s *Session) endingReview(state *domain.WorldState) []string {
 		playerScore++
 	}
 	if owner == player.ID {
-		result = append(result, fmt.Sprintf("你满足了丹药与抵达条件，并以 %d 点综合准备赢得正面争夺。", playerScore))
+		result = append(result, fmt.Sprintf("你满足了核心目标的参与条件，并以 %d 点综合准备取得最终归属。", playerScore))
 	} else {
 		if contest.RequiredItemID != "" && player.Items[contest.RequiredItemID] <= 0 {
-			result = append(result, "你在结算时没有解瘴丹，因此没有取得核心争夺资格。")
+			itemName := contest.RequiredItemID
+			if item, ok := s.bundle.Items[contest.RequiredItemID]; ok {
+				itemName = item.Name
+			}
+			result = append(result, "你在结算时没有"+itemName+"，因此没有取得核心目标的参与资格。")
 		}
 		if player.Location != contest.LocationID {
-			result = append(result, "你没有在第 21 日前抵达黑风谷内谷，因此没有进入最终候选。")
+			result = append(result, fmt.Sprintf("你没有在第 %d 日前抵达%s，因此没有进入最终候选。", contest.Day, s.visibleLocation(contest.LocationID).Name))
 		}
 		if len(result) == 0 {
 			winnerScore := s.actorContestScore(state, owner)
@@ -297,8 +310,8 @@ func (s *Session) endingReview(state *domain.WorldState) []string {
 		}
 	}
 	if s.metrics.ActiveActions == 0 {
-		result = append(result, "本局没有进行主动行动；等待让你跳过了平静日，也同时放弃了核验、备药、交涉和修炼窗口。")
-		result = append(result, "下一局可先核验成熟日期或购买解瘴丹，再决定亲自争夺、扶持盟友或锁定交易收益。")
+		result = append(result, "本局没有进行主动行动；等待让你跳过了平静日，也同时放弃了调查、交涉和准备窗口。")
+		result = append(result, "下一局可先核验线索并观察人物计划，再决定亲自介入、扶持盟友或保全其他成果。")
 	}
 	return result
 }

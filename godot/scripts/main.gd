@@ -3060,7 +3060,6 @@ func _known_timing(clues: Array) -> String:
 	if best.is_empty():
 		return "尚未查明"
 	var timing := str(best.get("claim", "未知"))
-	timing = timing.replace("青髓芝将在", "").replace("成熟", "")
 	var confidence := int(best.get("confidence", 0))
 	var status := "已核实" if confidence >= 3 else ("较可信" if confidence == 2 else "传闻")
 	return "%s · %s" % [timing, status]
@@ -3259,7 +3258,7 @@ func _render_travel_readiness(travel, preparation = {}, route_progress = null) -
 		_text(travel_box, "还没有明确的远行目标。", true)
 		return
 	var route: Array = travel.get("route", [])
-	var destination := str(travel.get("destination", "黑风谷"))
+	var destination := str(travel.get("destination", "目标地点"))
 	if destination == "" and not route.is_empty():
 		destination = str(route[route.size() - 1])
 	var meta_text := "%s · 约 %d 日" % [destination, int(travel.get("travel_days", 0))]

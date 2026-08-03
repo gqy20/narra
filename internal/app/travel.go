@@ -50,9 +50,9 @@ func (s *Session) travelGuidance(state *domain.WorldState) *TravelGuidance {
 		}
 		if route.RequiredFlag != "" {
 			flagReady := state.WorldFlag(route.RequiredFlag)
-			appendTravelCheck(&guidance.Checks, seenChecks, routeFlagCheckLabel(route.RequiredFlag), flagReady)
+			appendTravelCheck(&guidance.Checks, seenChecks, s.routeFlagCheckLabel(route.RequiredFlag), flagReady)
 			if !flagReady {
-				appendBlocker(&guidance.Blockers, seen, routeFlagLabel(route.RequiredFlag))
+				appendBlocker(&guidance.Blockers, seen, s.routeFlagLabel(route.RequiredFlag))
 			}
 		}
 	}
@@ -121,7 +121,7 @@ func (s *Session) travelTiming(state *domain.WorldState, travelDays int) string 
 	if travelDays == 0 {
 		return "你已经到达核心争夺地点。"
 	}
-	knownDay, basis, known := playerKnownDate(state.Player.Beliefs)
+	knownDay, basis, known := playerKnownDate(state.Player.Beliefs, s.bundle.Scenario.Contest)
 	if !known {
 		return "成熟时间尚未查明，无法判断最晚出发时间。"
 	}
@@ -132,13 +132,13 @@ func (s *Session) travelTiming(state *domain.WorldState, travelDays int) string 
 	return fmt.Sprintf("按%s，即使立即出发也可能来不及。", basis)
 }
 
-func playerKnownDate(beliefs map[string]domain.Belief) (int, string, bool) {
-	if belief, ok := beliefs["F01"]; ok && belief.Confidence >= 3 {
+func playerKnownDate(beliefs map[string]domain.Belief, contest domain.Contest) (int, string, bool) {
+	if belief, ok := beliefs[contest.VerifiedDateFactID]; contest.VerifiedDateFactID != "" && ok && belief.Confidence >= 3 {
 		if day, found := firstNumber(belief.Claim); found {
 			return day, "已核实日期", true
 		}
 	}
-	if belief, ok := beliefs["F02"]; ok && belief.Confidence > 0 && belief.Confidence < 3 {
+	if belief, ok := beliefs[contest.RumoredDateFactID]; contest.RumoredDateFactID != "" && ok && belief.Confidence > 0 && belief.Confidence < 3 {
 		if day, found := firstNumber(belief.Claim); found {
 			return day, "未经核实的传闻", true
 		}
@@ -178,20 +178,16 @@ func appendTravelCheck(checks *[]TravelCheck, seen map[string]bool, label string
 	*checks = append(*checks, TravelCheck{Label: label, Ready: ready})
 }
 
-func routeFlagLabel(flag string) string {
-	switch flag {
-	case "valley_open":
-		return "黑风谷入口尚未开放"
-	default:
-		return "路线条件尚未满足"
+func (s *Session) routeFlagLabel(flag string) string {
+	if definition, ok := s.bundle.Flags["world:"+flag]; ok && definition.BlockedLabel != "" {
+		return definition.BlockedLabel
 	}
+	return "路线条件尚未满足"
 }
 
-func routeFlagCheckLabel(flag string) string {
-	switch flag {
-	case "valley_open":
-		return "黑风谷入口开放"
-	default:
-		return "路线条件满足"
+func (s *Session) routeFlagCheckLabel(flag string) string {
+	if definition, ok := s.bundle.Flags["world:"+flag]; ok && definition.PublicLabel != "" {
+		return definition.PublicLabel
 	}
+	return "路线条件满足"
 }

@@ -196,6 +196,8 @@ contest:
   - combat
   - support
   preparation_flag: prepared
+  verified_date_fact_id: F01
+  rumored_date_fact_id: F02
   early_outcome: "{winner} 已在成熟日前取得青髓芝"
   cancelled_outcome: "成熟日争夺取消：{outcome}"
   no_winner_outcome: 无人满足进入内谷并采摘青髓芝的条件

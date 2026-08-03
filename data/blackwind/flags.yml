@@ -56,4 +56,4 @@
 - {id: su_requests_antidote, scope: world, description: 苏晚照请求取回解瘴丹}
 - {id: transplant_backed, scope: world, description: 移植方案已获得支持, public_label: 提前移植方案获得支持}
 - {id: transplant_window, scope: world, description: 青髓芝移植窗口已经出现}
-- {id: valley_open, scope: world, description: 黑风谷已经开放, public_label: 黑风谷入口已经开放}
+- {id: valley_open, scope: world, description: 黑风谷已经开放, public_label: 黑风谷入口开放, blocked_label: 黑风谷入口尚未开放}

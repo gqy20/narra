@@ -50,10 +50,10 @@ func (s *Session) withDecisionContext(state *domain.WorldState, action Available
 		action.Irreversible = true
 	case "buy":
 		action.ExpectedOutcomes = []string{"获得 1 件" + action.TargetName}
-		action.KnownConditions = []string{"当前仍有库存", "灵石足够支付"}
-		if action.TargetID == "antidote" {
-			action.ExpectedOutcomes = []string{"获得 1 枚解瘴丹，保留亲自入谷路线"}
-			action.Resolves = []string{"缺少解瘴丹"}
+		action.KnownConditions = []string{"当前仍有库存", "持有足够的交易资源"}
+		if action.TargetID == s.bundle.Scenario.Contest.RequiredItemID {
+			action.ExpectedOutcomes = []string{"获得" + action.TargetName + "，满足核心目标的必要条件"}
+			action.Resolves = []string{"缺少" + action.TargetName}
 		}
 	case "move":
 		action.ExpectedOutcomes = []string{"抵达" + action.TargetName}
@@ -68,21 +68,21 @@ func (s *Session) withDecisionContext(state *domain.WorldState, action Available
 		action.Unknowns = []string{"对方是否采用消息，只能从之后的公开行动判断"}
 		action.Irreversible = true
 	case "escort":
-		action.KnownConditions = []string{"沈砚秋已答应让你随队", "青岚门队伍仍在驻地", "队伍将在次日开谷时出发"}
-		action.Unknowns = []string{"进入谷内后仍需自行判断争夺时机"}
+		action.KnownConditions = append(action.KnownConditions, "同行承诺和出发条件仍然有效")
+		action.Unknowns = append(action.Unknowns, "同行期间的局势仍可能改变")
 	case "route":
 		action.KnownConditions = []string{"此前的情报条件已经引发回应", "这项选择只在当前路线窗口内有效"}
 		action.Unknowns = []string{"表态会改变其他人物之后如何看待你"}
 	case "recover":
-		action.KnownConditions = []string{"坊市购买路线已经关闭", "已核实成熟日期", "苏晚照就在青岚门驻地"}
-		action.Unknowns = []string{"苏晚照如何使用这条消息，只能从之后的公开行动判断"}
+		action.KnownConditions = append(action.KnownConditions, "此前条件已经打开这条补救路线")
+		action.Unknowns = append(action.Unknowns, "交换对象之后如何使用所得信息仍需观察")
 	case "heal":
 		action.ExpectedOutcomes = []string{"伤势降低 1 级"}
 		action.Resolves = []string{"当前伤势"}
 		action.KnownConditions = []string{"当前带伤", "疗伤条件允许"}
 		action.Unknowns = []string{"疗伤期间局势仍会按日推进"}
 	case "cultivate":
-		action.ExpectedOutcomes = []string{"战力提高 1 点"}
+		action.ExpectedOutcomes = []string{s.resourceName("combat") + "提高 1 点"}
 		action.KnownConditions = []string{"当前没有伤势妨碍闭关"}
 		action.Unknowns = []string{"闭关期间局势仍会按日推进"}
 	case "advance":
@@ -100,7 +100,7 @@ func (s *Session) withDecisionContext(state *domain.WorldState, action Available
 }
 
 func (s *Session) actionTiming(state *domain.WorldState, action AvailableAction) string {
-	knownDay, basis, known := playerKnownDate(state.Player.Beliefs)
+	knownDay, basis, known := playerKnownDate(state.Player.Beliefs, s.bundle.Scenario.Contest)
 	if !known {
 		return "日期未知 · 无法判断是否挤压亲自抵达窗口"
 	}
@@ -260,7 +260,7 @@ func (s *Session) addMarketActions(options map[string]actionOption, state *domai
 			}
 			id := fmt.Sprintf("buy:%s:%s", marketID, itemID)
 			options[id] = actionOption{
-				view: AvailableAction{ID: id, Kind: "buy", Category: "trade", Name: "购买" + name, Description: fmt.Sprintf("库存 %d，当前价格 %d 灵石", market.Stock[itemID], price), Duration: action.Duration, Costs: map[string]int{"spirit_stones": price}, TargetID: itemID, TargetName: name},
+				view: AvailableAction{ID: id, Kind: "buy", Category: "trade", Name: "购买" + name, Description: fmt.Sprintf("库存 %d，当前价格 %d %s", market.Stock[itemID], price, s.resourceName("spirit_stones")), Duration: action.Duration, Costs: map[string]int{"spirit_stones": price}, TargetID: itemID, TargetName: name},
 				command: &domain.PlayerCommand{
 					ActionID: "buy", Description: "玩家购买" + name,
 					Conditions: []domain.Condition{{Type: "location", Value: market.LocationID}, {Type: "resource_at_least", Key: "spirit_stones", MinConfidence: price}},
@@ -372,10 +372,15 @@ func (s *Session) advanceWarnings(state *domain.WorldState) []string {
 	if warning := routeProgressWarning(s.routeProgress(state), state.Day); warning != "" {
 		warnings = append(warnings, warning)
 	}
-	if state.Player.Items["antidote"] <= 0 {
+	requiredItemID := s.bundle.Scenario.Contest.RequiredItemID
+	if requiredItemID != "" && state.Player.Items[requiredItemID] <= 0 {
 		for _, market := range state.Markets {
-			if market.Stock["antidote"] > 0 && (market.BlockadeFlag == "" || !state.WorldFlag(market.BlockadeFlag)) {
-				warnings = append(warnings, "你尚未持有解瘴丹；继续等待可能错过坊市购买机会，关闭亲自入谷路线。")
+			if market.Stock[requiredItemID] > 0 && (market.BlockadeFlag == "" || !state.WorldFlag(market.BlockadeFlag)) {
+				itemName := requiredItemID
+				if item, ok := s.bundle.Items[requiredItemID]; ok {
+					itemName = item.Name
+				}
+				warnings = append(warnings, "你尚未持有"+itemName+"；继续等待可能错过当前获取机会。")
 				break
 			}
 		}
@@ -392,7 +397,7 @@ func (s *Session) hasDeliveredFact(state *domain.WorldState, targetID, factID st
 			continue
 		}
 		for _, effect := range event.Effects {
-			if effect.Type == "set_belief" && effect.FactID == factID {
+			if effect.Type == "set_belief" && effect.TargetID == targetID && effect.FactID == factID {
 				return true
 			}
 		}
@@ -416,15 +421,17 @@ func (s *Session) addRecoveryActions(options map[string]actionOption, state *dom
 		}
 		costs := make(map[string]int)
 		warnings := make([]string, 0, 1)
-		description := fmt.Sprintf("第 %d 阶段闭关三日，战力提高一点", stage)
+		combatLabel := s.resourceName("combat")
+		currencyLabel := s.resourceName("spirit_stones")
+		description := fmt.Sprintf("第 %d 阶段闭关三日，%s提高一点", stage, combatLabel)
 		if cost > 0 {
 			costs["spirit_stones"] = cost
 			cumulativeCost := 0
 			for index := 0; index <= completed; index++ {
 				cumulativeCost += cultivationCost(index)
 			}
-			description = fmt.Sprintf("第 %d 阶段闭关三日，以 %d 灵石稳固气机，战力提高一点；完成后累计闭关耗费 %d 灵石", stage, cost, cumulativeCost)
-			warnings = append(warnings, fmt.Sprintf("重复闭关已进入高耗阶段；本轮消耗 %d 灵石，完成后累计闭关耗费 %d 灵石。", cost, cumulativeCost))
+			description = fmt.Sprintf("第 %d 阶段闭关三日，以 %d %s稳固气机，%s提高一点；完成后累计耗费 %d %s", stage, cost, currencyLabel, combatLabel, cumulativeCost, currencyLabel)
+			warnings = append(warnings, fmt.Sprintf("重复闭关已进入高耗阶段；本轮消耗 %d %s，完成后累计耗费 %d %s。", cost, currencyLabel, cumulativeCost, currencyLabel))
 		}
 		options["cultivate"] = actionOption{
 			view:    AvailableAction{ID: "cultivate", Kind: "cultivate", Category: "self", Name: "修炼", Description: description, Duration: action.Duration, Costs: costs, Warnings: warnings},

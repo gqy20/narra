@@ -157,10 +157,11 @@ type StoryPresentation struct {
 }
 
 type FlagDefinition struct {
-	ID          string `json:"id"`
-	Scope       string `json:"scope"`
-	Description string `json:"description"`
-	PublicLabel string `json:"public_label,omitempty"`
+	ID           string `json:"id"`
+	Scope        string `json:"scope"`
+	Description  string `json:"description"`
+	PublicLabel  string `json:"public_label,omitempty"`
+	BlockedLabel string `json:"blocked_label,omitempty"`
 }
 
 // OpportunityActionDefinition maps an open world opportunity to a normal
@@ -233,18 +234,20 @@ type FixedEvent struct {
 }
 
 type Contest struct {
-	Day              int                  `json:"day"`
-	ItemID           string               `json:"item_id"`
-	LocationID       string               `json:"location_id"`
-	RequiredItemID   string               `json:"required_item_id"`
-	ScoreResources   []string             `json:"score_resources"`
-	PreparationFlag  string               `json:"preparation_flag"`
-	EarlyOutcome     string               `json:"early_outcome"`
-	CancelledOutcome string               `json:"cancelled_outcome"`
-	NoWinnerOutcome  string               `json:"no_winner_outcome"`
-	DefaultOutcome   string               `json:"default_outcome"`
-	OutcomeRules     []ContestOutcomeRule `json:"outcome_rules,omitempty"`
-	RewardRules      []ContestOutcomeRule `json:"reward_rules,omitempty"`
+	Day                int                  `json:"day"`
+	ItemID             string               `json:"item_id"`
+	LocationID         string               `json:"location_id"`
+	RequiredItemID     string               `json:"required_item_id"`
+	ScoreResources     []string             `json:"score_resources"`
+	PreparationFlag    string               `json:"preparation_flag"`
+	VerifiedDateFactID string               `json:"verified_date_fact_id,omitempty"`
+	RumoredDateFactID  string               `json:"rumored_date_fact_id,omitempty"`
+	EarlyOutcome       string               `json:"early_outcome"`
+	CancelledOutcome   string               `json:"cancelled_outcome"`
+	NoWinnerOutcome    string               `json:"no_winner_outcome"`
+	DefaultOutcome     string               `json:"default_outcome"`
+	OutcomeRules       []ContestOutcomeRule `json:"outcome_rules,omitempty"`
+	RewardRules        []ContestOutcomeRule `json:"reward_rules,omitempty"`
 }
 
 type ContestOutcomeRule struct {

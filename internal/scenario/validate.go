@@ -40,6 +40,13 @@ func Validate(bundle domain.Bundle) error {
 	if err := validateStoryArcs(bundle); err != nil {
 		return err
 	}
+	for _, factID := range []string{bundle.Scenario.Contest.VerifiedDateFactID, bundle.Scenario.Contest.RumoredDateFactID} {
+		if factID != "" {
+			if _, ok := bundle.Facts[factID]; !ok {
+				return fmt.Errorf("contest date guidance references unknown fact %s", factID)
+			}
+		}
+	}
 	seenMarkets := make(map[string]bool)
 	for _, market := range bundle.Scenario.Markets {
 		if market.ID == "" || seenMarkets[market.ID] || market.PriceStep < 0 {
