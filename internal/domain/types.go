@@ -26,6 +26,38 @@ type Scenario struct {
 	Contest       Contest                       `json:"contest"`
 }
 
+type ScenarioPresentation struct {
+	Brand      string                          `json:"brand" yaml:"brand"`
+	WorldTitle string                          `json:"world_title" yaml:"world_title"`
+	Objective  string                          `json:"objective" yaml:"objective"`
+	Terrain    string                          `json:"terrain,omitempty" yaml:"terrain,omitempty"`
+	Resources  []ResourcePresentation          `json:"resources" yaml:"resources"`
+	Locations  map[string]LocationPresentation `json:"locations,omitempty" yaml:"locations,omitempty"`
+	Actors     map[string]ActorPresentation    `json:"actors,omitempty" yaml:"actors,omitempty"`
+}
+
+type ResourcePresentation struct {
+	ID       string `json:"id" yaml:"id"`
+	Label    string `json:"label" yaml:"label"`
+	Emphasis string `json:"emphasis,omitempty" yaml:"emphasis,omitempty"`
+	HideZero bool   `json:"hide_zero,omitempty" yaml:"hide_zero,omitempty"`
+}
+
+type LocationPresentation struct {
+	Profile    string `json:"profile,omitempty" yaml:"profile,omitempty"`
+	Background string `json:"background,omitempty" yaml:"background,omitempty"`
+}
+
+type ActorPresentation struct {
+	Profile  string               `json:"profile,omitempty" yaml:"profile,omitempty"`
+	MapToken MapTokenPresentation `json:"map_token,omitempty" yaml:"map_token,omitempty"`
+}
+
+type MapTokenPresentation struct {
+	Color  string    `json:"color,omitempty" yaml:"color,omitempty"`
+	Offset []float64 `json:"offset,omitempty" yaml:"offset,omitempty"`
+}
+
 type StoryArc struct {
 	ID               string                 `json:"id"`
 	Title            string                 `json:"title"`
@@ -451,6 +483,7 @@ type Route struct {
 type Bundle struct {
 	Content       ContentMetadata
 	Scenario      Scenario
+	Presentation  ScenarioPresentation
 	StoryArcs     map[string]StoryArc
 	Flags         map[string]FlagDefinition
 	Actions       map[string]ActionDefinition

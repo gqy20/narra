@@ -60,7 +60,8 @@ func (s *Session) View() PlayerView {
 	state := s.engine.State()
 	view := PlayerView{
 		ScenarioID: s.bundle.Scenario.ID, Title: s.bundle.Scenario.Title,
-		Day: state.Day, Duration: s.bundle.Scenario.Duration, Phase: state.Phase,
+		Presentation: s.bundle.Presentation,
+		Day:          state.Day, Duration: s.bundle.Scenario.Duration, Phase: state.Phase,
 		Ended: state.Day >= s.bundle.Scenario.Duration, Resolved: state.Outcome != "", Player: s.visiblePlayer(state),
 		Location:    s.visibleLocation(state.Player.Location),
 		KnownActors: s.visibleActors(state), KnownFacts: s.visibleBeliefs(state),

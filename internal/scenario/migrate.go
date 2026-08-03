@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"fantu/internal/domain"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -29,7 +30,10 @@ type ContentMigrationFile struct {
 
 type contentMigration func(dir string, files map[string][]byte, report *ContentMigrationReport) error
 
-var contentMigrations = map[int]contentMigration{1: migrateContentV1ToV2}
+var contentMigrations = map[int]contentMigration{
+	1: migrateContentV1ToV2,
+	2: migrateContentV2ToV3,
+}
 
 func MigrateContent(dir string, write bool) (ContentMigrationReport, error) {
 	files, err := readContentFiles(dir)
@@ -88,6 +92,46 @@ func migrateContentV1ToV2(_ string, files map[string][]byte, report *ContentMigr
 	files["arcs.yml"] = []byte(arcs)
 	report.Changes = append(report.Changes, "manifest schema_version: 1 -> 2")
 	report.Changes = append(report.Changes, changes...)
+	return nil
+}
+
+func migrateContentV2ToV3(_ string, files map[string][]byte, report *ContentMigrationReport) error {
+	manifestSource := string(files["manifest.yml"])
+	files["manifest.yml"] = []byte(strings.Replace(manifestSource, "schema_version: 2", "schema_version: 3", 1))
+	report.Changes = append(report.Changes, "manifest schema_version: 2 -> 3")
+	if files["presentation.yml"] != nil || files["presentation.yaml"] != nil {
+		return nil
+	}
+	var scenarioValue struct {
+		Title string `json:"title"`
+	}
+	if err := yaml.Unmarshal(files["scenario.yml"], &scenarioValue); err != nil {
+		return fmt.Errorf("decode scenario.yml for presentation defaults: %w", err)
+	}
+	var player struct {
+		Resources map[string]int `json:"resources"`
+	}
+	if err := yaml.Unmarshal(files["player.yml"], &player); err != nil {
+		return fmt.Errorf("decode player.yml for presentation defaults: %w", err)
+	}
+	resourceIDs := make([]string, 0, len(player.Resources))
+	for id := range player.Resources {
+		resourceIDs = append(resourceIDs, id)
+	}
+	sort.Strings(resourceIDs)
+	presentation := domain.ScenarioPresentation{
+		Brand: "凡途", WorldTitle: scenarioValue.Title, Objective: "核心目标将在这里落定",
+		Resources: make([]domain.ResourcePresentation, 0, len(resourceIDs)),
+	}
+	for _, id := range resourceIDs {
+		presentation.Resources = append(presentation.Resources, domain.ResourcePresentation{ID: id, Label: id})
+	}
+	encoded, err := yaml.Marshal(presentation)
+	if err != nil {
+		return fmt.Errorf("encode presentation.yml: %w", err)
+	}
+	files["presentation.yml"] = encoded
+	report.Changes = append(report.Changes, "presentation.yml: add scenario display metadata")
 	return nil
 }
 
@@ -200,6 +244,14 @@ func validateMigratedContent(sourceDir string, files map[string][]byte) error {
 			}
 		}
 		if err := os.WriteFile(filepath.Join(tempDir, entry.Name()), contents, 0o644); err != nil {
+			return err
+		}
+	}
+	for name, contents := range files {
+		if _, err := os.Stat(filepath.Join(tempDir, name)); err == nil {
+			continue
+		}
+		if err := os.WriteFile(filepath.Join(tempDir, name), contents, 0o644); err != nil {
 			return err
 		}
 	}

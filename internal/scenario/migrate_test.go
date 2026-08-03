@@ -23,7 +23,7 @@ func TestContentMigrationPreviewAndApply(t *testing.T) {
 			t.Fatal(err)
 		}
 		if entry.Name() == "manifest.yml" {
-			contents = []byte(strings.Replace(string(contents), "schema_version: 2", "schema_version: 1", 1))
+			contents = []byte(strings.Replace(string(contents), "schema_version: 3", "schema_version: 1", 1))
 		}
 		if entry.Name() == "arcs.yml" {
 			lines := strings.Split(strings.ReplaceAll(string(contents), "\r\n", "\n"), "\n")
@@ -46,7 +46,7 @@ func TestContentMigrationPreviewAndApply(t *testing.T) {
 	if err != nil {
 		t.Fatalf("preview migration: %v", err)
 	}
-	if preview.FromVersion != 1 || preview.ToVersion != 2 || preview.Applied || len(preview.Files) != 2 || len(preview.Changes) < 2 {
+	if preview.FromVersion != 1 || preview.ToVersion != CurrentSchemaVersion || preview.Applied || len(preview.Files) != 2 || len(preview.Changes) < 2 {
 		t.Fatalf("preview report = %+v", preview)
 	}
 	manifestAfterPreview, _ := os.ReadFile(filepath.Join(targetDir, "manifest.yml"))
@@ -74,6 +74,44 @@ func TestContentMigrationPreviewAndApply(t *testing.T) {
 	noOp, err := MigrateContent(targetDir, false)
 	if err != nil || len(noOp.Files) != 0 {
 		t.Fatalf("current package migration = %+v, %v", noOp, err)
+	}
+}
+
+func TestContentMigrationV2AddsPresentationMetadata(t *testing.T) {
+	sourceDir := filepath.Join("..", "..", "data", "blackwind")
+	targetDir := t.TempDir()
+	entries, err := os.ReadDir(sourceDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || entry.Name() == "presentation.yml" {
+			continue
+		}
+		contents, err := os.ReadFile(filepath.Join(sourceDir, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if entry.Name() == "manifest.yml" {
+			contents = []byte(strings.Replace(string(contents), "schema_version: 3", "schema_version: 2", 1))
+		}
+		if err := os.WriteFile(filepath.Join(targetDir, entry.Name()), contents, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	report, err := MigrateContent(targetDir, true)
+	if err != nil {
+		t.Fatalf("apply v2 migration: %v", err)
+	}
+	if !report.Applied {
+		t.Fatalf("migration report = %+v", report)
+	}
+	bundle, err := Load(targetDir)
+	if err != nil {
+		t.Fatalf("load migrated v2 package: %v", err)
+	}
+	if bundle.Presentation.Brand == "" || len(bundle.Presentation.Resources) != len(bundle.DefaultPlayer.Resources) {
+		t.Fatalf("generated presentation = %+v", bundle.Presentation)
 	}
 }
 

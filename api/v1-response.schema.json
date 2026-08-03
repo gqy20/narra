@@ -35,6 +35,18 @@
         "message"
       ]
     },
+    "ActorPresentation": {
+      "properties": {
+        "profile": {
+          "type": "string"
+        },
+        "map_token": {
+          "$ref": "#/$defs/MapTokenPresentation"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "AvailableAction": {
       "properties": {
         "id": {
@@ -247,6 +259,33 @@
         "highlights"
       ]
     },
+    "LocationPresentation": {
+      "properties": {
+        "profile": {
+          "type": "string"
+        },
+        "background": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "MapTokenPresentation": {
+      "properties": {
+        "color": {
+          "type": "string"
+        },
+        "offset": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "PlayMetrics": {
       "properties": {
         "decision_inputs": {
@@ -305,6 +344,9 @@
         },
         "title": {
           "type": "string"
+        },
+        "presentation": {
+          "$ref": "#/$defs/ScenarioPresentation"
         },
         "day": {
           "type": "integer"
@@ -393,6 +435,7 @@
       "required": [
         "scenario_id",
         "title",
+        "presentation",
         "day",
         "duration",
         "phase",
@@ -497,6 +540,28 @@
         "intensity"
       ]
     },
+    "ResourcePresentation": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "emphasis": {
+          "type": "string"
+        },
+        "hide_zero": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "label"
+      ]
+    },
     "Response": {
       "properties": {
         "api_version": {
@@ -566,6 +631,48 @@
         "next_step",
         "urgent",
         "complete"
+      ]
+    },
+    "ScenarioPresentation": {
+      "properties": {
+        "brand": {
+          "type": "string"
+        },
+        "world_title": {
+          "type": "string"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "terrain": {
+          "type": "string"
+        },
+        "resources": {
+          "items": {
+            "$ref": "#/$defs/ResourcePresentation"
+          },
+          "type": "array"
+        },
+        "locations": {
+          "additionalProperties": {
+            "$ref": "#/$defs/LocationPresentation"
+          },
+          "type": "object"
+        },
+        "actors": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ActorPresentation"
+          },
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "brand",
+        "world_title",
+        "objective",
+        "resources"
       ]
     },
     "TravelCheck": {

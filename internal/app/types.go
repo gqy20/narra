@@ -1,29 +1,32 @@
 package app
 
+import "fantu/internal/domain"
+
 type PlayerView struct {
-	ScenarioID       string             `json:"scenario_id"`
-	Title            string             `json:"title"`
-	Day              int                `json:"day"`
-	Duration         int                `json:"duration"`
-	Phase            string             `json:"phase"`
-	Ended            bool               `json:"ended"`
-	Resolved         bool               `json:"resolved"`
-	Outcome          string             `json:"outcome,omitempty"`
-	Player           VisiblePlayer      `json:"player"`
-	Location         VisibleLocation    `json:"location"`
-	WorldMap         VisibleWorldMap    `json:"world_map"`
-	KnownActors      []VisibleActor     `json:"known_actors"`
-	KnownFacts       []VisibleBelief    `json:"known_facts"`
-	RecentEvents     []VisibleEvent     `json:"recent_events"`
-	CausalThreads    []VisibleInfluence `json:"causal_threads,omitempty"`
-	AvailableActions []AvailableAction  `json:"available_actions"`
-	Guidance         []string           `json:"guidance,omitempty"`
-	LastTurn         *TurnFeedback      `json:"last_turn,omitempty"`
-	Ending           *EndingSummary     `json:"ending,omitempty"`
-	Metrics          PlayMetrics        `json:"metrics"`
-	Travel           *TravelGuidance    `json:"travel,omitempty"`
-	Preparation      PreparationSummary `json:"preparation"`
-	RouteProgress    *RouteProgress     `json:"route_progress,omitempty"`
+	ScenarioID       string                      `json:"scenario_id"`
+	Title            string                      `json:"title"`
+	Presentation     domain.ScenarioPresentation `json:"presentation"`
+	Day              int                         `json:"day"`
+	Duration         int                         `json:"duration"`
+	Phase            string                      `json:"phase"`
+	Ended            bool                        `json:"ended"`
+	Resolved         bool                        `json:"resolved"`
+	Outcome          string                      `json:"outcome,omitempty"`
+	Player           VisiblePlayer               `json:"player"`
+	Location         VisibleLocation             `json:"location"`
+	WorldMap         VisibleWorldMap             `json:"world_map"`
+	KnownActors      []VisibleActor              `json:"known_actors"`
+	KnownFacts       []VisibleBelief             `json:"known_facts"`
+	RecentEvents     []VisibleEvent              `json:"recent_events"`
+	CausalThreads    []VisibleInfluence          `json:"causal_threads,omitempty"`
+	AvailableActions []AvailableAction           `json:"available_actions"`
+	Guidance         []string                    `json:"guidance,omitempty"`
+	LastTurn         *TurnFeedback               `json:"last_turn,omitempty"`
+	Ending           *EndingSummary              `json:"ending,omitempty"`
+	Metrics          PlayMetrics                 `json:"metrics"`
+	Travel           *TravelGuidance             `json:"travel,omitempty"`
+	Preparation      PreparationSummary          `json:"preparation"`
+	RouteProgress    *RouteProgress              `json:"route_progress,omitempty"`
 }
 
 type TurnFeedback struct {

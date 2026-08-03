@@ -16,6 +16,9 @@ func Validate(bundle domain.Bundle) error {
 	if mode := bundle.Scenario.PlanningMode; mode != "" && mode != "authored_priority" && mode != "unified_score" {
 		return fmt.Errorf("scenario has invalid planning mode %q", mode)
 	}
+	if err := validatePresentation(bundle); err != nil {
+		return err
+	}
 	if err := validateTopics(bundle); err != nil {
 		return err
 	}
@@ -153,6 +156,65 @@ func Validate(bundle domain.Bundle) error {
 		}
 	}
 	return nil
+}
+
+func validatePresentation(bundle domain.Bundle) error {
+	presentation := bundle.Presentation
+	if strings.TrimSpace(presentation.Brand) == "" || strings.TrimSpace(presentation.WorldTitle) == "" || strings.TrimSpace(presentation.Objective) == "" {
+		return fmt.Errorf("presentation requires brand, world_title, and objective")
+	}
+	seenResources := make(map[string]bool, len(presentation.Resources))
+	for _, resource := range presentation.Resources {
+		if resource.ID == "" || resource.Label == "" || seenResources[resource.ID] {
+			return fmt.Errorf("presentation has invalid or duplicate resource %q", resource.ID)
+		}
+		if resource.Emphasis != "" && resource.Emphasis != "normal" && resource.Emphasis != "accent" && resource.Emphasis != "success" {
+			return fmt.Errorf("presentation resource %s has invalid emphasis %q", resource.ID, resource.Emphasis)
+		}
+		seenResources[resource.ID] = true
+	}
+	for resource := range bundle.DefaultPlayer.Resources {
+		if !seenResources[resource] {
+			return fmt.Errorf("presentation does not declare player resource %s", resource)
+		}
+	}
+	for _, resource := range bundle.Scenario.Contest.ScoreResources {
+		if !seenResources[resource] {
+			return fmt.Errorf("presentation does not declare contest resource %s", resource)
+		}
+	}
+	sceneKeys := make(map[string]bool, len(bundle.Locations))
+	for _, location := range bundle.Locations {
+		if location.SceneKey != "" {
+			sceneKeys[location.SceneKey] = true
+		}
+	}
+	for sceneKey, location := range presentation.Locations {
+		if sceneKey == "" || location.Profile == "" && location.Background == "" {
+			return fmt.Errorf("presentation has invalid location entry %q", sceneKey)
+		}
+		if !sceneKeys[sceneKey] {
+			return fmt.Errorf("presentation references unknown location scene key %s", sceneKey)
+		}
+	}
+	for actorID, actor := range presentation.Actors {
+		if !bundleHasNPC(bundle, actorID) {
+			return fmt.Errorf("presentation references unknown actor %s", actorID)
+		}
+		if len(actor.MapToken.Offset) != 0 && len(actor.MapToken.Offset) != 2 {
+			return fmt.Errorf("presentation actor %s map token offset requires two values", actorID)
+		}
+	}
+	return nil
+}
+
+func bundleHasNPC(bundle domain.Bundle, actorID string) bool {
+	for _, npc := range bundle.NPCs {
+		if npc.ID == actorID {
+			return true
+		}
+	}
+	return false
 }
 
 func validateFlagRegistry(bundle domain.Bundle) error {

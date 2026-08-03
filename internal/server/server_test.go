@@ -224,6 +224,9 @@ func TestShutdownRequiresTokenAndSignalsOnceAuthorized(t *testing.T) {
 
 func assertStructuredView(t *testing.T, view *app.PlayerView) {
 	t.Helper()
+	if view.Presentation.Brand == "" || view.Presentation.WorldTitle == "" || view.Presentation.Objective == "" || len(view.Presentation.Resources) == 0 {
+		t.Fatalf("scenario presentation = %+v", view.Presentation)
+	}
 	if len(view.KnownActors) == 0 || view.KnownActors[0].PublicProfile == "" || view.KnownActors[0].PublicRole == "" || len(view.KnownActors[0].PublicFocus) == 0 {
 		t.Fatalf("public actor profiles = %+v", view.KnownActors)
 	}
