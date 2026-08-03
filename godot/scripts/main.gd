@@ -16,6 +16,9 @@ const WenKaiFont = preload("res://assets/fonts/LXGWWenKaiLite-Regular.ttf")
 const AIDialogueClientScript = preload("res://scripts/ai/dialogue_client.gd")
 const APIResponseAdapterScript = preload("res://scripts/api_response_adapter.gd")
 const LocalServerProcessScript = preload("res://scripts/local_server_process.gd")
+const SettingsStoreScript = preload("res://scripts/settings_store.gd")
+const GameClientScript = preload("res://scripts/game_client.gd")
+const GameViewModelScript = preload("res://scripts/game_view_model.gd")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
 const AI_SETTINGS_FILE := "ai-settings.json"
@@ -71,12 +74,14 @@ const COLORS := {
 	"success": Color("82aa78"),
 }
 
-@onready var http: HTTPRequest = $HTTPRequest
 
 var current_view: Dictionary = {}
 var dialogue_client
 var api_response_adapter = APIResponseAdapterScript.new()
 var local_server_process
+var settings_store = SettingsStoreScript.new()
+var game_client
+var view_model = GameViewModelScript.new()
 var actor_dialogue_by_id := {}
 var actor_dialogue_error_by_id := {}
 var actor_dialogue_history_by_id := {}
@@ -262,7 +267,9 @@ func _ready() -> void:
 	add_child(dialogue_client)
 	dialogue_client.dialogue_ready.connect(_on_ai_dialogue_ready)
 	dialogue_client.dialogue_failed.connect(_on_ai_dialogue_failed)
-	http.request_completed.connect(_on_request_completed)
+	game_client = GameClientScript.new(API_BASE)
+	add_child(game_client)
+	game_client.request_completed.connect(_on_request_completed)
 	_build_interface()
 	if runtime_warning != "":
 		_show_error(runtime_warning)
@@ -474,63 +481,35 @@ func _prune_log_archives(prefix: String) -> void:
 
 
 func _load_user_settings() -> void:
-	var config := ConfigFile.new()
-	if config.load(runtime_root.path_join("settings.cfg")) == OK:
-		var configured_level := str(config.get_value("diagnostics", "log_level", "INFO")).to_upper()
-		if LOG_LEVELS.has(configured_level):
-			log_level = configured_level
-		var configured_mode := str(config.get_value("display", "mode", "windowed"))
-		if DISPLAY_MODE_KEYS.has(configured_mode):
-			display_mode = configured_mode
-		var configured_resolution = config.get_value("display", "resolution", Vector2i(1280, 800))
-		if configured_resolution is Vector2i and DISPLAY_RESOLUTION_PRESETS.has(configured_resolution):
-			display_resolution = configured_resolution
-		var configured_scale := float(config.get_value("display", "ui_scale", 1.0))
-		for preset in UI_SCALE_PRESETS:
-			if is_equal_approx(configured_scale, preset):
-				ui_scale = preset
-				break
-	_load_ai_settings()
-
-
-func _load_ai_settings() -> void:
-	var path := runtime_root.path_join(AI_SETTINGS_FILE)
-	if not FileAccess.file_exists(path):
-		return
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
-		_log_event("ERROR", "ai_settings_load_failed", "AI settings file is not valid JSON", {"path": path})
-		return
-	ai_enabled = bool(parsed.get("enabled", false))
-	ai_model = str(parsed.get("model", ai_model)).strip_edges()
-	ai_base_url = str(parsed.get("base_url", ai_base_url)).strip_edges()
-	ai_api_key = str(parsed.get("api_key", "")).strip_edges()
+	var loaded := settings_store.load_all(runtime_root, {
+		"log_level": log_level, "display_mode": display_mode, "display_resolution": display_resolution, "ui_scale": ui_scale,
+		"ai_enabled": ai_enabled, "ai_model": ai_model, "ai_base_url": ai_base_url, "ai_api_key": ai_api_key, "ai_file": AI_SETTINGS_FILE,
+	}, {
+		"log_levels": LOG_LEVELS, "display_modes": DISPLAY_MODE_KEYS, "resolutions": DISPLAY_RESOLUTION_PRESETS, "ui_scales": UI_SCALE_PRESETS,
+	})
+	log_level = str(loaded.log_level)
+	display_mode = str(loaded.display_mode)
+	display_resolution = loaded.display_resolution
+	ui_scale = float(loaded.ui_scale)
+	ai_enabled = bool(loaded.ai_enabled)
+	ai_model = str(loaded.ai_model)
+	ai_base_url = str(loaded.ai_base_url)
+	ai_api_key = str(loaded.ai_api_key)
+	if str(loaded.get("ai_error", "")) != "":
+		_log_event("ERROR", "ai_settings_load_failed", str(loaded.ai_error), {"path": runtime_root.path_join(AI_SETTINGS_FILE)})
 
 
 func _save_ai_settings() -> Error:
-	var path := runtime_root.path_join(AI_SETTINGS_FILE)
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		return FileAccess.get_open_error()
-	file.store_string(JSON.stringify({
-		"enabled": ai_enabled,
-		"api_key": ai_api_key,
-		"model": ai_model,
-		"base_url": ai_base_url,
-	}, "\t"))
-	file.flush()
-	return OK
+	return settings_store.save_ai(runtime_root, AI_SETTINGS_FILE, {
+		"enabled": ai_enabled, "api_key": ai_api_key, "model": ai_model, "base_url": ai_base_url,
+	})
 
 
 func _save_user_settings() -> void:
-	var config := ConfigFile.new()
 	var settings_path := runtime_root.path_join("settings.cfg")
-	config.load(settings_path)
-	config.set_value("diagnostics", "log_level", log_level)
-	config.set_value("display", "mode", display_mode)
-	config.set_value("display", "resolution", display_resolution)
-	config.set_value("display", "ui_scale", ui_scale)
-	var save_error := config.save(settings_path)
+	var save_error := settings_store.save_user(runtime_root, {
+		"log_level": log_level, "display_mode": display_mode, "display_resolution": display_resolution, "ui_scale": ui_scale,
+	})
 	if save_error != OK:
 		_log_event("ERROR", "settings_save_failed", "could not save user settings", {"error": save_error, "path": settings_path})
 
@@ -2162,9 +2141,7 @@ func _request(operation: String, method: HTTPClient.Method, path: String, payloa
 		footer_label.add_theme_color_override("font_color", COLORS.accent)
 	if start_layer.visible and connection_label:
 		connection_label.text = "正在确认旅途入口…"
-	var headers := PackedStringArray(["Content-Type: application/json"])
-	var body := "" if method == HTTPClient.METHOD_GET else JSON.stringify(payload)
-	var error := http.request(API_BASE + path, headers, method, body)
+	var error: Error = game_client.send(method, path, payload)
 	if error != OK:
 		_log_event("ERROR", "http_send_failed", "request could not be sent", {
 			"error": error,
@@ -2254,7 +2231,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		return
 	if parsed.has("view") and operation not in ["autosave", "save"]:
 		var previous_view := view_before_action if operation == "action" else current_view
-		current_view = parsed["view"]
+		current_view = view_model.accept(parsed["view"], operation == "action")
 		if operation == "action":
 			_apply_feedback_actor_state(current_view.get("last_turn", {}))
 		_show_game()
