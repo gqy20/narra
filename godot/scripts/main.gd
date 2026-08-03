@@ -15,9 +15,9 @@ const SourceHanSerifFont = preload("res://assets/fonts/SourceHanSerifCN-SemiBold
 const WenKaiFont = preload("res://assets/fonts/LXGWWenKaiLite-Regular.ttf")
 const AIDialogueClientScript = preload("res://scripts/ai/dialogue_client.gd")
 const APIResponseAdapterScript = preload("res://scripts/api_response_adapter.gd")
+const LocalServerProcessScript = preload("res://scripts/local_server_process.gd")
 const API_BASE := "http://127.0.0.1:8787/api/v1"
 const AUTOSAVE_SLOT := "autosave"
-const BUNDLED_SERVER_NAME := "fantu-server.exe"
 const AI_SETTINGS_FILE := "ai-settings.json"
 const BUNDLED_SERVER_STARTUP_DELAY := 0.4
 const PORTABLE_USER_ARG := "--portable"
@@ -76,6 +76,7 @@ const COLORS := {
 var current_view: Dictionary = {}
 var dialogue_client
 var api_response_adapter = APIResponseAdapterScript.new()
+var local_server_process
 var actor_dialogue_by_id := {}
 var actor_dialogue_error_by_id := {}
 var actor_dialogue_history_by_id := {}
@@ -123,7 +124,6 @@ var journal_seen_feedback_signature := ""
 var journal_current_feedback_signature := ""
 var journal_tab_labels: Array[String] = ["回响", "线索", "人物", "行装"]
 var journal_tab_colors: Array[Color] = [COLORS.muted, COLORS.muted, COLORS.muted, COLORS.muted]
-var bundled_server_pid := -1
 var runtime_root := ""
 var logs_dir := ""
 var archived_logs_dir := ""
@@ -245,6 +245,9 @@ func _ready() -> void:
 	_configure_runtime_paths()
 	_configure_runtime_identity()
 	_initialize_crash_tracking()
+	local_server_process = LocalServerProcessScript.new()
+	add_child(local_server_process)
+	local_server_process.log_event.connect(_log_event)
 	get_tree().auto_accept_quit = false
 	_log_event("INFO", "startup", "client starting", {
 		"pid": OS.get_process_id(),
@@ -263,17 +266,27 @@ func _ready() -> void:
 	_build_interface()
 	if runtime_warning != "":
 		_show_error(runtime_warning)
-	_start_bundled_server()
-	if bundled_server_pid > 0:
+	local_server_process.start({
+		"runtime_root": runtime_root,
+		"logs_dir": logs_dir,
+		"saves_dir": saves_dir,
+		"crash_dir": crash_dir,
+		"log_max_mib": LOG_MAX_MIB,
+		"log_backups": LOG_BACKUPS,
+		"log_level": log_level,
+		"build_version": build_version,
+		"session_id": session_id,
+		"shutdown_token": shutdown_token,
+		"ai_settings_file": AI_SETTINGS_FILE,
+	})
+	if local_server_process.pid > 0:
 		await get_tree().create_timer(BUNDLED_SERVER_STARTUP_DELAY).timeout
 	_request("health", HTTPClient.METHOD_GET, "/health")
 
 
 func _exit_tree() -> void:
-	if bundled_server_pid > 0:
-		_log_event("WARN", "server_force_stop", "forcing bundled service to stop", {"pid": bundled_server_pid})
-		OS.kill(bundled_server_pid)
-		bundled_server_pid = -1
+	if local_server_process != null:
+		local_server_process.force_stop()
 	_log_event("INFO", "stopped", "client stopped")
 	_clear_crash_marker()
 
@@ -288,69 +301,11 @@ func _begin_graceful_shutdown() -> void:
 		return
 	shutdown_in_progress = true
 	_log_event("INFO", "shutdown_requested", "window close requested")
-	if bundled_server_pid <= 0:
+	if local_server_process == null or local_server_process.pid <= 0:
 		get_tree().quit()
 		return
-	var shutdown_http := HTTPRequest.new()
-	shutdown_http.timeout = 1.5
-	add_child(shutdown_http)
-	var request_error := shutdown_http.request(
-		API_BASE + "/server/shutdown",
-		PackedStringArray(["Content-Type: application/json"]),
-		HTTPClient.METHOD_POST,
-		JSON.stringify({"token": shutdown_token})
-	)
-	if request_error == OK:
-		var response: Array = await shutdown_http.request_completed
-		_log_event("INFO", "server_shutdown_response", "shutdown endpoint completed", {
-			"result": response[0],
-			"status": response[1],
-		})
-		await get_tree().create_timer(0.5).timeout
-	shutdown_http.queue_free()
-	if OS.is_process_running(bundled_server_pid):
-		_log_event("WARN", "server_shutdown_fallback", "service did not stop gracefully", {"pid": bundled_server_pid})
-		OS.kill(bundled_server_pid)
-	else:
-		_log_event("INFO", "server_stopped", "bundled service stopped gracefully")
-	bundled_server_pid = -1
+	await local_server_process.shutdown(API_BASE, shutdown_token)
 	get_tree().quit()
-
-
-func _start_bundled_server() -> void:
-	if OS.has_feature("editor") or OS.get_name() != "Windows":
-		return
-	var install_dir := OS.get_executable_path().get_base_dir()
-	var server_path := install_dir.path_join(BUNDLED_SERVER_NAME)
-	if not FileAccess.file_exists(server_path):
-		push_error("Bundled game server is missing: %s" % server_path)
-		return
-	var data_dir := install_dir.path_join("data").path_join("blackwind")
-	bundled_server_pid = OS.create_process(
-		server_path,
-		PackedStringArray([
-			"-data", data_dir,
-			"-saves", saves_dir,
-			"-log", logs_dir.path_join("server.log"),
-			"-crash-dir", crash_dir,
-			"-log-max-mb", str(LOG_MAX_MIB),
-			"-log-backups", str(LOG_BACKUPS),
-			"-log-level", log_level,
-			"-version", build_version,
-			"-session-id", session_id,
-			"-shutdown-token", shutdown_token,
-			"-ai-settings", runtime_root.path_join(AI_SETTINGS_FILE),
-		]),
-		false
-	)
-	if bundled_server_pid > 0:
-		_log_event("INFO", "server_started", "bundled service process created", {
-			"pid": bundled_server_pid,
-			"data": data_dir,
-			"saves": saves_dir,
-		})
-	else:
-		_log_event("ERROR", "server_start_failed", "could not create bundled service process", {"path": server_path})
 
 
 func _configure_runtime_paths() -> void:
@@ -760,7 +715,7 @@ func _diagnostic_environment() -> Dictionary:
 		"build": build_info,
 		"runtime_space_available_bytes": runtime_space,
 		"portable_mode": portable_mode,
-		"server_process_running": bundled_server_pid > 0 and OS.is_process_running(bundled_server_pid),
+		"server_process_running": local_server_process != null and local_server_process.is_running(),
 		"last_server_http_status": last_server_http_status,
 		"log_level": log_level,
 	}
