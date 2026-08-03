@@ -12,6 +12,8 @@
 *.prof
 coverage.*
 /artifacts/review/
+/artifacts/imagegen/
+/artifacts/screenshots/tianqi-*.png
 
 # Godot generated state
 /godot/.godot/

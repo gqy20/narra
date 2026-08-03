@@ -29,15 +29,22 @@ type Scenario struct {
 }
 
 type ScenarioPresentation struct {
-	Brand       string                          `json:"brand" yaml:"brand"`
-	WorldTitle  string                          `json:"world_title" yaml:"world_title"`
-	Objective   string                          `json:"objective" yaml:"objective"`
-	Intro       string                          `json:"intro,omitempty" yaml:"intro,omitempty"`
-	StartAction string                          `json:"start_action,omitempty" yaml:"start_action,omitempty"`
-	Terrain     string                          `json:"terrain,omitempty" yaml:"terrain,omitempty"`
-	Resources   []ResourcePresentation          `json:"resources" yaml:"resources"`
-	Locations   map[string]LocationPresentation `json:"locations,omitempty" yaml:"locations,omitempty"`
-	Actors      map[string]ActorPresentation    `json:"actors,omitempty" yaml:"actors,omitempty"`
+	Brand        string                          `json:"brand" yaml:"brand"`
+	WorldTitle   string                          `json:"world_title" yaml:"world_title"`
+	Objective    string                          `json:"objective" yaml:"objective"`
+	Intro        string                          `json:"intro,omitempty" yaml:"intro,omitempty"`
+	StartAction  string                          `json:"start_action,omitempty" yaml:"start_action,omitempty"`
+	AssetRoot    string                          `json:"asset_root,omitempty" yaml:"asset_root,omitempty"`
+	OpeningEvent string                          `json:"opening_event,omitempty" yaml:"opening_event,omitempty"`
+	EndingEvent  string                          `json:"ending_event,omitempty" yaml:"ending_event,omitempty"`
+	Terrain      string                          `json:"terrain,omitempty" yaml:"terrain,omitempty"`
+	Resources    []ResourcePresentation          `json:"resources" yaml:"resources"`
+	Locations    map[string]LocationPresentation `json:"locations,omitempty" yaml:"locations,omitempty"`
+	Actors       map[string]ActorPresentation    `json:"actors,omitempty" yaml:"actors,omitempty"`
+	Facts        map[string]string               `json:"facts,omitempty" yaml:"facts,omitempty"`
+	Events       map[string]string               `json:"events,omitempty" yaml:"events,omitempty"`
+	EventCues    map[string]string               `json:"event_cues,omitempty" yaml:"event_cues,omitempty"`
+	UI           map[string]string               `json:"ui,omitempty" yaml:"ui,omitempty"`
 }
 
 type DialogueConfig struct {

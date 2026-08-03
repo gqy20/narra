@@ -3,6 +3,9 @@ world_title: 京师灾变与会勘
 objective: 第十四日前，决定哪些材料进入会勘定稿
 intro: 灾变之后，事实不会自行汇成真相。官署、内廷、臣工、书坊、灾民与军需灰网都在争夺材料的去向和解释权。
 start_action: 从王恭厂外街开始记录
+asset_root: res://assets/tianqi
+opening_event: opening-blast
+ending_event: final-verdict
 resources:
 - {id: authority, label: 权势, emphasis: accent}
 - {id: evidence, label: 证据, emphasis: success}
@@ -15,3 +18,19 @@ actors:
   N07: {map_token: {color: "#3f6f73", offset: [24, -52]}}
   N08: {map_token: {color: "#6e7d52", offset: [0, -62]}}
   N09: {map_token: {color: "#4d4a45", offset: [0, -40]}}
+facts:
+  F01: E01
+  F02: E07
+  F03: E03
+  F04: E09
+  F05: E08
+  F06: E06
+  F07: E05
+  F08: E02
+  F09: E04
+  F10: E10
+event_cues:
+  "route:e01:": three-claims
+  "route:e09:": forged-ledger-reveal
+  "route:final:caveat": official-draft
+  "route:final:expose-forgery": forged-ledger-reveal

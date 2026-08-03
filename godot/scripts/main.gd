@@ -178,6 +178,9 @@ var last_server_http_status := 0
 var client_log_failure_reported := false
 
 var start_layer: Control
+var start_scene: TextureRect
+var start_vignette: TextureRect
+var start_seal: TextureRect
 var game_layer: Control
 var header_brand_label: Label
 var header_world_title_label: Label
@@ -223,6 +226,7 @@ var action_dock_title: Label
 var footer_label: Label
 var journal_layer: Control
 var journal_panel: PanelContainer
+var journal_paper: TextureRect
 var ending_layer: Control
 var ending_box: VBoxContainer
 var ending_background: TextureRect
@@ -538,6 +542,22 @@ func _apply_scenario_presentation(value: Variant) -> void:
 		return
 	scenario_presentation = value.duplicate(true)
 	presentation_registry.configure(scenario_presentation)
+	if start_scene:
+		var opening_key := str(scenario_presentation.get("opening_event", ""))
+		var opening_texture: Texture2D = presentation_registry.event_texture(opening_key) if opening_key != "" else null
+		start_scene.texture = opening_texture if opening_texture else StartBackgroundTexture
+	if start_vignette:
+		start_vignette.texture = presentation_registry.ui_texture("ink_vignette")
+		start_vignette.visible = start_vignette.texture != null
+	if start_seal:
+		start_seal.texture = presentation_registry.ui_texture("title_seal")
+		start_seal.visible = start_seal.texture != null
+	if journal_paper:
+		journal_paper.texture = presentation_registry.ui_texture("archive_paper")
+		journal_paper.visible = journal_paper.texture != null
+	if ending_seal:
+		var scenario_seal: Texture2D = presentation_registry.ui_texture("title_seal")
+		ending_seal.texture = scenario_seal if scenario_seal else CausalSealTexture
 	if location_stage:
 		location_stage.registry = presentation_registry
 	if header_brand_label:

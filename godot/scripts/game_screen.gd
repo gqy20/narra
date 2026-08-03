@@ -88,7 +88,7 @@ func _build_interface() -> void:
 	host.presentation_controller._build_ending_layer()
 	host.presentation_director = host.PresentationDirectorScript.new()
 	host.add_child(host.presentation_director)
-	host.presentation_director.configure(host.display_font, host.medium_font)
+	host.presentation_director.configure(host.display_font, host.medium_font, host.presentation_registry)
 
 
 func _build_header() -> void:
@@ -352,7 +352,7 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	host.actor_portrait = TextureRect.new()
 	host.actor_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.actor_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	host.actor_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	host.actor_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	host.actor_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var portrait_shader = Shader.new()
 	portrait_shader.code = "shader_type canvas_item; void fragment(){ vec4 c = texture(TEXTURE, UV); float l = smoothstep(0.0, 0.28, UV.x); float r = 1.0 - smoothstep(0.92, 1.0, UV.x); float b = 1.0 - smoothstep(0.94, 1.0, UV.y); COLOR = vec4(c.rgb, c.a * l * r * b); }"

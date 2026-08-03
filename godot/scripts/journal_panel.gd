@@ -33,6 +33,14 @@ func _build_journal_layer() -> void:
 	host.journal_panel.anchor_bottom = 0.974
 	host.journal_panel.add_theme_stylebox_override("panel", host.game_screen_controller._panel_style(Color("101612ff"), 1, 3, Color(host.COLORS.accent, 0.44), 24, 20))
 	host.journal_layer.add_child(host.journal_panel)
+	host.journal_paper = TextureRect.new()
+	host.journal_paper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	host.journal_paper.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	host.journal_paper.stretch_mode = TextureRect.STRETCH_SCALE
+	host.journal_paper.modulate = Color(0.22, 0.25, 0.21, 0.16)
+	host.journal_paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.journal_paper.hide()
+	host.journal_panel.add_child(host.journal_paper)
 	var outer = VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 12)
 	host.journal_panel.add_child(outer)
@@ -215,6 +223,19 @@ func _render_clues(clues: Array, actions: Array) -> void:
 	overview_label.add_theme_color_override("font_color", host.COLORS.accent if unverified > 0 else host.COLORS.success)
 	for index in clues.size():
 		var clue: Dictionary = clues[index]
+		var fact_id = str(clue.get("fact_id", ""))
+		var clue_texture: Texture2D = host.presentation_registry.fact_texture(fact_id)
+		if clue_texture:
+			var preview_panel := PanelContainer.new()
+			preview_panel.custom_minimum_size.y = 138
+			preview_panel.add_theme_stylebox_override("panel", host.game_screen_controller._panel_style(Color("090c0ab8"), 1, 2, Color(host.COLORS.accent, 0.22), 5, 5))
+			var preview := TextureRect.new()
+			preview.texture = clue_texture
+			preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			preview_panel.add_child(preview)
+			host.clues_box.add_child(preview_panel)
 		var claim = host.game_screen_controller._text(host.clues_box, str(clue.get("claim", "未知传言")), false, 15)
 		claim.add_theme_font_override("font", host.medium_font)
 		var confidence = int(clue.get("confidence", 0))
@@ -223,7 +244,6 @@ func _render_clues(clues: Array, actions: Array) -> void:
 			status += " · 与旧说法冲突"
 		var status_line = host.game_screen_controller._text(host.clues_box, "%s · %s" % [status, clue.get("source", "来源未知")], true, 13)
 		status_line.add_theme_color_override("font_color", host.COLORS.success if confidence >= 3 else host.COLORS.accent)
-		var fact_id = str(clue.get("fact_id", ""))
 		var verify_action = host.journal_panel_controller._action_for_fact(actions, fact_id, "verify")
 		var target_count = host.action_panel_controller._count_tell_actions(actions, "", fact_id)
 		if not verify_action.is_empty() and confidence < 3:

@@ -23,6 +23,39 @@ func _run() -> void:
 		return _fail("scenario start action was not applied")
 	if "灾变之后" not in app.start_intro_label.text:
 		return _fail("scenario introduction was not applied")
+	if app.scenario_presentation.get("asset_root", "") != "res://assets/tianqi":
+		return _fail("tianqi asset root was not applied")
+	if app.start_scene.texture == null or "opening-blast.png" not in app.start_scene.texture.resource_path:
+		return _fail("tianqi opening illustration was not auto-loaded")
+	if app.start_seal.texture == null or app.start_vignette.texture == null or app.journal_paper.texture == null:
+		return _fail("tianqi UI textures were not auto-loaded")
+	if app.presentation_registry.terrain_texture() == null or "district-map.png" not in app.presentation_registry.terrain_texture().resource_path:
+		return _fail("tianqi district map was not auto-loaded")
+	for scene_key in ["disaster_street", "apothecary", "inquiry_office", "archive", "warehouse", "study"]:
+		var location_profile = app.presentation_registry.location_profile(scene_key)
+		if location_profile == null or location_profile.background == null:
+			return _fail("missing auto-loaded tianqi location: " + scene_key)
+	for actor_id in ["N01", "N02", "N03", "N04", "N05", "N06", "N07", "N08", "N09", "N10"]:
+		var actor_profile = app.presentation_registry.actor_profile(actor_id)
+		if actor_profile == null or actor_profile.portrait("neutral") == null:
+			return _fail("missing auto-loaded tianqi actor: " + actor_id)
+	if app.presentation_registry.location_count() != 6 or app.presentation_registry.actor_count() != 10:
+		return _fail("auto-loaded tianqi asset counts are invalid")
+	if app.presentation_registry.actor_profile("N01").portrait("alert") == app.presentation_registry.actor_profile("N01").portrait("neutral"):
+		return _fail("core tianqi expression variant was not auto-loaded")
+	if app.presentation_registry.actor_profile("N04").portrait("alert") != app.presentation_registry.actor_profile("N04").portrait("neutral"):
+		return _fail("missing tianqi expression did not fall back to neutral")
+	for fact_id in ["F01", "F02", "F03", "F04", "F05", "F06", "F07", "F08", "F09", "F10"]:
+		if app.presentation_registry.fact_texture(fact_id) == null:
+			return _fail("missing auto-loaded tianqi evidence: " + fact_id)
+	if app.presentation_registry.event_texture_for_action("route:e01:keep-original") == null:
+		return _fail("three-claims event cue was not auto-loaded")
+	if app.presentation_registry.event_texture_for_action("route:e09:format-check") == null:
+		return _fail("forged-ledger event cue was not auto-loaded")
+	if app.actor_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
+		return _fail("stage portrait still crops the actor's head")
+	if app.causal_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED or app.ending_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
+		return _fail("overlay portraits still crop the actor's head")
 
 	app.name_input.text = "切换测试抄手"
 	app._new_game()

@@ -11,13 +11,21 @@ func _build_start_layer() -> void:
 	host.start_layer = Control.new()
 	host.start_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.add_child(host.start_layer)
-	var scene = TextureRect.new()
-	scene.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	scene.texture = host.StartBackgroundTexture
-	scene.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	scene.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	scene.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host.start_layer.add_child(scene)
+	host.start_scene = TextureRect.new()
+	host.start_scene.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	host.start_scene.texture = host.StartBackgroundTexture
+	host.start_scene.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	host.start_scene.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	host.start_scene.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.start_layer.add_child(host.start_scene)
+	host.start_vignette = TextureRect.new()
+	host.start_vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	host.start_vignette.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	host.start_vignette.stretch_mode = TextureRect.STRETCH_SCALE
+	host.start_vignette.modulate = Color(0.18, 0.2, 0.18, 0.34)
+	host.start_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.start_vignette.hide()
+	host.start_layer.add_child(host.start_vignette)
 	var shade = ColorRect.new()
 	shade.color = Color("0305048f")
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -54,6 +62,15 @@ func _build_start_layer() -> void:
 	host.start_title_label.add_theme_font_size_override("font_size", 62)
 	host.start_title_label.add_theme_color_override("font_color", host.COLORS.ink)
 	content.add_child(host.start_title_label)
+	host.start_seal = TextureRect.new()
+	host.start_seal.custom_minimum_size = Vector2(78, 78)
+	host.start_seal.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	host.start_seal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	host.start_seal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	host.start_seal.modulate = Color(1, 1, 1, 0.72)
+	host.start_seal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.start_seal.hide()
+	content.add_child(host.start_seal)
 	host.start_intro_label = Label.new()
 	host.start_intro_label.text = "等待本地服务载入场景内容。"
 	host.start_intro_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT

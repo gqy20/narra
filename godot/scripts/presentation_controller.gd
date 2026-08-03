@@ -29,7 +29,7 @@ func _build_ending_layer() -> void:
 	host.ending_portrait.anchor_top = 0.04
 	host.ending_portrait.anchor_bottom = 1.0
 	host.ending_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	host.ending_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	host.ending_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	host.ending_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	host.ending_layer.add_child(host.ending_portrait)
 	host.ending_seal = TextureRect.new()
@@ -76,7 +76,7 @@ func _build_causal_layer() -> void:
 	host.causal_portrait.anchor_top = 0.035
 	host.causal_portrait.anchor_bottom = 1.0
 	host.causal_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	host.causal_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	host.causal_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	host.causal_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	host.causal_layer.add_child(host.causal_portrait)
 
@@ -307,7 +307,9 @@ func _render_feedback_evidence_into(parent: VBoxContainer, feedback: Dictionary)
 func _render_ending(ending: Dictionary) -> void:
 	host.game_screen_controller._clear(host.ending_box)
 	var location_profile: LocationVisualProfile = host.presentation_registry.location_profile(str(host.current_view.get("location", {}).get("scene_key", "")))
-	host.ending_background.texture = location_profile.background if location_profile and location_profile.background else null
+	var ending_event_key := str(host.scenario_presentation.get("ending_event", ""))
+	var ending_event_texture: Texture2D = host.presentation_registry.event_texture(ending_event_key) if ending_event_key != "" else null
+	host.ending_background.texture = ending_event_texture if ending_event_texture else (location_profile.background if location_profile and location_profile.background else null)
 	var outcome = str(ending.get("outcome", host.current_view.get("outcome", "旅程结束")))
 	var influences: Array = ending.get("influence", [])
 	var ending_actor_id = ""

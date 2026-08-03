@@ -679,6 +679,15 @@
         "start_action": {
           "type": "string"
         },
+        "asset_root": {
+          "type": "string"
+        },
+        "opening_event": {
+          "type": "string"
+        },
+        "ending_event": {
+          "type": "string"
+        },
         "terrain": {
           "type": "string"
         },
@@ -697,6 +706,30 @@
         "actors": {
           "additionalProperties": {
             "$ref": "#/$defs/ActorPresentation"
+          },
+          "type": "object"
+        },
+        "facts": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "events": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "event_cues": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "ui": {
+          "additionalProperties": {
+            "type": "string"
           },
           "type": "object"
         }

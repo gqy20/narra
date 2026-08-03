@@ -8,7 +8,9 @@ var title_label: Label
 var message_label: Label
 var accent_line: ColorRect
 var wash: TextureRect
+var illustration: TextureRect
 var text_stack: VBoxContainer
+var presentation_registry
 var generation := 0
 var motion_enabled := true
 var active_tween: Tween
@@ -59,6 +61,14 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 15)
 	margin.add_child(row)
 
+	illustration = TextureRect.new()
+	illustration.custom_minimum_size = Vector2(142, 86)
+	illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	illustration.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	illustration.hide()
+	row.add_child(illustration)
+
 	accent_line = ColorRect.new()
 	accent_line.color = Color("d6ae62dc")
 	accent_line.custom_minimum_size.x = 2
@@ -92,7 +102,8 @@ func _ready() -> void:
 	card.hide()
 
 
-func configure(display_font: Font, medium_font: Font) -> void:
+func configure(display_font: Font, medium_font: Font, registry = null) -> void:
+	presentation_registry = registry
 	if title_label:
 		title_label.add_theme_font_override("font", display_font)
 	if message_label:
@@ -108,7 +119,10 @@ func present(feedback: Dictionary, from_location: String, to_location: String) -
 	var echo := _compose_echo(feedback, from_location, to_location)
 	title_label.text = str(echo.get("title", "局势回响"))
 	message_label.text = str(echo.get("message", "局势已经推进"))
-	_configure_placement(str(echo.get("placement", "peripheral")))
+	var action_id := str(feedback.get("action_id", ""))
+	illustration.texture = presentation_registry.event_texture_for_action(action_id) if presentation_registry else null
+	illustration.visible = illustration.texture != null
+	_configure_placement(str(echo.get("placement", "peripheral")), illustration.visible)
 	_play_echo(token)
 
 
@@ -245,22 +259,22 @@ func _clean_message(message: String) -> String:
 	return result
 
 
-func _configure_placement(placement: String) -> void:
+func _configure_placement(placement: String, has_illustration := false) -> void:
 	wash.modulate.a = 0.44 if placement == "actor" else 0.66
 	card.anchor_left = 1.0 if placement == "actor" else 0.0
 	card.anchor_right = card.anchor_left
 	card.anchor_top = 1.0 if placement == "actor" else 0.0
 	card.anchor_bottom = card.anchor_top
 	if placement == "actor":
-		card.offset_left = -368
+		card.offset_left = -520 if has_illustration else -368
 		card.offset_right = -58
-		card.offset_top = -268
+		card.offset_top = -292 if has_illustration else -268
 		card.offset_bottom = -192
 	else:
 		card.offset_left = 48
-		card.offset_right = 378
+		card.offset_right = 530 if has_illustration else 378
 		card.offset_top = 145
-		card.offset_bottom = 223
+		card.offset_bottom = 251 if has_illustration else 223
 
 
 func _play_echo(token: int) -> void:
