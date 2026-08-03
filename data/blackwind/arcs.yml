@@ -6,12 +6,19 @@
     - trust_committed
     - trust_reviewed
     - trust_betrayed
+    - trust_joined
+    - trust_commissioned
     - antidote_committed
     - antidote_lent
     - antidote_kept
+    - antidote_scouted
+    - antidote_liquidated
     - escort_committed
     - escort_approved
     - escort_refused
+    - escort_fulfilled
+    - escort_vanguard
+    - escort_quartermaster
   nodes:
     - id: deliver_verified_date
       from_state: uncommitted
@@ -300,6 +307,220 @@
             - {type: set_flag, target_id: player, key: qinglan_escort_midgame_resolved, value: "true"}
             - {type: set_flag, target_id: world, key: player_declared_independent, value: "true"}
           to_state: escort_refused
+
+    - id: settle_trust_commitment
+      from_state: trust_reviewed
+      from_day: 14
+      until_day: 16
+      location_id: L02
+      target_id: N03
+      allow_remote_target: true
+      action_id: visit
+      conditions:
+        - {type: flag, scope: actor, key: qinglan_trust_vouched}
+        - {type: missing_flag, scope: actor, key: qinglan_trust_late_resolved}
+      choices:
+        - id: route:trust:join
+          term_id: join
+          term_label: 亲自入局
+          name: 把担保转为行动席位
+          description: 以已经公开承担的责任换取青岚门行动物资，亲自加入入谷准备。
+          personal_outcome: 获得解瘴丹、2 点支援与额外筹备；你将有机会亲自争夺，而不只等待记功。
+          relevance: 你已经替沈砚秋承担消息责任，有资格要求行动资源。
+          risk: 亲自加入会消耗宗门人手，也意味着你要承担入谷风险。
+          expected_outcomes:
+            - 获得 1 枚解瘴丹
+            - 支援 +2
+            - 形成额外筹备
+          warnings:
+            - 选择行动席位后，本轮不能再领取情报报酬。
+          irreversible: true
+          effects:
+            - {type: add_item, target_id: player, key: antidote, amount: 1}
+            - {type: adjust_resource, target_id: player, key: support, amount: 2}
+            - {type: set_flag, target_id: player, key: prepared, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_trust_operation_joined, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_trust_late_resolved, value: "true"}
+          to_state: trust_joined
+        - id: route:trust:commission
+          term_id: commission
+          term_label: 领取报酬
+          name: 结算情报与担保报酬
+          description: 不占用青岚门行动席位，提前结算情报核验与公开担保的报酬。
+          personal_outcome: 立即获得 30 灵石与 1 点信用；保留沈砚秋获胜后的记功可能。
+          relevance: 可靠消息与公开担保已经替青岚门节省了核验成本。
+          risk: 你不会获得宗门入谷物资，亲自争夺路线仍需自行准备。
+          expected_outcomes:
+            - 获得 30 灵石
+            - 信用 +1
+          warnings:
+            - 领取报酬后，本轮不能再申请行动席位。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: spirit_stones, amount: 30}
+            - {type: adjust_resource, target_id: player, key: credit, amount: 1}
+            - {type: set_flag, target_id: player, key: qinglan_trust_commissioned, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_trust_late_resolved, value: "true"}
+          to_state: trust_commissioned
+
+    - id: turn_antidote_into_route
+      from_state: antidote_kept
+      from_day: 13
+      until_day: 16
+      location_id: L02
+      target_id: N06
+      allow_remote_target: true
+      action_id: visit
+      conditions:
+        - {type: has_item, key: antidote}
+        - {type: flag, scope: actor, key: qinglan_antidote_kept}
+        - {type: missing_flag, scope: actor, key: qinglan_antidote_late_resolved}
+      choices:
+        - id: route:antidote:scout
+          term_id: scout
+          term_label: 独行踩点
+          name: 用解瘴丹提前踩点
+          description: 保留丹药并独自勘察谷口裂隙，把入谷自由转化为路线优势。
+          personal_outcome: 保留解瘴丹，获得 2 点支援并形成额外筹备，提高亲自争夺的胜算。
+          relevance: 你拥有封锁后的稀缺丹药，可以比普通散修更早试探瘴气。
+          risk: 独行踩点不会修复苏晚照对你的怀疑。
+          expected_outcomes:
+            - 保留解瘴丹
+            - 支援 +2
+            - 形成额外筹备
+          warnings:
+            - 完成踩点后，不能再出售本轮入谷名额。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: support, amount: 2}
+            - {type: set_flag, target_id: player, key: prepared, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_antidote_scouted, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_antidote_late_resolved, value: "true"}
+          to_state: antidote_scouted
+
+    - id: liquidate_antidote_route
+      from_state: antidote_kept
+      from_day: 13
+      until_day: 16
+      location_id: L02
+      target_id: N04
+      allow_remote_target: true
+      action_id: visit
+      conditions:
+        - {type: has_item, key: antidote}
+        - {type: flag, scope: actor, key: qinglan_antidote_kept}
+        - {type: missing_flag, scope: actor, key: qinglan_antidote_late_resolved}
+      choices:
+        - id: route:antidote:liquidate
+          term_id: liquidate
+          term_label: 变现资格
+          name: 转售丹药与入谷路线
+          description: 把封锁后的解瘴丹和独行路线打包转售，放弃争夺并锁定个人收益。
+          personal_outcome: 交出解瘴丹并获得 60 灵石；本局不再亲自参与核心争夺。
+          relevance: 坊市封锁后，现成丹药和可行路线都具备溢价。
+          risk: 失去解瘴丹后，你将无法进入内谷参加争夺。
+          expected_outcomes:
+            - 获得 60 灵石
+            - 交出 1 枚解瘴丹
+            - 锁定交易收益
+          warnings:
+            - 这会主动关闭本局亲自入谷路线。
+          irreversible: true
+          effects:
+            - {type: remove_item, target_id: player, key: antidote, amount: 1}
+            - {type: adjust_resource, target_id: player, key: spirit_stones, amount: 60}
+            - {type: set_flag, target_id: player, key: qinglan_antidote_liquidated, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_antidote_late_resolved, value: "true"}
+          to_state: antidote_liquidated
+
+    - id: fulfill_escort_commitment
+      from_state: escort_approved
+      from_day: 16
+      until_day: 16
+      location_id: L02
+      target_id: N03
+      action_id: visit
+      kind: escort
+      conditions:
+        - {type: flag, scope: actor, key: qinglan_escort_promised}
+        - {type: flag, scope: actor, key: qinglan_escort_approved}
+        - {type: missing_flag, scope: actor, key: qinglan_escort_fulfilled}
+      completion_conditions:
+        - {type: flag, key: valley_open}
+      choices:
+        - id: escort:N03:depart
+          term_id: escort
+          term_label: 随队集结
+          name: 兑现同行承诺
+          description: 在开谷前完成集结；次日领取随队解瘴丹与人手，自行决定是否跟进青岚队伍。
+          command_description: 玩家兑现与沈砚秋的同行约定
+          personal_outcome: 获得 1 枚解瘴丹与 1 点支援，打开开谷后的入谷路线。
+          expected_outcomes:
+            - 获得 1 枚解瘴丹与 1 点支援
+            - 在开谷日获得前往黑风谷外围的选择
+          resolves:
+            - 缺少解瘴丹
+          effects:
+            - {type: add_item, target_id: player, key: antidote, amount: 1}
+            - {type: adjust_resource, target_id: player, key: support, amount: 1}
+            - {type: set_flag, target_id: player, key: qinglan_escort_fulfilled, value: "true"}
+          to_state: escort_fulfilled
+
+    - id: choose_escort_role
+      from_state: escort_fulfilled
+      from_day: 17
+      until_day: 18
+      location_id: L02
+      target_id: N03
+      allow_remote_target: true
+      action_id: visit
+      conditions:
+        - {type: flag, scope: actor, key: qinglan_escort_fulfilled}
+        - {type: missing_flag, scope: actor, key: qinglan_escort_late_resolved}
+      choices:
+        - id: route:escort:vanguard
+          term_id: vanguard
+          term_label: 担任先锋
+          name: 接下先锋分工
+          description: 带领随队人手先行探路，把同行承诺转化为正面争夺准备。
+          personal_outcome: 支援 +3并形成额外筹备；按时抵达后具备与主要争夺者正面对抗的实力。
+          relevance: 你已经通过审核并完成集结，队伍可以把一组人手交由你指挥。
+          risk: 先锋要亲自承担谷口风险，不能同时领取后勤报酬。
+          expected_outcomes:
+            - 支援 +3
+            - 形成额外筹备
+            - 获得独立指挥权
+          warnings:
+            - 选择先锋后，本轮不能改领后勤报酬。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: support, amount: 3}
+            - {type: set_flag, target_id: player, key: prepared, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_escort_vanguard, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_escort_late_resolved, value: "true"}
+          to_state: escort_vanguard
+        - id: route:escort:quartermaster
+          term_id: quartermaster
+          term_label: 负责后勤
+          name: 负责随队后勤
+          description: 不争先锋位置，负责分配丹药、路线与补给，提前结算个人报酬。
+          personal_outcome: 获得 30 灵石、2 点信用与 1 点支援；仍可入谷，但不以正面争夺为主要回报。
+          relevance: 队伍集结后需要熟悉情报来源的人统一物资与路线。
+          risk: 后勤收益稳定，但不会提供足以压过主要争夺者的战力。
+          expected_outcomes:
+            - 获得 30 灵石
+            - 信用 +2
+            - 支援 +1
+          warnings:
+            - 选择后勤后，本轮不能改任先锋。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: spirit_stones, amount: 30}
+            - {type: adjust_resource, target_id: player, key: credit, amount: 2}
+            - {type: adjust_resource, target_id: player, key: support, amount: 1}
+            - {type: set_flag, target_id: player, key: qinglan_escort_quartermaster, value: "true"}
+            - {type: set_flag, target_id: player, key: qinglan_escort_late_resolved, value: "true"}
+          to_state: escort_quartermaster
 
   progress_rules:
     - id: trust-operation-joined

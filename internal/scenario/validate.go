@@ -277,6 +277,14 @@ func validateStoryArcs(bundle domain.Bundle) error {
 			if err := validateConditionsAndEffects(node.Conditions, nil, nil, bundle); err != nil {
 				return fmt.Errorf("story arc %s node %s: %w", arcID, node.ID, err)
 			}
+			for _, condition := range node.CompletionConditions {
+				if !validStoryCondition(condition) {
+					return fmt.Errorf("story arc %s node %s has unsupported completion condition %s", arcID, node.ID, condition.Type)
+				}
+			}
+			if err := validateConditionsAndEffects(node.CompletionConditions, nil, nil, bundle); err != nil {
+				return fmt.Errorf("story arc %s node %s completion: %w", arcID, node.ID, err)
+			}
 			choices := make(map[string]bool, len(node.Choices))
 			for _, choice := range node.Choices {
 				if choice.ID == "" || choices[choice.ID] || choiceIDs[choice.ID] || choice.Name == "" || choice.TermID == "" || !states[choice.ToState] {

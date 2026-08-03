@@ -38,6 +38,7 @@ func (s *Session) addStoryActions(options map[string]actionOption, state *domain
 					continue
 				}
 				conditions := append([]domain.Condition(nil), node.Conditions...)
+				conditions = append(conditions, node.CompletionConditions...)
 				if node.LocationID != "" {
 					conditions = append(conditions, domain.Condition{Type: "location", Value: node.LocationID})
 				}
@@ -94,6 +95,7 @@ func (s *Session) addStoryInformationActions(options map[string]actionOption, st
 				effects = append(effects, domain.Effect{Type: "set_story_state", Key: arcID, Value: choice.ToState})
 				conditions := []domain.Condition{{Type: "belief", Key: node.FactID, MinConfidence: node.MinConfidence}, {Type: "location", Value: state.Player.Location}}
 				conditions = append(conditions, node.Conditions...)
+				conditions = append(conditions, node.CompletionConditions...)
 				conditions = append(conditions, choice.Conditions...)
 				commandDescription := choice.CommandDescription
 				if commandDescription == "" {

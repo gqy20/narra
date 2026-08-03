@@ -146,8 +146,6 @@ func (s *Session) actionOptions(state *domain.WorldState) map[string]actionOptio
 	s.addInformationActions(options, state)
 	s.addStoryActions(options, state)
 	s.addRecoveryActions(options, state)
-	s.addRoutePayoffActions(options, state)
-	s.addEscortFulfillmentAction(options, state)
 	options["wait:next"] = actionOption{
 		view:        AvailableAction{ID: "wait:next", Kind: "advance", Category: "time", Name: "等待局势变化", Description: "逐日推演并在下一次值得关注的变化处停下，可能跨越多个平静日", Duration: 1, Warnings: s.advanceWarnings(state)},
 		advanceMode: "next",
@@ -388,68 +386,6 @@ func (s *Session) advanceWarnings(state *domain.WorldState) []string {
 	return warnings
 }
 
-func (s *Session) addRoutePayoffActions(options map[string]actionOption, state *domain.WorldState) {
-	visit, ok := s.bundle.Actions["visit"]
-	if !ok || state.Player.Location != "L02" || !fitsHorizon(state.Day, visit.Duration, s.bundle.Scenario.Duration) {
-		return
-	}
-	playerID := state.Player.ID
-	add := func(view AvailableAction, effects []domain.Effect) {
-		options[view.ID] = actionOption{
-			view: view,
-			command: &domain.PlayerCommand{
-				ActionID: "visit", TargetID: view.TargetID, Description: view.Description,
-				Conditions: []domain.Condition{{Type: "location", Value: "L02"}}, Effects: effects,
-			},
-		}
-	}
-
-	if state.Day >= 14 && state.Day <= 16 && state.ActorFlag(playerID, "qinglan_trust_vouched") && !state.ActorFlag(playerID, "qinglan_trust_late_resolved") {
-		add(AvailableAction{
-			ID: "route:trust:join", Kind: "route", Category: "information", Name: "把担保转为行动席位", Description: "以已经公开承担的责任换取青岚门行动物资，亲自加入入谷准备。", Duration: visit.Duration,
-			TargetID: "N03", TargetName: "沈砚秋", TargetRole: "青岚门行动负责人", TermID: "join", TermLabel: "亲自入局", PersonalOutcome: "获得解瘴丹、2 点支援与额外筹备；你将有机会亲自争夺，而不只等待记功。",
-			Relevance: "你已经替沈砚秋承担消息责任，有资格要求行动资源。", Risk: "亲自加入会消耗宗门人手，也意味着你要承担入谷风险。",
-			ExpectedOutcomes: []string{"获得 1 枚解瘴丹", "支援 +2", "形成额外筹备"}, Warnings: []string{"选择行动席位后，本轮不能再领取情报报酬。"}, Irreversible: true,
-		}, []domain.Effect{{Type: "add_item", TargetID: playerID, Key: "antidote", Amount: 1}, {Type: "adjust_resource", TargetID: playerID, Key: "support", Amount: 2}, {Type: "set_flag", TargetID: playerID, Key: "prepared", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_trust_operation_joined", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_trust_late_resolved", Value: "true"}})
-		add(AvailableAction{
-			ID: "route:trust:commission", Kind: "route", Category: "information", Name: "结算情报与担保报酬", Description: "不占用青岚门行动席位，提前结算情报核验与公开担保的报酬。", Duration: visit.Duration,
-			TargetID: "N03", TargetName: "沈砚秋", TargetRole: "青岚门行动负责人", TermID: "commission", TermLabel: "领取报酬", PersonalOutcome: "立即获得 30 灵石与 1 点信用；保留沈砚秋获胜后的记功可能。",
-			Relevance: "可靠消息与公开担保已经替青岚门节省了核验成本。", Risk: "你不会获得宗门入谷物资，亲自争夺路线仍需自行准备。",
-			ExpectedOutcomes: []string{"获得 30 灵石", "信用 +1"}, Warnings: []string{"领取报酬后，本轮不能再申请行动席位。"}, Irreversible: true,
-		}, []domain.Effect{{Type: "adjust_resource", TargetID: playerID, Key: "spirit_stones", Amount: 30}, {Type: "adjust_resource", TargetID: playerID, Key: "credit", Amount: 1}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_trust_commissioned", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_trust_late_resolved", Value: "true"}})
-	}
-
-	if state.Day >= 13 && state.Day <= 16 && state.ActorFlag(playerID, "qinglan_antidote_kept") && !state.ActorFlag(playerID, "qinglan_antidote_late_resolved") && state.Player.Items["antidote"] > 0 {
-		add(AvailableAction{
-			ID: "route:antidote:scout", Kind: "route", Category: "information", Name: "用解瘴丹提前踩点", Description: "保留丹药并独自勘察谷口裂隙，把入谷自由转化为路线优势。", Duration: visit.Duration,
-			TargetID: "N06", TargetName: "苏晚照", TargetRole: "药理与移植研究者", TermID: "scout", TermLabel: "独行踩点", PersonalOutcome: "保留解瘴丹，获得 2 点支援并形成额外筹备，提高亲自争夺的胜算。",
-			Relevance: "你拥有封锁后的稀缺丹药，可以比普通散修更早试探瘴气。", Risk: "独行踩点不会修复苏晚照对你的怀疑。",
-			ExpectedOutcomes: []string{"保留解瘴丹", "支援 +2", "形成额外筹备"}, Warnings: []string{"完成踩点后，不能再出售本轮入谷名额。"}, Irreversible: true,
-		}, []domain.Effect{{Type: "adjust_resource", TargetID: playerID, Key: "support", Amount: 2}, {Type: "set_flag", TargetID: playerID, Key: "prepared", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_antidote_scouted", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_antidote_late_resolved", Value: "true"}})
-		add(AvailableAction{
-			ID: "route:antidote:liquidate", Kind: "route", Category: "information", Name: "转售丹药与入谷路线", Description: "把封锁后的解瘴丹和独行路线打包转售，放弃争夺并锁定个人收益。", Duration: visit.Duration,
-			TargetID: "N04", TargetName: "魏无咎", TargetRole: "黑水盟情报商", TermID: "liquidate", TermLabel: "变现资格", PersonalOutcome: "交出解瘴丹并获得 60 灵石；本局不再亲自参与核心争夺。",
-			Relevance: "坊市封锁后，现成丹药和可行路线都具备溢价。", Risk: "失去解瘴丹后，你将无法进入内谷参加争夺。",
-			ExpectedOutcomes: []string{"获得 60 灵石", "交出 1 枚解瘴丹", "锁定交易收益"}, Warnings: []string{"这会主动关闭本局亲自入谷路线。"}, Irreversible: true,
-		}, []domain.Effect{{Type: "remove_item", TargetID: playerID, Key: "antidote", Amount: 1}, {Type: "adjust_resource", TargetID: playerID, Key: "spirit_stones", Amount: 60}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_antidote_liquidated", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_antidote_late_resolved", Value: "true"}})
-	}
-
-	if state.Day >= 17 && state.Day <= 18 && state.ActorFlag(playerID, "qinglan_escort_fulfilled") && !state.ActorFlag(playerID, "qinglan_escort_late_resolved") {
-		add(AvailableAction{
-			ID: "route:escort:vanguard", Kind: "route", Category: "information", Name: "接下先锋分工", Description: "带领随队人手先行探路，把同行承诺转化为正面争夺准备。", Duration: visit.Duration,
-			TargetID: "N03", TargetName: "沈砚秋", TargetRole: "青岚门行动负责人", TermID: "vanguard", TermLabel: "担任先锋", PersonalOutcome: "支援 +3并形成额外筹备；按时抵达后具备与主要争夺者正面对抗的实力。",
-			Relevance: "你已经通过审核并完成集结，队伍可以把一组人手交由你指挥。", Risk: "先锋要亲自承担谷口风险，不能同时领取后勤报酬。",
-			ExpectedOutcomes: []string{"支援 +3", "形成额外筹备", "获得独立指挥权"}, Warnings: []string{"选择先锋后，本轮不能改领后勤报酬。"}, Irreversible: true,
-		}, []domain.Effect{{Type: "adjust_resource", TargetID: playerID, Key: "support", Amount: 3}, {Type: "set_flag", TargetID: playerID, Key: "prepared", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_escort_vanguard", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_escort_late_resolved", Value: "true"}})
-		add(AvailableAction{
-			ID: "route:escort:quartermaster", Kind: "route", Category: "information", Name: "负责随队后勤", Description: "不争先锋位置，负责分配丹药、路线与补给，提前结算个人报酬。", Duration: visit.Duration,
-			TargetID: "N03", TargetName: "沈砚秋", TargetRole: "青岚门行动负责人", TermID: "quartermaster", TermLabel: "负责后勤", PersonalOutcome: "获得 30 灵石、2 点信用与 1 点支援；仍可入谷，但不以正面争夺为主要回报。",
-			Relevance: "队伍集结后需要熟悉情报来源的人统一物资与路线。", Risk: "后勤收益稳定，但不会提供足以压过主要争夺者的战力。",
-			ExpectedOutcomes: []string{"获得 30 灵石", "信用 +2", "支援 +1"}, Warnings: []string{"选择后勤后，本轮不能改任先锋。"}, Irreversible: true,
-		}, []domain.Effect{{Type: "adjust_resource", TargetID: playerID, Key: "spirit_stones", Amount: 30}, {Type: "adjust_resource", TargetID: playerID, Key: "credit", Amount: 2}, {Type: "adjust_resource", TargetID: playerID, Key: "support", Amount: 1}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_escort_quartermaster", Value: "true"}, {Type: "set_flag", TargetID: playerID, Key: "qinglan_escort_late_resolved", Value: "true"}})
-	}
-}
-
 func (s *Session) hasDeliveredFact(state *domain.WorldState, targetID, factID string) bool {
 	for _, event := range state.Events {
 		if event.ActorID != state.Player.ID || event.TargetID != targetID || event.ActionID != "spread" {
@@ -527,26 +463,6 @@ func (s *Session) addAntidoteRecoveryAction(options map[string]actionOption, sta
 				{Type: "set_belief", TargetID: "N06", FactID: "F01", Claim: claim, Confidence: 3, EvidenceStrength: belief.EvidenceStrength, Source: state.Player.ID, Propagation: "private", Secrecy: belief.Secrecy},
 				{Type: "add_item", Key: "antidote", Amount: 1},
 			},
-		},
-	}
-}
-
-func (s *Session) addEscortFulfillmentAction(options map[string]actionOption, state *domain.WorldState) {
-	action, ok := s.bundle.Actions["visit"]
-	shen, hasShen := state.NPCs["N03"]
-	if !ok || !hasShen || state.Day != 16 || state.Player.Location != "L02" || shen.Location != "L02" || !state.ActorFlag(state.Player.ID, "qinglan_escort_promised") || !state.ActorFlag(state.Player.ID, "qinglan_escort_approved") || state.ActorFlag(state.Player.ID, "qinglan_escort_fulfilled") || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
-		return
-	}
-	options["escort:N03:depart"] = actionOption{
-		view: AvailableAction{
-			ID: "escort:N03:depart", Kind: "escort", Category: "information", Name: "兑现同行承诺", Description: "在开谷前完成集结；次日领取随队解瘴丹与人手，自行决定是否跟进青岚队伍。", Duration: action.Duration,
-			TargetID: "N03", TargetName: shen.Name, TargetRole: "青岚门行动负责人", TermID: "escort", TermLabel: "随队集结", PersonalOutcome: "获得 1 枚解瘴丹与 1 点支援，打开开谷后的入谷路线。",
-			ExpectedOutcomes: []string{"获得 1 枚解瘴丹与 1 点支援", "在开谷日获得前往黑风谷外围的选择"}, Resolves: []string{"缺少解瘴丹"},
-		},
-		command: &domain.PlayerCommand{
-			ActionID: "visit", TargetID: "N03", Description: "玩家兑现与沈砚秋的同行约定", Duration: action.Duration,
-			Conditions: []domain.Condition{{Type: "location", Value: "L02"}, {Type: "flag", Scope: "actor", Key: "qinglan_escort_promised"}, {Type: "flag", Key: "valley_open"}},
-			Effects:    []domain.Effect{{Type: "add_item", TargetID: state.Player.ID, Key: "antidote", Amount: 1}, {Type: "adjust_resource", TargetID: state.Player.ID, Key: "support", Amount: 1}, {Type: "set_flag", TargetID: state.Player.ID, Key: "qinglan_escort_fulfilled", Value: "true"}},
 		},
 	}
 }

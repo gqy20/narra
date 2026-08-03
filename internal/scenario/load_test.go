@@ -31,7 +31,7 @@ func TestLoadBlackwindBundle(t *testing.T) {
 	if bundle.Content.SchemaVersion != 1 || bundle.Content.Version != "1.4.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
 		t.Fatalf("content metadata = %+v", bundle.Content)
 	}
-	if arc, ok := bundle.StoryArcs["qinglan_intel"]; !ok || arc.InitialState != "uncommitted" || len(arc.Nodes) != 5 || len(arc.Nodes[0].Choices) != 3 || len(arc.ProgressRules) == 0 {
+	if arc, ok := bundle.StoryArcs["qinglan_intel"]; !ok || arc.InitialState != "uncommitted" || len(arc.Nodes) != 10 || len(arc.Nodes[0].Choices) != 3 || len(arc.ProgressRules) == 0 {
 		t.Fatalf("qinglan story arc = %+v", arc)
 	}
 	if len(bundle.Scenario.Contest.OutcomeRules) != 2 || len(bundle.Scenario.Contest.RewardRules) != 1 {

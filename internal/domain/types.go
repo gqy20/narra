@@ -54,20 +54,21 @@ type StoryProgressRule struct {
 }
 
 type StoryNode struct {
-	ID                string        `json:"id"`
-	FromState         string        `json:"from_state"`
-	FromDay           int           `json:"from_day,omitempty"`
-	UntilDay          int           `json:"until_day,omitempty"`
-	LocationID        string        `json:"location_id,omitempty"`
-	TargetID          string        `json:"target_id"`
-	AllowRemoteTarget bool          `json:"allow_remote_target,omitempty"`
-	FactID            string        `json:"fact_id"`
-	MinConfidence     int           `json:"min_confidence"`
-	ActionID          string        `json:"action_id"`
-	Kind              string        `json:"kind,omitempty"`
-	Category          string        `json:"category,omitempty"`
-	Conditions        []Condition   `json:"conditions,omitempty"`
-	Choices           []StoryChoice `json:"choices"`
+	ID                   string        `json:"id"`
+	FromState            string        `json:"from_state"`
+	FromDay              int           `json:"from_day,omitempty"`
+	UntilDay             int           `json:"until_day,omitempty"`
+	LocationID           string        `json:"location_id,omitempty"`
+	TargetID             string        `json:"target_id"`
+	AllowRemoteTarget    bool          `json:"allow_remote_target,omitempty"`
+	FactID               string        `json:"fact_id"`
+	MinConfidence        int           `json:"min_confidence"`
+	ActionID             string        `json:"action_id"`
+	Kind                 string        `json:"kind,omitempty"`
+	Category             string        `json:"category,omitempty"`
+	Conditions           []Condition   `json:"conditions,omitempty"`
+	CompletionConditions []Condition   `json:"completion_conditions,omitempty"`
+	Choices              []StoryChoice `json:"choices"`
 }
 
 type StoryChoice struct {
