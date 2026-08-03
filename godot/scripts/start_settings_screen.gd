@@ -141,7 +141,7 @@ func _build_settings_layer() -> void:
 	host.settings_box.add_theme_constant_override("separation", 12)
 	card.add_child(host.settings_box)
 	host.game_screen_controller._text(host.settings_box, "体验设置", false, 25)
-	host.game_screen_controller._text(host.settings_box, "管理显示、声音、诊断与人物大模型对话。", true, 14)
+	host.game_screen_controller._text(host.settings_box, "管理显示、声音、诊断、人物对话与世界导演。", true, 14)
 	var tabs = TabContainer.new()
 	tabs.custom_minimum_size.y = 500
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -210,10 +210,10 @@ func _build_settings_layer() -> void:
 	ai_tab.name = "大模型"
 	ai_tab.add_theme_constant_override("separation", 12)
 	tabs.add_child(ai_tab)
-	var ai_intro = host.game_screen_controller._text(ai_tab, "人物对话使用 Anthropic Messages 兼容接口。关闭时完全不调用模型；开启后任何生成失败都会直接报错。", true, host.TYPE_SCALE.detail)
+	var ai_intro = host.game_screen_controller._text(ai_tab, "大模型人物对话与世界导演使用 Anthropic Messages 兼容接口。关闭时完全不调用模型；开启后超时、空响应、结构错误或非法导演指令都会直接报错并回滚当日推进。", true, host.TYPE_SCALE.detail)
 	ai_intro.custom_minimum_size.y = 42
 	host.ai_enabled_check = CheckButton.new()
-	host.ai_enabled_check.text = "启用人物大模型对话"
+	host.ai_enabled_check.text = "启用大模型人物对话与世界导演"
 	host.ai_enabled_check.button_pressed = host.ai_enabled
 	host.ai_enabled_check.add_theme_font_override("font", host.medium_font)
 	host.ai_enabled_check.add_theme_font_size_override("font_size", host.TYPE_SCALE.body)
@@ -346,11 +346,11 @@ func _refresh_ai_settings_status(message := "") -> void:
 		host.ai_status_label.add_theme_color_override("font_color", host.COLORS.success)
 	elif host.ai_server_enabled:
 		var active_model = host.ai_server_mode.trim_prefix("anthropic:")
-		host.ai_status_label.text = "运行状态：大模型对话已启用 · %s" % active_model
+		host.ai_status_label.text = "运行状态：人物对话与世界导演已启用 · %s" % active_model
 		host.ai_status_label.add_theme_color_override("font_color", host.COLORS.success)
 	elif host.ai_enabled:
 		host.ai_status_label.text = "运行状态：配置已保存，但当前服务尚未启用模型"
 		host.ai_status_label.add_theme_color_override("font_color", host.COLORS.muted)
 	else:
-		host.ai_status_label.text = "运行状态：大模型对话未启用"
+		host.ai_status_label.text = "运行状态：人物对话与世界导演未启用"
 		host.ai_status_label.add_theme_color_override("font_color", host.COLORS.muted)

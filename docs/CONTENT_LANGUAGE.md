@@ -1,5 +1,20 @@
 # 内容语言与表现配置
 
+## 内容编译器
+
+所有正式内容包在启动游戏前应通过统一入口：
+
+```text
+go run ./cmd/fantu-content validate data/tianqi
+go run ./cmd/fantu-content graph data/tianqi
+go run ./cmd/fantu-content test data/tianqi
+go run ./cmd/fantu-content simulate data/tianqi --runs 200 --seed 1
+```
+
+`validate`/`test` 组合运行结构解码、字段契约、引用、剧情状态图、时间窗口、Flag 使用和表现资源检查；诊断尽可能带 YAML 文件与行号。`graph` 输出 Mermaid 状态图。`simulate` 使用可复现随机种子完整游玩并输出行动、剧情选择和结局覆盖率。
+
+`tools/verify.ps1` 会验证 `blackwind`、`tianqi` 和 `orbital` 三个正式内容包。新增正式世界必须加入该列表，并在只新增 `data/<world>` 的前提下通过 CLI、存档重放、模拟和 Godot 移植测试。
+
 内容包使用两层配置控制题材语言，不允许客户端或 AI 服务根据场景 ID 猜测文案。
 
 ## `dialogue.yml`

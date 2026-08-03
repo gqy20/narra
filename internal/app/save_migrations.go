@@ -10,6 +10,12 @@ type saveMigration func(SaveData, domain.Bundle) (SaveData, error)
 
 var saveMigrations = map[int]saveMigration{
 	1: migrateSaveV1ToV2,
+	2: migrateSaveV2ToV3,
+}
+
+func migrateSaveV2ToV3(data SaveData, _ domain.Bundle) (SaveData, error) {
+	data.Version = 3
+	return data, nil
 }
 
 func migrateSaveData(data SaveData, bundle domain.Bundle) (SaveData, error) {

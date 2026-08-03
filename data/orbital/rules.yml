@@ -1,0 +1,105 @@
+fallback_strategies:
+- strategy:
+    id: generic-repair
+    action_id: repair
+    description: "{actor}暂缓原计划并处理伤势"
+    conditions:
+    - {type: injury_at_least, min_confidence: 2}
+    goal_types: [avoid]
+    score: {goal: 4, urgency: 5, probability: 5, cost: 1}
+    effects:
+    - {type: adjust_injury, amount: -1}
+- strategy:
+    id: generic-calibrate
+    action_id: calibrate
+    description: "{actor}利用空档校准系统并巩固状态"
+    once: true
+    conditions:
+    - {type: injury_at_most, max_confidence: 0}
+    - {type: resource_at_most, key: integrity, max_confidence: 3}
+    goal_types: [status]
+    score: {goal: 3, urgency: 2, probability: 5, cost: 2}
+    effects:
+    - {type: adjust_resource, key: integrity, amount: 1}
+  personality_at_least: {ambition: 4}
+- strategy:
+    id: generic-requisition-eva_suit
+    action_id: requisition
+    description: "{actor}为决策窗口行动补充舱外服"
+    once: true
+    conditions:
+    - {type: missing_item, key: eva_suit}
+    goal_types: [avoid, acquire]
+    score: {goal: 2, urgency: 3, probability: 5, cost: 2}
+    effects: []
+  any_conditions:
+  - {type: belief, key: F01, min_confidence: 2}
+  - {type: belief, key: F04, min_confidence: 2}
+  require_no_authored_strategies: true
+  market_purchase: {item_id: eva_suit, amount: 1}
+
+investigation:
+  enabled: true
+  action_id: crosscheck
+  description: "{actor}交叉校验低可信遥测记录：{fact}"
+  goal_types: [acquire, protect]
+  score: {goal: 3, urgency: 2, probability: 4, information: 5, cost: 1}
+
+navigation:
+  retreat:
+    enabled: true
+    action_id: evacuate
+    description: 撤往安全地点
+    min_injury: 2
+    goal_types: [avoid]
+    score: {base: 8, goal: 5, urgency: 5, probability: 4}
+  contest:
+    enabled: true
+    action_id: navigate
+    description: 沿可行路线接近决策窗口目标
+    knowledge_facts: [F01, F04]
+    blocking_facts: [F09]
+    min_confidence: 2
+    min_ambition: 3
+    max_injury: 2
+    goal_types: [acquire]
+    score: {goal: 4, urgency: 4, probability: 4}
+
+player:
+  investigation: {enabled: true, action_id: crosscheck}
+  market_purchase: {enabled: true, action_id: requisition}
+  movement: {enabled: true, action_id: navigate}
+  share_information: {enabled: true, action_id: broadcast}
+  actions:
+  - id: repair
+    action_id: repair
+    kind: repair
+    category: self
+    name: 维修
+    description: 专心处理伤势，降低一级伤势
+    command_description: 玩家专心维修
+    conditions:
+    - {type: injury_at_least, min_confidence: 1}
+    effects:
+    - {type: adjust_injury, amount: -1}
+  - id: calibrate
+    action_id: calibrate
+    kind: calibrate
+    category: self
+    name: 校准系统
+    description: "第 {stage} 阶段离线校准，{effect_resource}提高一点"
+    paid_description: "第 {stage} 阶段离线校准，以 {cost} {cost_resource}稳固控制回路，{effect_resource}提高一点；完成后累计离线校准耗费 {cumulative} {cost_resource}"
+    command_description: 玩家离线校准校准系统
+    conditions:
+    - {type: injury_at_most, max_confidence: 0}
+    effects:
+    - {type: adjust_resource, key: integrity, amount: 1}
+    repeat_cost:
+      resource: credits
+      amounts: [0, 0, 10, 20, 30]
+    warning: "重复行动已进入高耗阶段；本轮消耗 {cost} {cost_resource}，完成后累计耗费 {cumulative} {cost_resource}。"
+  resource_warnings: []
+
+economy:
+  information_trade_currency: credits
+  agreement_currency: credits

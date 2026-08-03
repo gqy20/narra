@@ -70,7 +70,7 @@ func Build(config Config) (*ai.Service, string, error) {
 		apiKey = strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY"))
 	}
 	if apiKey == "" {
-		return nil, "disabled:no_api_key", nil
+		return nil, "", fmt.Errorf("AI is enabled but ANTHROPIC_API_KEY is empty")
 	}
 	provider, err := anthropicai.New(anthropicai.Config{
 		APIKey: apiKey, Model: config.Model, BaseURL: config.BaseURL,

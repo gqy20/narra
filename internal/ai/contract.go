@@ -40,3 +40,19 @@ type GenerationMetadata struct {
 type Provider interface {
 	GenerateDialogue(context.Context, GenerationRequest) (DialogueDraft, GenerationMetadata, error)
 }
+
+type WorldDirectiveDraft struct {
+	DirectiveID  string   `json:"directive_id"`
+	Reason       string   `json:"reason"`
+	FocusSignals []string `json:"focus_signals"`
+}
+
+type WorldDirectiveRequest struct {
+	System              string
+	Input               string
+	AllowedDirectiveIDs []string
+}
+
+type WorldDirectiveProvider interface {
+	GenerateWorldDirective(context.Context, WorldDirectiveRequest) (WorldDirectiveDraft, GenerationMetadata, error)
+}

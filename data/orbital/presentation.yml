@@ -1,0 +1,196 @@
+brand: 凡途
+world_title: 远星环站轨道结构
+objective: 跃迁核心决策窗口将在这里落定
+intro: 三十日内，跃迁核心的归属将被决定。你未必亲手夺取它，也能让一条消息改写别人的去向。
+start_action: 从白石补给环入局
+resources:
+- {id: integrity, label: 系统完整度, emphasis: normal}
+- {id: credits, label: 通行权限点, emphasis: accent}
+- {id: crew_support, label: 船员支持, emphasis: success, hide_zero: true}
+- {id: reputation, label: 通行权限, emphasis: normal, hide_zero: true}
+ui:
+  default_player_name: 无名站员
+  term_clue: 遥测记录
+  term_clues: 遥测记录
+  term_verify: 交叉校验
+  journal_empty_clues: 尚未掌握遥测记录。先观察人物或调查地点。
+  journal_unverified_count: ' · %d 条待交叉校验'
+  journal_verify_clue: 交叉校验这条遥测记录
+  dialogue_available_clues: 当前状态 · %s · 可谈遥测记录 %d 条
+  action_send_clue: 向%s传递遥测记录
+  action_send_clues_menu: 向%s传递遥测记录…（%d 条）
+  action_wait_complete_name: 继续到行动完成
+  action_wait_complete_description: 逐日推进，遇到需要处理的变化会提前停下
+  action_wait_next_name: 等待局势变化
+  action_wait_next_description: 逐日推演并在下一次值得关注的变化处停下，可能跨越多个平静日
+  action_verify_name: 交叉校验遥测记录
+  action_verify_description: 交叉校验：“{claim}”
+  command_verify: 交叉校验遥测记录：“{claim}”
+  action_buy_name: 申领{name}
+  action_buy_description: 库存 {stock}，当前价格 {price} {currency}
+  command_buy: 申领{name}
+  action_move_name: 前往{name}
+  action_move_description: 耗时 {days} 天，危险度 {danger}
+  command_move: 前往{name}
+  action_tell_name: 告知{name}一条遥测记录
+  action_tell_description: 分享：“{claim}”
+  command_tell: 向{name}分享消息：“{claim}”
+  information_unknown_claim: 转述的遥测记录
+  information_unverified_warning: 这条遥测记录尚未核实；对方可能据此改变行动。
+  information_relevance_low: 从公开信息看，这条遥测记录与对方当前关注的事项关联不明显。
+  information_relevance_high: 直接相关 · 对方公开关注：{topics}
+  information_risk_unknown: 公开信息不足，暂时无法判断对方可能如何使用这条消息。
+  information_relevance_unknown: 尚不了解对方为何会在意这条遥测记录。
+  information_use_unknown: 尚不了解对方可能如何使用这条消息。
+  wait_missing_item_warning: 你尚未持有{name}；继续等待可能错过当前获取机会。
+  feedback_phase_changed: 局势进入“{phase}”阶段。
+  feedback_action_progress: “{action}”仍在进行，预计第 {day} 天完成。
+  feedback_action_completed: 持续行动已经完成。
+  feedback_arrived: 抵达{name}。
+  feedback_injury_changed: 伤势由 {before} 变为 {after}。
+  feedback_information_delivered: 数据已经送达{name}。
+  feedback_information_pending: 对方是否改变行动，会在后续局势变化时显现。
+  feedback_outcome: 跃迁核心归属：{outcome}
+  feedback_settled: “{action}”已经结算。
+  feedback_resource_changed: '{resource} {delta}，现有 {value}。'
+  feedback_item_changed: '物品 {name} {delta}，现有 {value}。'
+  feedback_belief_changed: 遥测记录更新为{confidence}：{claim}
+  guidance_outcome_settled: 跃迁核心归属已经结算；你可以继续观察局势余波直到场景结束。
+  guidance_pending: 当前行动还需等待到第 {day} 天完成。
+  guidance_verify_date: 完成充能时间目前只是传闻，交叉校验后再据此安排路线更稳妥。
+  guidance_item_market: '{name}仍可从市场回收；它是进入核心舱决策窗口的必要条件，供应可能随局势变化。'
+  guidance_item_missing: 当前仍缺少{name}；留意人物回应与路线进展中是否出现新的获取方式。
+  guidance_verified_item_missing: 你已掌握经过核实的完成充能时间，但当前仍缺少{name}；留意人物回应中出现新的获取方式。
+  guidance_information_sent: 数据已经送达；等待局势变化可以观察它是否改变对方的选择。
+  guidance_default: 没有必须执行的行动；根据已知遥测记录决定调查、交涉、准备或等待。
+  confidence_confirmed: 已核实日期
+  confidence_plausible: 较可信
+  confidence_rumored: 未经核实
+  timing_confirmed: 已核实
+  timing_rumored: 传闻口径
+  decision_wait_timing: 停止日期取决于下一次值得关注的变化，无法预先保证剩余时间。
+  decision_verify_outcome: 把这条遥测记录交叉校验为可靠结论，并整理关联遥测记录
+  decision_verify_resolves: 这条遥测记录尚未核实
+  decision_verify_has_clue: 你持有这条遥测记录
+  decision_verify_pending: 遥测记录仍待核实
+  decision_opportunity_outcome: 消耗这次短暂机会，获得一条新的可追查消息
+  decision_opportunity_open: 该世界机会仍然开放
+  decision_opportunity_location: 你正在机会所在地
+  decision_opportunity_unknown: 新消息可能仍需要进一步交叉校验
+  decision_buy_outcome: 获得 1 件{name}
+  decision_buy_stock: 当前仍有库存
+  decision_buy_funds: 持有足够的交易资源
+  decision_buy_required_outcome: 获得{name}，满足核心目标（进入核心舱决策窗口）的必要条件
+  decision_missing_item: 缺少{name}
+  decision_move_outcome: 抵达{name}
+  decision_move_resolves: 尚未抵达{name}
+  decision_move_ready: 路线的公开条件均已满足
+  decision_move_unknown: 途中局势仍会按日推进
+  decision_tell_outcome: 让{name}获得这条遥测记录
+  decision_tell_influence: 可能改变对方的后续选择
+  decision_tell_location: 对方就在此地
+  decision_tell_has_clue: 你持有这条遥测记录
+  decision_tell_unknown: 对方是否采用消息，只能从之后的公开行动判断
+  decision_heal_outcome: 伤势降低 1 级
+  decision_heal_resolves: 当前伤势
+  decision_heal_injured: 当前带伤
+  decision_heal_ready: 维修条件允许
+  decision_heal_unknown: 维修期间局势仍会按日推进
+  decision_growth_ready: 当前没有伤势妨碍离线校准
+  decision_growth_unknown: 离线校准期间局势仍会按日推进
+  ending_metrics: 局势推进到第 {day} 天；你做出 {decisions} 次决策，其中主动行动 {active} 次、推进时间 {waits} 次。
+  ending_action_verify: 交叉校验数据
+  ending_action_tell: 分享数据
+  ending_action_route: 回应路线考验
+  ending_action_buy: 申领物品
+  ending_action_move: 移动
+  ending_action_growth: 校准系统
+  ending_action_recovery: 维修
+  ending_action_count: '{action} {count} 次。'
+  ending_status: 终局时你位于{location}，伤势 {injury}
+  ending_influence: 你传递的消息改变了 {count} 个关键选择，并影响了最终归属。
+  ending_review_won: 你满足了跃迁核心决策窗口条件，并以 {score} 点综合准备回收最终归属。
+  ending_review_missing_item: 你在结算时没有{name}，因此没有回收进入核心舱决策窗口资格。
+  ending_review_late: 你没有在第 {day} 日前抵达{name}，因此没有进入最终候选。
+  ending_review_lost: 你具备决策窗口资格，但综合准备为 {score}；胜者{winner}达到 {winner_score}，领先 {lead} 点。
+  ending_review_tie: 你具备决策窗口资格，综合准备为 {score}；同分时先完成局势占位的决策窗口者回收归属。
+  ending_review_passive: 本局没有进行主动行动；等待让你跳过了平静日，也同时放弃了调查、交涉和准备窗口。
+  ending_review_next: 下一局可先交叉校验遥测记录并观察人物计划，再决定亲自介入、扶持盟友或保全其他成果。
+  source_investigation: 亲自交叉校验
+  source_investigation_lead: 交叉校验所得遥测记录
+  source_broker: 路过游商
+  source_unknown: 来源不明
+  advance_outcome: 跃迁核心决策窗口已经产生结果
+  timing_keyword: 完成充能
+  timing_status_confirmed: 已核实
+  timing_status_plausible: 较可信
+  timing_status_rumored: 传闻
+  phase_default: 筹备期
+  phase_准备: 筹备期
+  phase_扩散: 消息扩散期
+  phase_进入核心舱: 进入核心舱决策窗口期
+  map_contest_location: 决策窗口地
+  cue_verify_title: 开始查证
+  cue_verify_message: 遥测记录已交付交叉校验
+  cue_growth_title: 静心吐纳
+  cue_growth_message: 这一日没有虚度
+  cue_reveal_title: 遥测记录有了定论
+  cue_reveal_message: 判断已经更新
+  cue_acquire_title: 收入行囊
+  cue_acquire_message: 所得已经收好
+  cue_recovery_title: 伤势缓和
+  cue_recovery_message: 气息渐渐平稳
+  cue_danger_title: 伤势加重
+  cue_danger_message: 继续行动会更加危险
+  feedback_delivery_prefix: 数据已经送达
+  unknown_clue: 未知遥测记录
+  one_clue: 一条遥测记录
+  deliver_term: 按“%s”交付数据
+  tell_focused_actor: 把这句话告诉他
+  tell_actor: 告诉%s
+  information_causal_heading: 数据因果线
+  preparation_heading: 你的决策窗口准备
+  preparation_explanation: 基线来自已知主要决策窗口者的公开实力，只用于判断是否值得正面入局。
+  people_information_hint: 他们会依照自己掌握的消息行动；你的数据可能改变这些安排。
+  people_talk_clues: 交谈 · %d 条遥测记录可用
+  people_view: 查看人物
+  player_name_prompt: 你以何名进入核心舱
+  plan_player_information: 采用了你提供的消息：“{claim}”
+  plan_shared_information: 依据双方都已掌握的遥测记录：“{claim}”
+  plan_private_information: 依据自己掌握、但尚未向你公开的消息
+  plan_flag_ready: 局势条件已经满足：{condition}
+  plan_has_item: 手中已有行动所需的{name}
+  plan_missing_item: 为了补足缺少的{name}
+  plan_public_goal: 这项行动最符合其当前公开目标
+  plan_unavailable: 尚未形成可以观察的公开计划
+  plan_flag_changed: 局势条件已经发生变化
+  decision_route_triggered: 此前的数据条件已经引发回应
+  decision_route_window: 这项选择只在当前路线窗口内有效
+  effect_injury: 伤势{amount}级
+  preparation_resource_empty: 当前尚未建立
+  preparation_resource_ready: 会计入你自己的决策窗口准备
+  preparation_extra_label: 额外筹备
+  preparation_extra_ready: 已形成一项额外准备
+  preparation_item_missing: 尚未备齐；没有它不能参与跃迁核心决策窗口
+  preparation_item_ready: 已经备齐，可满足进入核心舱条件
+  preparation_location_missing: 尚未抵达；必须在结算前到达
+  preparation_location_ready: 已经抵达核心决策窗口地点
+  preparation_rating_strong: 优势明显
+  preparation_detail_strong: 综合准备已经超过已知决策窗口基线；满足进入核心舱条件后，有较大把握正面决策窗口。
+  preparation_rating_even: 具备竞争力
+  preparation_detail_even: 综合准备达到已知决策窗口基线；同分时仍可能受对手行动与伤势影响。
+  preparation_rating_low: 胜算偏低
+  preparation_detail_low: 已经有部分准备，但距离稳定参与正面决策窗口仍有差距。
+  preparation_rating_poor: 明显不足
+  preparation_detail_poor: 即使进入核心舱，目前也很难压过主要决策窗口者。
+  preparation_ineligible_suffix: ' 当前还没有同时满足维修耗材与抵达条件。'
+  travel_no_route: 尚未发现可行路线
+  travel_route_found: 可用路线已发现
+  travel_carry_item: 携带{name}
+  travel_missing_item: 缺少{name}
+  travel_already_arrived: 你已经到达核心决策窗口地点。
+  travel_date_unknown: 完成充能时间尚未查明，无法判断最晚出发时间。
+  travel_departure_deadline: 按{basis}，最晚应在第 {day} 天结束前出发。
+  travel_departure_late: 按{basis}，即使立即出发也可能来不及。
+  travel_condition_blocked: 路线条件尚未满足
+  travel_condition_ready: 路线条件满足

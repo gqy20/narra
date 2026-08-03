@@ -1,0 +1,18 @@
+id: P00
+name: 无名自由工程师
+location: L01
+injury: 0
+resources:
+  integrity: 2
+  crew_support: 0
+  credits: 100
+  reputation: 3
+items:
+  - med_patch
+beliefs:
+  - fact_id: F02
+    claim: 跃迁核心将在第24天完成充能
+    confidence: 1
+    source: 补给环传言
+    learned_on: 0
+    secrecy: 0

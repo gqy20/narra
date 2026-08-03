@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"fantu/internal/app"
+	"fantu/internal/director"
 )
 
 type Service struct {
@@ -25,6 +26,7 @@ type ServiceOptions struct {
 }
 
 var ErrUnavailable = errors.New("AI dialogue is not enabled")
+var ErrWorldDirectorUnavailable = errors.New("AI world director is not enabled")
 
 func NewService(provider Provider, options ServiceOptions) *Service {
 	if options.Timeout <= 0 {
@@ -37,6 +39,72 @@ func NewService(provider Provider, options ServiceOptions) *Service {
 }
 
 func (s *Service) Enabled() bool { return s != nil && s.provider != nil }
+
+// SelectWorldDirective asks the model to choose exactly one engine-provided
+// candidate. It cannot author effects, and any missing or invalid output is an
+// error so Engine.Step can roll back the complete day.
+func (s *Service) SelectWorldDirective(ctx context.Context, request director.SelectionRequest) (director.Selection, error) {
+	if s == nil || s.provider == nil {
+		return director.Selection{}, ErrWorldDirectorUnavailable
+	}
+	provider, ok := s.provider.(WorldDirectiveProvider)
+	if !ok {
+		return director.Selection{}, ErrWorldDirectorUnavailable
+	}
+	if len(request.Candidates) == 0 {
+		return director.Selection{}, fmt.Errorf("world director request has no candidates")
+	}
+	allowed := make([]string, 0, len(request.Candidates))
+	for _, candidate := range request.Candidates {
+		allowed = append(allowed, candidate.DirectiveID)
+	}
+	input, err := json.Marshal(request)
+	if err != nil {
+		return director.Selection{}, fmt.Errorf("encode world director snapshot: %w", err)
+	}
+	callCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	draft, _, err := provider.GenerateWorldDirective(callCtx, WorldDirectiveRequest{
+		System: "You are a bounded game world director. Choose exactly one directive_id from candidates. Never invent effects or IDs. Explain the pacing reason briefly and list only signal descriptions present in the snapshot.",
+		Input:  string(input), AllowedDirectiveIDs: allowed,
+	})
+	if err != nil {
+		return director.Selection{}, fmt.Errorf("generate world directive: %w", err)
+	}
+	draft.DirectiveID = strings.TrimSpace(draft.DirectiveID)
+	draft.Reason = strings.TrimSpace(draft.Reason)
+	if draft.DirectiveID == "" || draft.Reason == "" {
+		return director.Selection{}, fmt.Errorf("world director response requires directive_id and reason")
+	}
+	valid := false
+	for _, id := range allowed {
+		if id == draft.DirectiveID {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return director.Selection{}, fmt.Errorf("world director returned unavailable directive_id %q", draft.DirectiveID)
+	}
+	if len(draft.FocusSignals) > 5 {
+		return director.Selection{}, fmt.Errorf("world director returned too many focus signals")
+	}
+	allowedSignals := make(map[string]bool)
+	for _, candidate := range request.Candidates {
+		if candidate.DirectiveID != draft.DirectiveID {
+			continue
+		}
+		for _, signal := range candidate.Signals {
+			allowedSignals[signal.Description] = true
+		}
+	}
+	for _, signal := range draft.FocusSignals {
+		if !allowedSignals[signal] {
+			return director.Selection{}, fmt.Errorf("world director returned unknown focus signal %q", signal)
+		}
+	}
+	return director.Selection{DirectiveID: draft.DirectiveID, Reason: draft.Reason, FocusSignals: append([]string(nil), draft.FocusSignals...), Source: "anthropic"}, nil
+}
 
 // GenerateConversationTurn returns one validated NPC reply using only the
 // redacted snapshot and bounded, non-authoritative conversation history.

@@ -30,6 +30,7 @@ type GameServer struct {
 	shutdownToken string
 	shutdown      func()
 	dialogue      *ai.Service
+	worldDirector *ai.Service
 	dialogueMode  string
 	configureAI   func(AISettings) (*ai.Service, string, error)
 }
@@ -61,6 +62,7 @@ type ScenarioInfo struct {
 
 type Capabilities struct {
 	AIDialogue      bool `json:"ai_dialogue"`
+	AIWorldDirector bool `json:"ai_world_director"`
 	AIConfiguration bool `json:"ai_configuration"`
 }
 
@@ -115,6 +117,7 @@ func NewWithOptions(bundle domain.Bundle, saveDir string, options Options) *Game
 		shutdownToken: options.ShutdownToken,
 		shutdown:      options.Shutdown,
 		dialogue:      options.Dialogue,
+		worldDirector: options.Dialogue,
 		dialogueMode:  options.DialogueMode,
 		configureAI:   options.ConfigureAI,
 	}
@@ -167,7 +170,7 @@ func (s *GameServer) health(writer http.ResponseWriter, request *http.Request) {
 	s.mu.Unlock()
 	writeJSON(writer, http.StatusOK, Response{APIVersion: APIVersion,
 		Scenario:     &ScenarioInfo{ID: s.bundle.Scenario.ID, Title: s.bundle.Scenario.Title, Presentation: s.bundle.Presentation},
-		Capabilities: &Capabilities{AIDialogue: enabled, AIConfiguration: configurable},
+		Capabilities: &Capabilities{AIDialogue: enabled, AIWorldDirector: enabled, AIConfiguration: configurable},
 		AISettings:   &AISettingsView{Enabled: enabled, Mode: mode},
 	})
 }
@@ -193,11 +196,19 @@ func (s *GameServer) configureAISettings(writer http.ResponseWriter, request *ht
 	}
 	s.mu.Lock()
 	s.dialogue = dialogue
+	s.worldDirector = dialogue
 	s.dialogueMode = mode
+	if s.session != nil {
+		if dialogue == nil {
+			s.session.SetWorldDirector(nil)
+		} else {
+			s.session.SetWorldDirector(dialogue)
+		}
+	}
 	s.mu.Unlock()
 	enabled := dialogue != nil && dialogue.Enabled()
 	writeJSON(writer, http.StatusOK, Response{APIVersion: APIVersion,
-		Capabilities: &Capabilities{AIDialogue: enabled, AIConfiguration: true},
+		Capabilities: &Capabilities{AIDialogue: enabled, AIWorldDirector: enabled, AIConfiguration: true},
 		AISettings:   &AISettingsView{Enabled: enabled, Mode: mode},
 	})
 }
@@ -231,6 +242,9 @@ func (s *GameServer) newGame(writer http.ResponseWriter, request *http.Request) 
 	if err != nil {
 		writeError(writer, http.StatusInternalServerError, "new_game_failed", err.Error())
 		return
+	}
+	if s.worldDirector != nil {
+		session.SetWorldDirector(s.worldDirector)
 	}
 	s.mu.Lock()
 	s.session = session
@@ -318,6 +332,9 @@ func (s *GameServer) load(writer http.ResponseWriter, request *http.Request) {
 		}
 		writeError(writer, status, "load_failed", err.Error())
 		return
+	}
+	if s.worldDirector != nil {
+		session.SetWorldDirector(s.worldDirector)
 	}
 	s.mu.Lock()
 	s.session = session

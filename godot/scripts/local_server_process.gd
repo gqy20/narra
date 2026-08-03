@@ -56,10 +56,30 @@ func resolve_data_dir(config: Dictionary, install_dir := "") -> String:
 	if explicit_dir != "":
 		return explicit_dir.simplify_path()
 	var root := install_dir if install_dir != "" else OS.get_executable_path().get_base_dir()
-	var scenario := str(config.get("scenario", "blackwind")).strip_edges()
+	var scenario := str(config.get("scenario", "")).strip_edges()
+	if scenario == "":
+		scenario = _first_installed_scenario(root.path_join("data"))
 	if scenario == "" or scenario.get_file() != scenario or scenario in [".", ".."]:
 		return ""
 	return root.path_join("data").path_join(scenario).simplify_path()
+
+
+func _first_installed_scenario(data_root: String) -> String:
+	var directory := DirAccess.open(data_root)
+	if directory == null:
+		return ""
+	var candidates: Array[String] = []
+	directory.list_dir_begin()
+	var entry := directory.get_next()
+	while entry != "":
+		if directory.current_is_dir() and not entry.begins_with("."):
+			var scenario_root := data_root.path_join(entry)
+			if FileAccess.file_exists(scenario_root.path_join("manifest.yml")) or FileAccess.file_exists(scenario_root.path_join("manifest.yaml")) or FileAccess.file_exists(scenario_root.path_join("manifest.json")):
+				candidates.append(entry)
+		entry = directory.get_next()
+	directory.list_dir_end()
+	candidates.sort()
+	return candidates[0] if not candidates.is_empty() else ""
 
 
 func is_running() -> bool:

@@ -44,6 +44,18 @@ func TestDialogueSchemaRestrictsFactReferences(t *testing.T) {
 	}
 }
 
+func TestWorldDirectiveSchemaRestrictsSelectionToCandidates(t *testing.T) {
+	schema := worldDirectiveSchemaFor([]string{"open", "wait"})
+	if schema["additionalProperties"] != false {
+		t.Fatalf("schema is open: %+v", schema)
+	}
+	properties := schema["properties"].(map[string]any)
+	ids := properties["directive_id"].(map[string]any)["enum"].([]string)
+	if len(ids) != 2 || ids[0] != "open" || ids[1] != "wait" {
+		t.Fatalf("directive enum = %#v", ids)
+	}
+}
+
 func TestGenerateDialogueUsesStructuredOutputAndDecodesResponse(t *testing.T) {
 	var received map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {

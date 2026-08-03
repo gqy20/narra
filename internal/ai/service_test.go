@@ -8,7 +8,40 @@ import (
 	"time"
 
 	"fantu/internal/app"
+	"fantu/internal/director"
+	"fantu/internal/domain"
 )
+
+type fakeWorldProvider struct {
+	draft WorldDirectiveDraft
+	err   error
+	calls int
+}
+
+func (p *fakeWorldProvider) GenerateDialogue(context.Context, GenerationRequest) (DialogueDraft, GenerationMetadata, error) {
+	return DialogueDraft{}, GenerationMetadata{}, nil
+}
+func (p *fakeWorldProvider) GenerateWorldDirective(context.Context, WorldDirectiveRequest) (WorldDirectiveDraft, GenerationMetadata, error) {
+	p.calls++
+	return p.draft, GenerationMetadata{Model: "fake"}, p.err
+}
+
+func TestWorldDirectorRequiresValidStructuredSelectionWithoutFallback(t *testing.T) {
+	request := director.SelectionRequest{ScenarioID: "test", Day: 1, Phase: "opening", Candidates: []director.Candidate{{DirectiveID: "open", Description: "Open", Signals: []domain.WorldSignal{{Description: "阶段变化"}}}}}
+	provider := &fakeWorldProvider{draft: WorldDirectiveDraft{DirectiveID: "open", Reason: "节奏需要", FocusSignals: []string{"阶段变化"}}}
+	selection, err := NewService(provider, ServiceOptions{}).SelectWorldDirective(context.Background(), request)
+	if err != nil || selection.DirectiveID != "open" || selection.Source != "anthropic" {
+		t.Fatalf("selection=%+v err=%v", selection, err)
+	}
+	provider.draft.DirectiveID = "invented"
+	if _, err := NewService(provider, ServiceOptions{}).SelectWorldDirective(context.Background(), request); err == nil {
+		t.Fatal("accepted invented directive ID")
+	}
+	provider.err = errors.New("empty model response")
+	if _, err := NewService(provider, ServiceOptions{}).SelectWorldDirective(context.Background(), request); err == nil || !strings.Contains(err.Error(), "empty model response") {
+		t.Fatalf("provider error = %v", err)
+	}
+}
 
 type fakeProvider struct {
 	draft       aiTestDraft

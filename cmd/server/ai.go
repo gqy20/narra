@@ -23,8 +23,9 @@ type aiFlags struct {
 }
 
 func registerAIFlags() aiFlags {
+	defaultEnabled := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY")) != ""
 	return aiFlags{
-		enabled:    flag.Bool("ai-enabled", true, "enable optional Anthropic NPC dialogue when credentials are available"),
+		enabled:    flag.Bool("ai-enabled", defaultEnabled, "enable Anthropic NPC dialogue and world director; enabled calls must return valid structured output"),
 		model:      flag.String("ai-model", aiconfig.EnvironmentOrDefault("ANTHROPIC_MODEL", "claude-haiku-4-5"), "Anthropic-compatible model used for NPC dialogue"),
 		baseURL:    flag.String("ai-base-url", os.Getenv("ANTHROPIC_BASE_URL"), "optional Anthropic-compatible API base URL"),
 		maxTokens:  flag.Int("ai-max-tokens", 4096, "maximum output tokens for NPC dialogue, including model reasoning"),

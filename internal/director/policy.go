@@ -3,6 +3,7 @@
 package director
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
@@ -10,6 +11,31 @@ import (
 )
 
 const DeterministicSource = "deterministic"
+
+type SelectionRequest struct {
+	ScenarioID string      `json:"scenario_id"`
+	Day        int         `json:"day"`
+	Phase      string      `json:"phase"`
+	Candidates []Candidate `json:"candidates"`
+}
+
+type Candidate struct {
+	DirectiveID string               `json:"directive_id"`
+	Description string               `json:"description"`
+	Score       int                  `json:"deterministic_score"`
+	Signals     []domain.WorldSignal `json:"signals"`
+}
+
+type Selection struct {
+	DirectiveID  string   `json:"directive_id"`
+	Reason       string   `json:"reason"`
+	FocusSignals []string `json:"focus_signals"`
+	Source       string   `json:"source"`
+}
+
+type Selector interface {
+	SelectWorldDirective(context.Context, SelectionRequest) (Selection, error)
+}
 
 type Choice struct {
 	Definition domain.WorldDirectiveDefinition
@@ -20,6 +46,16 @@ type Choice struct {
 // Choose returns at most one legal directive for the current day. Stable
 // sorting makes identical snapshots produce identical choices.
 func Choose(state *domain.WorldState, definitions []domain.WorldDirectiveDefinition) *Choice {
+	choices := Choices(state, definitions)
+	if len(choices) == 0 {
+		return nil
+	}
+	choice := choices[0]
+	return &choice
+}
+
+// Choices returns every currently legal candidate in stable score order.
+func Choices(state *domain.WorldState, definitions []domain.WorldDirectiveDefinition) []Choice {
 	choices := make([]Choice, 0, len(definitions))
 	for _, definition := range definitions {
 		if !available(state, definition) || supersededResourceThreshold(state, definition, definitions) {
@@ -35,17 +71,22 @@ func Choose(state *domain.WorldState, definitions []domain.WorldDirectiveDefinit
 			Signals:    signals,
 		})
 	}
-	if len(choices) == 0 {
-		return nil
-	}
 	sort.SliceStable(choices, func(i, j int) bool {
 		if choices[i].Score != choices[j].Score {
 			return choices[i].Score > choices[j].Score
 		}
 		return choices[i].Definition.ID < choices[j].Definition.ID
 	})
-	choice := choices[0]
-	return &choice
+	return choices
+}
+
+func Request(state *domain.WorldState, definitions []domain.WorldDirectiveDefinition) SelectionRequest {
+	choices := Choices(state, definitions)
+	request := SelectionRequest{ScenarioID: state.RunID, Day: state.Day, Phase: state.Phase, Candidates: make([]Candidate, 0, len(choices))}
+	for _, choice := range choices {
+		request.Candidates = append(request.Candidates, Candidate{DirectiveID: choice.Definition.ID, Description: choice.Definition.Description, Score: choice.Score, Signals: append([]domain.WorldSignal(nil), choice.Signals...)})
+	}
+	return request
 }
 
 func supersededResourceThreshold(state *domain.WorldState, definition domain.WorldDirectiveDefinition, definitions []domain.WorldDirectiveDefinition) bool {

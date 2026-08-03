@@ -1,0 +1,1019 @@
+- id: command_deck_intel
+  title: 青岚数据路线
+  initial_state: uncommitted
+  states:
+    - uncommitted
+    - trust_committed
+    - trust_reviewed
+    - trust_betrayed
+    - trust_joined
+    - trust_commissioned
+    - eva_suit_committed
+    - eva_suit_lent
+    - eva_suit_kept
+    - eva_suit_scouted
+    - eva_suit_liquidated
+    - escort_committed
+    - escort_approved
+    - escort_refused
+    - escort_fulfilled
+    - escort_vanguard
+    - escort_quartermaster
+  nodes:
+    - id: deliver_verified_date
+      from_state: uncommitted
+      target_id: N03
+      fact_id: F01
+      min_confidence: 3
+      action_id: broadcast
+      choices:
+        - id: tell:N03:F01:trust
+          term_id: trust
+          term_label: 无偿相助
+          name: 无偿告知顾岚
+          description: 不索取眼前回报，以可靠消息换取顾岚对你的长期信任。
+          personal_outcome: 顾岚对你的信任提高；若他凭此回收跃迁核心，你会获得环站指挥部声望。
+          expected_outcomes:
+            - 顾岚获得已核实日期
+            - 信任 +2，并可能直接采用你的消息提前备战
+          warnings:
+            - 条件一旦提出，数据与承诺都不可撤回。
+          irreversible: true
+          effects:
+            - type: adjust_relation
+              from_id: target
+              target_id: player
+              key: trust
+              amount: 2
+            - type: set_flag
+              target_id: player
+              key: command_deck_intel_term_trust
+              value: "true"
+            - type: set_flag
+              target_id: world
+              key: player_backed_shen
+              value: "true"
+          to_state: trust_committed
+          feedback: {messages: [可靠数据已经交给顾岚，长期信任路线由此开启。], journal: [无偿向顾岚交付核实日期，等待环站指挥部审核与兑现。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
+
+        - id: tell:N03:F01:eva_suit
+          term_id: eva_suit
+          term_label: 交换舱外服
+          name: 以日期换取舱外服
+          description: 把已核实日期作为交易筹码，立即换取一枚舱外服，保留独自进入核心舱的自由。
+          personal_outcome: 立即获得 1 枚舱外服，重新打开亲自进入核心舱路线。
+          expected_outcomes:
+            - 获得顾岚持有的 1 枚舱外服
+            - 青岚队伍失去这份进入核心舱物资；顾岚会把消息视为一次对价交易
+          warnings:
+            - 条件一旦提出，数据与承诺都不可撤回。
+          irreversible: true
+          conditions:
+            - type: missing_item
+              key: eva_suit
+          effects:
+            - type: remove_item
+              target_id: target
+              key: eva_suit
+              amount: 1
+            - type: add_item
+              target_id: player
+              key: eva_suit
+              amount: 1
+            - type: set_flag
+              target_id: player
+              key: command_deck_intel_term_eva_suit
+              value: "true"
+            - type: set_flag
+              target_id: world
+              key: player_took_shen_eva_suit
+              value: "true"
+          to_state: eva_suit_committed
+          feedback: {messages: [数据交易完成，你回收了环站指挥部的备用舱外服。], journal: [以核实日期换得舱外服，后续需要回应苏弥的药物请求。], presentation: {kind: acquire, intensity: 2, subject: player}}
+
+        - id: tell:N03:F01:escort
+          term_id: escort
+          term_label: 换取同行名额
+          name: 以日期换取同行承诺
+          description: 暂不拿走物资，要求顾岚在开谷时把你编入青岚队伍。
+          personal_outcome: 获得第17日随青岚队伍出发的承诺；届时可回收随队药与 1 点支援。
+          expected_outcomes:
+            - 顾岚获得已核实日期
+            - 回收开谷时随队出发的承诺，信任 +1
+          warnings:
+            - 条件一旦提出，数据与承诺都不可撤回。
+          irreversible: true
+          effects:
+            - type: adjust_relation
+              from_id: target
+              target_id: player
+              key: trust
+              amount: 1
+            - type: set_flag
+              target_id: player
+              key: command_deck_escort_promised
+              value: "true"
+            - type: set_flag
+              target_id: player
+              key: command_deck_intel_term_escort
+              value: "true"
+            - type: set_flag
+              target_id: world
+              key: player_joining_command_deck
+              value: "true"
+          to_state: escort_committed
+          feedback: {messages: [顾岚接受了条件，将你列入青岚同行候选。], journal: [以核实日期换取青岚同行承诺，仍需通过舰队审核。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
+
+    - id: answer_source_review
+      from_state: trust_committed
+      from_day: 10
+      until_day: 12
+      location_id: L02
+      target_id: N09
+      action_id: dock
+      conditions:
+        - {type: flag, key: n09_challenges_player_source}
+        - {type: missing_flag, scope: actor, key: command_deck_trust_midgame_resolved}
+      choices:
+        - id: route:trust:vouch
+          term_id: vouch
+          term_label: 公开担保
+          name: 为数据来源担保
+          description: 在舰队审核中公开承担消息责任，不让顾岚独自承受赵鸣的质疑。
+          command_description: 玩家在舰队审核中为数据来源担保
+          personal_outcome: 通行权限 +1，顾岚信任 +1；同时坐实你与顾岚的共同立场。
+          relevance: 赵鸣正在借舰队审核质疑这条消息的来源。
+          risk: 担保会提高你的舰队声望，也会让赵鸣把你视为顾岚一方。
+          expected_outcomes:
+            - 通行权限 +1
+            - 顾岚信任 +1
+            - 完成信任路线的中段履约
+          warnings:
+            - 公开担保后，无法再否认自己参与了顾岚的计划。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: reputation, amount: 1}
+            - {type: adjust_relation, from_id: N03, target_id: player, key: trust, amount: 1}
+            - {type: set_flag, target_id: player, key: command_deck_trust_vouched, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_trust_midgame_resolved, value: "true"}
+          to_state: trust_reviewed
+          feedback: {messages: [你公开担保数据来源，环站指挥部审核记录了这份承诺。], journal: [在公开审核中支持顾岚，信任担保进入兑现阶段。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
+
+    - id: leak_plan_during_review
+      from_state: trust_committed
+      from_day: 10
+      until_day: 12
+      location_id: L02
+      target_id: N09
+      fact_id: F01
+      min_confidence: 3
+      action_id: broadcast
+      conditions:
+        - {type: flag, key: n09_challenges_player_source}
+        - {type: missing_flag, scope: actor, key: command_deck_trust_midgame_resolved}
+      choices:
+        - id: route:trust:leak
+          term_id: leak
+          term_label: 转交计划
+          name: 把计划转交赵鸣
+          description: 否认担保，并把顾岚的完成充能日期与备战安排交给赵鸣换取报酬。
+          command_description: 玩家把顾岚的计划转交赵鸣
+          personal_outcome: 立即获得 20 通行权限点，但顾岚信任 -4，信任路线转为背约。
+          relevance: 赵鸣需要证据削弱顾岚在门内的地位。
+          risk: 这会把一次无偿相助变成背叛；顾岚会知道计划从你这里泄露。
+          expected_outcomes:
+            - 获得 20 通行权限点
+            - 顾岚信任 -4
+            - 赵鸣获得已核实日期
+          warnings:
+            - 这是信任路线的背约选择。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: credits, amount: 20}
+            - {type: adjust_relation, from_id: N03, target_id: player, key: trust, amount: -4}
+            - {type: set_flag, target_id: player, key: command_deck_trust_betrayed, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_trust_midgame_resolved, value: "true"}
+          to_state: trust_betrayed
+          feedback: {messages: [你把顾岚的计划交给赵鸣，原有信任已经破裂。], journal: [背弃青岚数据担保并收取报酬，信任路线关闭。], presentation: {kind: danger, intensity: 3, subject: target}}
+
+    - id: answer_eva_suit_request
+      from_state: eva_suit_committed
+      from_day: 8
+      until_day: 12
+      location_id: L02
+      target_id: N06
+      action_id: dock
+      conditions:
+        - {type: has_item, key: eva_suit}
+        - {type: flag, key: su_requests_eva_suit}
+        - {type: missing_flag, scope: actor, key: command_deck_eva_suit_midgame_resolved}
+      choices:
+        - id: route:eva_suit:lend
+          term_id: lend
+          term_label: 借丹援队
+          name: 把舱外服借回队伍
+          description: 接受苏弥的请求，把换来的舱外服交回青岚药修使用。
+          command_description: 玩家把交易所得舱外服借给苏弥
+          personal_outcome: 失去舱外服与独行资格，换得 2 点支援和苏弥 2 点信任。
+          relevance: 补给环已经封锁，苏弥无法为队伍补回这枚舱外服。
+          risk: 交出后你的亲自进入核心舱路线会再次关闭。
+          expected_outcomes:
+            - 支援 +2
+            - 苏弥信任 +2
+            - 交出 1 枚舱外服
+          warnings:
+            - 交出后将失去当前的独自进入核心舱条件。
+          irreversible: true
+          effects:
+            - {type: remove_item, target_id: player, key: eva_suit, amount: 1}
+            - {type: add_item, target_id: N06, key: eva_suit, amount: 1}
+            - {type: adjust_resource, target_id: player, key: crew_support, amount: 2}
+            - {type: adjust_relation, from_id: N06, target_id: player, key: trust, amount: 2}
+            - {type: set_flag, target_id: player, key: command_deck_eva_suit_lent, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_eva_suit_midgame_resolved, value: "true"}
+          to_state: eva_suit_lent
+          feedback: {messages: [你把舱外服交回青岚队伍，独行资格转化为支援与信任。], journal: [响应苏弥的借丹请求，放弃独行路线。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
+        - id: route:eva_suit:keep
+          term_id: keep
+          term_label: 坚持独行
+          name: 拒绝归还舱外服
+          description: 明确告诉苏弥，这枚维修耗材是一次完成的交易，你会保留它并独自决定进入核心舱时机。
+          command_description: 玩家拒绝把交易所得舱外服借回青岚队伍
+          personal_outcome: 保留舱外服与路线自由；苏弥对你的怀疑 +2。
+          relevance: 苏弥把队伍药物缺口摆到了你面前。
+          risk: 你仍可独行，但青岚药修不会把你视为可以托付物资的人。
+          expected_outcomes:
+            - 保留舱外服
+            - 苏弥怀疑 +2
+            - 确认独行路线
+          warnings:
+            - 拒绝后，苏弥不会再次提出借丹请求。
+          irreversible: true
+          effects:
+            - {type: adjust_relation, from_id: N06, target_id: player, key: suspicion, amount: 2}
+            - {type: set_flag, target_id: player, key: command_deck_eva_suit_kept, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_eva_suit_midgame_resolved, value: "true"}
+          to_state: eva_suit_kept
+          feedback: {messages: [你拒绝归还舱外服，保住独行资格，也承担了关系代价。], journal: [拒绝借丹并确认独行，等待选择踩点或变现。], presentation: {kind: danger, intensity: 2, subject: target}}
+
+    - id: answer_escort_review
+      from_state: escort_committed
+      from_day: 10
+      until_day: 13
+      location_id: L02
+      target_id: N03
+      action_id: dock
+      conditions:
+        - {type: flag, key: command_deck_review}
+        - {type: flag, scope: actor, key: command_deck_escort_promised}
+        - {type: missing_flag, scope: actor, key: command_deck_escort_midgame_resolved}
+      choices:
+        - id: route:escort:review
+          term_id: review
+          term_label: 接受审核
+          name: 接受环站指挥部审核
+          description: 登记数据来源与行动职责，以正式队员身份保留同行资格。
+          command_description: 玩家接受环站指挥部同行审核
+          personal_outcome: 通行权限 +1、顾岚信任 +1，并保留第16日随队集结资格。
+          relevance: 环站指挥部要求所有参与者登记数据与职责。
+          risk: 通过审核后，赫利俄斯财团会把你视为环站指挥部行动的一员。
+          expected_outcomes:
+            - 通行权限 +1
+            - 顾岚信任 +1
+            - 保留同行资格
+          warnings:
+            - 你的阵营立场将变得公开。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: reputation, amount: 1}
+            - {type: adjust_relation, from_id: N03, target_id: player, key: trust, amount: 1}
+            - {type: set_flag, target_id: player, key: command_deck_escort_approved, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_escort_midgame_resolved, value: "true"}
+          to_state: escort_approved
+          feedback: {messages: [舰队审核通过，同行承诺只待开谷前集结兑现。], journal: [通过青岚同行审核，第16日必须返回驻地集结。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
+        - id: route:escort:independent
+          term_id: independent
+          term_label: 保持独立
+          name: 退出青岚同行名单
+          description: 拒绝舰队审核，保留自由工程师身份并放弃此前换得的同行名额。
+          command_description: 玩家拒绝环站指挥部审核并退出同行名单
+          personal_outcome: 放弃随队药与支援；顾岚信任 -2，赫克托不再把你视为青岚阵营。
+          relevance: 舰队审核要求你在安全与独立之间作出明确选择。
+          risk: 退出后，第16日不会再出现随队集结。
+          expected_outcomes:
+            - 取消同行承诺
+            - 顾岚信任 -2
+            - 恢复公开的自由工程师身份
+          warnings:
+            - 退出后不能重新申请本次同行。
+          irreversible: true
+          effects:
+            - {type: adjust_relation, from_id: N03, target_id: player, key: trust, amount: -2}
+            - {type: adjust_relation, from_id: N02, target_id: player, key: suspicion, amount: -1}
+            - {type: set_flag, target_id: player, key: command_deck_escort_promised, value: "false"}
+            - {type: set_flag, target_id: player, key: command_deck_escort_refused, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_escort_midgame_resolved, value: "true"}
+            - {type: set_flag, target_id: world, key: player_declared_independent, value: "true"}
+          to_state: escort_refused
+          feedback: {messages: [你退出青岚同行名单，重新以独立自由工程师身份行动。], journal: [拒绝舰队审核并退出同行路线。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
+
+    - id: settle_trust_commitment
+      from_state: trust_reviewed
+      from_day: 14
+      until_day: 16
+      location_id: L02
+      target_id: N03
+      allow_remote_target: true
+      action_id: dock
+      conditions:
+        - {type: flag, scope: actor, key: command_deck_trust_vouched}
+        - {type: missing_flag, scope: actor, key: command_deck_trust_late_resolved}
+      choices:
+        - id: route:trust:join
+          term_id: join
+          term_label: 亲自入局
+          name: 把担保转为行动席位
+          description: 以已经公开承担的责任换取环站指挥部行动物资，亲自加入进入核心舱准备。
+          personal_outcome: 获得舱外服、2 点支援与额外筹备；你将有机会亲自决策窗口，而不只等待记功。
+          relevance: 你已经替顾岚承担消息责任，有资格要求行动资源。
+          risk: 亲自加入会消耗舰队人手，也意味着你要承担进入核心舱风险。
+          expected_outcomes:
+            - 获得 1 枚舱外服
+            - 支援 +2
+            - 形成额外筹备
+          warnings:
+            - 选择行动席位后，本轮不能再领取数据报酬。
+          irreversible: true
+          effects:
+            - {type: add_item, target_id: player, key: eva_suit, amount: 1}
+            - {type: adjust_resource, target_id: player, key: crew_support, amount: 2}
+            - {type: set_flag, target_id: player, key: prepared, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_trust_operation_joined, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_trust_late_resolved, value: "true"}
+          to_state: trust_joined
+          feedback: {messages: [担保已经兑现为行动席位，进入核心舱物资与支援交到你手中。], journal: [将青岚信任回报兑现为亲自行动条件。], presentation: {kind: acquire, intensity: 3, subject: player}}
+        - id: route:trust:commission
+          term_id: commission
+          term_label: 领取报酬
+          name: 结算数据与担保报酬
+          description: 不占用环站指挥部行动席位，提前结算数据交叉校验与公开担保的报酬。
+          personal_outcome: 立即获得 30 通行权限点与 1 点通行权限；保留顾岚获胜后的记功可能。
+          relevance: 可靠消息与公开担保已经替环站指挥部节省了交叉校验成本。
+          risk: 你不会获得舰队进入核心舱物资，亲自决策窗口路线仍需自行准备。
+          expected_outcomes:
+            - 获得 30 通行权限点
+            - 通行权限 +1
+          warnings:
+            - 领取报酬后，本轮不能再申请行动席位。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: credits, amount: 30}
+            - {type: adjust_resource, target_id: player, key: reputation, amount: 1}
+            - {type: set_flag, target_id: player, key: command_deck_trust_commissioned, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_trust_late_resolved, value: "true"}
+          to_state: trust_commissioned
+          feedback: {messages: [你选择结清数据报酬，不再占用环站指挥部行动席位。], journal: [将信任担保结算为通行权限点与通行权限。], presentation: {kind: acquire, intensity: 2, subject: player}}
+
+    - id: turn_eva_suit_into_route
+      from_state: eva_suit_kept
+      from_day: 13
+      until_day: 16
+      location_id: L02
+      target_id: N06
+      allow_remote_target: true
+      action_id: dock
+      conditions:
+        - {type: has_item, key: eva_suit}
+        - {type: flag, scope: actor, key: command_deck_eva_suit_kept}
+        - {type: missing_flag, scope: actor, key: command_deck_eva_suit_late_resolved}
+      choices:
+        - id: route:eva_suit:scout
+          term_id: scout
+          term_label: 独行踩点
+          name: 用舱外服提前踩点
+          description: 保留维修耗材并独自勘察维护环入口裂隙，把进入核心舱自由转化为路线优势。
+          personal_outcome: 保留舱外服，获得 2 点支援并形成额外筹备，提高亲自决策窗口的胜算。
+          relevance: 你拥有封锁后的稀缺维修耗材，可以比普通自由工程师更早试探瘴气。
+          risk: 独行踩点不会修复苏弥对你的怀疑。
+          expected_outcomes:
+            - 保留舱外服
+            - 支援 +2
+            - 形成额外筹备
+          warnings:
+            - 完成踩点后，不能再拍卖本轮进入核心舱名额。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: crew_support, amount: 2}
+            - {type: set_flag, target_id: player, key: prepared, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_eva_suit_scouted, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_eva_suit_late_resolved, value: "true"}
+          to_state: eva_suit_scouted
+          feedback: {messages: [提前踩点完成，舱外服和新增准备都得以保留。], journal: [使用舱外服完成独行踩点，决策窗口准备提高。], presentation: {kind: reveal, intensity: 2, subject: fact}}
+
+    - id: liquidate_eva_suit_route
+      from_state: eva_suit_kept
+      from_day: 13
+      until_day: 16
+      location_id: L02
+      target_id: N04
+      allow_remote_target: true
+      action_id: dock
+      conditions:
+        - {type: has_item, key: eva_suit}
+        - {type: flag, scope: actor, key: command_deck_eva_suit_kept}
+        - {type: missing_flag, scope: actor, key: command_deck_eva_suit_late_resolved}
+      choices:
+        - id: route:eva_suit:liquidate
+          term_id: liquidate
+          term_label: 变现资格
+          name: 转售维修耗材与进入核心舱路线
+          description: 把封锁后的舱外服和独行路线打包转售，放弃决策窗口并锁定个人收益。
+          personal_outcome: 交出舱外服并获得 60 通行权限点；本局不再亲自参与核心决策窗口。
+          relevance: 补给环封锁后，现成维修耗材和可行路线都具备溢价。
+          risk: 失去舱外服后，你将无法进入核心舱参加决策窗口。
+          expected_outcomes:
+            - 获得 60 通行权限点
+            - 交出 1 枚舱外服
+            - 锁定交易收益
+          warnings:
+            - 这会主动关闭本局亲自进入核心舱路线。
+          irreversible: true
+          effects:
+            - {type: remove_item, target_id: player, key: eva_suit, amount: 1}
+            - {type: adjust_resource, target_id: player, key: credits, amount: 60}
+            - {type: set_flag, target_id: player, key: command_deck_eva_suit_liquidated, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_eva_suit_late_resolved, value: "true"}
+          to_state: eva_suit_liquidated
+          feedback: {messages: [舱外服与独行路线已经变现，你退出核心决策窗口。], journal: [拍卖舱外服与路线，锁定个人交易收益。], presentation: {kind: acquire, intensity: 2, subject: player}}
+
+    - id: fulfill_escort_commitment
+      from_state: escort_approved
+      from_day: 16
+      until_day: 16
+      location_id: L02
+      target_id: N03
+      action_id: dock
+      kind: escort
+      conditions:
+        - {type: flag, scope: actor, key: command_deck_escort_promised}
+        - {type: flag, scope: actor, key: command_deck_escort_approved}
+        - {type: missing_flag, scope: actor, key: command_deck_escort_fulfilled}
+      completion_conditions:
+        - {type: flag, key: valley_open}
+      choices:
+        - id: escort:N03:depart
+          term_id: escort
+          term_label: 随队集结
+          name: 兑现同行承诺
+          description: 在开谷前完成集结；次日领取随队舱外服与人手，自行决定是否跟进青岚队伍。
+          command_description: 玩家兑现与顾岚的同行约定
+          personal_outcome: 获得 1 枚舱外服与 1 点支援，打开开谷后的进入核心舱路线。
+          expected_outcomes:
+            - 获得 1 枚舱外服与 1 点支援
+            - 在开谷日获得前往受损维护环的选择
+          resolves:
+            - 缺少舱外服
+          effects:
+            - {type: add_item, target_id: player, key: eva_suit, amount: 1}
+            - {type: adjust_resource, target_id: player, key: crew_support, amount: 1}
+            - {type: set_flag, target_id: player, key: command_deck_escort_fulfilled, value: "true"}
+          to_state: escort_fulfilled
+          feedback: {messages: [同行承诺已经兑现，随队维修耗材与基础支援到位。], journal: [完成青岚集结，等待确定先锋或后勤分工。], presentation: {kind: acquire, intensity: 2, subject: player}}
+
+    - id: choose_escort_role
+      from_state: escort_fulfilled
+      from_day: 17
+      until_day: 18
+      location_id: L02
+      target_id: N03
+      allow_remote_target: true
+      action_id: dock
+      conditions:
+        - {type: flag, scope: actor, key: command_deck_escort_fulfilled}
+        - {type: missing_flag, scope: actor, key: command_deck_escort_late_resolved}
+      choices:
+        - id: route:escort:vanguard
+          term_id: vanguard
+          term_label: 担任先锋
+          name: 接下先锋分工
+          description: 带领随队人手先行探路，把同行承诺转化为正面决策窗口准备。
+          personal_outcome: 支援 +3并形成额外筹备；按时抵达后具备与主要决策窗口者正面对抗的实力。
+          relevance: 你已经通过审核并完成集结，队伍可以把一组人手交由你指挥。
+          risk: 先锋要亲自承担维护环入口风险，不能同时领取后勤报酬。
+          expected_outcomes:
+            - 支援 +3
+            - 形成额外筹备
+            - 获得独立指挥权
+          warnings:
+            - 选择先锋后，本轮不能改领后勤报酬。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: crew_support, amount: 3}
+            - {type: set_flag, target_id: player, key: prepared, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_escort_vanguard, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_escort_late_resolved, value: "true"}
+          to_state: escort_vanguard
+          feedback: {messages: [你接下先锋分工，获得额外支援与独立指挥权。], journal: [选择担任青岚先锋，决策窗口准备显著提高。], presentation: {kind: actor_focus, intensity: 3, subject: target}}
+        - id: route:escort:quartermaster
+          term_id: quartermaster
+          term_label: 负责后勤
+          name: 负责随队后勤
+          description: 不争先锋位置，负责分配维修耗材、路线与补给，提前结算个人报酬。
+          personal_outcome: 获得 30 通行权限点、2 点通行权限与 1 点支援；仍可进入核心舱，但不以正面决策窗口为主要回报。
+          relevance: 队伍集结后需要熟悉数据来源的人统一物资与路线。
+          risk: 后勤收益稳定，但不会提供足以压过主要决策窗口者的系统完整度。
+          expected_outcomes:
+            - 获得 30 通行权限点
+            - 通行权限 +2
+            - 支援 +1
+          warnings:
+            - 选择后勤后，本轮不能改任先锋。
+          irreversible: true
+          effects:
+            - {type: adjust_resource, target_id: player, key: credits, amount: 30}
+            - {type: adjust_resource, target_id: player, key: reputation, amount: 2}
+            - {type: adjust_resource, target_id: player, key: crew_support, amount: 1}
+            - {type: set_flag, target_id: player, key: command_deck_escort_quartermaster, value: "true"}
+            - {type: set_flag, target_id: player, key: command_deck_escort_late_resolved, value: "true"}
+          to_state: escort_quartermaster
+          feedback: {messages: [你接下随队后勤，稳定报酬与通行权限已经结算。], journal: [选择负责青岚后勤，以稳定收益替代先锋位置。], presentation: {kind: acquire, intensity: 2, subject: player}}
+
+  consequence_rules:
+    - id: trust-rewarded
+      states: [trust_reviewed, trust_joined, trust_commissioned]
+      conditions: [{type: flag, scope: actor, key: command_deck_trust_rewarded}]
+      text: 你在舰队审核中兑现了担保；顾岚回收跃迁核心后为你记功，你获得 2 点通行权限与 1 点支援。
+    - id: trust-betrayed
+      states: [trust_betrayed]
+      text: 你把顾岚的计划转交赵鸣换取 20 通行权限点；顾岚对你的最终信任为 {{value}}。
+      relation_from_id: N03
+      relation_to_id: player
+      relation_metric: trust
+    - id: trust-vouched
+      states: [trust_reviewed, trust_joined, trust_commissioned]
+      conditions: [{type: missing_flag, scope: actor, key: command_deck_trust_rewarded}]
+      text: 你公开为消息担保并完成了信任路线的履约；顾岚对你的最终信任为 {{value}}。
+      relation_from_id: N03
+      relation_to_id: player
+      relation_metric: trust
+    - id: trust-review-missed
+      states: [trust_committed]
+      text: 你最初无偿帮助顾岚，却没有回应赵鸣的公开质疑；关系停留在 {{value}} 点信任，未形成舰队记功。
+      relation_from_id: N03
+      relation_to_id: player
+      relation_metric: trust
+    - id: trust-operation-joined
+      states: [trust_joined]
+      text: 你把公开担保兑现为行动席位，回收舱外服、2 点支援与额外筹备，获得亲自决策窗口的完整条件。
+    - id: trust-commissioned
+      states: [trust_commissioned]
+      text: 你没有占用环站指挥部行动席位，而是把数据与担保结算为 30 通行权限点和 1 点通行权限。
+
+    - id: eva_suit-request-missed
+      states: [eva_suit_committed]
+      text: 你用完成充能日期换得舱外服，但没有正面回应苏弥的借丹请求；维修耗材仍是你的独行筹码。
+    - id: eva_suit-lent
+      states: [eva_suit_lent]
+      text: 苏弥提出队伍药物缺口后，你交回舱外服，放弃独行资格并换得 2 点支援与她的信任。
+    - id: eva_suit-kept
+      states: [eva_suit_kept, eva_suit_scouted, eva_suit_liquidated]
+      text: 你拒绝归还交易所得的舱外服，保留独自决定进入核心舱时机的自由，也失去了苏弥的信任。
+    - id: eva_suit-scouted
+      states: [eva_suit_scouted]
+      text: 你用稀缺舱外服提前踩点，保留维修耗材并回收 2 点支援与额外筹备。
+    - id: eva_suit-liquidated
+      states: [eva_suit_liquidated]
+      text: 你主动放弃核心决策窗口，把舱外服与独行路线转售为 60 通行权限点，锁定了个人交易收益。
+
+    - id: escort-review-missed
+      states: [escort_committed]
+      text: 你换得同行承诺，却没有完成舰队审核，因而失去了第16日的集结资格。
+    - id: escort-assembly-missed
+      states: [escort_approved]
+      text: 你通过了环站指挥部审核，却没有在开谷前返回驻地集结，同行承诺最终失效。
+    - id: escort-refused
+      states: [escort_refused]
+      text: 你在舰队审核时退出同行名单，放弃随队收益并保留了公开的自由工程师身份。
+    - id: escort-fulfilled
+      states: [escort_fulfilled, escort_vanguard, escort_quartermaster]
+      text: 你通过环站指挥部审核并兑现同行承诺，回收随队舱外服与 1 点支援。
+    - id: escort-vanguard
+      states: [escort_vanguard]
+      text: 你在集结后接下先锋分工，回收 3 点支援、额外筹备与独立指挥权。
+    - id: escort-quartermaster
+      states: [escort_quartermaster]
+      text: 你选择负责随队后勤，获得 30 通行权限点、2 点通行权限与 1 点支援。
+    - id: escort-chen-affiliation
+      states: [escort_committed, escort_approved, escort_refused, escort_fulfilled, escort_vanguard, escort_quartermaster]
+      conditions:
+        - {type: flag, key: chen_treats_player_as_command_deck}
+        - {type: missing_flag, key: player_declared_independent}
+      text: 赫克托已经把你视为环站指挥部行动的一员，赫利俄斯财团后续合作将以阵营关系重新评估。
+
+  progress_rules:
+    - id: trust-operation-joined
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: command_deck_trust_operation_joined}]
+      route_id: trust
+      label: 信任担保
+      status: 已转为亲自行动
+      next_step: 带着舰队物资准备进入核心舱
+      location_id: L02
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      complete: true
+
+    - id: trust-commissioned
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: command_deck_trust_commissioned}]
+      route_id: trust
+      label: 信任担保
+      status: 已结算报酬
+      next_step: 观察顾岚能否兑现后续记功
+      location_id: L02
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      complete: true
+    - id: trust-betrayed
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: command_deck_trust_betrayed}]
+      route_id: trust
+      label: 信任担保
+      status: 已经背约
+      next_step: 赵鸣已回收计划，无法恢复担保
+      location_id: L02
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      complete: true
+    - id: trust-rewarded
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: command_deck_trust_rewarded}]
+      route_id: trust
+      label: 信任担保
+      status: 承诺已经兑现
+      next_step: 顾岚已为你记功
+      location_id: L02
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      complete: true
+    - id: trust-vouched-waiting
+      priority: 200
+      until_day: 13
+      conditions: [{type: flag, scope: actor, key: command_deck_trust_vouched}]
+      route_id: trust
+      label: 信任担保
+      status: 等待兑现
+      next_step: 第14日起向顾岚选择：领取行动物资，或领取数据报酬
+      window: 第14—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+    - id: trust-vouched-open
+      priority: 200
+      from_day: 14
+      until_day: 16
+      conditions: [{type: flag, scope: actor, key: command_deck_trust_vouched}]
+      route_id: trust
+      label: 信任担保
+      status: 可以兑现
+      next_step: 返回环站指挥部驻地，决定担保带来的个人收益
+      window: 第14—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      urgent: true
+    - id: trust-vouched-missed
+      priority: 200
+      from_day: 17
+      conditions: [{type: flag, scope: actor, key: command_deck_trust_vouched}]
+      route_id: trust
+      label: 信任担保
+      status: 兑现窗口已错过
+      next_step: 担保仍会影响顾岚，但你没有领取中期回报
+      window: 第14—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      complete: true
+    - id: trust-review-waiting
+      priority: 100
+      until_day: 9
+      conditions: [{type: flag, scope: actor, key: command_deck_intel_term_trust}]
+      route_id: trust
+      label: 信任担保
+      status: 等待审核
+      next_step: 第10日起回到环站指挥部驻地，回应赵鸣的公开质疑
+      window: 第10—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+    - id: trust-review-open
+      priority: 100
+      from_day: 10
+      until_day: 12
+      conditions: [{type: flag, scope: actor, key: command_deck_intel_term_trust}]
+      route_id: trust
+      label: 信任担保
+      status: 必须回应
+      next_step: 在驻地公开担保，或把计划转交赵鸣
+      window: 第10—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      urgent: true
+    - id: trust-review-missed
+      priority: 100
+      from_day: 13
+      conditions: [{type: flag, scope: actor, key: command_deck_intel_term_trust}]
+      route_id: trust
+      label: 信任担保
+      status: 审核窗口已错过
+      next_step: 本次担保没有形成舰队记功
+      window: 第10—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 舰队记功，或把关系兑现为进入核心舱物资与支援
+      complete: true
+
+    - id: eva_suit-scouted
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: command_deck_eva_suit_scouted}]
+      route_id: eva_suit
+      label: 舱外服交易
+      status: 独行踩点完成
+      next_step: 综合准备已经提高，按时进入核心舱
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      complete: true
+    - id: eva_suit-liquidated
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: command_deck_eva_suit_liquidated}]
+      route_id: eva_suit
+      label: 舱外服交易
+      status: 进入核心舱资格已变现
+      next_step: 你已卖出维修耗材与路线，不再参与核心决策窗口
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      complete: true
+    - id: eva_suit-lent
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: command_deck_eva_suit_lent}]
+      route_id: eva_suit
+      label: 舱外服交易
+      status: 已经借丹援队
+      next_step: 独行路线关闭，支援与关系收益已到账
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      complete: true
+    - id: eva_suit-kept-waiting
+      priority: 200
+      until_day: 12
+      conditions: [{type: flag, scope: actor, key: command_deck_eva_suit_kept}]
+      route_id: eva_suit
+      label: 舱外服交易
+      status: 保留独行资格
+      next_step: 第13日起决定：提前踩点提高准备，或转售维修耗材与路线
+      window: 第13—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+    - id: eva_suit-kept-open
+      priority: 200
+      from_day: 13
+      until_day: 16
+      conditions: [{type: flag, scope: actor, key: command_deck_eva_suit_kept}]
+      route_id: eva_suit
+      label: 舱外服交易
+      status: 可以兑现
+      next_step: 在环站指挥部驻地选择独行收益出口
+      window: 第13—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      urgent: true
+    - id: eva_suit-kept-missed
+      priority: 200
+      from_day: 17
+      conditions: [{type: flag, scope: actor, key: command_deck_eva_suit_kept}]
+      route_id: eva_suit
+      label: 舱外服交易
+      status: 兑现窗口已错过
+      next_step: 仍可持丹进入核心舱，但没有回收踩点或交易收益
+      window: 第13—16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      complete: true
+    - id: eva_suit-request-waiting
+      priority: 100
+      until_day: 7
+      conditions: [{type: flag, scope: actor, key: command_deck_intel_term_eva_suit}]
+      route_id: eva_suit
+      label: 舱外服交易
+      status: 等待药物缺口
+      next_step: 第8日起回应苏弥的借丹请求
+      window: 第8—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+    - id: eva_suit-request-open
+      priority: 100
+      from_day: 8
+      until_day: 12
+      conditions: [{type: flag, scope: actor, key: command_deck_intel_term_eva_suit}]
+      route_id: eva_suit
+      label: 舱外服交易
+      status: 必须回应
+      next_step: 在驻地决定借丹援队，或确认独行
+      window: 第8—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      urgent: true
+    - id: eva_suit-request-missed
+      priority: 100
+      from_day: 13
+      conditions: [{type: flag, scope: actor, key: command_deck_intel_term_eva_suit}]
+      route_id: eva_suit
+      label: 舱外服交易
+      status: 回应窗口已错过
+      next_step: 维修耗材仍在手中，但苏弥的请求已经失效
+      window: 第8—12日
+      deadline_day: 12
+      location_id: L02
+      personal_return: 保留独行资格，并可选择踩点或转售变现
+      complete: true
+
+    - id: escort-vanguard
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: command_deck_escort_vanguard}]
+      route_id: escort
+      label: 青岚同行
+      status: 先锋分工已确定
+      next_step: 带领人手按时进入核心舱
+      location_id: L02
+      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      complete: true
+    - id: escort-quartermaster
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: command_deck_escort_quartermaster}]
+      route_id: escort
+      label: 青岚同行
+      status: 后勤分工已确定
+      next_step: 个人报酬已到账，可继续决定是否进入核心舱
+      location_id: L02
+      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      complete: true
+    - id: escort-fulfilled-open
+      priority: 250
+      until_day: 18
+      conditions: [{type: flag, scope: actor, key: command_deck_escort_fulfilled}]
+      route_id: escort
+      label: 青岚同行
+      status: 等待分工
+      next_step: 出发前选择担任先锋，或负责后勤领取报酬
+      window: 第17—18日
+      deadline_day: 18
+      location_id: L02
+      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      urgent: true
+    - id: escort-fulfilled-missed
+      priority: 250
+      from_day: 19
+      conditions: [{type: flag, scope: actor, key: command_deck_escort_fulfilled}]
+      route_id: escort
+      label: 青岚同行
+      status: 分工窗口已错过
+      next_step: 你仍保留随队维修耗材与基础支援
+      window: 第17—18日
+      deadline_day: 18
+      location_id: L02
+      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      complete: true
+    - id: escort-refused
+      priority: 300
+      conditions: [{type: flag, scope: actor, key: command_deck_escort_refused}]
+      route_id: escort
+      label: 青岚同行
+      status: 已经退出同行
+      next_step: 保持自由工程师身份，自行寻找进入核心舱条件
+      location_id: L02
+      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      complete: true
+    - id: escort-approved-waiting
+      priority: 200
+      until_day: 15
+      conditions: [{type: flag, scope: actor, key: command_deck_escort_approved}]
+      route_id: escort
+      label: 青岚同行
+      status: 审核通过
+      next_step: 第16日回到环站指挥部驻地兑现同行承诺
+      window: 仅第16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+    - id: escort-approved-open
+      priority: 200
+      from_day: 16
+      until_day: 16
+      conditions: [{type: flag, scope: actor, key: command_deck_escort_approved}]
+      route_id: escort
+      label: 青岚同行
+      status: 立即集结
+      next_step: 今天在驻地领取随队维修耗材与人手
+      window: 仅第16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      urgent: true
+    - id: escort-approved-missed
+      priority: 200
+      from_day: 17
+      conditions: [{type: flag, scope: actor, key: command_deck_escort_approved}]
+      route_id: escort
+      label: 青岚同行
+      status: 集结已经错过
+      next_step: 同行承诺失效
+      window: 仅第16日
+      deadline_day: 16
+      location_id: L02
+      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      complete: true
+    - id: escort-review-waiting
+      priority: 100
+      until_day: 9
+      conditions: [{type: flag, scope: actor, key: command_deck_intel_term_escort}]
+      route_id: escort
+      label: 青岚同行
+      status: 等待舰队审核
+      next_step: 第10日起回驻地确认同行身份
+      window: 第10—13日
+      deadline_day: 13
+      location_id: L02
+      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+    - id: escort-review-open
+      priority: 100
+      from_day: 10
+      until_day: 13
+      conditions: [{type: flag, scope: actor, key: command_deck_intel_term_escort}]
+      route_id: escort
+      label: 青岚同行
+      status: 必须审核
+      next_step: 接受审核保留同行，或退出名单
+      window: 第10—13日
+      deadline_day: 13
+      location_id: L02
+      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      urgent: true
+    - id: escort-review-missed
+      priority: 100
+      from_day: 14
+      conditions: [{type: flag, scope: actor, key: command_deck_intel_term_escort}]
+      route_id: escort
+      label: 青岚同行
+      status: 审核窗口已错过
+      next_step: 第16日不再获得集结资格
+      window: 第10—13日
+      deadline_day: 13
+      location_id: L02
+      personal_return: 随队维修耗材、支援，以及先锋或后勤分工收益
+      complete: true
+
+- id: eva_suit_recovery
+  title: 封锁后的舱外服补救
+  initial_state: available
+  states: [available, recovered]
+  nodes:
+    - id: trade_verified_date_for_eva_suit
+      from_state: available
+      location_id: L02
+      target_id: N06
+      fact_id: F01
+      min_confidence: 3
+      action_id: broadcast
+      kind: recover
+      category: information
+      conditions:
+        - {type: missing_item, key: eva_suit}
+        - {type: flag, key: eva_suit_blockade}
+      choices:
+        - id: recover:N06:eva_suit
+          term_id: eva_suit_recovery
+          name: 以数据换取舱外服
+          description: 把已核实的完成充能日期交给苏弥，换取一枚环站指挥部备用舱外服。
+          command_description: 玩家以完成充能日期向苏弥换取舱外服
+          personal_outcome: 获得 1 枚舱外服，重新打开亲自进入核心舱路线。
+          relevance: 直接相关 · 苏弥公开关注跃迁核心药性与移植时机
+          risk: 苏弥会获得准确完成充能日期，并可能据此调整环站指挥部的后续安排。
+          expected_outcomes:
+            - 获得 1 枚舱外服，重新打开亲自进入核心舱路线
+            - 苏弥获得已核实的完成充能日期
+          resolves:
+            - 补给环封锁后无法购得舱外服
+          warnings:
+            - 这是不可撤回的数据交换；消息送出后不能收回。
+          irreversible: true
+          effects:
+            - {type: add_item, target_id: player, key: eva_suit, amount: 1}
+          to_state: recovered
+          feedback: {messages: [苏弥接受了核实日期，并交给你一枚备用舱外服。], journal: [补给环封锁后以数据换丹，亲自进入核心舱路线重新开放。], presentation: {kind: recovery, intensity: 2, subject: player}}
+  consequence_rules:
+    - id: eva-suit-recovered
+      states: [recovered]
+      text: 你在补给封锁后以已核实数据换得备用舱外服，重新取得了独自进入核心舱的条件。

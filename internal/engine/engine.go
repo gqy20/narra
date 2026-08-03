@@ -6,14 +6,33 @@ import (
 	"strconv"
 	"strings"
 
+	"fantu/internal/director"
 	"fantu/internal/domain"
 )
 
 type Engine struct {
-	bundle domain.Bundle
-	state  *domain.WorldState
-	plan   *domain.RunPlan
-	nextID int
+	bundle            domain.Bundle
+	state             *domain.WorldState
+	plan              *domain.RunPlan
+	nextID            int
+	directorSelector  director.Selector
+	directorReplay    map[int]domain.DirectorDecision
+	replayingDirector bool
+}
+
+func (e *Engine) SetWorldDirector(selector director.Selector) { e.directorSelector = selector }
+
+func (e *Engine) SetDirectorReplay(decisions []domain.DirectorDecision) {
+	e.directorReplay = make(map[int]domain.DirectorDecision, len(decisions))
+	for _, decision := range decisions {
+		e.directorReplay[decision.Day] = decision
+	}
+	e.replayingDirector = true
+}
+
+func (e *Engine) EndDirectorReplay() {
+	e.directorReplay = nil
+	e.replayingDirector = false
 }
 
 func New(bundle domain.Bundle) *Engine {

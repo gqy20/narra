@@ -803,21 +803,23 @@ type WorldDirectorState struct {
 }
 
 type WorldSignal struct {
-	Type        string
-	SubjectID   string
-	Value       int
-	Description string
+	Type        string `json:"type"`
+	SubjectID   string `json:"subject_id"`
+	Value       int    `json:"value"`
+	Description string `json:"description"`
 }
 
 type DirectorDecision struct {
-	Day         int
-	DirectiveID string
-	Trigger     string
-	Description string
-	Score       int
-	Source      string
-	Signals     []WorldSignal
-	EventID     string
+	Day          int           `json:"day"`
+	DirectiveID  string        `json:"directive_id"`
+	Trigger      string        `json:"trigger"`
+	Description  string        `json:"description"`
+	Score        int           `json:"score"`
+	Source       string        `json:"source"`
+	Reason       string        `json:"reason,omitempty"`
+	FocusSignals []string      `json:"focus_signals,omitempty"`
+	Signals      []WorldSignal `json:"signals"`
+	EventID      string        `json:"event_id"`
 }
 
 type Debt struct {

@@ -1,0 +1,65 @@
+- id: F01
+  truth: 跃迁核心将在第21日零点完成充能
+  discoverable: true
+  topics:
+  - jump_core
+- id: F02
+  truth: 市面流传的第24天完成充能日期是错误的
+  discoverable: true
+  topics:
+  - jump_core
+  - intel
+  investigation_leads:
+  - fact_id: F01
+    confidence: 3
+  - fact_id: F08
+    confidence: 2
+- id: F03
+  truth: 北侧地图标出的入口已经被舱段坍塌封死
+  discoverable: true
+  topics:
+  - orbital
+  - route
+- id: F04
+  truth: 南侧裂隙可进入核心舱，但必须服用舱外服
+  discoverable: true
+  topics:
+  - orbital
+  - route
+- id: F05
+  truth: 赫克托旧伤复发，实际系统完整度降低
+  discoverable: true
+  topics:
+  - helios_corp
+  - integrity
+- id: F06
+  truth: 赫莉娅私下向王策承诺交付赫利俄斯财团货运队路线
+  discoverable: true
+  topics:
+  - helios_corp
+  - succession
+  - sabotage
+- id: F07
+  truth: 跃迁核心可在第19至20天使用磁封容器提前移植
+  discoverable: true
+  topics:
+  - jump_core
+  - medicine
+- id: F08
+  truth: 赵鸣故意向补给环泄露了错误日期
+  discoverable: true
+  topics:
+  - command_deck
+  - intrigue
+- id: F09
+  truth: 魏川只想制造竞价，不打算亲自夺药
+  discoverable: true
+  topics:
+  - market
+  - coolant_ring
+- id: F10
+  truth: 诱饵信标可以短暂引走核心舱守巢失控无人机
+  discoverable: true
+  topics:
+  - orbital
+  - integrity

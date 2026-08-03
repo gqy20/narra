@@ -45,3 +45,16 @@ func dialogueSchemaFor(allowedFactIDs, allowedActionIDs []string) map[string]any
 		"additionalProperties": false,
 	}
 }
+
+func worldDirectiveSchemaFor(allowedDirectiveIDs []string) map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"directive_id":  map[string]any{"type": "string", "enum": append([]string(nil), allowedDirectiveIDs...)},
+			"reason":        map[string]any{"type": "string", "minLength": 1, "maxLength": 300},
+			"focus_signals": map[string]any{"type": "array", "maxItems": 5, "items": map[string]any{"type": "string"}},
+		},
+		"required":             []string{"directive_id", "reason", "focus_signals"},
+		"additionalProperties": false,
+	}
+}

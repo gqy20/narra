@@ -1,5 +1,17 @@
 # 凡途
 
+## 内容开发
+
+内容包可在不启动客户端的情况下编译、绘图和批量试玩：
+
+```powershell
+go run ./cmd/fantu-content validate data/tianqi
+go run ./cmd/fantu-content graph data/tianqi
+go run ./cmd/fantu-content simulate data/orbital --runs 200 --seed 1
+```
+
+当前官方移植基线包括 `blackwind`、`tianqi` 与科幻测试世界 `orbital`。完整门禁使用 `./tools/verify.ps1` 和显式关闭 AI 的 `./tools/verify-godot.ps1`。
+
 当前仓库实现《凡途》黑风谷局势的确定性模拟内核，以及建立在同一权威规则之上的交互式 CLI。
 
 ## 项目结构

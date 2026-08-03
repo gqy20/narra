@@ -393,7 +393,7 @@ func resolveTravel(selector string, view app.PlayerView, debug bool) (string, er
 func renderDialogueMode(output io.Writer, mode string) {
 	switch {
 	case strings.HasPrefix(mode, "anthropic:"):
-		fmt.Fprintf(output, "人物对话：AI 已启用（%s）\n", strings.TrimPrefix(mode, "anthropic:"))
+		fmt.Fprintf(output, "人物对话与世界导演：AI 已启用（%s）\n", strings.TrimPrefix(mode, "anthropic:"))
 	case strings.HasPrefix(mode, "disabled"):
 		fmt.Fprintln(output, "人物对话：未启用")
 	default:

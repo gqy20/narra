@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"fantu/internal/app"
+	"fantu/internal/director"
 	"fantu/internal/domain"
 )
 
@@ -22,9 +23,10 @@ const (
 var saveSlotPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,40}$`)
 
 type terminalGame struct {
-	session  *app.Session
-	saves    *terminalSaveStore
-	autosave bool
+	session       *app.Session
+	saves         *terminalSaveStore
+	autosave      bool
+	worldDirector director.Selector
 }
 
 type terminalSaveStore struct {

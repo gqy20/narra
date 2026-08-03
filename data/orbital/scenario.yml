@@ -1,0 +1,240 @@
+id: orbital_t00
+title: 远星环站跃迁核心决策窗口：无玩家基线
+duration: 30
+topics:
+- jump_core
+- orbital
+- integrity
+- helios_corp
+- succession
+- command_deck
+- intrigue
+- intel
+- market
+- coolant_ring
+- sabotage
+- debt
+- medicine
+- route
+markets:
+- id: M01
+  location_id: L01
+  currency: credits
+  stock:
+    eva_suit: 30
+  base_prices:
+    eva_suit: 20
+  price_step: 5
+  blockade_flag: eva_suit_blockade
+directives:
+- id: quiet-broker-arrival
+  description: 补给环数日没有新的公开变化，一名游商趁平静短暂停留，带来额外扫描渠道
+  trigger: quiet_days
+  from_day: 3
+  until_day: 12
+  min_quiet_days: 3
+  priority: 30
+  max_uses: 1
+  effects:
+  - type: open_opportunity
+    target_id: world
+    key: wandering_broker
+    value: 游商正在白石补给环短暂停留
+- id: eva_suit-demand-visible
+  description: 舱外服库存持续下降，补给环开始公开议论远星环站行装需求
+  trigger: market_stock_at_most
+  target_id: M01
+  key: eva_suit
+  from_day: 2
+  until_day: 16
+  min_value: 28
+  priority: 60
+  max_uses: 1
+  effects:
+  - type: set_flag
+    scope: world
+    target_id: world
+    key: eva_suit_demand_visible
+    value: 'true'
+- id: outer-valley-crowding
+  description: 受损维护环聚集人数上升，路线上的竞争与戒备开始明显加剧
+  trigger: actors_at_location_at_least
+  target_id: L04
+  from_day: 10
+  until_day: 21
+  min_value: 3
+  priority: 80
+  max_uses: 1
+  effects:
+  - type: set_flag
+    scope: world
+    target_id: world
+    key: outer_valley_crowded
+    value: 'true'
+opportunity_actions:
+- id: opportunity:wandering_broker
+  key: wandering_broker
+  action_id: scan
+  name: 向短暂停留的游商扫描消息
+  description: 游商只停留一段时间；询问他最近替谁在补给环制造声势
+  location_id: L01
+  duration: 1
+  effects:
+  - type: set_belief
+    fact_id: F09
+    confidence: 2
+    evidence_strength: 2
+    source: wandering-broker
+  - type: close_opportunity
+    target_id: world
+    key: wandering_broker
+phases:
+- id: germination
+  name: 萌芽
+  from_day: 1
+  to_day: 4
+- id: broadcast
+  name: 扩散
+  from_day: 5
+  to_day: 9
+- id: preparation
+  name: 准备
+  from_day: 10
+  to_day: 16
+- id: entry
+  name: 进入核心舱
+  from_day: 17
+  to_day: 20
+- id: eruption
+  name: 爆发
+  from_day: 21
+  to_day: 21
+- id: aftermath
+  name: 余波
+  from_day: 22
+  to_day: 30
+fixed_events:
+- id: EV05
+  day: 5
+  timing: start
+  description: 补给环开始公开讨论跃迁核心，舱外服价格上涨
+  effects:
+  - type: set_flag
+    target_id: world
+    key: rumor_public
+    value: 'true'
+- id: EV08
+  day: 8
+  timing: start
+  description: 赫利俄斯财团财团限制舱外服外售
+  effects:
+  - type: set_flag
+    target_id: world
+    key: eva_suit_blockade
+    value: 'true'
+- id: EV10
+  day: 10
+  timing: start
+  description: 环站指挥部要求弟子申报远星环站数据
+  effects:
+  - type: set_flag
+    target_id: world
+    key: command_deck_review
+    value: 'true'
+- id: EV12
+  day: 12
+  timing: start
+  description: 王策开始物色破坏目标
+  effects:
+  - type: set_flag
+    target_id: world
+    key: sabotage_open
+    value: 'true'
+- id: EV15
+  day: 15
+  timing: start
+  description: 前往远星环站的站员开始在外围集结，入口封锁出现松动迹象
+  effects: []
+- id: EV17
+  day: 17
+  timing: start
+  description: 第一批参与者开始向远星环站移动
+  effects:
+  - type: set_flag
+    target_id: world
+    key: valley_open
+    value: 'true'
+- id: EV19
+  day: 19
+  timing: start
+  description: 跃迁核心提前移植窗口开启
+  effects:
+  - type: set_flag
+    target_id: world
+    key: transplant_window
+    value: 'true'
+- id: EV24
+  day: 24
+  timing: start
+  description: 相信错误日期的迟到者抵达，决策窗口早已结束
+  effects: []
+- id: EV27
+  day: 27
+  timing: start
+  description: 跃迁核心持有者开始安排拆解研究、转移或交易
+  effects: []
+- id: EV30
+  day: 30
+  timing: end
+  description: 远星环站局势进入阶段性总结
+  effects: []
+contest:
+  day: 21
+  item_id: jump_core
+  location_id: L05
+  required_item_id: eva_suit
+  score_resources:
+  - integrity
+  - crew_support
+  preparation_flag: prepared
+  verified_date_fact_id: F01
+  rumored_date_fact_id: F02
+  early_outcome: "{winner} 已在完成充能日前回收跃迁核心"
+  cancelled_outcome: "完成充能日决策窗口取消：{outcome}"
+  no_winner_outcome: 无人满足进入核心舱并回收跃迁核心的条件
+  default_outcome: "{winner} 以准备值 {score} 回收跃迁核心"
+  outcome_rules:
+  - id: chen-caravan-protected
+    priority: 100
+    winner_id: N02
+    required_world_flags:
+    - caravan_protected
+    - betrayal_exposed
+    template: "赫利俄斯财团在玩家保护下避开破坏，由{winner}以准备值 {score} 回收跃迁核心"
+  - id: command_deck-chen-alliance
+    priority: 90
+    winner_id: N03
+    required_world_flags:
+    - command_deck_chen_alliance
+    template: "环站指挥部与赫利俄斯财团合作，由{winner}以准备值 {score} 回收跃迁核心"
+  reward_rules:
+  - id: command_deck-player-reputation
+    priority: 100
+    winner_id: N03
+    required_player_flags:
+    - command_deck_trust_vouched
+    min_winner_trust: 2
+    suffix: "；顾岚依约为你在环站指挥部记功"
+    effects:
+    - type: adjust_resource
+      target_id: player
+      key: reputation
+      amount: 2
+    - type: adjust_resource
+      target_id: player
+      key: crew_support
+      amount: 1
+    - type: set_flag
+      target_id: player
+      key: command_deck_trust_rewarded
+      value: "true"

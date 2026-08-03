@@ -1,0 +1,95 @@
+- id: L01
+  name: 白石补给环
+  safe: true
+  map_x: 0.16
+  map_y: 0.64
+  scene_key: market
+  description: 货运员与自由工程师汇聚的外环补给环，也是进入远星环站前最后稳定的补给点。
+  atmosphere: 冷却剂气味、警报提示音与低声交换的传闻混在暮色里。
+  routes:
+  - to: L02
+    duration: 1
+    danger: 0
+  - to: L03
+    duration: 1
+    danger: 0
+  - to: L04
+    duration: 2
+    required_item: eva_suit
+    required_flag: valley_open
+    danger: 2
+- id: L02
+  name: 环站指挥部驻地
+  safe: true
+  map_x: 0.38
+  map_y: 0.22
+  scene_key: command_deck
+  description: 环站指挥部在核心舱外布置的临时驻地，弟子与物资都在等待最终的出发时机。
+  atmosphere: 指挥信标沿循环气流展开，营地里的脚步始终克制而匆忙。
+  routes:
+  - to: L01
+    duration: 1
+    danger: 0
+  - to: L03
+    duration: 1
+    danger: 0
+  - to: L04
+    duration: 1
+    required_item: eva_suit
+    required_flag: valley_open
+    danger: 2
+- id: L03
+  name: 赫利俄斯财团维修坞
+  safe: true
+  map_x: 0.42
+  map_y: 0.78
+  scene_key: apothecary
+  description: 赫利俄斯财团经营多年的维修坞，库房与议事厅同时牵动着财团在远星环站的安排。
+  atmosphere: 晒架上的冷却管线轻响，院墙后偶尔传来压低的争执。
+  routes:
+  - to: L01
+    duration: 1
+    danger: 0
+  - to: L02
+    duration: 1
+    danger: 0
+  - to: L04
+    duration: 2
+    required_item: eva_suit
+    required_flag: valley_open
+    danger: 2
+- id: L04
+  name: 受损维护环
+  safe: false
+  map_x: 0.7
+  map_y: 0.55
+  scene_key: valley_edge
+  description: 辐射尘开始聚拢的维护环入口地带，公开道路在这里结束，之后每一步都需要准备。
+  atmosphere: 风声刮过黑岩，稀薄辐射尘沿着裂隙缓慢上涌。
+  routes:
+  - to: L01
+    duration: 2
+    danger: 1
+  - to: L02
+    duration: 2
+    danger: 1
+  - to: L03
+    duration: 2
+    danger: 1
+  - to: L05
+    duration: 1
+    required_item: eva_suit
+    required_flag: valley_open
+    danger: 3
+- id: L05
+  name: 反应堆核心舱
+  safe: false
+  map_x: 0.88
+  map_y: 0.36
+  scene_key: inner_valley
+  description: 跃迁核心生长的核心舱，也是所有公开路线最终指向的决策窗口核心。
+  atmosphere: 天光被峭壁切成窄线，幽蓝能量流在谷底若隐若现。
+  routes:
+  - to: L04
+    duration: 1
+    danger: 2

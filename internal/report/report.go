@@ -129,6 +129,16 @@ func Markdown(writer io.Writer, state *domain.WorldState, bundle domain.Bundle) 
 			if _, err := fmt.Fprintf(writer, "- 第 %d 天：**%s**（`%s`，%d 分，%s）\n", decision.Day, decision.Description, decision.DirectiveID, decision.Score, decision.Source); err != nil {
 				return err
 			}
+			if decision.Reason != "" {
+				if _, err := fmt.Fprintf(writer, "  - 选择理由：%s\n", decision.Reason); err != nil {
+					return err
+				}
+			}
+			if len(decision.FocusSignals) > 0 {
+				if _, err := fmt.Fprintf(writer, "  - 模型关注：%s\n", strings.Join(decision.FocusSignals, "；")); err != nil {
+					return err
+				}
+			}
 			for _, signal := range decision.Signals {
 				if _, err := fmt.Fprintf(writer, "  - 信号 `%s:%s=%d`：%s\n", signal.Type, signal.SubjectID, signal.Value, signal.Description); err != nil {
 					return err

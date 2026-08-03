@@ -164,7 +164,7 @@ var saves_dir := ""
 var crash_dir := ""
 var client_log_path := ""
 var portable_mode := false
-var scenario_selector := "blackwind"
+var scenario_selector := ""
 var scenario_data_dir := ""
 var session_id := ""
 var shutdown_token := ""
@@ -388,7 +388,7 @@ func _configure_scenario_selection() -> void:
 func _operation_label(operation: String) -> String:
 	var labels := {
 		"health": "正在连接规则服务",
-		"new": "正在进入白石坊市",
+		"new": "正在进入当前世界",
 		"load": "正在读取旅程",
 		"save": "正在保存",
 		"autosave": "正在自动保存",

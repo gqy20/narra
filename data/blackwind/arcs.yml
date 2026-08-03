@@ -1013,3 +1013,7 @@
             - {type: add_item, target_id: player, key: antidote, amount: 1}
           to_state: recovered
           feedback: {messages: [苏晚照接受了核实日期，并交给你一枚备用解瘴丹。], journal: [坊市封锁后以情报换丹，亲自入谷路线重新开放。], presentation: {kind: recovery, intensity: 2, subject: player}}
+  consequence_rules:
+    - id: antidote-recovered
+      states: [recovered]
+      text: 你在坊市封锁后以已核实情报换得备用解瘴丹，重新取得了独自入谷的条件。

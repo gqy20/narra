@@ -9,16 +9,17 @@ import (
 	"fantu/internal/domain"
 )
 
-const currentSaveVersion = 2
+const currentSaveVersion = 3
 
 type SaveData struct {
-	Version        int                 `json:"version"`
-	ScenarioID     string              `json:"scenario_id"`
-	ContentVersion string              `json:"content_version,omitempty"`
-	ContentHash    string              `json:"content_hash,omitempty"`
-	Player         domain.PlayerConfig `json:"player"`
-	History        []string            `json:"history"`
-	Dialogues      []DialogueExchange  `json:"dialogues,omitempty"`
+	Version           int                       `json:"version"`
+	ScenarioID        string                    `json:"scenario_id"`
+	ContentVersion    string                    `json:"content_version,omitempty"`
+	ContentHash       string                    `json:"content_hash,omitempty"`
+	Player            domain.PlayerConfig       `json:"player"`
+	History           []string                  `json:"history"`
+	Dialogues         []DialogueExchange        `json:"dialogues,omitempty"`
+	DirectorDecisions []domain.DirectorDecision `json:"director_decisions,omitempty"`
 }
 
 func (s *Session) Save(writer io.Writer) error {
@@ -26,6 +27,7 @@ func (s *Session) Save(writer io.Writer) error {
 		Version: currentSaveVersion, ScenarioID: s.bundle.Scenario.ID,
 		ContentVersion: s.bundle.Content.Version, ContentHash: s.bundle.Content.Hash,
 		Player: clonePlayerConfig(s.initial), History: s.History(), Dialogues: s.dialogueHistory(),
+		DirectorDecisions: s.engine.State().DirectorDecisions,
 	}
 	encoder := json.NewEncoder(writer)
 	encoder.SetIndent("", "  ")
@@ -54,10 +56,18 @@ func LoadSession(bundle domain.Bundle, reader io.Reader) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(data.DirectorDecisions) > 0 {
+		session.engine.SetDirectorReplay(data.DirectorDecisions)
+	}
 	for turn, actionID := range data.History {
 		if _, err := session.execute(actionID, true); err != nil {
 			return nil, fmt.Errorf("replay turn %d action %s: %w", turn+1, actionID, err)
 		}
+	}
+	session.engine.EndDirectorReplay()
+	actualDecisions := session.engine.State().DirectorDecisions
+	if len(data.DirectorDecisions) > 0 && !sameDirectorDecisions(actualDecisions, data.DirectorDecisions) {
+		return nil, fmt.Errorf("replayed world director decisions do not match save")
 	}
 	if len(data.Dialogues) > 1000 {
 		return nil, fmt.Errorf("save contains too many dialogue exchanges")
@@ -69,4 +79,16 @@ func LoadSession(bundle domain.Bundle, reader io.Reader) (*Session, error) {
 		session.dialogues = append(session.dialogues, exchange)
 	}
 	return session, nil
+}
+
+func sameDirectorDecisions(actual, expected []domain.DirectorDecision) bool {
+	if len(actual) != len(expected) {
+		return false
+	}
+	for index := range actual {
+		if actual[index].Day != expected[index].Day || actual[index].DirectiveID != expected[index].DirectiveID || actual[index].Source != expected[index].Source || actual[index].Reason != expected[index].Reason {
+			return false
+		}
+	}
+	return true
 }

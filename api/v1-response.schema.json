@@ -171,6 +171,9 @@
         "ai_dialogue": {
           "type": "boolean"
         },
+        "ai_world_director": {
+          "type": "boolean"
+        },
         "ai_configuration": {
           "type": "boolean"
         }
@@ -179,6 +182,7 @@
       "type": "object",
       "required": [
         "ai_dialogue",
+        "ai_world_director",
         "ai_configuration"
       ]
     },

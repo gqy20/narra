@@ -1,0 +1,1394 @@
+- id: N01
+  name: 林澈
+  faction: 独立自由工程师
+  goal: 回收跃迁核心并为自己恢复跃迁资格
+  goals:
+  - type: acquire
+    target_id: jump_core
+    priority: 5
+    topics:
+    - jump_core
+  - type: status
+    target_id: breakthrough
+    priority: 3
+  interests:
+  - jump_core
+  - orbital
+  - integrity
+  location: L01
+  injury: 0
+  public_profile: 常年出入险地的独行站员，正在收购解瘴物资并扫描远星环站路线。
+  public_role: 独行决策窗口者
+  public_interests:
+  - topic: jump_core
+    label: 跃迁核心归属
+  - topic: route
+    label: 进入核心舱路线
+  - topic: integrity
+    label: 系统准备
+  public_risk: 行动果断，未经核实的消息也可能促使他冒险。
+  resources:
+    integrity: 5
+    crew_support: 0
+    credits: 100
+  items:
+  - moon_incense
+  beliefs:
+  - fact_id: F01
+    claim: 跃迁核心将在第21天完成充能
+    confidence: 3
+    source: 亲自观察
+    learned_on: 0
+    secrecy: 2
+  - fact_id: F10
+    claim: 诱饵信标可以引走守巢失控无人机
+    confidence: 3
+    source: 旧航行日志
+    learned_on: 0
+    secrecy: 2
+  personality:
+    caution: 2
+    greed: 3
+    loyalty: 1
+    ambition: 5
+    credit: 3
+    risk_tolerance: 5
+  strategies:
+  - id: N01-requisition-eva_suit
+    action_id: requisition
+    description: 林澈申领舱外服
+    from_day: 1
+    until_day: 5
+    once: true
+    conditions:
+    - type: missing_item
+      key: eva_suit
+    score:
+      goal: 5
+      urgency: 4
+      probability: 5
+      information: 3
+      cost: 2
+      danger: 0
+    costs:
+      credits: 20
+    effects:
+    - type: add_item
+      key: eva_suit
+      amount: 1
+  - id: N01-prepare
+    action_id: navigate
+    description: 林澈研究诱饵信标和进入核心舱路线
+    from_day: 10
+    until_day: 16
+    once: true
+    conditions:
+    - type: has_item
+      key: moon_incense
+    - type: belief
+      key: F04
+      min_confidence: 2
+    score:
+      goal: 5
+      urgency: 3
+      probability: 4
+      information: 4
+      cost: 1
+      danger: 1
+    effects:
+    - type: set_flag
+      key: prepared
+      value: 'true'
+  - id: N01-to-outer
+    action_id: navigate
+    description: 林澈提前前往受损维护环
+    from_day: 17
+    until_day: 18
+    once: true
+    conditions:
+    - type: flag
+      key: valley_open
+    - type: location
+      value: L01
+    - type: has_item
+      key: eva_suit
+    score:
+      goal: 5
+      urgency: 5
+      probability: 4
+      information: 4
+      cost: 2
+      danger: 2
+    effects:
+    - type: move
+      value: L04
+  - id: N01-to-inner
+    action_id: navigate
+    description: 林澈从南侧裂隙进入核心舱
+    from_day: 19
+    until_day: 20
+    once: true
+    conditions:
+    - type: location
+      value: L04
+    - type: belief
+      key: F04
+      min_confidence: 2
+    - type: has_item
+      key: eva_suit
+    score:
+      goal: 5
+      urgency: 5
+      probability: 5
+      information: 5
+      cost: 2
+      danger: 3
+    effects:
+    - type: move
+      value: L05
+  - id: N01-hunt-player
+    action_id: trace
+    description: 林澈确认玩家违约后开始追踪跃迁核心和玩家行踪
+    target_id: P00
+    from_day: 23
+    until_day: 26
+    once: true
+    conditions:
+    - type: flag
+      key: li_betrayed
+    - type: location
+      value: L05
+    score:
+      goal: 5
+      urgency: 5
+      probability: 4
+      information: 4
+      cost: 2
+      danger: 2
+    effects:
+    - type: set_flag
+      target_id: world
+      key: li_hunts_player
+      value: 'true'
+- id: N02
+  name: 赫克托
+  faction: 赫利俄斯财团财团
+  goal: 为赫利俄斯财团回收跃迁核心并维持家主权威
+  goals:
+  - type: acquire
+    target_id: jump_core
+    priority: 4
+    topics:
+    - jump_core
+  - type: protect
+    target_id: helios_corp
+    priority: 5
+    topics:
+    - helios_corp
+  interests:
+  - jump_core
+  - helios_corp
+  - succession
+  location: L03
+  injury: 2
+  public_profile: 赫利俄斯财团维修坞家主，近期旧伤反复，仍在组织财团队伍参与远星环站之行。
+  public_role: 赫利俄斯财团领队
+  public_interests:
+  - topic: helios_corp
+    label: 赫利俄斯财团安危
+  - topic: jump_core
+    label: 跃迁核心归属
+  - topic: integrity
+    label: 决策窗口风险
+  public_risk: 看重财团利益，涉及伤势或商路的消息可能引发强烈反应。
+  resources:
+    integrity: 5
+    crew_support: 2
+    credits: 180
+  items:
+  - jade_box
+  - eva_suit
+  beliefs:
+  - fact_id: F01
+    claim: 跃迁核心将在第21天完成充能
+    confidence: 2
+    source: 维修坞旧志
+    learned_on: 0
+    secrecy: 2
+  - fact_id: F05
+    claim: 自己的旧伤已经复发
+    confidence: 3
+    source: 自身状态
+    learned_on: 0
+    secrecy: 2
+  personality:
+    caution: 4
+    greed: 2
+    loyalty: 5
+    ambition: 4
+    credit: 4
+    risk_tolerance: 2
+  strategies:
+  - id: N02-withdraw-public
+    action_id: dock
+    description: 赫克托在伤势公开后放弃亲自带队，并寻求环站指挥部合作
+    target_id: N03
+    from_day: 2
+    until_day: 4
+    once: true
+    conditions:
+    - type: flag
+      key: injury_public
+    - type: injury_at_least
+      min_confidence: 2
+    score:
+      goal: 4
+      urgency: 5
+      probability: 4
+      information: 3
+      relationship: 4
+      cost: 2
+      danger: 1
+    effects:
+    - type: set_flag
+      target_id: world
+      key: chen_seek_cooperation
+      value: 'true'
+    - type: set_flag
+      target_id: world
+      key: N02_withdrawn
+      value: 'true'
+  - id: N02-disinherit-yuheng
+    action_id: dock
+    description: 赫克托凭密信废黜赫莉娅，并秘密更换货运队路线
+    target_id: N07
+    from_day: 4
+    until_day: 6
+    once: true
+    conditions:
+    - type: flag
+      key: betrayal_exposed
+    - type: belief
+      key: F06
+      min_confidence: 3
+    score:
+      goal: 5
+      urgency: 5
+      probability: 5
+      information: 5
+      relationship: 2
+      cost: 2
+      danger: 1
+    effects:
+    - type: set_flag
+      target_id: world
+      key: N07_disinherited
+      value: 'true'
+    - type: set_flag
+      target_id: world
+      key: route_changed
+      value: 'true'
+    - type: adjust_resource
+      key: crew_support
+      amount: 1
+  - id: N02-reassess-command_deck-player
+    action_id: dock
+    description: 赫克托得知玩家准备随环站指挥部行动，重新划定合作边界
+    target_id: P00
+    from_day: 10
+    until_day: 13
+    once: true
+    conditions:
+    - type: flag
+      key: player_joining_command_deck
+    score:
+      base: 8
+      goal: 4
+      urgency: 4
+      probability: 5
+      information: 4
+      relationship: 2
+      cost: 1
+      danger: 0
+    effects:
+    - type: adjust_relation
+      from_id: N02
+      target_id: P00
+      key: suspicion
+      amount: 1
+    - type: set_flag
+      target_id: world
+      key: chen_treats_player_as_command_deck
+      value: 'true'
+  - id: N02-to-outer
+    action_id: navigate
+    description: 赫克托带领财团队伍前往远星环站
+    from_day: 17
+    until_day: 18
+    once: true
+    conditions:
+    - type: flag
+      key: valley_open
+    - type: missing_flag
+      key: N02_withdrawn
+    - type: location
+      value: L03
+    - type: has_item
+      key: eva_suit
+    score:
+      goal: 5
+      urgency: 5
+      probability: 3
+      information: 2
+      relationship: 3
+      cost: 2
+      danger: 4
+    effects:
+    - type: move
+      value: L04
+    - type: set_flag
+      target_id: world
+      key: chen_on_sabotage_route
+      value: 'true'
+  - id: N02-to-inner
+    action_id: navigate
+    description: 赫克托率队强行进入核心舱
+    from_day: 18
+    until_day: 20
+    once: true
+    conditions:
+    - type: location
+      value: L04
+    - type: has_item
+      key: eva_suit
+    score:
+      goal: 5
+      urgency: 5
+      probability: 2
+      information: 1
+      relationship: 3
+      cost: 2
+      danger: 5
+    effects:
+    - type: move
+      value: L05
+    - type: set_flag
+      target_id: world
+      key: chen_entering_inner
+      value: 'true'
+- id: N03
+  name: 顾岚
+  faction: 环站指挥部
+  goal: 代表舰队回收灵药且避免丑闻
+  goals:
+  - type: acquire
+    target_id: jump_core
+    priority: 5
+    topics:
+    - jump_core
+  - type: protect
+    target_id: command_deck
+    priority: 4
+    topics:
+    - command_deck
+  interests:
+  - jump_core
+  - command_deck
+  - intrigue
+  location: L02
+  injury: 0
+  public_profile: 环站指挥部此次行动的负责人，行事谨慎，正在核对跃迁核心消息与进入核心舱准备。
+  public_role: 环站指挥部行动负责人
+  public_goal: 代表环站指挥部完成进入核心舱准备并回收灵药
+  track_public_plan: true
+  public_interests:
+  - topic: jump_core
+    label: 完成充能时机
+  - topic: command_deck
+    label: 舰队安排
+  - topic: route
+    label: 进入核心舱准备
+  public_risk: 行事谨慎，通常会核对来源，但可靠消息可能改变整支队伍的计划。
+  resources:
+    integrity: 5
+    crew_support: 1
+    credits: 120
+  items:
+  - eva_suit
+  beliefs: []
+  personality:
+    caution: 4
+    greed: 1
+    loyalty: 5
+    ambition: 3
+    credit: 5
+    risk_tolerance: 3
+  strategies:
+  - id: N03-crosscheck-date
+    action_id: crosscheck
+    description: 顾岚交叉校验补给环流传的完成充能日期
+    from_day: 5
+    until_day: 9
+    once: true
+    conditions:
+    - type: belief
+      key: F02
+      min_confidence: 1
+    - type: belief_max
+      key: F02
+      max_confidence: 2
+    score:
+      goal: 4
+      urgency: 4
+      probability: 4
+      information: 5
+      relationship: 1
+      cost: 1
+      danger: 0
+    effects:
+    - type: set_belief
+      fact_id: F01
+      confidence: 3
+    - type: set_belief
+      fact_id: F08
+      confidence: 2
+  - id: N03-ally-chen
+    action_id: dock
+    description: 顾岚接受赫利俄斯财团求助，约定共同回收并分配跃迁核心
+    target_id: N02
+    from_day: 3
+    until_day: 6
+    once: true
+    conditions:
+    - type: flag
+      key: chen_seek_cooperation
+    - type: belief
+      key: F05
+      min_confidence: 2
+    score:
+      goal: 5
+      urgency: 4
+      probability: 5
+      information: 4
+      relationship: 5
+      cost: 2
+      danger: 1
+    effects:
+    - type: adjust_resource
+      key: crew_support
+      amount: 1
+    - type: set_flag
+      target_id: world
+      key: command_deck_chen_alliance
+      value: 'true'
+  - id: N03-early-prepare
+    action_id: assign
+    description: 顾岚因信任消息来源，立即调集弟子与解瘴物资
+    target_id: P00
+    from_day: 2
+    until_day: 5
+    once: true
+    conditions:
+    - type: belief
+      key: F01
+      min_confidence: 3
+    score:
+      goal: 5
+      urgency: 4
+      probability: 5
+      information: 5
+      relationship: 4
+      cost: 2
+      danger: 1
+    effects:
+    - type: adjust_resource
+      key: crew_support
+      amount: 1
+    - type: set_flag
+      key: prepared
+      value: 'true'
+  - id: N03-check-player-source
+    action_id: crosscheck
+    description: 顾岚暂缓调集人手，先独自复核消息来源
+    from_day: 2
+    until_day: 5
+    once: true
+    conditions:
+    - type: belief
+      key: F01
+      min_confidence: 3
+    score:
+      base: 3
+      goal: 4
+      urgency: 4
+      probability: 5
+      information: 5
+      relationship: 1
+      cost: 1
+      danger: 0
+    effects:
+    - type: set_flag
+      key: player_source_checked
+      value: 'true'
+  - id: N03-to-outer
+    action_id: assign
+    description: 顾岚带领青岚弟子前往受损维护环
+    from_day: 17
+    until_day: 18
+    once: true
+    conditions:
+    - type: belief
+      key: F01
+      min_confidence: 2
+    - type: location
+      value: L02
+    - type: has_item
+      key: eva_suit
+    score:
+      goal: 5
+      urgency: 5
+      probability: 4
+      information: 4
+      relationship: 4
+      cost: 2
+      danger: 2
+    effects:
+    - type: move
+      value: L04
+  - id: N03-to-inner
+    action_id: navigate
+    description: 顾岚按舰队计划进入核心舱
+    from_day: 19
+    until_day: 20
+    once: true
+    conditions:
+    - type: location
+      value: L04
+    - type: belief
+      key: F01
+      min_confidence: 2
+    - type: has_item
+      key: eva_suit
+    score:
+      goal: 5
+      urgency: 5
+      probability: 4
+      information: 3
+      relationship: 4
+      cost: 2
+      danger: 3
+    effects:
+    - type: move
+      value: L05
+- id: N04
+  name: 魏川
+  faction: 黑水盟
+  goal: 最大化数据和交易收益
+  goals:
+  - type: profit
+    target_id: intel_market
+    priority: 5
+    topics:
+    - intel
+    - market
+  interests:
+  - intel
+  - market
+  - coolant_ring
+  location: L01
+  injury: 0
+  public_profile: 黑水盟数据商，熟悉补给环消息流向，凡事先问价钱再谈立场。
+  public_role: 数据中间人
+  public_interests:
+  - topic: intel
+    label: 数据价值
+  - topic: market
+    label: 市场行情
+  - topic: jump_core
+    label: 跃迁核心消息
+  public_risk: 优先考虑交易价值，消息可能被继续转卖。
+  resources:
+    integrity: 3
+    crew_support: 0
+    credits: 250
+  items: []
+  beliefs:
+  - fact_id: F01
+    claim: 跃迁核心将在第21天完成充能
+    confidence: 3
+    source: 韩彻
+    learned_on: 0
+    secrecy: 1
+  - fact_id: F09
+    claim: 自己不准备亲自夺药
+    confidence: 3
+    source: 自身计划
+    learned_on: 0
+    secrecy: 2
+  personality:
+    caution: 5
+    greed: 5
+    loyalty: 1
+    ambition: 3
+    credit: 2
+    risk_tolerance: 1
+  strategies:
+  - id: N04-auction-date
+    action_id: auction
+    description: 魏川把真实完成充能日期卖给赫利俄斯财团财团
+    target_id: N02
+    from_day: 6
+    until_day: 7
+    once: true
+    conditions:
+    - type: belief
+      key: F01
+      min_confidence: 3
+    score:
+      goal: 4
+      urgency: 2
+      probability: 5
+      information: 5
+      relationship: 1
+      cost: 0
+      danger: 1
+    effects:
+    - type: set_belief
+      target_id: N02
+      fact_id: F01
+      confidence: 3
+    - type: adjust_resource
+      key: credits
+      amount: 30
+  - id: N04-observe
+    action_id: scan
+    description: 魏川观察各方报价而不亲自进入核心舱
+    from_day: 10
+    until_day: 20
+    once: true
+    conditions:
+    - type: belief
+      key: F09
+      min_confidence: 3
+    score:
+      goal: 3
+      urgency: 1
+      probability: 5
+      information: 4
+      cost: 0
+      danger: 0
+    effects:
+    - type: set_flag
+      key: market_watched
+      value: 'true'
+- id: N05
+  name: 王策
+  faction: 黑水盟外围
+  goal: 通过破坏偿还债务并获取资源
+  goals:
+  - type: avoid
+    target_id: debt_default
+    priority: 5
+    topics:
+    - debt
+  - type: profit
+    target_id: sabotage
+    priority: 3
+    topics:
+    - sabotage
+  interests:
+  - sabotage
+  - debt
+  - integrity
+  location: L04
+  injury: 0
+  public_profile: 黑水盟外围的亡命站员，常在远星环站附近活动，名声并不可靠。
+  public_role: 核心舱外亡命站员
+  public_interests:
+  - topic: sabotage
+    label: 破坏机会
+  - topic: orbital
+    label: 核心舱外动向
+  - topic: integrity
+    label: 决策窗口实力
+  public_risk: 信誉较差，可能把消息用于破坏或牟利。
+  resources:
+    integrity: 5
+    crew_support: 0
+    credits: 20
+  items: []
+  beliefs:
+  - fact_id: F06
+    claim: 赫莉娅会提供赫利俄斯财团货运队路线
+    confidence: 3
+    source: 赫莉娅
+    learned_on: 0
+    secrecy: 2
+  personality:
+    caution: 2
+    greed: 5
+    loyalty: 1
+    ambition: 4
+    credit: 0
+    risk_tolerance: 5
+  strategies:
+  - id: N05-sabotage-chen
+    action_id: sabotage
+    description: 王策按密信路线破坏赫利俄斯财团队伍
+    target_id: N02
+    from_day: 19
+    until_day: 19
+    once: true
+    conditions:
+    - type: flag
+      key: sabotage_open
+    - type: flag
+      key: chen_on_sabotage_route
+    - type: missing_flag
+      key: route_changed
+    - type: missing_flag
+      key: caravan_protected
+    - type: belief
+      key: F06
+      min_confidence: 2
+    - type: location
+      value: L04
+    score:
+      goal: 5
+      urgency: 5
+      probability: 4
+      information: 5
+      cost: 1
+      danger: 4
+    effects:
+    - type: adjust_injury
+      target_id: N02
+      amount: 1
+    - type: set_flag
+      key: chen_sabotageed
+      value: 'true'
+- id: N06
+  name: 苏弥
+  faction: 环站指挥部
+  goal: 保存跃迁核心药性并回收研究机会
+  goals:
+  - type: protect
+    target_id: jump_core
+    priority: 5
+    topics:
+    - jump_core
+    - medicine
+  interests:
+  - jump_core
+  - medicine
+  - command_deck
+  location: L02
+  injury: 0
+  public_profile: 环站指挥部药理弟子，关注灵药保存与移植，对正面决策窗口兴趣不大。
+  public_role: 药理与移植研究者
+  public_goal: 保存跃迁核心药性并争取研究机会
+  track_public_plan: true
+  public_interests:
+  - topic: jump_core
+    label: 灵药归属
+  - topic: medicine
+    label: 保存与移植
+  - topic: command_deck
+    label: 舰队药务
+  public_risk: 更重视药性保存，可靠的药理消息容易促使她寻求合作。
+  resources:
+    integrity: 2
+    crew_support: 1
+    credits: 80
+  items: []
+  beliefs:
+  - fact_id: F07
+    claim: 第19至20天可用磁封容器提前移植
+    confidence: 3
+    source: 药典
+    learned_on: 0
+    secrecy: 1
+  personality:
+    caution: 4
+    greed: 1
+    loyalty: 4
+    ambition: 3
+    credit: 5
+    risk_tolerance: 1
+  strategies:
+  - id: N06-requisition-eva_suit
+    action_id: requisition
+    description: 苏弥为提前移植准备舱外服
+    from_day: 7
+    until_day: 10
+    once: true
+    conditions:
+    - type: has_item
+      key: jade_box
+    - type: missing_item
+      key: eva_suit
+    - type: flag
+      key: transplant_backed
+    score:
+      goal: 5
+      urgency: 4
+      probability: 5
+      information: 5
+      relationship: 3
+      cost: 2
+      danger: 0
+    costs:
+      credits: 20
+    effects:
+    - type: add_item
+      key: eva_suit
+      amount: 1
+  - id: N06-request-traded-eva_suit
+    action_id: dock
+    description: 苏弥在补给环封锁后，请玩家把从顾岚处换走的舱外服借回队伍
+    target_id: P00
+    from_day: 8
+    until_day: 10
+    once: true
+    conditions:
+    - type: flag
+      key: player_took_shen_eva_suit
+    - type: flag
+      key: eva_suit_blockade
+    score:
+      base: 8
+      goal: 5
+      urgency: 5
+      probability: 5
+      information: 4
+      relationship: 3
+      cost: 1
+      danger: 0
+    effects:
+    - type: set_flag
+      target_id: world
+      key: su_requests_eva_suit
+      value: 'true'
+  - id: N06-inform-shen
+    action_id: dock
+    description: 苏弥将提前移植方法告知顾岚
+    target_id: N03
+    from_day: 11
+    until_day: 13
+    once: true
+    conditions:
+    - type: belief
+      key: F07
+      min_confidence: 3
+    - type: flag
+      key: command_deck_review
+    score:
+      goal: 4
+      urgency: 3
+      probability: 5
+      information: 5
+      relationship: 4
+      cost: 1
+      danger: 0
+    effects:
+    - type: set_belief
+      target_id: N03
+      fact_id: F07
+      confidence: 3
+  - id: N06-to-outer
+    action_id: navigate
+    description: 苏弥携带磁封容器前往受损维护环
+    from_day: 17
+    until_day: 17
+    once: true
+    conditions:
+    - type: flag
+      key: valley_open
+    - type: flag
+      key: transplant_backed
+    - type: location
+      value: L02
+    - type: has_item
+      key: jade_box
+    - type: has_item
+      key: eva_suit
+    score:
+      goal: 5
+      urgency: 5
+      probability: 4
+      information: 5
+      relationship: 4
+      cost: 2
+      danger: 2
+    effects:
+    - type: move
+      value: L04
+  - id: N06-to-inner
+    action_id: navigate
+    description: 苏弥依照药理记录进入核心舱
+    from_day: 19
+    until_day: 19
+    duration: 1
+    once: true
+    conditions:
+    - type: location
+      value: L04
+    - type: has_item
+      key: jade_box
+    - type: has_item
+      key: eva_suit
+    - type: belief
+      key: F07
+      min_confidence: 3
+    score:
+      goal: 5
+      urgency: 5
+      probability: 4
+      information: 5
+      relationship: 3
+      cost: 2
+      danger: 3
+    effects:
+    - type: move
+      value: L05
+  - id: N06-transplant
+    action_id: charge_drive
+    description: 苏弥与玩家合作，用磁封容器提前移植跃迁核心
+    target_id: jump_core
+    from_day: 20
+    until_day: 20
+    duration: 1
+    once: true
+    conditions:
+    - type: location
+      value: L05
+    - type: has_item
+      key: jade_box
+    - type: belief
+      key: F07
+      min_confidence: 3
+    - type: flag
+      key: transplant_window
+    - type: flag
+      key: transplant_backed
+    score:
+      goal: 5
+      urgency: 5
+      probability: 5
+      information: 5
+      relationship: 5
+      cost: 2
+      danger: 2
+    effects:
+    - type: transfer_unique
+      from_id: L05
+      target_id: N06
+      key: jump_core
+    - type: set_outcome
+      value: 苏弥与玩家合作，在完成充能日前成功移植跃迁核心
+- id: N07
+  name: 赫莉娅
+  faction: 赫利俄斯财团财团
+  goal: 取代赫克托成为下一任家主
+  goals:
+  - type: status
+    target_id: chen_successor
+    priority: 5
+    topics:
+    - succession
+    - helios_corp
+  interests:
+  - helios_corp
+  - succession
+  - intrigue
+  location: L03
+  injury: 0
+  public_profile: 赫利俄斯财团年轻一代中的活跃人物，近来频繁接触财团外部势力。
+  public_role: 赫利俄斯财团年轻继承人
+  public_interests:
+  - topic: succession
+    label: 继承局势
+  - topic: helios_corp
+    label: 财团权力
+  - topic: intrigue
+    label: 隐秘交易
+  public_risk: 立场不稳，敏感消息可能被用来决策窗口财团地位。
+  resources:
+    integrity: 3
+    crew_support: 0
+    credits: 70
+  items:
+  - chen_letter
+  beliefs:
+  - fact_id: F06
+    claim: 自己已向王策泄露货运队路线
+    confidence: 3
+    source: 自身行动
+    learned_on: 0
+    secrecy: 2
+  personality:
+    caution: 3
+    greed: 3
+    loyalty: 2
+    ambition: 5
+    credit: 2
+    risk_tolerance: 4
+  strategies:
+  - id: N07-evacuate
+    action_id: evacuate
+    description: 赫莉娅在密约败露后逃离赫利俄斯财团维修坞
+    from_day: 5
+    until_day: 8
+    once: true
+    conditions:
+    - type: flag
+      key: N07_disinherited
+    - type: location
+      value: L03
+    score:
+      goal: 5
+      urgency: 5
+      probability: 4
+      information: 3
+      cost: 2
+      danger: 3
+    effects:
+    - type: move
+      value: L01
+    - type: set_flag
+      target_id: world
+      key: N07_fugitive
+      value: 'true'
+  - id: N07-confirm-route
+    action_id: broadcast
+    description: 赫莉娅向王策确认赫利俄斯财团进入核心舱路线
+    target_id: N05
+    from_day: 12
+    until_day: 14
+    once: true
+    conditions:
+    - type: missing_flag
+      key: N07_disinherited
+    - type: belief
+      key: F06
+      min_confidence: 3
+    - type: flag
+      key: sabotage_open
+    score:
+      goal: 5
+      urgency: 4
+      probability: 4
+      information: 5
+      cost: 0
+      danger: 3
+    effects:
+    - type: set_flag
+      key: route_leaked
+      value: 'true'
+- id: N08
+  name: 韩彻
+  faction: 黑水盟
+  goal: 拍卖真地图并偿还债务
+  goals:
+  - type: profit
+    target_id: route_intel
+    priority: 4
+    topics:
+    - intel
+    - route
+  - type: avoid
+    target_id: debt_default
+    priority: 4
+    topics:
+    - debt
+  interests:
+  - intel
+  - route
+  - debt
+  location: L01
+  injury: 0
+  public_profile: 靠拍卖路线和地图为生的掮客，据说亲自探查过受损维护环。
+  public_role: 路线掮客
+  public_interests:
+  - topic: route
+    label: 进入核心舱路线
+  - topic: orbital
+    label: 核心舱外地形
+  - topic: intel
+    label: 路线数据
+  public_risk: 熟悉路线但以获利为先，消息可能被卖给其他决策窗口者。
+  resources:
+    integrity: 2
+    crew_support: 0
+    credits: 10
+  items:
+  - true_map
+  beliefs:
+  - fact_id: F01
+    claim: 跃迁核心将在第21天完成充能
+    confidence: 3
+    source: 亲自探查
+    learned_on: 0
+    secrecy: 2
+  - fact_id: F03
+    claim: 北侧入口已经封死
+    confidence: 3
+    source: 亲自探查
+    learned_on: 0
+    secrecy: 2
+  - fact_id: F04
+    claim: 南侧裂隙需要舱外服
+    confidence: 3
+    source: 亲自探查
+    learned_on: 0
+    secrecy: 2
+  personality:
+    caution: 5
+    greed: 4
+    loyalty: 1
+    ambition: 1
+    credit: 2
+    risk_tolerance: 1
+  strategies:
+  - id: N08-auction-map-li
+    action_id: auction
+    description: 韩彻将南侧裂隙数据卖给林澈
+    target_id: N01
+    from_day: 4
+    until_day: 6
+    once: true
+    conditions:
+    - type: belief
+      key: F04
+      min_confidence: 3
+    - type: has_item
+      key: true_map
+    score:
+      goal: 5
+      urgency: 4
+      probability: 4
+      information: 5
+      relationship: 0
+      cost: 0
+      danger: 2
+    effects:
+    - type: set_belief
+      target_id: N01
+      fact_id: F04
+      confidence: 3
+    - type: adjust_resource
+      key: credits
+      amount: 40
+- id: N09
+  name: 赵鸣
+  faction: 环站指挥部
+  goal: 让顾岚失败并提升自身地位
+  goals:
+  - type: status
+    target_id: command_deck_rank
+    priority: 5
+    topics:
+    - command_deck
+    - intrigue
+  interests:
+  - command_deck
+  - intrigue
+  - succession
+  location: L02
+  injury: 0
+  public_profile: 环站指挥部弟子，热衷广播补给环消息，与顾岚在门内存在竞争。
+  public_role: 门内竞争者
+  public_goal: 维护舰队审核与内部秩序
+  track_public_plan: true
+  public_interests:
+  - topic: command_deck
+    label: 门内声望
+  - topic: intrigue
+    label: 门内竞争
+  - topic: intel
+    label: 补给环传言
+  public_risk: 热衷广播未经核实的消息，告诉他可能加速传闻扩散。
+  resources:
+    integrity: 3
+    crew_support: 0
+    credits: 90
+  items: []
+  beliefs:
+  - fact_id: F02
+    claim: 跃迁核心将在第24天完成充能
+    confidence: 1
+    source: 自己编造
+    learned_on: 0
+    secrecy: 0
+  - fact_id: F08
+    claim: 错误日期由自己故意泄露
+    confidence: 3
+    source: 自身计划
+    learned_on: 0
+    secrecy: 2
+  personality:
+    caution: 3
+    greed: 2
+    loyalty: 2
+    ambition: 5
+    credit: 2
+    risk_tolerance: 3
+  strategies:
+  - id: N09-broadcast-false-date
+    action_id: broadcast
+    description: 赵鸣把第24天完成充能的错误消息传入补给环
+    public_description: 把一则完成充能日期传闻带入补给环
+    from_day: 3
+    until_day: 3
+    once: true
+    conditions:
+    - type: belief
+      key: F02
+      min_confidence: 1
+    score:
+      goal: 5
+      urgency: 4
+      probability: 5
+      information: 4
+      cost: 0
+      danger: 2
+    effects:
+    - type: set_belief
+      target_id: '*'
+      fact_id: F02
+      claim: 跃迁核心将在第24天完成充能
+      confidence: 1
+  - id: N09-challenge-player-source
+    action_id: dock
+    description: 赵鸣借舰队审核公开质疑玩家与顾岚的数据往来
+    public_description: 公开质疑玩家与顾岚的消息来源
+    target_id: P00
+    from_day: 10
+    until_day: 12
+    once: true
+    conditions:
+    - type: flag
+      key: player_backed_shen
+    - type: flag
+      key: command_deck_review
+    score:
+      base: 8
+      goal: 5
+      urgency: 5
+      probability: 5
+      information: 4
+      relationship: 2
+      cost: 1
+      danger: 1
+    effects:
+    - type: adjust_relation
+      from_id: N09
+      target_id: P00
+      key: suspicion
+      amount: 2
+    - type: set_flag
+      target_id: world
+      key: n09_challenges_player_source
+      value: 'true'
+- id: N10
+  name: 罗茵
+  faction: 中立商人
+  goal: 从药材波动中获利并保住商铺
+  goals:
+  - type: profit
+    target_id: medicine_market
+    priority: 5
+    topics:
+    - market
+    - medicine
+  - type: protect
+    target_id: shop
+    priority: 3
+    topics:
+    - market
+  interests:
+  - market
+  - medicine
+  location: L01
+  injury: 0
+  public_profile: 白石补给环药商，掌握舱外服货源，对价格变化格外敏感。
+  public_role: 补给环药商
+  public_interests:
+  - topic: market
+    label: 药材行情
+  - topic: medicine
+    label: 维修耗材供给
+  - topic: orbital
+    label: 进入核心舱物资
+  public_risk: 主要根据供需行动，相关消息可能直接影响舱外服价格与库存。
+  resources:
+    integrity: 1
+    crew_support: 0
+    credits: 200
+  items:
+  - eva_suit
+  - eva_suit
+  - eva_suit
+  beliefs:
+  - fact_id: F05
+    claim: 赫克托旧伤复发
+    confidence: 2
+    source: 诊疗痕迹
+    learned_on: 0
+    secrecy: 1
+  personality:
+    caution: 5
+    greed: 4
+    loyalty: 2
+    ambition: 2
+    credit: 4
+    risk_tolerance: 1
+  strategies:
+  - id: N10-hoard-eva_suit
+    action_id: requisition
+    description: 罗茵囤积舱外服等待涨价
+    from_day: 5
+    until_day: 8
+    once: true
+    conditions:
+    - type: flag
+      key: rumor_public
+    score:
+      goal: 4
+      urgency: 3
+      probability: 5
+      information: 3
+      cost: 2
+      danger: 0
+    costs:
+      credits: 30
+    effects:
+    - type: add_item
+      key: eva_suit
+      amount: 2
+  - id: N10-auction-injury
+    action_id: auction
+    description: 罗茵把赫克托伤势传闻卖给魏川
+    target_id: N04
+    from_day: 9
+    until_day: 12
+    once: true
+    conditions:
+    - type: belief
+      key: F05
+      min_confidence: 2
+    score:
+      goal: 3
+      urgency: 2
+      probability: 4
+      information: 4
+      cost: 0
+      danger: 2
+    effects:
+    - type: set_belief
+      target_id: N04
+      fact_id: F05
+      confidence: 2
+    - type: adjust_resource
+      key: credits
+      amount: 20

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"fantu/internal/director"
 	"fantu/internal/domain"
 	"fantu/internal/engine"
 )
@@ -32,6 +33,8 @@ func NewSession(bundle domain.Bundle, player domain.PlayerConfig) (*Session, err
 	session.metrics.MaxActionCatalog = len(session.actionCatalog(session.engine.State()))
 	return session, nil
 }
+
+func (s *Session) SetWorldDirector(selector director.Selector) { s.engine.SetWorldDirector(selector) }
 
 func validatePlayer(bundle domain.Bundle, player domain.PlayerConfig) error {
 	if player.ID == "" || player.Name == "" {

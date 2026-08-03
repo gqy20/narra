@@ -7,15 +7,15 @@ import (
 	"time"
 )
 
-func TestBuildKeepsDisabledAndUnconfiguredModesExplicit(t *testing.T) {
+func TestBuildKeepsDisabledModeExplicitAndRejectsEnabledWithoutCredentials(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	service, mode, err := Build(Config{Enabled: false, Timeout: time.Second})
 	if err != nil || service != nil || mode != "disabled" {
 		t.Fatalf("disabled build = service:%v mode:%q err:%v", service, mode, err)
 	}
 	service, mode, err = Build(Config{Enabled: true, Model: "test", Timeout: time.Second})
-	if err != nil || service != nil || mode != "disabled:no_api_key" {
-		t.Fatalf("unconfigured build = service:%v mode:%q err:%v", service, mode, err)
+	if err == nil || service != nil || mode != "" {
+		t.Fatalf("enabled unconfigured build must fail = service:%v mode:%q err:%v", service, mode, err)
 	}
 }
 

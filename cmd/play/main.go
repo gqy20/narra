@@ -57,8 +57,14 @@ func main() {
 		fail(err)
 	}
 	renderDialogueMode(os.Stdout, dialogueMode)
+	if dialogue != nil {
+		session.SetWorldDirector(dialogue)
+	}
 
 	game := &terminalGame{session: session, saves: store, autosave: *autosave}
+	if dialogue != nil {
+		game.worldDirector = dialogue
+	}
 	if err := runGame(os.Stdin, os.Stdout, game, dialogue, *debug); err != nil {
 		fail(err)
 	}
@@ -548,6 +554,9 @@ func loadSaveCommand(output io.Writer, game *terminalGame, argument string) (boo
 		return false, err
 	}
 	game.session = loaded
+	if game.worldDirector != nil {
+		loaded.SetWorldDirector(game.worldDirector)
+	}
 	fmt.Fprintf(output, "已读取存档槽 %s。\n", fields[0])
 	return true, nil
 }
