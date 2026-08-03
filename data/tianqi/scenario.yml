@@ -137,39 +137,39 @@ contest:
   required_item_id: ""
   score_resources: [authority, evidence, allies]
   preparation_flag: prepared
-  early_outcome: "{winner}在期限前控制了会勘定稿；这只是本局形成的文书版本，不是历史定论。"
+  early_outcome: "{winner}提前定稿。这份文书就此成为官署采用的版本。"
   cancelled_outcome: "第十四日定稿程序取消：{outcome}"
-  no_winner_outcome: 会勘期限届满而无人能够提交可执行文本，官署暂以“原因未明”封存材料。
-  default_outcome: "{winner}以影响值{score}控制会勘定稿，形成‘厂内失慎、个别人员负责’的行政版本；爆炸的唯一物理原因仍未查明。"
+  no_winner_outcome: 会勘逾期未成，官署以“原因未明”封存材料。
+  default_outcome: "{winner}主导定稿。官署以厂内失慎结案，爆炸成因未明。"
   outcome_rules:
   - id: bounded-official-report
     priority: 120
     winner_id: N02
     required_world_flags: [systemic_caveat]
-    template: "{winner}以影响值{score}完成有限会勘报告：确认记录冲突与管理问题，同时明确现有材料不能推出唯一爆炸成因。"
+    template: "{winner}主导定稿。报告承认记录冲突与管理积弊，爆炸成因列为未决。"
   - id: correlated-ledger-report
     priority: 115
     required_world_flags: [forged_ledger_exposed, ledger_chain_correlated]
-    template: "{winner}以影响值{score}控制定稿；交割残页与补造账册的格式比对结果和周良辅经手自陈已形成独立串证，报告确认长期改账与灾后补造，但仍不把它冒充为爆炸成因。"
+    template: "{winner}主导定稿。会勘确认军需账目长期被改，灾后又有人补造账册；爆炸成因仍无定论。"
   - id: forged-ledger-exposed
     priority: 110
     required_world_flags: [forged_ledger_exposed]
-    template: "{winner}以影响值{score}控制定稿，但补造账册已被揭穿，报告只能保留军需记录长期矛盾与成因未决。"
+    template: "{winner}主导定稿。补造账册被揭穿，军需旧账重开，爆炸成因仍未决。"
   - id: press-version
     priority: 100
     winner_id: N07
-    template: "{winner}以影响值{score}抢先散出一份民间长抄；它保存了更多见闻，也混杂尚未互证的内容，官署定稿失去垄断。"
+    template: "{winner}抢先刊出民间长抄。更多见闻得以流传，未经互证的说法也混入其中。"
   - id: remonstrance-version
     priority: 90
     winner_id: N05
-    template: "{winner}以影响值{score}使灾变材料进入陈言文本；制度问题获得政治影响，但个别材料的确定程度仍受质疑。"
+    template: "{winner}把灾变写入陈言。军需积弊进入朝议，部分证据仍受质疑。"
   reward_rules:
   - id: official-source-credit
     priority: 100
     winner_id: N02
     required_player_flags: [player_kept_original]
     min_winner_trust: 1
-    suffix: 玩家因保全原件而被列为材料经手人，同时承担来源公开的风险。
+    suffix: 你因保全原件被列为经手人，来源随之公开。
     effects:
     - {type: adjust_resource, target_id: player, key: authority, amount: 1}
     - {type: adjust_resource, target_id: player, key: exposure, amount: 1}

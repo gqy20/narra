@@ -166,13 +166,17 @@ func _run() -> void:
 		return _fail("unexpected propagation outcome")
 	if "准备值" in str(app.current_view.get("outcome", "")):
 		return _fail("ending leaked an internal score")
-	if "余波记录" not in _descendant_text(app.ending_box):
+	if "本局余波" not in _descendant_text(app.ending_box):
 		return _fail("ending overlay does not expose the aftermath section")
-	if "这次选择最终为你带来了什么" not in _descendant_text(app.ending_box) or "2 点信用" not in _descendant_text(app.ending_box):
+	if "2 点信用" not in _descendant_text(app.ending_box):
 		return _fail("ending does not surface the player's intelligence-route return")
+	if "本局余波" in _visible_descendant_text(app.ending_box):
+		return _fail("ending exposes route accounting before the aftermath section is opened")
 	app.presentation_controller._toggle_ending_annex()
 	if not app.ending_annex_box.visible:
 		return _fail("ending aftermath section does not expand")
+	if "本局余波" not in _visible_descendant_text(app.ending_box):
+		return _fail("ending aftermath content remains hidden after expansion")
 	app.presentation_controller._toggle_ending_annex()
 	print("Godot propagation journey passed: ending visible on day %d" % app.current_view.get("day", 0))
 	quit(0)
@@ -219,6 +223,17 @@ func _descendant_text(node: Node) -> String:
 		result += str(node.text) + "\n"
 	for child in node.get_children():
 		result += _descendant_text(child)
+	return result
+
+
+func _visible_descendant_text(node: Node) -> String:
+	if node is CanvasItem and not node.is_visible_in_tree():
+		return ""
+	var result := ""
+	if node is Label or node is Button:
+		result += str(node.text) + "\n"
+	for child in node.get_children():
+		result += _visible_descendant_text(child)
 	return result
 
 

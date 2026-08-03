@@ -127,7 +127,7 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 	var actor = host.game_screen_controller._actor_by_id(host.current_view.get("known_actors", []), host.focused_actor_id)
 	var state_names = {"neutral": "平静", "alert": "正在留意你", "troubled": "正在权衡消息", "decisive": "已经形成决断"}
 	var expression = str(host.actor_expression_by_id.get(host.focused_actor_id, "alert"))
-	host.objective_label.text = "%s · %s · %s" % [actor.get("public_role", "可交谈人物"), actor.get("faction", "散修"), state_names.get(expression, expression)]
+	host.objective_label.text = "%s · %s" % [actor.get("public_role", "可交谈人物"), state_names.get(expression, expression)]
 	host.dialogue_panel_controller._render_actor_dialogue_line(actor)
 	var has_terms = false
 	var has_route_response = false
@@ -303,7 +303,7 @@ func _render_focused_actor_summary(focused_actions: Array) -> void:
 	var content = VBoxContainer.new()
 	content.add_theme_constant_override("separation", 6)
 	panel.add_child(content)
-	var role_line = host.game_screen_controller._text(content, "%s · %s" % [actor.get("public_role", "可交谈人物"), actor.get("faction", "散修")], true, 13)
+	var role_line = host.game_screen_controller._text(content, str(actor.get("public_role", "可交谈人物")), true, 13)
 	role_line.add_theme_color_override("font_color", host.COLORS.accent)
 	host.game_screen_controller._text(content, str(actor.get("public_profile", "公开资料尚未收集")), false, 14)
 	var state_names = {"neutral": "平静", "alert": "正在留意你", "troubled": "正在权衡消息", "decisive": "已经形成决断"}

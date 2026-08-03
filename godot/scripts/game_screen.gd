@@ -903,11 +903,8 @@ func _show_actor_portrait(actor: Dictionary, expression: String) -> void:
 	host.actor_portrait.texture = portrait_texture
 	host.actor_portrait_name.text = str(actor.get("name", "无名者"))
 	var role = str(actor.get("public_role", "可交谈人物"))
-	var faction = str(actor.get("faction", ""))
 	var expression_names = {"neutral": "平静", "alert": "警觉", "troubled": "权衡中", "decisive": "已有决断"}
 	var meta_parts: Array[String] = [role]
-	if faction != "":
-		meta_parts.append(faction)
 	if expression != "neutral":
 		meta_parts.append(str(expression_names.get(expression, expression)))
 	host.actor_portrait_meta.text = " · ".join(meta_parts)

@@ -590,10 +590,11 @@ func _render_people(actors: Array, actions: Array) -> void:
 		var actor_name = str(actor.get("name", "无名者"))
 		host.game_screen_controller._text(host.people_box, "%s · %s" % [actor_name, actor.get("public_role", "可交谈人物")], false, 16)
 		var focus: Array = actor.get("public_focus", [])
-		var context_parts: Array[String] = [str(actor.get("faction", "散修"))]
+		var context_parts: Array[String] = []
 		if not focus.is_empty():
 			context_parts.append("关注%s" % str(focus[0]))
-		host.game_screen_controller._text(host.people_box, " · ".join(context_parts), true, 13)
+		if not context_parts.is_empty():
+			host.game_screen_controller._text(host.people_box, " · ".join(context_parts), true, 13)
 		var local_plan: Dictionary = actor.get("plan", {}) if actor.get("plan", {}) is Dictionary else {}
 		if not local_plan.is_empty():
 			host.game_screen_controller._text(host.people_box, "当前计划 · %s" % local_plan.get("plan", "观察局势"), true, 13)

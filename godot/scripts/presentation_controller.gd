@@ -328,44 +328,19 @@ func _render_ending(ending: Dictionary) -> void:
 	host.ending_box.anchor_left = 0.445 if host.ending_portrait.visible else 0.225
 	var eyebrow = host.game_screen_controller._text(host.ending_box, "尘埃落定", true, 16)
 	eyebrow.add_theme_color_override("font_color", host.COLORS.accent)
-	var title = host.game_screen_controller._text(host.ending_box, outcome, false, 40)
+	var outcome_parts: PackedStringArray = outcome.split("。", false)
+	var outcome_title = str(outcome_parts[0]).strip_edges() if not outcome_parts.is_empty() else outcome
+	var title = host.game_screen_controller._text(host.ending_box, outcome_title, false, 40)
 	title.add_theme_font_override("font", host.display_font)
 	title.add_theme_color_override("font_color", Color("ead6a8"))
+	for index in range(1, outcome_parts.size()):
+		var outcome_body = host.game_screen_controller._text(host.ending_box, str(outcome_parts[index]).strip_edges(), false, 21)
+		outcome_body.add_theme_color_override("font_color", Color("ded4c1"))
 	var rule = HSeparator.new()
 	rule.modulate = Color(host.COLORS.accent, 0.46)
 	host.ending_box.add_child(rule)
 	var consequences: Array = ending.get("player_consequences", [])
-	if not consequences.is_empty():
-		var gain_heading = host.game_screen_controller._text(host.ending_box, "这次选择最终为你带来了什么", true, 16)
-		gain_heading.add_theme_color_override("font_color", host.COLORS.accent)
-		for consequence in consequences:
-			host.game_screen_controller._text(host.ending_box, str(consequence), false, 17)
 	var review: Array = ending.get("review", [])
-	if not review.is_empty():
-		var review_heading = host.game_screen_controller._text(host.ending_box, "为什么是这个结果", true, 16)
-		review_heading.add_theme_color_override("font_color", host.COLORS.accent)
-		host.game_screen_controller._text(host.ending_box, str(review[0]), false, 16)
-	if not influences.is_empty():
-		var impact_heading = host.game_screen_controller._text(host.ending_box, "你的介入留下了这些痕迹", true, 16)
-		impact_heading.add_theme_color_override("font_color", host.COLORS.accent)
-	for influence in influences:
-		host.game_screen_controller._text(host.ending_box, "你将“%s”告诉了%s。" % [influence.get("fact_claim", "消息"), influence.get("actor_name", "某人")], false, 17)
-		var timeline_grid = GridContainer.new()
-		timeline_grid.columns = 2
-		timeline_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		timeline_grid.add_theme_constant_override("h_separation", 18)
-		timeline_grid.add_theme_constant_override("v_separation", 9)
-		host.ending_box.add_child(timeline_grid)
-		for change in influence.get("changes", []):
-			var day_mark = host.game_screen_controller._text(timeline_grid, "第 %d 日" % int(change.get("day", 0)), false, 16)
-			day_mark.custom_minimum_size.x = 78
-			day_mark.add_theme_color_override("font_color", host.COLORS.accent)
-			var change_line = host.game_screen_controller._text(timeline_grid, "原本%s；后来%s。" % [change.get("without_information", "另有安排"), change.get("with_information", "改变计划")], true, 16)
-			change_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	if influences.is_empty():
-		host.game_screen_controller._text(host.ending_box, "这一次没有观察到你传递的消息改写他人计划。", true, 16)
-	else:
-		host.game_screen_controller._text(host.ending_box, "局势已经落定，但被你改变的计划会成为下一段旅途的起点。", true, 16)
 	host.ending_annex_button = host.game_screen_controller._action_button("回看本局选择与余波", host.presentation_controller._toggle_ending_annex)
 	host.ending_annex_button.custom_minimum_size.y = 42
 	host.ending_annex_button.add_theme_font_size_override("font_size", 16)
@@ -374,10 +349,25 @@ func _render_ending(ending: Dictionary) -> void:
 	host.ending_annex_box.add_theme_constant_override("separation", 6)
 	host.ending_annex_box.hide()
 	host.ending_box.add_child(host.ending_annex_box)
-	var record_heading = host.game_screen_controller._text(host.ending_annex_box, "你的路线与余波记录", true, 16)
+	if not consequences.is_empty():
+		var consequence_heading = host.game_screen_controller._text(host.ending_annex_box, "本局余波", true, 16)
+		consequence_heading.add_theme_color_override("font_color", host.COLORS.accent)
+		for consequence in consequences:
+			host.game_screen_controller._text(host.ending_annex_box, "· %s" % consequence, true, 15)
+	if not review.is_empty():
+		var review_heading = host.game_screen_controller._text(host.ending_annex_box, "结算依据", true, 16)
+		review_heading.add_theme_color_override("font_color", host.COLORS.accent)
+		for review_line in review:
+			host.game_screen_controller._text(host.ending_annex_box, "· %s" % review_line, true, 15)
+	if not influences.is_empty():
+		var impact_heading = host.game_screen_controller._text(host.ending_annex_box, "你的介入", true, 16)
+		impact_heading.add_theme_color_override("font_color", host.COLORS.accent)
+		for influence in influences:
+			host.game_screen_controller._text(host.ending_annex_box, "· 你将“%s”告诉了%s。" % [influence.get("fact_claim", "消息"), influence.get("actor_name", "某人")], true, 15)
+			for change in influence.get("changes", []):
+				host.game_screen_controller._text(host.ending_annex_box, "  第 %d 日：原本%s；后来%s。" % [int(change.get("day", 0)), change.get("without_information", "另有安排"), change.get("with_information", "改变计划")], true, 14)
+	var record_heading = host.game_screen_controller._text(host.ending_annex_box, "本局记录", true, 16)
 	record_heading.add_theme_color_override("font_color", host.COLORS.accent)
-	for index in range(1, review.size()):
-		host.game_screen_controller._text(host.ending_annex_box, "· %s" % review[index], true, 15)
 	for highlight in ending.get("highlights", []):
 		if str(highlight).begins_with("你传递的消息改变了"):
 			continue

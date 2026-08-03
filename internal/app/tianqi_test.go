@@ -86,7 +86,7 @@ func TestTianqiPlayerCanPublishBoundedFinalRecord(t *testing.T) {
 			t.Fatalf("advance to bounded record outcome: %v", err)
 		}
 	}
-	if !strings.Contains(view.Outcome, "有限会勘报告") || !strings.Contains(view.Outcome, "不能推出唯一爆炸成因") {
+	if !strings.Contains(view.Outcome, "报告承认记录冲突与管理积弊") || !strings.Contains(view.Outcome, "爆炸成因列为未决") {
 		t.Fatalf("bounded record outcome = %q", view.Outcome)
 	}
 }
@@ -245,7 +245,7 @@ func TestTianqiOriginalLedgerChainCanExposeAndCorrelateForgery(t *testing.T) {
 			t.Fatalf("advance to correlated outcome: %v", err)
 		}
 	}
-	if !strings.Contains(view.Outcome, "形成独立串证") || !strings.Contains(view.Outcome, "不把它冒充为爆炸成因") {
+	if !strings.Contains(view.Outcome, "军需账目长期被改") || !strings.Contains(view.Outcome, "爆炸成因仍无定论") {
 		t.Fatalf("correlated ledger outcome = %q", view.Outcome)
 	}
 }

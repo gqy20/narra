@@ -83,6 +83,8 @@ func _run() -> void:
 	var leaked_story_id := internal_story_id_pattern.search(_descendant_text(app))
 	if leaked_story_id != null:
 		return _fail("internal story id leaked into player-visible text: " + leaked_story_id.get_string())
+	if "FCT_" in _descendant_text(app):
+		return _fail("internal faction id leaked into player-visible text")
 	var resource_text := _descendant_text(app.player_resources_box)
 	for expected in ["权势", "证据", "盟援"]:
 		if expected not in resource_text:

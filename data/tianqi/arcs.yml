@@ -200,14 +200,14 @@
   - {id: e01-unclaimed, priority: 100, from_day: 1, until_day: 2, conditions: [{type: missing_flag, scope: actor, key: player_kept_original}, {type: missing_flag, scope: actor, key: player_kept_copy}], route_id: e01, label: 交割残页, status: 原件仍在余墨林手中, next_step: 前往王恭厂外街决定是否接手, window: 第2日前, deadline_day: 2, location_id: L01, personal_return: 取得一条可进入官署、书坊或灰网的关键材料, urgent: true}
   - {id: e01-original-held, priority: 110, conditions: [{type: flag, scope: actor, key: player_kept_original}], route_id: e01, label: 交割残页, status: 你正在保管原件, next_step: 核验后决定交官、交给灰网或继续持有, window: 第10日前价值最高, deadline_day: 10, personal_return: 原件具有最高核验价值，也带来最高暴露, urgent: true}
   consequence_rules:
-  - {id: e01-unclaimed-result, states: [unclaimed], text: 玩家没有接手交割残页；原件按默认链条落入军需灰网，书坊只留下缺少物证能力的抄件。}
-  - {id: e01-held-result, states: [original_held], text: 玩家保留交割残页原件直到定稿，材料没有被任何机构正式核验，也使玩家成为唯一公开风险承担者。}
-  - {id: e01-copy-held-result, states: [copy_held], text: 玩家保留交割残页抄件却没有决定传播方式，原件去向与抄件可信度同时失去控制。}
-  - {id: e01-official-result, states: [delivered_official], text: 交割残页原件进入官署核验链，补造账册更难成为唯一完整版本。}
-  - {id: e01-format-result, states: [format_verified], text: 交割残页原件被用于核出补造账册的灾后形成痕迹；玩家取得揭穿补造账册所需的高可信格式证据。}
-  - {id: e01-grey-result, states: [delivered_grey], text: 军需灰网控制交割残页原件，玩家获得保护但削弱了公开核验。}
-  - {id: e01-bounded-result, states: [published_bounded], text: 交割残页抄件保留限定语流传，形成官档之外较可信但来源较弱的版本。}
-  - {id: e01-sensational-result, states: [published_sensational], text: 交割残页被过度表述，政治影响上升，整份文本也更容易被反驳。}
+  - {id: e01-unclaimed-result, states: [unclaimed], text: 你没有接手残页；原件落入军需灰网，书坊只存抄件。}
+  - {id: e01-held-result, states: [original_held], text: 原件留在你手中，直到定稿也未获核验。}
+  - {id: e01-copy-held-result, states: [copy_held], text: 你只留抄件，原件去向不明。}
+  - {id: e01-official-result, states: [delivered_official], text: 残页原件入官档，补造账册不再是唯一版本。}
+  - {id: e01-format-result, states: [format_verified], text: 残页原件核出了补造账册的灾后痕迹。}
+  - {id: e01-grey-result, states: [delivered_grey], text: 灰网收走原件，你换得暂时保护。}
+  - {id: e01-bounded-result, states: [published_bounded], text: 残页抄件保留限定语，流传于官档之外。}
+  - {id: e01-sensational-result, states: [published_sensational], text: 残页被写成侵盗实证，影响扩大，破绽也随之放大。}
 
 - id: witness_route
   title: 刘六安的幸存者证词
@@ -266,9 +266,9 @@
   progress_rules:
   - {id: witness-window, priority: 105, from_day: 2, until_day: 6, conditions: [{type: missing_flag, key: witness_protected}, {type: missing_flag, key: witness_pressured}], route_id: e07, label: 刘六安证词, status: 第一版口述尚未获得独立保全, next_step: 第6日前前往春和药铺决定匿名保全或立即入档, window: 第2日至第6日, deadline_day: 6, location_id: L02, personal_return: 决定证词版本与证人安全谁优先, urgent: true}
   consequence_rules:
-  - {id: witness-unresolved-result, states: [unresolved], text: 玩家没有介入刘六安证词；刘六安在压力下改口，官署只保留更适合失慎归责的版本。}
-  - {id: witness-protected-result, states: [protected], text: 刘六安第一版证词与后续口供并存，官署无法把改口当作唯一版本。}
-  - {id: witness-official-result, states: [officialized], text: 刘六安取得有限官署保护，但整理后的口供在公共叙事中覆盖了早期说法。}
+  - {id: witness-unresolved-result, states: [unresolved], text: 刘六安受压改口，官署只存下后来的版本。}
+  - {id: witness-protected-result, states: [protected], text: 刘六安的早期证词得以保全。}
+  - {id: witness-official-result, states: [officialized], text: 刘六安获官署保护，早期口述却被正式口供覆盖。}
 
 - id: survivor_register
   title: 灾民自建名册
@@ -375,10 +375,10 @@
   progress_rules:
   - {id: register-window, priority: 95, from_day: 2, until_day: 8, conditions: [{type: missing_flag, key: register_verified}, {type: missing_flag, key: register_published}], route_id: e08, label: 灾民自建名册, status: 叶春娘仍在整理官册外姓名, next_step: 第8日前前往春和药铺决定分级核名或民间刊存, window: 第2日至第8日, deadline_day: 8, location_id: L02, personal_return: 影响无籍者优恤与姓名保存方式, urgent: true}
   consequence_rules:
-  - {id: register-unresolved-result, states: [collecting], text: 玩家没有帮助灾民自建名册进入行政或传播渠道；官册封存后，大量官册外姓名只留在叶春娘手中的民间记录。}
-  - {id: register-verified-result, states: [verified], text: 一部分无籍者凭分级互证进入官册，灾民自建名册同时保留未能核实者。}
-  - {id: register-published-exposed-result, states: [published], conditions: [{type: flag, key: witness_identity_exposed}], text: 灾民自建名册完整保存了官册外姓名，但公开住址和互证关系使刘六安、叶春娘及消息来源受到追查，多数人也未赶上本轮优恤。}
-  - {id: register-published-protected-result, states: [published], conditions: [{type: flag, key: protected_register_network}], text: 灾民自建名册匿名版保存了官册外姓名与证据等级，未公开住址和互证者；完整对应表仍需被安全保管。}
+  - {id: register-unresolved-result, states: [collecting], text: 官册封存，册外姓名只留在叶春娘手中。}
+  - {id: register-verified-result, states: [verified], text: 一部分无籍者凭互证进入官册。}
+  - {id: register-published-exposed-result, states: [published], conditions: [{type: flag, key: witness_identity_exposed}], text: 完整名册得以保存，住址和互证者也遭到追查。}
+  - {id: register-published-protected-result, states: [published], conditions: [{type: flag, key: protected_register_network}], text: 匿名名册得以流传，完整对应表仍被秘密保管。}
 
 - id: final_caveat
   title: 定稿中的证据边界
@@ -443,9 +443,9 @@
       to_state: forgery_exposed
       feedback: {messages: [补造账册的纸墨与印记破绽被正式记录；补造事实成立，爆炸成因仍未因此确定。], journal: [揭穿灾后补造账册，同时保留对爆炸因果的限定。], presentation: {kind: reveal, intensity: 3, subject: fact}}
   consequence_rules:
-  - {id: final-open-result, states: [open], text: 玩家没有把证据边界送入最终文本；会勘采用了更便于结案的确定措辞。}
-  - {id: caveat-result, states: [caveat_lodged], text: 最终材料明确区分管理积弊与爆炸成因，未知没有被伪装成结论。}
-  - {id: forgery-result, states: [forgery_exposed], text: 补造账册被证明为灾后补造；这改变会勘可信度，却没有被误写成纵火证据。}
+  - {id: final-open-result, states: [open], text: 会勘以确定措辞结案，未保留成因疑点。}
+  - {id: caveat-result, states: [caveat_lodged], text: 最终文本将爆炸成因列为未决。}
+  - {id: forgery-result, states: [forgery_exposed], text: 补造账册被揭穿，但未被写成纵火证据。}
 
 - id: zhou_statement
   title: 周良辅自陈
@@ -536,10 +536,10 @@
   progress_rules:
   - {id: e10-window, priority: 130, from_day: 12, until_day: 13, conditions: [{type: missing_flag, key: zhou_protected}, {type: missing_flag, key: zhou_intercepted}], route_id: e10, label: 周良辅自陈, status: 周良辅正在怀朴书斋等待接应, next_step: 第13日前前往书斋决定护送或只留抄件, window: 仅剩两日, deadline_day: 13, location_id: L06, personal_return: 取得持续改账的内部证词, urgent: true}
   consequence_rules:
-  - {id: e10-unreached-result, states: [unreached], text: 玩家没有赶到书斋；罗三槐截回周良辅自陈原件，周良辅失去独立申辩渠道。}
-  - {id: e10-protected-result, states: [original_protected], conditions: [{type: missing_flag, key: ledger_chain_correlated}], text: 周良辅和他的自陈原件脱离灰网；持续改账可以被追查，但周本人仍需为参与行为承担责任。}
-  - {id: e10-correlated-result, states: [original_protected], conditions: [{type: flag, key: ledger_chain_correlated}], text: 交割残页、补造账册与周良辅自陈形成独立串证，确认长期改账和灾后补造；周良辅获得保护，同时仍需为参与行为承担责任。}
-  - {id: e10-copy-result, states: [copy_preserved], text: 周良辅自陈留下独立抄件后原件仍被灰网截回；内容没有完全消失，来源证明却更加困难。}
+  - {id: e10-unreached-result, states: [unreached], text: 罗三槐截回自陈原件，周良辅失去申辩渠道。}
+  - {id: e10-protected-result, states: [original_protected], conditions: [{type: missing_flag, key: ledger_chain_correlated}], text: 周良辅与自陈原件脱离灰网，假账仍待追查。}
+  - {id: e10-correlated-result, states: [original_protected], conditions: [{type: flag, key: ledger_chain_correlated}], text: 三份材料相互印证，周良辅获救但仍须担责。}
+  - {id: e10-copy-result, states: [copy_preserved], text: 自陈留下抄件，原件仍被灰网截回。}
 
 - id: final_record
   title: 编成你的邸抄
@@ -645,11 +645,11 @@
   progress_rules:
   - {id: record-window, priority: 120, from_day: 9, until_day: 12, conditions: [{type: missing_flag, scope: actor, key: player_bounded_record}, {type: missing_flag, scope: actor, key: player_accusatory_record}, {type: missing_flag, scope: actor, key: player_private_record}, {type: missing_flag, scope: actor, key: player_anonymous_record}], route_id: final_record, label: 编成邸抄, status: 余墨林正在等待你的终稿原则, next_step: 第12日前前往墨林书坊选择公开、私档或受阻后的匿名传播, window: 第9日至第12日, deadline_day: 12, location_id: L04, personal_return: 决定你留下的是哪一种记录, urgent: true}
   consequence_rules:
-  - {id: record-unwritten-result, states: [unwritten], text: 玩家没有编成自己的文本；所见材料只通过交付对象的语言进入后世记录。}
-  - {id: record-bounded-result, states: [bounded_publication], text: 玩家留下分级公开的邸抄：它拒绝给出伪造的唯一真相，却保存了证据边界和多种记录。}
-  - {id: record-accusatory-result, states: [accusatory_publication], text: 玩家留下强烈的归责文本：它推动政治追查，也把若干尚未证明的连接写成事实。}
-  - {id: record-private-result, states: [private_preservation], text: 玩家选择私档保全：当前影响有限，但原件目录、抄件差异和证词时间线仍可供未来复核。}
-  - {id: record-anonymous-result, states: [anonymous_circulation], text: 玩家在公开渠道受阻后把分级文本拆成匿名短抄；部分内容得以保存，完整文本的统一影响和可核来源同时减弱。}
+  - {id: record-unwritten-result, states: [unwritten], text: 你没有留下自己的邸抄。}
+  - {id: record-bounded-result, states: [bounded_publication], text: 你留下分级邸抄，出处与疑点一并刊明。}
+  - {id: record-accusatory-result, states: [accusatory_publication], text: 你的檄文推动追查，也把未证之事写成事实。}
+  - {id: record-private-result, states: [private_preservation], text: 你将材料编成私档，留待后人复核。}
+  - {id: record-anonymous-result, states: [anonymous_circulation], text: 匿名短抄得以流传，完整出处却难再查清。}
 
 - id: exposure_pressure
   title: 暴露压力
@@ -659,8 +659,8 @@
   progress_rules:
   - {id: exposure-response, priority: 125, from_day: 3, until_day: 13, conditions: [{type: flag, key: source_inquiry_open}, {type: missing_flag, key: witness_relocated}, {type: missing_flag, key: source_accounted}], route_id: exposure, label: 来源压力, status: 官署正在追问材料来源，证人住处也可能被顺藤摸瓜, next_step: 前往公署提交有限说明，或去春和药铺转移证人, window: 压力已经生效, deadline_day: 13, personal_return: 降低即时暴露并决定由证据还是盟援承担代价, urgent: true}
   consequence_rules:
-  - {id: exposure-watched-result, states: [active], conditions: [{type: flag, key: exposure_watched}, {type: missing_flag, key: source_inquiry_open}], text: 玩家多次经手并公开材料，往返路线和接触对象开始被不明人员记录。}
-  - {id: exposure-inquiry-result, states: [active], conditions: [{type: flag, key: source_inquiry_open}, {type: missing_flag, key: exposure_compromised}], text: 会勘官署要求玩家说明来源；玩家必须在有限说明与转移证人之间分配时间和人情。}
-  - {id: exposure-compromised-result, states: [active], conditions: [{type: flag, key: exposure_compromised}], text: 玩家身份与主要来源已被多方掌握，公开署名刊载遭到阻断，完整文本只能转入私档或匿名拆分渠道。}
-  - {id: witness-relocated-result, states: [active], conditions: [{type: flag, key: witness_relocated}], text: 玩家消耗盟援秘密转移了一名关键证人，降低即时暴露，却没有回答官署对来源的疑问。}
-  - {id: source-accounted-result, states: [active], conditions: [{type: flag, key: source_accounted}], text: 玩家以一点证据资源换取官署接受有限来源说明，降低即时暴露但留下正式经手记录。}
+  - {id: exposure-watched-result, states: [active], conditions: [{type: flag, key: exposure_watched}, {type: missing_flag, key: source_inquiry_open}], text: 有人开始记录你的行踪与来往。}
+  - {id: exposure-inquiry-result, states: [active], conditions: [{type: flag, key: source_inquiry_open}, {type: missing_flag, key: exposure_compromised}], text: 官署追问材料来源，你尚未回应。}
+  - {id: exposure-compromised-result, states: [active], conditions: [{type: flag, key: exposure_compromised}], text: 你的身份与主要来源暴露，署名刊载受阻。}
+  - {id: witness-relocated-result, states: [active], conditions: [{type: flag, key: witness_relocated}], text: 一名关键证人已被秘密转移。}
+  - {id: source-accounted-result, states: [active], conditions: [{type: flag, key: source_accounted}], text: 官署接受有限来源说明，也留下了你的经手记录。}
