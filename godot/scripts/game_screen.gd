@@ -871,10 +871,11 @@ func _render_stage_people(actors: Array, actions: Array) -> void:
 
 
 func _render_actor_portrait(actors: Array) -> void:
-	host.actor_portrait_frame.hide()
-	host.actor_portrait.texture = null
 	var actor = host.game_screen_controller._selected_stage_actor(actors)
 	if actor.is_empty():
+		host.actor_portrait_frame.hide()
+		host.actor_portrait.texture = null
+		host.actor_portrait.remove_meta("presentation_key")
 		return
 	var actor_id = str(actor.get("id", ""))
 	host.game_screen_controller._show_actor_portrait(actor, str(host.actor_expression_by_id.get(actor_id, "neutral")))
@@ -900,7 +901,10 @@ func _show_actor_portrait(actor: Dictionary, expression: String) -> void:
 	var portrait_texture = profile.portrait(expression)
 	if portrait_texture == null:
 		return
+	var presentation_key := "%s:%s" % [actor_id, expression]
+	var should_animate := str(host.actor_portrait.get_meta("presentation_key", "")) != presentation_key
 	host.actor_portrait.texture = portrait_texture
+	host.actor_portrait.set_meta("presentation_key", presentation_key)
 	host.actor_portrait_name.text = str(actor.get("name", "无名者"))
 	var role = str(actor.get("public_role", "可交谈人物"))
 	var expression_names = {"neutral": "平静", "alert": "警觉", "troubled": "权衡中", "decisive": "已有决断"}
@@ -919,11 +923,15 @@ func _show_actor_portrait(actor: Dictionary, expression: String) -> void:
 			target_modulate = Color("cbd3cb")
 		"decisive":
 			target_modulate = Color("fff0c8")
-	host.actor_portrait.modulate = Color(target_modulate, 0.25)
-	host.actor_portrait.scale = Vector2(0.985, 0.985)
-	var portrait_tween = host.create_tween().set_parallel(true)
-	portrait_tween.tween_property(host.actor_portrait, "modulate", target_modulate, 0.28)
-	portrait_tween.tween_property(host.actor_portrait, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	host.actor_portrait.scale = Vector2.ONE
+	if host.actor_portrait_tween and host.actor_portrait_tween.is_valid():
+		host.actor_portrait_tween.kill()
+	if should_animate and host.motion_enabled:
+		host.actor_portrait.modulate = Color(target_modulate, 0.25)
+		host.actor_portrait_tween = host.create_tween()
+		host.actor_portrait_tween.tween_property(host.actor_portrait, "modulate", target_modulate, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	else:
+		host.actor_portrait.modulate = target_modulate
 
 
 func _selected_stage_actor(actors: Array) -> Dictionary:
@@ -961,13 +969,8 @@ func _reconcile_stage_actor(actors: Array) -> void:
 	host.stage_actor_id = ""
 	host.stage_actor_name = ""
 	host.game_screen_controller._selected_stage_actor(actors)
-	host.actor_portrait_frame.pivot_offset = host.actor_portrait_frame.size * 0.5
-	host.actor_portrait_frame.scale = Vector2(0.965, 0.965)
-	host.actor_portrait_frame.modulate = Color(1, 1, 1, 0.45)
-	var tween = host.create_tween().set_parallel(true)
-	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(host.actor_portrait_frame, "scale", Vector2.ONE, 0.28)
-	tween.tween_property(host.actor_portrait_frame, "modulate", Color.WHITE, 0.22)
+	host.actor_portrait_frame.scale = Vector2.ONE
+	host.actor_portrait_frame.modulate = Color.WHITE
 
 
 func _focus_actor_from_stage(actor_id: String, actor_name: String) -> void:

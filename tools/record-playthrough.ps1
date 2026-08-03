@@ -18,7 +18,7 @@ $routeID = [string]$routeConfig.id
 if ([string]::IsNullOrWhiteSpace($routeID)) { throw "Recording route has no id: $routePath" }
 
 $profileConfig = switch ($Profile) {
-    "4k" { [pscustomobject]@{ Width = 3840; Height = 2160; Crf = 16; Preset = "slow"; MinimumFreeSpaceGB = 15 } }
+    "4k" { [pscustomobject]@{ Width = 3840; Height = 2160; Crf = 14; Preset = "slow"; MinimumFreeSpaceGB = 15 } }
     default { [pscustomobject]@{ Width = 1920; Height = 1080; Crf = 18; Preset = "medium"; MinimumFreeSpaceGB = 4 } }
 }
 $captureWidth = [int]$profileConfig.Width
@@ -49,6 +49,9 @@ Get-Command ffprobe -ErrorAction Stop | Out-Null
 
 New-Item -ItemType Directory -Force (Split-Path -Parent $serverPath) | Out-Null
 New-Item -ItemType Directory -Force $recordingRoot | Out-Null
+if (Test-Path -LiteralPath $sourcePath) {
+    throw "Recording directory already contains a source video. Use a fresh output directory: $recordingRoot"
+}
 $recordingDrive = [System.IO.DriveInfo]::new([System.IO.Path]::GetPathRoot($recordingRoot))
 $minimumFreeBytes = [int64]$profileConfig.MinimumFreeSpaceGB * 1GB
 if ($recordingDrive.AvailableFreeSpace -lt $minimumFreeBytes) {
@@ -120,6 +123,10 @@ window/size/viewport_width=$captureWidth
 window/size/viewport_height=$captureHeight
 window/size/window_width_override=$captureWidth
 window/size/window_height_override=$captureHeight
+
+[editor]
+
+movie_writer/video_quality=1.0
 "@
     [System.IO.File]::WriteAllText($resolvedOverridePath, $overrideContent, [System.Text.UTF8Encoding]::new($false))
     $createdOverride = $true
@@ -132,7 +139,8 @@ window/size/window_height_override=$captureHeight
         "--script", "res://demo/record_playthrough.gd",
         "--",
         "--scenario=tianqi",
-        "--recording-route=$routeResourcePath"
+        "--recording-route=$routeResourcePath",
+        "--recording-output=${captureWidth}x${captureHeight}"
     )
     $previousErrorPreference = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
@@ -148,6 +156,9 @@ window/size/window_height_override=$captureHeight
     if ($godotExitCode -ne 0) { throw "Godot recording failed with exit code $godotExitCode. See $godotLogPath" }
     if (-not ($godotOutput -match "PLAYTHROUGH_RECORDED")) { throw "Godot exited without a completed playthrough marker. See $godotLogPath" }
 
+    if (-not (Test-Path -LiteralPath $sourcePath)) {
+        throw "Movie Writer did not produce the expected AVI source: $sourcePath"
+    }
     $sourceProbeText = (& ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of json $sourcePath) -join [Environment]::NewLine
     if ($LASTEXITCODE -ne 0) { throw "Could not inspect the recorded source video." }
     $sourceProbe = $sourceProbeText | ConvertFrom-Json
@@ -169,15 +180,17 @@ window/size/window_height_override=$captureHeight
         scenario_id = [string]$routeConfig.scenario_id
         git_commit = $gitCommit
         recorded_at_utc = [DateTime]::UtcNow.ToString("o")
-        capture = [ordered]@{ width = $actualCaptureWidth; height = $actualCaptureHeight; requested_width = $captureWidth; requested_height = $captureHeight; fps = $FramesPerSecond; native = $true }
+        capture = [ordered]@{ width = $actualCaptureWidth; height = $actualCaptureHeight; requested_width = $captureWidth; requested_height = $captureHeight; fps = $FramesPerSecond; native = $true; source_format = "mjpeg"; source_quality = 1.0 }
         output = [ordered]@{ width = $captureWidth; height = $captureHeight; fit = "contain"; codec = "h264"; audio = "aac"; crf = [int]$profileConfig.Crf; path = [System.IO.Path]::GetFileName($videoPath) }
         route_file = $routePath.Substring([System.IO.Path]::GetFullPath($projectRoot).TrimEnd('\').Length + 1).Replace('\', '/')
         source_preserved = [bool]$KeepSource
     }
     $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding utf8
 
-    if (-not $KeepSource -and (Test-Path -LiteralPath $sourcePath)) {
-        Remove-Item -LiteralPath $sourcePath -Force
+    if (-not $KeepSource) {
+        if (Test-Path -LiteralPath $sourcePath) {
+            Remove-Item -LiteralPath $sourcePath -Force
+        }
     }
     Write-Host "Playthrough recording completed: $videoPath"
 }

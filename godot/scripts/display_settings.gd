@@ -88,6 +88,16 @@ func _on_ui_scale_selected(index: int) -> void:
 
 
 func _apply_display_settings(persist := true) -> void:
+	if host.recording_output_size != Vector2i.ZERO:
+		if DisplayServer.get_name() != "headless":
+			var recording_window = host.get_window()
+			var recording_ui_scale := maxf(1.0, minf(
+				float(host.recording_output_size.x) / 1920.0,
+				float(host.recording_output_size.y) / 1080.0
+			))
+			recording_window.content_scale_size = host.recording_output_size
+			recording_window.content_scale_factor = recording_ui_scale
+		return
 	if not host.DISPLAY_MODE_KEYS.has(host.display_mode):
 		host.display_mode = "windowed"
 	if not host.display_settings_controller._available_windowed_resolutions().has(host.display_resolution):

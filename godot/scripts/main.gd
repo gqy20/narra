@@ -37,6 +37,7 @@ const BUNDLED_SERVER_STARTUP_DELAY := 0.4
 const PORTABLE_USER_ARG := "--portable"
 const SCENARIO_ARG_PREFIX := "--scenario="
 const DATA_DIR_ARG_PREFIX := "--data-dir="
+const RECORDING_OUTPUT_ARG_PREFIX := "--recording-output="
 const LOG_MAX_MIB := 5
 const LOG_BACKUPS := 5
 const LOG_LEVELS: Array[String] = ["DEBUG", "INFO", "WARN", "ERROR"]
@@ -126,6 +127,7 @@ var focused_fact_claim := ""
 var stage_actor_id := ""
 var stage_actor_name := ""
 var actor_expression_by_id := {}
+var actor_portrait_tween: Tween
 var selected_map_location_id := ""
 var rendered_location_id := ""
 var visual_mode := "map"
@@ -136,6 +138,7 @@ var motion_enabled := true
 var display_mode := "windowed"
 var display_resolution := Vector2i(1600, 900)
 var ui_scale := 1.0
+var recording_output_size := Vector2i.ZERO
 var ai_enabled := false
 var ai_server_enabled := false
 var ai_server_mode := "disabled"
@@ -383,6 +386,14 @@ func _configure_scenario_selection() -> void:
 				scenario_selector = requested
 		elif argument.begins_with(DATA_DIR_ARG_PREFIX):
 			scenario_data_dir = argument.trim_prefix(DATA_DIR_ARG_PREFIX).strip_edges().simplify_path()
+		elif argument.begins_with(RECORDING_OUTPUT_ARG_PREFIX):
+			var dimensions := argument.trim_prefix(RECORDING_OUTPUT_ARG_PREFIX).to_lower().split("x", false, 1)
+			if dimensions.size() == 2 and dimensions[0].is_valid_int() and dimensions[1].is_valid_int():
+				var requested_size := Vector2i(int(dimensions[0]), int(dimensions[1]))
+				if requested_size.x > 0 and requested_size.y > 0:
+					recording_output_size = requested_size
+					display_resolution = requested_size
+					ui_scale = 1.0
 
 
 func _operation_label(operation: String) -> String:

@@ -141,8 +141,8 @@ func _available_action_ids() -> String:
 
 
 func _wait_until_stable(timeout_ms: int, include_cinematic: bool) -> bool:
-	var deadline := Time.get_ticks_msec() + timeout_ms
-	while Time.get_ticks_msec() < deadline:
+	var timeout: SceneTreeTimer = create_timer(float(timeout_ms) / 1000.0)
+	while timeout.time_left > 0.0:
 		await process_frame
 		var cinematic_director: Variant = app.get("cinematic_director")
 		var cinematic_active: bool = cinematic_director != null and bool(cinematic_director.get("active"))
