@@ -10,6 +10,7 @@ import (
 
 	"fantu/internal/ai"
 	"fantu/internal/app"
+	"fantu/internal/domain"
 )
 
 func renderLocation(output io.Writer, view app.PlayerView) {
@@ -183,6 +184,48 @@ func renderDialogueContext(output io.Writer, session *app.Session, conversation 
 		}
 		fmt.Fprintf(output, "  %s：%s\n", conversation.actor.Name, exchange.NPCText)
 	}
+}
+
+func renderDirectorAudit(output io.Writer, decisions []domain.DirectorDecision, debug, showAll bool) {
+	if len(decisions) == 0 {
+		fmt.Fprintln(output, "世界导演尚未作出任何决策。")
+		return
+	}
+	start := len(decisions) - 1
+	if showAll {
+		start = 0
+	}
+	fmt.Fprintln(output, "世界导演审计：")
+	for _, decision := range decisions[start:] {
+		fmt.Fprintf(output, "  第 %d 天 · %s\n", decision.Day, decision.Description)
+		if debug {
+			fmt.Fprintf(output, "    指令：%s；来源：%s；事件：%s\n", decision.DirectiveID, decision.Source, decision.EventID)
+		} else {
+			fmt.Fprintf(output, "    来源：%s\n", directorSourceLabel(decision.Source))
+		}
+		if decision.Reason != "" {
+			fmt.Fprintf(output, "    选择理由：%s\n", decision.Reason)
+		}
+		if len(decision.FocusSignals) > 0 {
+			fmt.Fprintf(output, "    关注信号：%s\n", strings.Join(decision.FocusSignals, "；"))
+		} else if len(decision.Signals) > 0 {
+			descriptions := make([]string, 0, len(decision.Signals))
+			for _, signal := range decision.Signals {
+				descriptions = append(descriptions, signal.Description)
+			}
+			fmt.Fprintf(output, "    世界信号：%s\n", strings.Join(descriptions, "；"))
+		}
+	}
+	if !showAll && len(decisions) > 1 {
+		fmt.Fprintf(output, "  还有 %d 条历史决策；输入 director all 查看全部。\n", len(decisions)-1)
+	}
+}
+
+func directorSourceLabel(source string) string {
+	if source == "deterministic" {
+		return "确定性规则"
+	}
+	return "AI 模型"
 }
 
 func resolveActor(selector string, actors []app.VisibleActor, debug bool) (app.VisibleActor, error) {

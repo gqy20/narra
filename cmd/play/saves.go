@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"fantu/internal/ai"
 	"fantu/internal/app"
 	"fantu/internal/director"
 	"fantu/internal/domain"
@@ -26,7 +27,9 @@ type terminalGame struct {
 	session       *app.Session
 	saves         *terminalSaveStore
 	autosave      bool
+	dialogue      *ai.Service
 	worldDirector director.Selector
+	ai            *playAIRuntime
 }
 
 type terminalSaveStore struct {
@@ -39,6 +42,20 @@ type terminalSaveInfo struct {
 	Day      int
 	Location string
 	Modified time.Time
+}
+
+func (g *terminalGame) setWorldDirector(service *ai.Service) {
+	if service == nil {
+		g.worldDirector = nil
+		if g.session != nil {
+			g.session.SetWorldDirector(nil)
+		}
+		return
+	}
+	g.worldDirector = service
+	if g.session != nil {
+		g.session.SetWorldDirector(service)
+	}
 }
 
 func newTerminalSaveStore(dir string, bundle domain.Bundle) (*terminalSaveStore, error) {

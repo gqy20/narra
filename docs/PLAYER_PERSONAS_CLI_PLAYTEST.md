@@ -4,7 +4,7 @@
 
 本文档把不同玩家的目标、操作习惯和容错预期转成可重复的 CLI 测试场景，用于后续功能设计、回归测试和 AI/规则边界检查。
 
-本轮试玩基于提交 `a2e7161`，场景为 `data/blackwind`，入口为 `bin/fantu-play.exe`。除“叙事社交型”外均使用 `-ai-enabled=false`；叙事社交型使用当前 `.env` 中的 StepFun 配置。所有观察均来自实际 CLI 输出，不把测试脚本的 PowerShell 管道编码问题计为游戏缺陷。
+本轮试玩基于提交 `a2e7161`，场景为 `data/blackwind`，入口为 `bin/fantu-play.exe`。当时除“叙事社交型”外均使用旧入口 `-ai-enabled=false`；当前版本对应参数为 `-ai-dialogue-enabled=false -ai-director-enabled=false`。叙事社交型使用当前 `.env` 中的 StepFun 配置。所有观察均来自实际 CLI 输出，不把测试脚本的 PowerShell 管道编码问题计为游戏缺陷。
 
 ## 1.1 首轮优化状态
 
@@ -218,7 +218,7 @@
 | CLI-P04 | 急躁新手型 | 新游戏 | 裸数字、漏参数、越界、危险等待 | 错误输入不改状态；长等待需明确命令或确认 |
 | CLI-P05 | 探索存档型 | 新游戏 | 移动、保存、退出、加载 | 日期、地点、物品、历史、已知事实和可行动作完全一致 |
 | CLI-AI-ERR | 叙事社交型 | AI 已启用但 provider 返回错误 | `talk 1` | 明确显示错误，不出现任何虚构台词 |
-| CLI-AI-OFF | 任意 | `-ai-enabled=false` | `talk 1` | 明确显示未启用，日期和 Session 不变 |
+| CLI-AI-OFF | 任意 | `-ai-dialogue-enabled=false -ai-director-enabled=false` | `talk 1` | 明确显示未启用，日期和 Session 不变 |
 | CLI-AI-CANCEL | 反悔或网络敏感型 | AI 请求处于 pending | 排队一条回复，再执行 `context -> cancel -> retry -> cancel` | 生成中命令可用；取消清空排队；旧结果不入库；重试两次均不改变 Session |
 
 ## 6. 自动化执行约定

@@ -3,6 +3,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -52,25 +53,25 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	dialogue, dialogueMode, err := buildPlayDialogueService(aiConfig)
+	aiRuntime, dialogue, worldDirector, err := buildPlayAIRuntime(aiConfig)
 	if err != nil {
 		fail(err)
 	}
-	renderDialogueMode(os.Stdout, dialogueMode)
-	if dialogue != nil {
-		session.SetWorldDirector(dialogue)
+	game := &terminalGame{
+		session: session, saves: store, autosave: *autosave,
+		dialogue: dialogue, ai: aiRuntime,
 	}
-
-	game := &terminalGame{session: session, saves: store, autosave: *autosave}
-	if dialogue != nil {
-		game.worldDirector = dialogue
-	}
+	game.setWorldDirector(worldDirector)
+	renderAIStatus(os.Stdout, game)
 	if err := runGame(os.Stdin, os.Stdout, game, dialogue, *debug); err != nil {
 		fail(err)
 	}
 }
 
 func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai.Service, debug bool) error {
+	if game.dialogue == nil {
+		game.dialogue = dialogue
+	}
 	session := game.session
 	commands := scanTerminalCommands(input)
 	view := session.View()
@@ -88,14 +89,89 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 	var conversation *terminalDialogueSession
 	var pendingDialogue *terminalDialogueRequest
 	var retryDialogue *terminalDialogueAttempt
+	var pendingAction *terminalActionRequest
+	var retryAction string
 	var queuedCommands []terminalCommand
 	var nextDialogueRequestID uint64
+	var nextActionRequestID uint64
 	inputPaused := false
 	renderView(output, view, debug)
 
 	for {
 		if view.Resolved || view.Ended {
 			return nil
+		}
+
+		if pendingAction != nil {
+			commandSource := commands
+			if inputPaused {
+				commandSource = nil
+			}
+			select {
+			case completed := <-pendingAction.result:
+				request := pendingAction
+				stopTerminalAction(request)
+				pendingAction = nil
+				inputPaused = false
+				if completed.requestID != request.id {
+					fmt.Fprintln(output, "已忽略过期的行动结果。")
+					continue
+				}
+				if completed.err != nil {
+					view = game.session.View()
+					retryAction = request.actionID
+					if errors.Is(completed.err, context.Canceled) {
+						fmt.Fprintln(output, "行动已取消，整项行动的变更已回滚；输入 retry 可重新结算。")
+					} else {
+						fmt.Fprintf(output, "行动结算失败：%v\n", completed.err)
+						fmt.Fprintln(output, "会话仍然保留；输入 retry 重试，或选择其他行动。")
+					}
+					queuedCommands = nil
+					continue
+				}
+				var err error
+				view, err = finishTerminalAction(output, game, completed, debug)
+				if err != nil {
+					return err
+				}
+				retryAction = ""
+				actionMenuCurrent = false
+				displayedActions = nil
+				conversation = nil
+				retryDialogue = nil
+				continue
+			case <-pendingAction.ticker.C:
+				fmt.Fprintf(output, "  已等待 %d 秒，世界行动仍在结算……\n", int(time.Since(pendingAction.started).Seconds()))
+				continue
+			case command, ok := <-commandSource:
+				if !ok {
+					commands = nil
+					inputPaused = true
+					continue
+				}
+				if command.err != nil {
+					stopTerminalAction(pendingAction)
+					return command.err
+				}
+				switch command.line {
+				case "cancel":
+					pendingAction.cancel()
+					inputPaused = true
+					fmt.Fprintln(output, "正在取消世界行动并等待事务回滚。")
+				case "await":
+					inputPaused = true
+					fmt.Fprintf(output, "等待行动请求 %d 完成。\n", pendingAction.id)
+				case "retry":
+					fmt.Fprintln(output, "当前行动仍在结算；请先 cancel。")
+				case "q", "quit", "exit":
+					queuedCommands = append(queuedCommands, command)
+					fmt.Fprintln(output, "世界行动结算完成后退出；如需回滚，请先输入 cancel。")
+				default:
+					queuedCommands = append(queuedCommands, command)
+					fmt.Fprintln(output, "世界行动仍在结算；这条输入将在完成后处理。输入 cancel 可取消并清空排队输入。")
+				}
+				continue
+			}
 		}
 
 		if pendingDialogue != nil {
@@ -240,7 +316,7 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 					continue
 				}
 				nextDialogueRequestID++
-				pendingDialogue = beginDialogueRequest(output, game.session, dialogue, *attempt, nextDialogueRequestID)
+				pendingDialogue = beginDialogueRequest(output, game.session, game.dialogue, *attempt, nextDialogueRequestID)
 				continue
 			}
 		}
@@ -259,15 +335,34 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 		case line == "people":
 			renderPeople(output, view, debug)
 			continue
+		case line == "ai" || strings.HasPrefix(line, "ai "):
+			runAICommand(output, game, commandArgument(line))
+			continue
+		case line == "director" || line == "director all":
+			renderDirectorAudit(output, game.session.DirectorDecisions(), debug, line == "director all")
+			continue
 		case line == "talk" || strings.HasPrefix(line, "talk "):
 			var attempt *terminalDialogueAttempt
-			conversation, attempt = prepareDialogueStart(output, game, dialogue, view, commandArgument(line), debug)
+			conversation, attempt = prepareDialogueStart(output, game, game.dialogue, view, commandArgument(line), debug)
 			if attempt != nil {
 				nextDialogueRequestID++
-				pendingDialogue = beginDialogueRequest(output, game.session, dialogue, *attempt, nextDialogueRequestID)
+				pendingDialogue = beginDialogueRequest(output, game.session, game.dialogue, *attempt, nextDialogueRequestID)
 			}
 			continue
 		case line == "retry":
+			if retryAction != "" && conversation == nil {
+				nextActionRequestID++
+				fmt.Fprintln(output, "正在重新结算上次世界行动。")
+				var err error
+				pendingAction, view, err = dispatchTerminalAction(output, game, retryAction, nextActionRequestID, debug)
+				if err != nil {
+					return err
+				}
+				if pendingAction == nil {
+					retryAction = ""
+				}
+				continue
+			}
 			if retryDialogue == nil || conversation == nil {
 				fmt.Fprintln(output, "当前没有可重试的模型请求。")
 				continue
@@ -280,7 +375,7 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 			}
 			nextDialogueRequestID++
 			fmt.Fprintln(output, "正在重新提交上次模型请求。")
-			pendingDialogue = beginDialogueRequest(output, game.session, dialogue, *retryDialogue, nextDialogueRequestID)
+			pendingDialogue = beginDialogueRequest(output, game.session, game.dialogue, *retryDialogue, nextDialogueRequestID)
 			continue
 		case line == "cancel":
 			fmt.Fprintln(output, "当前没有正在生成的模型请求。")
@@ -308,7 +403,8 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 				fmt.Fprintf(output, "无法等待：%v\n", err)
 				continue
 			}
-			view, err = executeTerminalAction(output, game, actionID, debug)
+			nextActionRequestID++
+			pendingAction, view, err = dispatchTerminalAction(output, game, actionID, nextActionRequestID, debug)
 			if err != nil {
 				return err
 			}
@@ -323,7 +419,8 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 				fmt.Fprintf(output, "无法前往：%v\n", err)
 				continue
 			}
-			view, err = executeTerminalAction(output, game, actionID, debug)
+			nextActionRequestID++
+			pendingAction, view, err = dispatchTerminalAction(output, game, actionID, nextActionRequestID, debug)
 			if err != nil {
 				return err
 			}
@@ -353,6 +450,7 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 			displayedActions = nil
 			conversation = nil
 			retryDialogue = nil
+			retryAction = ""
 			renderView(output, view, debug)
 			continue
 		case line == "save" || strings.HasPrefix(line, "save "):
@@ -370,7 +468,8 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 				fmt.Fprintf(output, "无法执行：%v\n", err)
 				continue
 			}
-			view, err = executeTerminalAction(output, game, actionID, debug)
+			nextActionRequestID++
+			pendingAction, view, err = dispatchTerminalAction(output, game, actionID, nextActionRequestID, debug)
 			if err != nil {
 				return err
 			}
@@ -414,7 +513,7 @@ func isTerminalCommand(line string) bool {
 		command = before
 	}
 	switch command {
-	case "q", "quit", "exit", "help", "?", "look", "people", "talk", "actions", "map", "journal", "wait", "go", "saves", "autosave", "load", "save", "do", "context", "leave", "cancel", "retry", "await":
+	case "q", "quit", "exit", "help", "?", "look", "people", "talk", "actions", "map", "journal", "wait", "go", "saves", "autosave", "load", "save", "do", "context", "leave", "cancel", "retry", "await", "ai", "director":
 		return true
 	default:
 		return false
@@ -1002,10 +1101,10 @@ func confidenceLabel(value int) string {
 
 func renderHelp(output io.Writer, debug bool) {
 	if debug {
-		fmt.Fprintln(output, "命令：look；people；talk <编号|人物ID|姓名>（进入多轮对话）；对话中直接输入回复，context 查看语境，cancel 取消生成，retry 重试，await 等待完成，leave 离开；actions [调查|交涉|准备|出行] [page 页码]；actions find <关键词>；do <行动编号>；map [all]；go <地点>；journal；wait；wait complete；wait next；saves；save [槽位]；load <槽位>；autosave [on|off]；quit。")
+		fmt.Fprintln(output, "命令：look；people；talk <编号|人物ID|姓名>（进入多轮对话）；对话中直接输入回复，context 查看语境，cancel 取消生成，retry 重试，await 等待完成，leave 离开；actions [调查|交涉|准备|出行] [page 页码]；actions find <关键词>；do <行动编号>；map [all]；go <地点>；journal；director [all]；ai status/config；wait；wait complete；wait next；saves；save [槽位]；load <槽位>；autosave [on|off]；quit。")
 		return
 	}
-	fmt.Fprintln(output, "命令：look；people；talk <人物编号或姓名>（进入多轮对话）；对话中直接输入回复，context 查看语境，cancel 取消生成，retry 重试，await 等待完成，leave 离开；actions [调查|交涉|准备|出行] [page 页码]；actions find <关键词>；do <行动编号>；map [all]；go <地点>；journal；wait；wait complete；wait next；saves；save [槽位]；load <槽位>；autosave [on|off]；quit。")
+	fmt.Fprintln(output, "命令：look；people；talk <人物编号或姓名>（进入多轮对话）；对话中直接输入回复，context 查看语境，cancel 取消生成，retry 重试，await 等待完成，leave 离开；actions [调查|交涉|准备|出行] [page 页码]；actions find <关键词>；do <行动编号>；map [all]；go <地点>；journal；director [all]；ai status/config；wait；wait complete；wait next；saves；save [槽位]；load <槽位>；autosave [on|off]；quit。")
 }
 
 func fail(err error) {

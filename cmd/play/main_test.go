@@ -14,6 +14,8 @@ import (
 
 	"fantu/internal/ai"
 	"fantu/internal/app"
+	"fantu/internal/director"
+	"fantu/internal/domain"
 	"fantu/internal/scenario"
 )
 
@@ -27,6 +29,24 @@ type failingTerminalDialogueProvider struct{}
 type blockingTerminalDialogueProvider struct {
 	calls   atomic.Int32
 	started chan int32
+}
+
+type cancellableWorldSelector struct {
+	calls   atomic.Int32
+	started chan int32
+}
+
+func (s *cancellableWorldSelector) SelectWorldDirective(ctx context.Context, request director.SelectionRequest) (director.Selection, error) {
+	call := s.calls.Add(1)
+	s.started <- call
+	if call == 1 {
+		<-ctx.Done()
+		return director.Selection{}, ctx.Err()
+	}
+	return director.Selection{
+		DirectiveID: request.Candidates[0].DirectiveID,
+		Reason:      "重试后采用当前节奏", FocusSignals: []string{"公开局势沉寂"}, Source: "test-model",
+	}, nil
 }
 
 func testTerminalGame(session *app.Session) *terminalGame {
@@ -345,6 +365,99 @@ func TestTerminalCanInspectCancelAndRetryDialogueGeneration(t *testing.T) {
 	}
 	if provider.calls.Load() != 2 || len(session.DialogueHistory("N04", session.DialogueRevision("N04"), 8)) != 0 || session.View().Day != 0 {
 		t.Fatalf("cancellation changed state: calls=%d view=%+v", provider.calls.Load(), session.View())
+	}
+}
+
+func TestTerminalCanCancelRetryAndAuditWorldDirector(t *testing.T) {
+	bundle, err := scenario.Load("../../data/blackwind")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "导演取消测试"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if _, err := session.Execute("wait"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	selector := &cancellableWorldSelector{started: make(chan int32, 2)}
+	session.SetWorldDirector(selector)
+	game := testTerminalGame(session)
+	game.worldDirector = selector
+	input, writer := io.Pipe()
+	var output bytes.Buffer
+	done := make(chan error, 1)
+	go func() { done <- runGame(input, &output, game, nil, false) }()
+
+	if _, err := fmt.Fprintln(writer, "wait"); err != nil {
+		t.Fatal(err)
+	}
+	if call := <-selector.started; call != 1 {
+		t.Fatalf("first director call = %d", call)
+	}
+	if _, err := fmt.Fprintln(writer, "cancel"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fmt.Fprintln(writer, "retry"); err != nil {
+		t.Fatal(err)
+	}
+	if call := <-selector.started; call != 2 {
+		t.Fatalf("second director call = %d", call)
+	}
+	for _, command := range []string{"await", "director", "quit"} {
+		if _, err := fmt.Fprintln(writer, command); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if session.View().Day != 3 || selector.calls.Load() != 2 {
+		t.Fatalf("director retry state = day %d calls %d", session.View().Day, selector.calls.Load())
+	}
+	for _, want := range []string{"正在取消世界行动", "变更已回滚", "正在重新结算", "世界导演审计", "重试后采用当前节奏", "公开局势沉寂"} {
+		if !strings.Contains(output.String(), want) {
+			t.Errorf("output missing %q:\n%s", want, output.String())
+		}
+	}
+}
+
+func TestTerminalAIProfilesAreIndependentlyConfigurable(t *testing.T) {
+	game := &terminalGame{ai: &playAIRuntime{
+		dialogue: playAIProfile{Model: "dialogue-old", Timeout: time.Second, MaxTokens: 100},
+		director: playAIProfile{Model: "director-old", Timeout: 2 * time.Second, MaxTokens: 200},
+	}}
+	var output bytes.Buffer
+	runAICommand(&output, game, "dialogue model dialogue-new")
+	runAICommand(&output, game, "director timeout 9s")
+	runAICommand(&output, game, "status")
+	if game.ai.dialogue.Model != "dialogue-new" || game.ai.director.Model != "director-old" || game.ai.director.Timeout != 9*time.Second {
+		t.Fatalf("profiles were not independent: %+v", game.ai)
+	}
+	if !strings.Contains(output.String(), "dialogue-new") || !strings.Contains(output.String(), "director-old") {
+		t.Fatalf("status omitted profiles:\n%s", output.String())
+	}
+}
+
+func TestDirectorAuditHidesInternalIDsOutsideDebugMode(t *testing.T) {
+	decision := domain.DirectorDecision{
+		Day: 3, DirectiveID: "private-directive", Description: "一名游商抵达",
+		Source: "model", Reason: "局势沉寂", FocusSignals: []string{"三日无变化"}, EventID: "event-private",
+	}
+	var output bytes.Buffer
+	renderDirectorAudit(&output, []domain.DirectorDecision{decision}, false, true)
+	if strings.Contains(output.String(), "private-directive") || !strings.Contains(output.String(), "局势沉寂") {
+		t.Fatalf("normal audit leaked IDs or omitted reason:\n%s", output.String())
+	}
+	output.Reset()
+	renderDirectorAudit(&output, []domain.DirectorDecision{decision}, true, true)
+	if !strings.Contains(output.String(), "private-directive") || !strings.Contains(output.String(), "event-private") {
+		t.Fatalf("debug audit omitted IDs:\n%s", output.String())
 	}
 }
 

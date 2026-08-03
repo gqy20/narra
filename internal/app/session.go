@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
@@ -89,10 +90,18 @@ func (s *Session) View() PlayerView {
 }
 
 func (s *Session) Execute(actionID string) (PlayerView, error) {
-	return s.execute(actionID, false)
+	return s.ExecuteContext(context.Background(), actionID)
+}
+
+func (s *Session) ExecuteContext(ctx context.Context, actionID string) (PlayerView, error) {
+	return s.executeContext(ctx, actionID, false)
 }
 
 func (s *Session) execute(actionID string, allowAfterResolution bool) (PlayerView, error) {
+	return s.executeContext(context.Background(), actionID, allowAfterResolution)
+}
+
+func (s *Session) executeContext(ctx context.Context, actionID string, allowAfterResolution bool) (PlayerView, error) {
 	state := s.engine.State()
 	if state.Day >= s.bundle.Scenario.Duration {
 		return s.View(), fmt.Errorf("scenario already ended on day %d", state.Day)
@@ -101,7 +110,6 @@ func (s *Session) execute(actionID string, allowAfterResolution bool) (PlayerVie
 		return s.View(), fmt.Errorf("core situation already resolved on day %d", state.Day)
 	}
 	options := s.actionOptions(state)
-	s.recordCatalogSize(len(options))
 	option, ok := options[actionID]
 	if actionID == "wait" {
 		option, ok = waitOption("观察局势并推进一天"), true
@@ -109,24 +117,28 @@ func (s *Session) execute(actionID string, allowAfterResolution bool) (PlayerVie
 	if !ok {
 		return s.View(), fmt.Errorf("action %q is not currently available", actionID)
 	}
+	checkpoint := s.engine.Checkpoint()
+	previousNextID := s.nextID
+	previousLastTurn := cloneTurnFeedback(s.lastTurn)
+	s.recordCatalogSize(len(options))
 	var err error
 	actionName := option.view.Name
 	var after *domain.WorldState
 	if option.advanceMode != "" {
-		after, s.lastTurn, err = s.advanceUntilDecision(state, actionID, actionName, option.advanceMode)
+		after, s.lastTurn, err = s.advanceUntilDecision(ctx, state, actionID, actionName, option.advanceMode)
 	} else if option.command == nil {
-		after, err = s.engine.Step(nil)
+		after, err = s.engine.StepContext(ctx, nil)
 	} else {
 		s.nextID++
 		command := *option.command
 		command.ID = fmt.Sprintf("interactive-%02d-%03d", state.Day+1, s.nextID)
 		command.Day = state.Day + 1
-		after, err = s.engine.Step([]domain.PlayerCommand{command})
-		if err != nil {
-			s.nextID--
-		}
+		after, err = s.engine.StepContext(ctx, []domain.PlayerCommand{command})
 	}
 	if err != nil {
+		s.engine.Restore(checkpoint)
+		s.nextID = previousNextID
+		s.lastTurn = previousLastTurn
 		return s.View(), err
 	}
 	s.history = append(s.history, actionID)
@@ -139,6 +151,13 @@ func (s *Session) execute(actionID string, allowAfterResolution bool) (PlayerVie
 
 func (s *Session) History() []string {
 	return append([]string(nil), s.history...)
+}
+
+// DirectorDecisions returns a detached audit trail of authoritative world
+// director choices made during this session.
+func (s *Session) DirectorDecisions() []domain.DirectorDecision {
+	state := s.engine.State()
+	return state.DirectorDecisions
 }
 
 func (s *Session) visiblePlayer(state *domain.WorldState) VisiblePlayer {

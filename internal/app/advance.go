@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -9,11 +10,11 @@ import (
 	"fantu/internal/domain"
 )
 
-func (s *Session) advanceUntilDecision(before *domain.WorldState, actionID, actionName, mode string) (*domain.WorldState, *TurnFeedback, error) {
+func (s *Session) advanceUntilDecision(ctx context.Context, before *domain.WorldState, actionID, actionName, mode string) (*domain.WorldState, *TurnFeedback, error) {
 	current := before
 	aggregate := &TurnFeedback{ActionID: actionID, Action: actionName, Status: "completed"}
 	for current.Day < s.bundle.Scenario.Duration {
-		next, err := s.engine.Step(nil)
+		next, err := s.engine.StepContext(ctx, nil)
 		if err != nil {
 			return current, nil, err
 		}

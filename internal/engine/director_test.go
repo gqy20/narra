@@ -16,6 +16,14 @@ type testWorldSelector struct {
 	calls     int
 }
 
+type blockingWorldSelector struct{ started chan struct{} }
+
+func (s blockingWorldSelector) SelectWorldDirective(ctx context.Context, _ director.SelectionRequest) (director.Selection, error) {
+	close(s.started)
+	<-ctx.Done()
+	return director.Selection{}, ctx.Err()
+}
+
 func (s *testWorldSelector) SelectWorldDirective(context.Context, director.SelectionRequest) (director.Selection, error) {
 	s.calls++
 	return s.selection, s.err
@@ -84,6 +92,32 @@ func TestAIWorldDirectorFailureRollsBackWithoutDeterministicFallback(t *testing.
 	state := simulation.State()
 	if state.Day != 0 || state.WorldFlag("chosen") || len(state.DirectorDecisions) != 0 {
 		t.Fatalf("failed model call leaked or fell back: %+v", state)
+	}
+}
+
+func TestWorldDirectorCancellationRollsBackWholeDay(t *testing.T) {
+	bundle := plannerBundle(t, domain.NPCConfig{ID: "N01", Name: "测试角色", Location: "L01", Resources: map[string]int{}}, 1)
+	bundle.Scenario.Directives = []domain.WorldDirectiveDefinition{{
+		ID: "candidate", Description: "候选", Trigger: "phase_entered", Phase: "测试", Priority: 10,
+		Effects: []domain.Effect{{Type: "set_flag", Scope: "world", TargetID: "world", Key: "chosen", Value: "true"}},
+	}}
+	simulation := New(bundle)
+	started := make(chan struct{})
+	simulation.SetWorldDirector(blockingWorldSelector{started: started})
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := simulation.StepContext(ctx, nil)
+		done <- err
+	}()
+	<-started
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("StepContext() error = %v", err)
+	}
+	state := simulation.State()
+	if state.Day != 0 || state.WorldFlag("chosen") || len(state.DirectorDecisions) != 0 {
+		t.Fatalf("cancelled director leaked state: %+v", state)
 	}
 }
 

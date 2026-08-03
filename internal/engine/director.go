@@ -11,7 +11,7 @@ import (
 // runWorldDirector lets the director select one scenario-authored capability
 // before NPCs inspect the day's shared snapshot. Effects still flow through
 // the engine's normal validation, provenance, and transactional rollback.
-func (e *Engine) runWorldDirector() error {
+func (e *Engine) runWorldDirector(ctx context.Context) error {
 	request := director.Request(e.state, e.bundle.Scenario.Directives)
 	choices := director.Choices(e.state, e.bundle.Scenario.Directives)
 	e.state.Director.LastPhase = e.state.Phase
@@ -28,7 +28,7 @@ func (e *Engine) runWorldDirector() error {
 		selectedID, source, reason = recorded.DirectiveID, recorded.Source, recorded.Reason
 		focusSignals = append([]string(nil), recorded.FocusSignals...)
 	} else if e.directorSelector != nil {
-		selection, err := e.directorSelector.SelectWorldDirective(context.Background(), request)
+		selection, err := e.directorSelector.SelectWorldDirective(ctx, request)
 		if err != nil {
 			return fmt.Errorf("world director model selection: %w", err)
 		}

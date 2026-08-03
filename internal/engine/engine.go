@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -18,6 +19,25 @@ type Engine struct {
 	directorSelector  director.Selector
 	directorReplay    map[int]domain.DirectorDecision
 	replayingDirector bool
+}
+
+// Checkpoint is an opaque transactional snapshot used by higher-level
+// commands that may advance more than one day.
+type Checkpoint struct {
+	state  *domain.WorldState
+	nextID int
+}
+
+func (e *Engine) Checkpoint() *Checkpoint {
+	return &Checkpoint{state: cloneWorld(e.state), nextID: e.nextID}
+}
+
+func (e *Engine) Restore(checkpoint *Checkpoint) {
+	if checkpoint == nil {
+		return
+	}
+	e.state = cloneWorld(checkpoint.state)
+	e.nextID = checkpoint.nextID
 }
 
 func (e *Engine) SetWorldDirector(selector director.Selector) { e.directorSelector = selector }
@@ -141,9 +161,15 @@ func (e *Engine) RunUntil(targetDay int) (*domain.WorldState, error) {
 }
 
 func (e *Engine) Step(commands []domain.PlayerCommand) (*domain.WorldState, error) {
+	return e.StepContext(context.Background(), commands)
+}
+
+// StepContext advances one transactional world day and allows callers to
+// cancel external decision providers without committing a partial day.
+func (e *Engine) StepContext(ctx context.Context, commands []domain.PlayerCommand) (*domain.WorldState, error) {
 	backup := cloneWorld(e.state)
 	backupNextID := e.nextID
-	state, err := e.step(commands)
+	state, err := e.step(ctx, commands)
 	if err != nil {
 		e.state = backup
 		e.nextID = backupNextID
@@ -151,7 +177,10 @@ func (e *Engine) Step(commands []domain.PlayerCommand) (*domain.WorldState, erro
 	return state, err
 }
 
-func (e *Engine) step(commands []domain.PlayerCommand) (*domain.WorldState, error) {
+func (e *Engine) step(ctx context.Context, commands []domain.PlayerCommand) (*domain.WorldState, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	day := e.state.Day + 1
 	if day > e.bundle.Scenario.Duration {
 		return nil, fmt.Errorf("scenario already ended on day %d", e.state.Day)
@@ -167,7 +196,10 @@ func (e *Engine) step(commands []domain.PlayerCommand) (*domain.WorldState, erro
 	if err := e.deliverInformation(day); err != nil {
 		return nil, err
 	}
-	if err := e.runWorldDirector(); err != nil {
+	if err := e.runWorldDirector(ctx); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 

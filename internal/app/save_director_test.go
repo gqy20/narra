@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -40,7 +41,7 @@ func TestSavePersistsAndReplaysAuthoritativeWorldDirectorChoices(t *testing.T) {
 	if err := session.Save(&saved); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(saved.String(), `"director_decisions"`) || !strings.Contains(saved.String(), `"存档测试选择"`) {
+	if !strings.Contains(saved.String(), `"director_replay"`) || !strings.Contains(saved.String(), `"complete": true`) || !strings.Contains(saved.String(), `"存档测试选择"`) {
 		t.Fatalf("save omitted director audit: %s", saved.String())
 	}
 	restored, err := LoadSession(bundle, bytes.NewReader(saved.Bytes()))
@@ -49,5 +50,50 @@ func TestSavePersistsAndReplaysAuthoritativeWorldDirectorChoices(t *testing.T) {
 	}
 	if got := restored.engine.State().DirectorDecisions; len(got) != len(decisions) || got[0].DirectiveID != decisions[0].DirectiveID || got[0].Reason != "存档测试选择" {
 		t.Fatalf("replayed decisions = %+v", got)
+	}
+}
+
+func TestLoadRejectsIncompleteOrStrippedDirectorReplay(t *testing.T) {
+	bundle, err := scenario.Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := NewSession(bundle, DefaultPlayer(bundle, "导演契约测试"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := session.Execute("wait:next"); err != nil {
+		t.Fatal(err)
+	}
+	var saved bytes.Buffer
+	if err := session.Save(&saved); err != nil {
+		t.Fatal(err)
+	}
+	for name, mutate := range map[string]func(map[string]any){
+		"missing": func(value map[string]any) { delete(value, "director_replay") },
+		"incomplete": func(value map[string]any) {
+			value["director_replay"].(map[string]any)["complete"] = false
+		},
+		"missing decisions": func(value map[string]any) {
+			delete(value["director_replay"].(map[string]any), "decisions")
+		},
+		"stripped decisions": func(value map[string]any) {
+			value["director_replay"].(map[string]any)["decisions"] = []any{}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var value map[string]any
+			if err := json.Unmarshal(saved.Bytes(), &value); err != nil {
+				t.Fatal(err)
+			}
+			mutate(value)
+			encoded, err := json.Marshal(value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := LoadSession(bundle, bytes.NewReader(encoded)); err == nil {
+				t.Fatal("load accepted an incomplete world director replay")
+			}
+		})
 	}
 }
