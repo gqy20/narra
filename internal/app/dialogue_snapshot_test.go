@@ -15,6 +15,9 @@ func TestDialogueSnapshotRedactsPrivateBeliefsAndWorldInternals(t *testing.T) {
 	if snapshot.Actor.ID != "N01" || snapshot.Revision == "" || snapshot.Situation != "focus" {
 		t.Fatalf("snapshot identity = %+v", snapshot)
 	}
+	if snapshot.Scenario.Title == "" || snapshot.Scenario.Context == "" || snapshot.Scenario.PlayerAddress == "" || snapshot.Scenario.Style == "" {
+		t.Fatalf("scenario dialogue presentation is incomplete: %+v", snapshot.Scenario)
+	}
 	for _, claim := range snapshot.AllowedClaims {
 		if claim.FactID == "F01" || claim.FactID == "F10" {
 			t.Fatalf("private belief leaked into allowed claims: %+v", snapshot.AllowedClaims)

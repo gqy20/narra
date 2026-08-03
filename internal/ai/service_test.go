@@ -35,10 +35,27 @@ func (p *fakeProvider) GenerateDialogue(ctx context.Context, request GenerationR
 func dialogueTestSnapshot() app.DialogueSnapshot {
 	return app.DialogueSnapshot{
 		Revision: "blackwind:0:0:N01", ScenarioID: "blackwind", Situation: "focus",
+		Scenario:         app.DialogueScenario{Title: "测试场景", Context: "架空城邦调查", PlayerAddress: "先生", Style: "克制的调查叙事口吻"},
 		Actor:            app.DialogueActor{ID: "N01", Name: "李玄", SpeechGuidance: []string{"保持克制"}},
 		Player:           app.DialoguePlayer{ID: "P00", Name: "测试玩家"},
 		AllowedClaims:    []app.DialogueClaim{{FactID: "F02", Claim: "一条传闻", Confidence: "只是听说"}},
 		AvailableActions: []app.DialogueAction{{ID: "tell:N01:F02", Name: "告知线索"}},
+	}
+}
+
+func TestConversationPromptUsesScenarioDialogueContext(t *testing.T) {
+	provider := &fakeProvider{draft: aiTestDraft{value: DialogueDraft{
+		Utterance: "这份记录还需核对。", Emotion: "neutral", DialogueAct: "acknowledge",
+	}}}
+	_, err := NewService(provider, ServiceOptions{}).GenerateConversationTurn(context.Background(), dialogueTestSnapshot(), nil, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(provider.lastRequest.System, "凡途") || strings.Contains(provider.lastRequest.System, "修仙") || strings.Contains(provider.lastRequest.System, "道友") {
+		t.Fatalf("system prompt still contains scenario-specific language: %s", provider.lastRequest.System)
+	}
+	if !strings.Contains(provider.lastRequest.Input, "架空城邦调查") || !strings.Contains(provider.lastRequest.Input, "克制的调查叙事口吻") {
+		t.Fatalf("scenario dialogue metadata was omitted: %s", provider.lastRequest.Input)
 	}
 }
 

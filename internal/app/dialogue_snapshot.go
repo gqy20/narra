@@ -14,6 +14,7 @@ import (
 type DialogueSnapshot struct {
 	Revision         string           `json:"revision"`
 	ScenarioID       string           `json:"scenario_id"`
+	Scenario         DialogueScenario `json:"scenario"`
 	Day              int              `json:"day"`
 	Situation        string           `json:"situation"`
 	Actor            DialogueActor    `json:"actor"`
@@ -25,6 +26,13 @@ type DialogueSnapshot struct {
 	PrivateDrives    []string         `json:"private_drives,omitempty"`
 	AllowedActs      []string         `json:"allowed_acts,omitempty"`
 	AvailableActions []DialogueAction `json:"available_actions,omitempty"`
+}
+
+type DialogueScenario struct {
+	Title         string `json:"title"`
+	Context       string `json:"context,omitempty"`
+	PlayerAddress string `json:"player_address,omitempty"`
+	Style         string `json:"style,omitempty"`
 }
 
 type DialogueActor struct {
@@ -93,6 +101,10 @@ func (s *Session) DialogueSnapshotFor(actorID, situation string) (DialogueSnapsh
 	relation := state.RelationBetween(actorID, state.Player.ID)
 	snapshot := DialogueSnapshot{
 		Revision: s.dialogueRevision(state, actorID), ScenarioID: s.bundle.Scenario.ID,
+		Scenario: DialogueScenario{
+			Title: s.bundle.Scenario.Title, Context: s.bundle.Dialogue.Context,
+			PlayerAddress: s.bundle.Dialogue.PlayerAddress, Style: s.bundle.Dialogue.Style,
+		},
 		Day: state.Day, Situation: situation,
 		Actor: DialogueActor{
 			ID: actorID, Name: npc.Name, Faction: npc.Faction,
