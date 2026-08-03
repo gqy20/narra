@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 
 	"fantu/internal/domain"
@@ -18,6 +19,9 @@ func Validate(bundle domain.Bundle) error {
 		return err
 	}
 	if err := validateDefaultPlayer(bundle); err != nil {
+		return err
+	}
+	if err := validateFlagRegistry(bundle); err != nil {
 		return err
 	}
 	if err := validateStoryArcs(bundle); err != nil {
@@ -145,6 +149,108 @@ func Validate(bundle domain.Bundle) error {
 		}
 	}
 	return nil
+}
+
+func validateFlagRegistry(bundle domain.Bundle) error {
+	for key, flag := range bundle.Flags {
+		if flag.ID == "" || flag.Description == "" || flag.Scope != "world" && flag.Scope != "actor" || key != flag.Scope+":"+flag.ID {
+			return fmt.Errorf("invalid flag declaration %q", key)
+		}
+	}
+	references := make(map[string]bool)
+	collectFlagReferences(reflect.ValueOf(bundle.Scenario), references)
+	collectFlagReferences(reflect.ValueOf(bundle.StoryArcs), references)
+	collectFlagReferences(reflect.ValueOf(bundle.NPCs), references)
+	for _, location := range bundle.Locations {
+		for _, route := range location.Routes {
+			addFlagReference(references, "world", route.RequiredFlag)
+		}
+	}
+	for _, market := range bundle.Scenario.Markets {
+		addFlagReference(references, "world", market.BlockadeFlag)
+	}
+	addFlagReference(references, "actor", bundle.Scenario.Contest.PreparationFlag)
+	contestRules := append([]domain.ContestOutcomeRule(nil), bundle.Scenario.Contest.OutcomeRules...)
+	contestRules = append(contestRules, bundle.Scenario.Contest.RewardRules...)
+	for _, rule := range contestRules {
+		for _, id := range rule.RequiredWorldFlags {
+			addFlagReference(references, "world", id)
+		}
+		for _, id := range rule.RequiredPlayerFlags {
+			addFlagReference(references, "actor", id)
+		}
+	}
+	missing := make([]string, 0)
+	for key := range references {
+		if _, ok := bundle.Flags[key]; !ok {
+			missing = append(missing, key)
+		}
+	}
+	sort.Strings(missing)
+	if len(missing) > 0 {
+		return fmt.Errorf("undeclared flags: %v", missing)
+	}
+	return nil
+}
+
+var conditionType = reflect.TypeOf(domain.Condition{})
+var effectType = reflect.TypeOf(domain.Effect{})
+
+func collectFlagReferences(value reflect.Value, references map[string]bool) {
+	if !value.IsValid() {
+		return
+	}
+	if value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer {
+		if !value.IsNil() {
+			collectFlagReferences(value.Elem(), references)
+		}
+		return
+	}
+	if value.Type() == conditionType {
+		condition := value.Interface().(domain.Condition)
+		if condition.Type == "flag" || condition.Type == "missing_flag" {
+			scope := condition.Scope
+			if scope != "actor" {
+				scope = "world"
+			}
+			addFlagReference(references, scope, condition.Key)
+		}
+		return
+	}
+	if value.Type() == effectType {
+		effect := value.Interface().(domain.Effect)
+		if effect.Type == "set_flag" {
+			scope := effect.Scope
+			if scope != "world" && effect.TargetID != "world" {
+				scope = "actor"
+			} else {
+				scope = "world"
+			}
+			addFlagReference(references, scope, effect.Key)
+		}
+		return
+	}
+	switch value.Kind() {
+	case reflect.Struct:
+		for index := 0; index < value.NumField(); index++ {
+			collectFlagReferences(value.Field(index), references)
+		}
+	case reflect.Slice, reflect.Array:
+		for index := 0; index < value.Len(); index++ {
+			collectFlagReferences(value.Index(index), references)
+		}
+	case reflect.Map:
+		iterator := value.MapRange()
+		for iterator.Next() {
+			collectFlagReferences(iterator.Value(), references)
+		}
+	}
+}
+
+func addFlagReference(references map[string]bool, scope, id string) {
+	if id != "" {
+		references[scope+":"+id] = true
+	}
 }
 
 func validateContestRules(bundle domain.Bundle) error {
@@ -533,6 +639,9 @@ func validateConditionsAndEffects(start, completion []domain.Condition, effects 
 		}
 	}
 	for _, effect := range effects {
+		if !effect.Type.Valid() {
+			return fmt.Errorf("unknown effect type %q", effect.Type)
+		}
 		if effect.Scope != "" && effect.Scope != "world" && effect.Scope != "actor" {
 			return fmt.Errorf("effect %s has invalid scope %q", effect.Type, effect.Scope)
 		}

@@ -130,7 +130,7 @@ func summarize(bundle domain.Bundle, state *domain.WorldState) Result {
 			result.ActionCounts[event.ActionID]++
 		}
 		for _, effect := range event.Effects {
-			result.RuleCoverage["effect:"+effect.Type]++
+			result.RuleCoverage["effect:"+string(effect.Type)]++
 			if effect.Type == "adjust_resource" {
 				result.ResourceFlow[effect.Key] += effect.Amount
 			}

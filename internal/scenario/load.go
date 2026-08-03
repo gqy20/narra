@@ -25,7 +25,7 @@ type manifest struct {
 
 func Load(dir string) (domain.Bundle, error) {
 	var bundle domain.Bundle
-	loadedFiles := make([]string, 0, 9)
+	loadedFiles := make([]string, 0, 10)
 	var metadata manifest
 	manifestPath, err := readDataFile(dir, "manifest", &metadata)
 	if err != nil {
@@ -57,6 +57,21 @@ func Load(dir string) (domain.Bundle, error) {
 			return bundle, fmt.Errorf("duplicate story arc id %q", arc.ID)
 		}
 		bundle.StoryArcs[arc.ID] = arc
+	}
+
+	var flags []domain.FlagDefinition
+	path, err = readDataFile(dir, "flags", &flags)
+	if err != nil {
+		return bundle, err
+	}
+	loadedFiles = append(loadedFiles, path)
+	bundle.Flags = make(map[string]domain.FlagDefinition, len(flags))
+	for _, flag := range flags {
+		key := flag.Scope + ":" + flag.ID
+		if _, exists := bundle.Flags[key]; exists {
+			return bundle, fmt.Errorf("duplicate flag %q", key)
+		}
+		bundle.Flags[key] = flag
 	}
 
 	var actions []domain.ActionDefinition

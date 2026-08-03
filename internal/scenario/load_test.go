@@ -394,3 +394,25 @@ func TestValidateRejectsInvalidContestContentRule(t *testing.T) {
 		t.Fatalf("invalid contest rule error = %v", err)
 	}
 }
+
+func TestValidateRejectsUndeclaredFlag(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	delete(bundle.Flags, "world:valley_open")
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "world:valley_open") {
+		t.Fatalf("undeclared flag error = %v", err)
+	}
+}
+
+func TestValidateRejectsUnknownEffectType(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	bundle.Scenario.FixedEvents[0].Effects[0].Type = domain.EffectType("typo_effect")
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "unknown effect type") {
+		t.Fatalf("unknown effect error = %v", err)
+	}
+}

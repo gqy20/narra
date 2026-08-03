@@ -14,7 +14,7 @@ func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, 
 			targetID = defaultTarget
 		}
 		switch effect.Type {
-		case "move":
+		case domain.EffectMove:
 			if ok, reason := e.movementLegal(targetID, effect.Value, 0, effect.BypassRouteFlag); !ok {
 				return fmt.Errorf("illegal move for %s: %s", targetID, reason)
 			}
@@ -33,7 +33,7 @@ func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, 
 				return fmt.Errorf("unknown destination %s", effect.Value)
 			}
 			npc.Location = effect.Value
-		case "add_item":
+		case domain.EffectAddItem:
 			if e.isPlayer(targetID) {
 				amount := effect.Amount
 				if amount == 0 {
@@ -51,7 +51,7 @@ func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, 
 				amount = 1
 			}
 			npc.Items[effect.Key] += amount
-		case "remove_item":
+		case domain.EffectRemoveItem:
 			if e.isPlayer(targetID) {
 				amount := effect.Amount
 				if amount == 0 {
@@ -75,7 +75,7 @@ func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, 
 				return fmt.Errorf("NPC %s lacks item %s", targetID, effect.Key)
 			}
 			npc.Items[effect.Key] -= amount
-		case "market_buy":
+		case domain.EffectMarketBuy:
 			market := e.state.Markets[effect.Value]
 			amount := effect.Amount
 			if amount <= 0 {
@@ -92,7 +92,7 @@ func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, 
 			} else {
 				e.state.NPCs[targetID].Items[effect.Key] += amount
 			}
-		case "adjust_resource":
+		case domain.EffectAdjustResource:
 			if e.isPlayer(targetID) {
 				e.state.Player.Resources[effect.Key] += effect.Amount
 				continue
@@ -102,7 +102,7 @@ func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, 
 				return err
 			}
 			npc.Resources[effect.Key] += effect.Amount
-		case "adjust_injury":
+		case domain.EffectAdjustInjury:
 			if e.isPlayer(targetID) {
 				e.state.Player.Injury += effect.Amount
 				if e.state.Player.Injury < 0 {
@@ -124,7 +124,7 @@ func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, 
 			if npc.Injury > 3 {
 				npc.Injury = 3
 			}
-		case "set_belief":
+		case domain.EffectSetBelief:
 			if _, ok := e.state.Facts[effect.FactID]; !ok {
 				return fmt.Errorf("unknown fact %s", effect.FactID)
 			}
@@ -158,14 +158,14 @@ func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, 
 				}
 				e.mergeActorBelief(id, belief)
 			}
-		case "set_flag":
+		case domain.EffectSetFlag:
 			value := effect.Value != "false"
 			if effect.Scope == "world" || targetID == "world" {
 				e.state.SetWorldFlagWithSource(effect.Key, value, event.ID)
 			} else {
 				e.state.SetActorFlagWithSource(targetID, effect.Key, value, event.ID)
 			}
-		case "transfer_unique":
+		case domain.EffectTransferUnique:
 			if ok, reason := e.uniqueTransfersLegal([]domain.Effect{effect}); !ok {
 				return fmt.Errorf("illegal unique transfer: %s", reason)
 			}
@@ -183,9 +183,9 @@ func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, 
 			} else if npc, ok := e.state.NPCs[targetID]; ok {
 				npc.Items[effect.Key]++
 			}
-		case "set_outcome":
+		case domain.EffectSetOutcome:
 			e.state.Outcome = effect.Value
-		case "adjust_relation":
+		case domain.EffectAdjustRelation:
 			fromID := effect.FromID
 			if fromID == "" {
 				fromID = event.ActorID
@@ -213,13 +213,13 @@ func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, 
 				return fmt.Errorf("unknown relation dimension %s", effect.Key)
 			}
 			e.state.Relations[key] = relation
-		case "open_opportunity":
+		case domain.EffectOpenOpportunity:
 			e.state.Opportunities[effect.Key] = effect.Value
 			e.state.OpportunitySources[effect.Key] = event.ID
-		case "close_opportunity":
+		case domain.EffectCloseOpportunity:
 			delete(e.state.Opportunities, effect.Key)
 			delete(e.state.OpportunitySources, effect.Key)
-		case "set_story_state":
+		case domain.EffectSetStoryState:
 			arc, ok := e.bundle.StoryArcs[effect.Key]
 			if !ok || !storyStateDeclared(arc, effect.Value) {
 				return fmt.Errorf("unknown story state %s:%s", effect.Key, effect.Value)

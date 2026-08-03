@@ -90,6 +90,12 @@ type StoryChoice struct {
 	ToState            string      `json:"to_state"`
 }
 
+type FlagDefinition struct {
+	ID          string `json:"id"`
+	Scope       string `json:"scope"`
+	Description string `json:"description"`
+}
+
 // OpportunityActionDefinition maps an open world opportunity to a normal
 // authoritative player action. The world director may open the opportunity,
 // but only the player can choose whether to execute its effects.
@@ -309,24 +315,54 @@ type ScoreInput struct {
 	Danger       int `json:"danger"`
 }
 
+type EffectType string
+
+const (
+	EffectMove             EffectType = "move"
+	EffectAddItem          EffectType = "add_item"
+	EffectRemoveItem       EffectType = "remove_item"
+	EffectMarketBuy        EffectType = "market_buy"
+	EffectAdjustResource   EffectType = "adjust_resource"
+	EffectAdjustInjury     EffectType = "adjust_injury"
+	EffectSetBelief        EffectType = "set_belief"
+	EffectSetFlag          EffectType = "set_flag"
+	EffectTransferUnique   EffectType = "transfer_unique"
+	EffectSetOutcome       EffectType = "set_outcome"
+	EffectAdjustRelation   EffectType = "adjust_relation"
+	EffectOpenOpportunity  EffectType = "open_opportunity"
+	EffectCloseOpportunity EffectType = "close_opportunity"
+	EffectSetStoryState    EffectType = "set_story_state"
+)
+
+func (effectType EffectType) Valid() bool {
+	switch effectType {
+	case EffectMove, EffectAddItem, EffectRemoveItem, EffectMarketBuy, EffectAdjustResource,
+		EffectAdjustInjury, EffectSetBelief, EffectSetFlag, EffectTransferUnique, EffectSetOutcome,
+		EffectAdjustRelation, EffectOpenOpportunity, EffectCloseOpportunity, EffectSetStoryState:
+		return true
+	default:
+		return false
+	}
+}
+
 type Effect struct {
-	Type             string `json:"type"`
-	Scope            string `json:"scope,omitempty"`
-	FromID           string `json:"from_id"`
-	TargetID         string `json:"target_id"`
-	Key              string `json:"key"`
-	Value            string `json:"value"`
-	Amount           int    `json:"amount"`
-	FactID           string `json:"fact_id"`
-	Claim            string `json:"claim"`
-	Confidence       int    `json:"confidence"`
-	EvidenceStrength int    `json:"evidence_strength,omitempty"`
-	Propagation      string `json:"propagation,omitempty"`
-	DelayDays        int    `json:"delay_days,omitempty"`
-	Distortion       int    `json:"distortion,omitempty"`
-	Secrecy          int    `json:"secrecy,omitempty"`
-	Source           string `json:"source,omitempty"`
-	BypassRouteFlag  bool   `json:"bypass_route_flag,omitempty"`
+	Type             EffectType `json:"type"`
+	Scope            string     `json:"scope,omitempty"`
+	FromID           string     `json:"from_id"`
+	TargetID         string     `json:"target_id"`
+	Key              string     `json:"key"`
+	Value            string     `json:"value"`
+	Amount           int        `json:"amount"`
+	FactID           string     `json:"fact_id"`
+	Claim            string     `json:"claim"`
+	Confidence       int        `json:"confidence"`
+	EvidenceStrength int        `json:"evidence_strength,omitempty"`
+	Propagation      string     `json:"propagation,omitempty"`
+	DelayDays        int        `json:"delay_days,omitempty"`
+	Distortion       int        `json:"distortion,omitempty"`
+	Secrecy          int        `json:"secrecy,omitempty"`
+	Source           string     `json:"source,omitempty"`
+	BypassRouteFlag  bool       `json:"bypass_route_flag,omitempty"`
 }
 
 type ItemDefinition struct {
@@ -360,6 +396,7 @@ type Bundle struct {
 	Content       ContentMetadata
 	Scenario      Scenario
 	StoryArcs     map[string]StoryArc
+	Flags         map[string]FlagDefinition
 	Actions       map[string]ActionDefinition
 	Facts         map[string]Fact
 	NPCs          []NPCConfig
