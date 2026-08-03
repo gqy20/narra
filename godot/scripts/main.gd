@@ -3380,7 +3380,7 @@ func _toggle_journal_travel_details() -> void:
 
 func _travel_resolution_action(actions: Array) -> Dictionary:
 	for action in actions:
-		if str(action.get("kind", "")) == "recover" and str(action.get("target_id", "")) == "N06":
+		if str(action.get("kind", "")) == "recover":
 			return action
 	for action in actions:
 		if str(action.get("kind", "")) == "buy" and str(action.get("target_id", "")) == "antidote":
@@ -3394,7 +3394,7 @@ func _travel_resolution_action(actions: Array) -> Dictionary:
 func _travel_resolution_label(action: Dictionary) -> String:
 	match str(action.get("kind", "")):
 		"recover":
-			return "找苏晚照 · 用情报交换解瘴丹"
+			return str(action.get("name", "处理缺项"))
 		"buy":
 			return "现在购买解瘴丹 · %d 灵石" % int(action.get("costs", {}).get("spirit_stones", 0))
 		"move":

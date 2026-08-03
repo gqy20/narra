@@ -401,7 +401,6 @@ func (s *Session) hasDeliveredFact(state *domain.WorldState, targetID, factID st
 }
 
 func (s *Session) addRecoveryActions(options map[string]actionOption, state *domain.WorldState) {
-	s.addAntidoteRecoveryAction(options, state)
 	if action, ok := s.bundle.Actions["heal"]; ok && state.Player.Injury > 0 && fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
 		options["heal"] = actionOption{
 			view:    AvailableAction{ID: "heal", Kind: "heal", Category: "self", Name: "疗伤", Description: "专心处理伤势，降低一级伤势", Duration: action.Duration},
@@ -431,39 +430,6 @@ func (s *Session) addRecoveryActions(options map[string]actionOption, state *dom
 			view:    AvailableAction{ID: "cultivate", Kind: "cultivate", Category: "self", Name: "修炼", Description: description, Duration: action.Duration, Costs: costs, Warnings: warnings},
 			command: &domain.PlayerCommand{ActionID: "cultivate", Description: "玩家闭关修炼", Conditions: []domain.Condition{{Type: "injury_at_most", MaxConfidence: 0}}, Costs: costs, Effects: []domain.Effect{{Type: "adjust_resource", Key: "combat", Amount: 1}}},
 		}
-	}
-}
-
-func (s *Session) addAntidoteRecoveryAction(options map[string]actionOption, state *domain.WorldState) {
-	action, ok := s.bundle.Actions["spread"]
-	belief, knowsDate := state.Player.Beliefs["F01"]
-	su, hasSu := state.NPCs["N06"]
-	if !ok || !knowsDate || belief.Confidence < 3 || state.Player.Items["antidote"] > 0 || !state.WorldFlag("antidote_blockade") || !hasSu || state.Player.Location != "L02" || su.Location != "L02" || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
-		return
-	}
-	claim := belief.Claim
-	if claim == "" {
-		claim = "已核实的成熟日期"
-	}
-	options["recover:N06:antidote"] = actionOption{
-		view: AvailableAction{
-			ID: "recover:N06:antidote", Kind: "recover", Category: "information", Name: "以情报换取解瘴丹",
-			Description: "把已核实的成熟日期交给苏晚照，换取一枚青岚门备用解瘴丹。", Duration: action.Duration,
-			TargetID: "N06", TargetName: "苏晚照", TargetRole: "青岚门药修",
-			FactID: "F01", FactClaim: claim, Relevance: "直接相关 · 苏晚照公开关注青髓芝药性与移植时机",
-			Risk:             "苏晚照会获得准确成熟日期，并可能据此调整青岚门的后续安排。",
-			ExpectedOutcomes: []string{"获得 1 枚解瘴丹，重新打开亲自入谷路线", "苏晚照获得已核实的成熟日期"},
-			Resolves:         []string{"坊市封锁后无法购得解瘴丹"},
-			Warnings:         []string{"这是不可撤回的情报交换；消息送出后不能收回。"}, Irreversible: true,
-		},
-		command: &domain.PlayerCommand{
-			ActionID: "spread", TargetID: "N06", Description: "玩家以成熟日期向苏晚照换取解瘴丹",
-			Conditions: []domain.Condition{{Type: "location", Value: "L02"}, {Type: "missing_item", Key: "antidote"}, {Type: "flag", Key: "antidote_blockade"}, {Type: "belief", Key: "F01", MinConfidence: 3}},
-			Effects: []domain.Effect{
-				{Type: "set_belief", TargetID: "N06", FactID: "F01", Claim: claim, Confidence: 3, EvidenceStrength: belief.EvidenceStrength, Source: state.Player.ID, Propagation: "private", Secrecy: belief.Secrecy},
-				{Type: "add_item", Key: "antidote", Amount: 1},
-			},
-		},
 	}
 }
 

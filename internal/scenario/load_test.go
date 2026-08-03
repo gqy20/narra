@@ -34,6 +34,9 @@ func TestLoadBlackwindBundle(t *testing.T) {
 	if arc, ok := bundle.StoryArcs["qinglan_intel"]; !ok || arc.InitialState != "uncommitted" || len(arc.Nodes) != 10 || len(arc.Nodes[0].Choices) != 3 || len(arc.ProgressRules) == 0 || len(arc.ConsequenceRules) == 0 {
 		t.Fatalf("qinglan story arc = %+v", arc)
 	}
+	if arc, ok := bundle.StoryArcs["antidote_recovery"]; !ok || arc.InitialState != "available" || len(arc.Nodes) != 1 || arc.Nodes[0].Kind != "recover" {
+		t.Fatalf("antidote recovery arc = %+v", arc)
+	}
 	if len(bundle.Scenario.Contest.OutcomeRules) != 2 || len(bundle.Scenario.Contest.RewardRules) != 1 {
 		t.Fatalf("contest content rules = %+v / %+v", bundle.Scenario.Contest.OutcomeRules, bundle.Scenario.Contest.RewardRules)
 	}

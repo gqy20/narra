@@ -107,9 +107,17 @@ func (s *Session) addStoryInformationActions(options map[string]actionOption, st
 				if commandDescription == "" {
 					commandDescription = choice.Description
 				}
+				kind := node.Kind
+				if kind == "" {
+					kind = "tell"
+				}
+				category := node.Category
+				if category == "" {
+					category = "information"
+				}
 				options[choice.ID] = actionOption{
 					view: AvailableAction{
-						ID: choice.ID, Kind: "tell", Category: "information", Name: choice.Name, Description: choice.Description,
+						ID: choice.ID, Kind: kind, Category: category, Name: choice.Name, Description: choice.Description,
 						Duration: action.Duration, TargetID: actor.ID, TargetName: actor.Name, TargetRole: actor.PublicRole,
 						FactID: node.FactID, FactClaim: belief.Claim, TermID: choice.TermID, TermLabel: choice.TermLabel,
 						PersonalOutcome: choice.PersonalOutcome, Relevance: relevance, Risk: risk,

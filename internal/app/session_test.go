@@ -724,6 +724,9 @@ func TestMissedMarketCanRecoverPersonalRouteThroughInformationTrade(t *testing.T
 	if !preparationFactorReady(view.Preparation.Conditions, "required_item", true) {
 		t.Fatalf("recovered antidote did not update preparation summary: %+v", view.Preparation)
 	}
+	if got := session.engine.State().StoryStates["antidote_recovery"]; got != "recovered" {
+		t.Fatalf("recovery story state = %q", got)
+	}
 }
 
 func TestTravelGuidanceSeparatesItemRouteAndKnownDeadline(t *testing.T) {

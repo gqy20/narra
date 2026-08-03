@@ -605,6 +605,7 @@
       location_id: L02
       personal_return: 宗门记功，或把关系兑现为入谷物资与支援
       complete: true
+
     - id: trust-commissioned
       priority: 300
       conditions: [{type: flag, scope: actor, key: qinglan_trust_commissioned}]
@@ -957,3 +958,42 @@
       location_id: L02
       personal_return: 随队丹药、支援，以及先锋或后勤分工收益
       complete: true
+
+- id: antidote_recovery
+  title: 封锁后的解瘴丹补救
+  initial_state: available
+  states: [available, recovered]
+  nodes:
+    - id: trade_verified_date_for_antidote
+      from_state: available
+      location_id: L02
+      target_id: N06
+      fact_id: F01
+      min_confidence: 3
+      action_id: spread
+      kind: recover
+      category: information
+      conditions:
+        - {type: missing_item, key: antidote}
+        - {type: flag, key: antidote_blockade}
+      choices:
+        - id: recover:N06:antidote
+          term_id: antidote_recovery
+          term_label: 情报换丹
+          name: 以情报换取解瘴丹
+          description: 把已核实的成熟日期交给苏晚照，换取一枚青岚门备用解瘴丹。
+          command_description: 玩家以成熟日期向苏晚照换取解瘴丹
+          personal_outcome: 获得 1 枚解瘴丹，重新打开亲自入谷路线。
+          relevance: 直接相关 · 苏晚照公开关注青髓芝药性与移植时机
+          risk: 苏晚照会获得准确成熟日期，并可能据此调整青岚门的后续安排。
+          expected_outcomes:
+            - 获得 1 枚解瘴丹，重新打开亲自入谷路线
+            - 苏晚照获得已核实的成熟日期
+          resolves:
+            - 坊市封锁后无法购得解瘴丹
+          warnings:
+            - 这是不可撤回的情报交换；消息送出后不能收回。
+          irreversible: true
+          effects:
+            - {type: add_item, target_id: player, key: antidote, amount: 1}
+          to_state: recovered
