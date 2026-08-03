@@ -1,37 +1,97 @@
 extends RefCounted
 
-const LOCATION_PROFILES := {
-	"market": preload("res://assets/locations/market/profile.tres"),
-	"qinglan": preload("res://assets/locations/qinglan/profile.tres"),
-	"apothecary": preload("res://assets/locations/apothecary/profile.tres"),
-	"valley_edge": preload("res://assets/locations/valley_edge/profile.tres"),
-	"inner_valley": preload("res://assets/locations/inner_valley/profile.tres"),
-}
-const ACTOR_PROFILES := {
-	"N01": preload("res://assets/characters/N01/profile.tres"),
-	"N02": preload("res://assets/characters/N02/profile.tres"),
-	"N03": preload("res://assets/characters/N03/profile.tres"),
-	"N04": preload("res://assets/characters/N04/profile.tres"),
-	"N05": preload("res://assets/characters/N05/profile.tres"),
-	"N06": preload("res://assets/characters/N06/profile.tres"),
-	"N07": preload("res://assets/characters/N07/profile.tres"),
-	"N08": preload("res://assets/characters/N08/profile.tres"),
-	"N09": preload("res://assets/characters/N09/profile.tres"),
-	"N10": preload("res://assets/characters/N10/profile.tres"),
-}
+const MANIFEST_PATH := "res://data/presentation.json"
+
+var manifest: Dictionary = {}
+var resource_cache: Dictionary = {}
+
+
+func _init() -> void:
+	_load_manifest()
+
+
+func _load_manifest() -> void:
+	var file := FileAccess.open(MANIFEST_PATH, FileAccess.READ)
+	if file == null:
+		push_error("Presentation manifest is missing: %s" % MANIFEST_PATH)
+		return
+	var parsed = JSON.parse_string(file.get_as_text())
+	if not parsed is Dictionary or int(parsed.get("schema_version", 0)) != 1:
+		push_error("Presentation manifest has an unsupported schema")
+		return
+	manifest = parsed
 
 
 func location_profile(scene_key: String) -> LocationVisualProfile:
-	return LOCATION_PROFILES.get(scene_key)
+	return _profile("locations", scene_key) as LocationVisualProfile
 
 
 func actor_profile(actor_id: String) -> ActorVisualProfile:
-	return ACTOR_PROFILES.get(actor_id)
+	return _profile("actors", actor_id) as ActorVisualProfile
+
+
+func terrain_texture() -> Texture2D:
+	return _resource(str(manifest.get("terrain", ""))) as Texture2D
+
+
+func location_background(scene_key: String) -> Texture2D:
+	var entry := _entry("locations", scene_key)
+	return _resource(str(entry.get("background", ""))) as Texture2D
+
+
+func actor_token_color(actor_id: String, fallback: Color) -> Color:
+	var token: Variant = _entry("actors", actor_id).get("map_token", {})
+	if token is Dictionary and str(token.get("color", "")) != "":
+		return Color.from_string(str(token.get("color")), fallback)
+	return fallback
+
+
+func actor_token_offset(actor_id: String, fallback: Vector2) -> Vector2:
+	var token: Variant = _entry("actors", actor_id).get("map_token", {})
+	var offset: Variant = token.get("offset", []) if token is Dictionary else []
+	if offset is Array and offset.size() == 2:
+		return Vector2(float(offset[0]), float(offset[1]))
+	return fallback
 
 
 func has_location(scene_key: String) -> bool:
-	return LOCATION_PROFILES.has(scene_key)
+	return _entry("locations", scene_key).has("profile")
 
 
 func has_actor(actor_id: String) -> bool:
-	return ACTOR_PROFILES.has(actor_id)
+	return _entry("actors", actor_id).has("profile")
+
+
+func location_count() -> int:
+	return _section("locations").size()
+
+
+func actor_count() -> int:
+	return _section("actors").size()
+
+
+func _profile(section: String, key: String) -> Resource:
+	return _resource(str(_entry(section, key).get("profile", "")))
+
+
+func _resource(path: String) -> Resource:
+	if path == "":
+		return null
+	if resource_cache.has(path):
+		return resource_cache[path]
+	if not ResourceLoader.exists(path):
+		push_error("Presentation resource is missing: %s" % path)
+		return null
+	var loaded := ResourceLoader.load(path)
+	resource_cache[path] = loaded
+	return loaded
+
+
+func _section(name: String) -> Dictionary:
+	var value = manifest.get(name, {})
+	return value if value is Dictionary else {}
+
+
+func _entry(section: String, key: String) -> Dictionary:
+	var value = _section(section).get(key, {})
+	return value if value is Dictionary else {}

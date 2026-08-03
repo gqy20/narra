@@ -1019,6 +1019,7 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	map_panel.add_theme_constant_override("separation", 0)
 	visual_stack.add_child(map_panel)
 	world_map_view = WorldMapViewScript.new()
+	world_map_view.presentation_registry = presentation_registry
 	world_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	world_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	world_map_view.size_flags_stretch_ratio = 1.0

@@ -10,14 +10,7 @@ const ACCENT := Color("d6ae62")
 const SAFE := Color("769279")
 const DANGER := Color("a85849")
 const LINE := Color("465249")
-const TERRAIN_TEXTURE = preload("res://assets/locations/valley_edge/background.png")
-const LOCATION_TEXTURES := {
-	"market": preload("res://assets/locations/market/background.png"),
-	"qinglan": preload("res://assets/locations/qinglan/background.png"),
-	"apothecary": preload("res://assets/locations/apothecary/background.png"),
-	"valley_edge": preload("res://assets/locations/valley_edge/background.png"),
-	"inner_valley": preload("res://assets/locations/inner_valley/background.png"),
-}
+const PresentationRegistryScript = preload("res://scripts/presentation_registry.gd")
 
 var map_data: Dictionary = {}
 var locations: Array = []
@@ -41,6 +34,7 @@ var travel_start_day := 0
 var travel_end_day := 0
 var emitted_travel_day := -1
 var travel_tween: Tween
+var presentation_registry = PresentationRegistryScript.new()
 
 
 func _ready() -> void:
@@ -92,7 +86,7 @@ func set_motion_enabled(value: bool) -> void:
 
 
 func has_formal_assets() -> bool:
-	return TERRAIN_TEXTURE != null and LOCATION_TEXTURES.size() == 5
+	return presentation_registry.terrain_texture() != null and presentation_registry.location_count() == 5
 
 
 func has_actor_plan_presentation() -> bool:
@@ -234,10 +228,13 @@ func _draw() -> void:
 
 func _draw_terrain() -> void:
 	var target := Rect2(Vector2.ZERO, size)
-	var source := _cover_source_rect(TERRAIN_TEXTURE.get_size(), size)
-	var max_shift := Vector2(maxf(0.0, (TERRAIN_TEXTURE.get_size().x - source.size.x) * 0.5), maxf(0.0, (TERRAIN_TEXTURE.get_size().y - source.size.y) * 0.5))
+	var terrain_texture: Texture2D = presentation_registry.terrain_texture()
+	if terrain_texture == null:
+		return
+	var source := _cover_source_rect(terrain_texture.get_size(), size)
+	var max_shift := Vector2(maxf(0.0, (terrain_texture.get_size().x - source.size.x) * 0.5), maxf(0.0, (terrain_texture.get_size().y - source.size.y) * 0.5))
 	source.position += Vector2(parallax_offset.x * max_shift.x * 0.16, parallax_offset.y * max_shift.y * 0.10)
-	draw_texture_rect_region(TERRAIN_TEXTURE, target, source, Color(0.70, 0.66, 0.57, 0.88))
+	draw_texture_rect_region(terrain_texture, target, source, Color(0.70, 0.66, 0.57, 0.88))
 	draw_rect(target, Color("08100b94"), true)
 	_draw_depth_plane()
 	draw_rect(Rect2(Vector2(18, 18), size - Vector2(36, 36)), Color(ACCENT, 0.16), false, 1.0, true)
@@ -357,11 +354,7 @@ func _draw_actor_plan(actor: Dictionary, bounds: Rect2, index: int) -> void:
 			origin = _location_position(old_location, bounds)
 	var position := origin.lerp(destination, actor_motion_progress)
 	position += _actor_token_offset(actor_id, index)
-	var color := ACCENT
-	if actor_id == "N06":
-		color = SAFE.lightened(0.16)
-	elif actor_id == "N09":
-		color = DANGER.lightened(0.10)
+	var color := presentation_registry.actor_token_color(actor_id, ACCENT)
 	var shadow := PackedVector2Array([
 		position + Vector2(-10, 6), position + Vector2(0, 12),
 		position + Vector2(10, 6), position + Vector2(0, 1),
@@ -380,14 +373,8 @@ func _draw_actor_plan(actor: Dictionary, bounds: Rect2, index: int) -> void:
 
 
 func _actor_token_offset(actor_id: String, fallback_index: int) -> Vector2:
-	match actor_id:
-		"N03":
-			return Vector2(-29, -42)
-		"N06":
-			return Vector2(0, -52)
-		"N09":
-			return Vector2(29, -42)
-	return Vector2((fallback_index % 3 - 1) * 27, -42 - (fallback_index / 3) * 22)
+	var fallback := Vector2((fallback_index % 3 - 1) * 27, -42 - (fallback_index / 3) * 22)
+	return presentation_registry.actor_token_offset(actor_id, fallback)
 
 
 func _route_curve(from_position: Vector2, to_position: Vector2) -> PackedVector2Array:

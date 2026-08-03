@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "terrain": "res://assets/locations/valley_edge/background.png",
+  "locations": {
+    "market": {"profile": "res://assets/locations/market/profile.tres", "background": "res://assets/locations/market/background.png"},
+    "qinglan": {"profile": "res://assets/locations/qinglan/profile.tres", "background": "res://assets/locations/qinglan/background.png"},
+    "apothecary": {"profile": "res://assets/locations/apothecary/profile.tres", "background": "res://assets/locations/apothecary/background.png"},
+    "valley_edge": {"profile": "res://assets/locations/valley_edge/profile.tres", "background": "res://assets/locations/valley_edge/background.png"},
+    "inner_valley": {"profile": "res://assets/locations/inner_valley/profile.tres", "background": "res://assets/locations/inner_valley/background.png"}
+  },
+  "actors": {
+    "N01": {"profile": "res://assets/characters/N01/profile.tres"},
+    "N02": {"profile": "res://assets/characters/N02/profile.tres"},
+    "N03": {"profile": "res://assets/characters/N03/profile.tres", "map_token": {"color": "#d6ae62", "offset": [-29, -42]}},
+    "N04": {"profile": "res://assets/characters/N04/profile.tres"},
+    "N05": {"profile": "res://assets/characters/N05/profile.tres"},
+    "N06": {"profile": "res://assets/characters/N06/profile.tres", "map_token": {"color": "#8fa890", "offset": [0, -52]}},
+    "N07": {"profile": "res://assets/characters/N07/profile.tres"},
+    "N08": {"profile": "res://assets/characters/N08/profile.tres"},
+    "N09": {"profile": "res://assets/characters/N09/profile.tres", "map_token": {"color": "#b86757", "offset": [29, -42]}},
+    "N10": {"profile": "res://assets/characters/N10/profile.tres"}
+  }
+}

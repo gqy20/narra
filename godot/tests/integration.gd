@@ -79,6 +79,10 @@ func _run() -> void:
 		var actor_profile = app.presentation_registry.actor_profile(actor_id)
 		if actor_profile == null or actor_profile.portrait() == null:
 			return _fail("actor profile has no loadable portrait: " + actor_id)
+	if app.presentation_registry.actor_count() != 10 or app.presentation_registry.location_count() != 5:
+		return _fail("presentation manifest counts are invalid")
+	if app.presentation_registry.actor_token_offset("N06", Vector2.ZERO) != Vector2(0, -52):
+		return _fail("presentation manifest did not supply actor map-token metadata")
 	if not app.actor_portrait.visible or app.actor_portrait.texture == null:
 		return _fail("initial core actor did not load its registered portrait")
 	if app.stage_actor_id != "N01" or app.actor_portrait_name.text != "李玄":
