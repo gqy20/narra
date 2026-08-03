@@ -410,6 +410,9 @@ func validateStoryArcs(bundle domain.Bundle) error {
 				if err := validateConditionsAndEffects(choice.Conditions, nil, choice.Effects, bundle); err != nil {
 					return fmt.Errorf("story arc %s node %s choice %s: %w", arcID, node.ID, choice.ID, err)
 				}
+				if err := validateStoryFeedback(choice.Feedback); err != nil {
+					return fmt.Errorf("story arc %s node %s choice %s: %w", arcID, node.ID, choice.ID, err)
+				}
 			}
 		}
 		progressIDs := make(map[string]bool, len(arc.ProgressRules))
@@ -460,6 +463,30 @@ func validateStoryArcs(bundle domain.Bundle) error {
 				return fmt.Errorf("story arc %s consequence rule %s has value placeholder without relation interpolation", arcID, rule.ID)
 			}
 		}
+	}
+	return nil
+}
+
+func validateStoryFeedback(feedback domain.StoryFeedback) error {
+	if len(feedback.Messages) == 0 {
+		return fmt.Errorf("story feedback requires at least one message")
+	}
+	for _, message := range append(append([]string(nil), feedback.Messages...), feedback.Journal...) {
+		if strings.TrimSpace(message) == "" {
+			return fmt.Errorf("story feedback contains an empty message")
+		}
+	}
+	presentation := feedback.Presentation
+	switch presentation.Kind {
+	case "actor_focus", "reveal", "acquire", "recovery", "danger", "focus", "time":
+	default:
+		return fmt.Errorf("story feedback has unknown presentation kind %q", presentation.Kind)
+	}
+	if presentation.Intensity < 1 || presentation.Intensity > 3 {
+		return fmt.Errorf("story feedback has invalid presentation intensity %d", presentation.Intensity)
+	}
+	if presentation.Subject != "" && presentation.Subject != "target" && presentation.Subject != "player" && presentation.Subject != "fact" {
+		return fmt.Errorf("story feedback has invalid presentation subject %q", presentation.Subject)
 	}
 	return nil
 }

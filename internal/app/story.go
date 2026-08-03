@@ -192,6 +192,30 @@ func (s *Session) storyConsequences(state *domain.WorldState) []string {
 	return result
 }
 
+func (s *Session) storyFeedback(actionID string, state *domain.WorldState) (*domain.StoryFeedback, string) {
+	for _, arc := range s.bundle.StoryArcs {
+		for _, node := range arc.Nodes {
+			for _, choice := range node.Choices {
+				if choice.ID != actionID {
+					continue
+				}
+				subjectID := choice.Feedback.Presentation.Subject
+				switch subjectID {
+				case "target":
+					subjectID = node.TargetID
+				case "player":
+					subjectID = state.Player.ID
+				case "fact":
+					subjectID = node.FactID
+				}
+				feedback := choice.Feedback
+				return &feedback, subjectID
+			}
+		}
+	}
+	return nil, ""
+}
+
 func containsStoryState(states []string, stateID string) bool {
 	for _, candidate := range states {
 		if candidate == stateID {

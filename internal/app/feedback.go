@@ -10,6 +10,11 @@ import (
 
 func (s *Session) turnFeedback(actionID, actionName string, before, after *domain.WorldState) *TurnFeedback {
 	feedback := &TurnFeedback{Day: after.Day, DaysAdvanced: after.Day - before.Day, ActionID: actionID, Action: actionName, Status: "completed"}
+	storyFeedback, storySubjectID := s.storyFeedback(actionID, after)
+	if storyFeedback != nil {
+		feedback.Messages = append(feedback.Messages, storyFeedback.Messages...)
+		feedback.Journal = append(feedback.Journal, storyFeedback.Journal...)
+	}
 	if before.Phase != after.Phase && after.Phase != "" {
 		feedback.Messages = append(feedback.Messages, "局势进入“"+after.Phase+"”阶段。")
 	}
@@ -59,7 +64,11 @@ func (s *Session) turnFeedback(actionID, actionName string, before, after *domai
 		}
 	}
 	feedback.Messages = uniqueStrings(feedback.Messages)
-	feedback.Presentation = s.presentationCue(actionID, before, after)
+	if storyFeedback != nil {
+		feedback.Presentation = &PresentationCue{Kind: storyFeedback.Presentation.Kind, Intensity: storyFeedback.Presentation.Intensity, SubjectID: storySubjectID}
+	} else {
+		feedback.Presentation = s.presentationCue(actionID, before, after)
+	}
 	return feedback
 }
 

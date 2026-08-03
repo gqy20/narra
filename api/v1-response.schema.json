@@ -651,6 +651,12 @@
           },
           "type": "array"
         },
+        "journal": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "influence": {
           "items": {
             "$ref": "#/$defs/VisibleInfluence"

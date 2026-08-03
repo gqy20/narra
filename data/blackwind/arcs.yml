@@ -54,6 +54,7 @@
               key: player_backed_shen
               value: "true"
           to_state: trust_committed
+          feedback: {messages: [可靠情报已经交给沈砚秋，长期信任路线由此开启。], journal: [无偿向沈砚秋交付核实日期，等待青岚门审核与兑现。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
 
         - id: tell:N03:F01:antidote
           term_id: antidote
@@ -88,6 +89,7 @@
               key: player_took_shen_antidote
               value: "true"
           to_state: antidote_committed
+          feedback: {messages: [情报交易完成，你取得了青岚门的备用解瘴丹。], journal: [以核实日期换得解瘴丹，后续需要回应苏晚照的药物请求。], presentation: {kind: acquire, intensity: 2, subject: player}}
 
         - id: tell:N03:F01:escort
           term_id: escort
@@ -120,6 +122,7 @@
               key: player_joining_qinglan
               value: "true"
           to_state: escort_committed
+          feedback: {messages: [沈砚秋接受了条件，将你列入青岚同行候选。], journal: [以核实日期换取青岚同行承诺，仍需通过宗门审核。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
 
     - id: answer_source_review
       from_state: trust_committed
@@ -154,6 +157,7 @@
             - {type: set_flag, target_id: player, key: qinglan_trust_vouched, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_trust_midgame_resolved, value: "true"}
           to_state: trust_reviewed
+          feedback: {messages: [你公开担保情报来源，青岚门审核记录了这份承诺。], journal: [在公开审核中支持沈砚秋，信任担保进入兑现阶段。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
 
     - id: leak_plan_during_review
       from_state: trust_committed
@@ -190,6 +194,7 @@
             - {type: set_flag, target_id: player, key: qinglan_trust_betrayed, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_trust_midgame_resolved, value: "true"}
           to_state: trust_betrayed
+          feedback: {messages: [你把沈砚秋的计划交给赵鹤鸣，原有信任已经破裂。], journal: [背弃青岚情报担保并收取报酬，信任路线关闭。], presentation: {kind: danger, intensity: 3, subject: target}}
 
     - id: answer_antidote_request
       from_state: antidote_committed
@@ -227,6 +232,7 @@
             - {type: set_flag, target_id: player, key: qinglan_antidote_lent, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_antidote_midgame_resolved, value: "true"}
           to_state: antidote_lent
+          feedback: {messages: [你把解瘴丹交回青岚队伍，独行资格转化为支援与信任。], journal: [响应苏晚照的借丹请求，放弃独行路线。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
         - id: route:antidote:keep
           term_id: keep
           term_label: 坚持独行
@@ -248,6 +254,7 @@
             - {type: set_flag, target_id: player, key: qinglan_antidote_kept, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_antidote_midgame_resolved, value: "true"}
           to_state: antidote_kept
+          feedback: {messages: [你拒绝归还解瘴丹，保住独行资格，也承担了关系代价。], journal: [拒绝借丹并确认独行，等待选择踩点或变现。], presentation: {kind: danger, intensity: 2, subject: target}}
 
     - id: answer_escort_review
       from_state: escort_committed
@@ -283,6 +290,7 @@
             - {type: set_flag, target_id: player, key: qinglan_escort_approved, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_escort_midgame_resolved, value: "true"}
           to_state: escort_approved
+          feedback: {messages: [宗门审核通过，同行承诺只待开谷前集结兑现。], journal: [通过青岚同行审核，第16日必须返回驻地集结。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
         - id: route:escort:independent
           term_id: independent
           term_label: 保持独立
@@ -307,6 +315,7 @@
             - {type: set_flag, target_id: player, key: qinglan_escort_midgame_resolved, value: "true"}
             - {type: set_flag, target_id: world, key: player_declared_independent, value: "true"}
           to_state: escort_refused
+          feedback: {messages: [你退出青岚同行名单，重新以独立散修身份行动。], journal: [拒绝宗门审核并退出同行路线。], presentation: {kind: actor_focus, intensity: 2, subject: target}}
 
     - id: settle_trust_commitment
       from_state: trust_reviewed
@@ -342,6 +351,7 @@
             - {type: set_flag, target_id: player, key: qinglan_trust_operation_joined, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_trust_late_resolved, value: "true"}
           to_state: trust_joined
+          feedback: {messages: [担保已经兑现为行动席位，入谷物资与支援交到你手中。], journal: [将青岚信任回报兑现为亲自行动条件。], presentation: {kind: acquire, intensity: 3, subject: player}}
         - id: route:trust:commission
           term_id: commission
           term_label: 领取报酬
@@ -362,6 +372,7 @@
             - {type: set_flag, target_id: player, key: qinglan_trust_commissioned, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_trust_late_resolved, value: "true"}
           to_state: trust_commissioned
+          feedback: {messages: [你选择结清情报报酬，不再占用青岚门行动席位。], journal: [将信任担保结算为灵石与信用。], presentation: {kind: acquire, intensity: 2, subject: player}}
 
     - id: turn_antidote_into_route
       from_state: antidote_kept
@@ -397,6 +408,7 @@
             - {type: set_flag, target_id: player, key: qinglan_antidote_scouted, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_antidote_late_resolved, value: "true"}
           to_state: antidote_scouted
+          feedback: {messages: [提前踩点完成，解瘴丹和新增准备都得以保留。], journal: [使用解瘴丹完成独行踩点，争夺准备提高。], presentation: {kind: reveal, intensity: 2, subject: fact}}
 
     - id: liquidate_antidote_route
       from_state: antidote_kept
@@ -432,6 +444,7 @@
             - {type: set_flag, target_id: player, key: qinglan_antidote_liquidated, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_antidote_late_resolved, value: "true"}
           to_state: antidote_liquidated
+          feedback: {messages: [解瘴丹与独行路线已经变现，你退出核心争夺。], journal: [出售解瘴丹与路线，锁定个人交易收益。], presentation: {kind: acquire, intensity: 2, subject: player}}
 
     - id: fulfill_escort_commitment
       from_state: escort_approved
@@ -465,6 +478,7 @@
             - {type: adjust_resource, target_id: player, key: support, amount: 1}
             - {type: set_flag, target_id: player, key: qinglan_escort_fulfilled, value: "true"}
           to_state: escort_fulfilled
+          feedback: {messages: [同行承诺已经兑现，随队丹药与基础支援到位。], journal: [完成青岚集结，等待确定先锋或后勤分工。], presentation: {kind: acquire, intensity: 2, subject: player}}
 
     - id: choose_escort_role
       from_state: escort_fulfilled
@@ -499,6 +513,7 @@
             - {type: set_flag, target_id: player, key: qinglan_escort_vanguard, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_escort_late_resolved, value: "true"}
           to_state: escort_vanguard
+          feedback: {messages: [你接下先锋分工，获得额外支援与独立指挥权。], journal: [选择担任青岚先锋，争夺准备显著提高。], presentation: {kind: actor_focus, intensity: 3, subject: target}}
         - id: route:escort:quartermaster
           term_id: quartermaster
           term_label: 负责后勤
@@ -521,6 +536,7 @@
             - {type: set_flag, target_id: player, key: qinglan_escort_quartermaster, value: "true"}
             - {type: set_flag, target_id: player, key: qinglan_escort_late_resolved, value: "true"}
           to_state: escort_quartermaster
+          feedback: {messages: [你接下随队后勤，稳定报酬与信用已经结算。], journal: [选择负责青岚后勤，以稳定收益替代先锋位置。], presentation: {kind: acquire, intensity: 2, subject: player}}
 
   consequence_rules:
     - id: trust-rewarded
@@ -996,3 +1012,4 @@
           effects:
             - {type: add_item, target_id: player, key: antidote, amount: 1}
           to_state: recovered
+          feedback: {messages: [苏晚照接受了核实日期，并交给你一枚备用解瘴丹。], journal: [坊市封锁后以情报换丹，亲自入谷路线重新开放。], presentation: {kind: recovery, intensity: 2, subject: player}}

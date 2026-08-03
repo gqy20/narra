@@ -34,6 +34,7 @@ type TurnFeedback struct {
 	Action       string             `json:"action"`
 	Status       string             `json:"status"`
 	Messages     []string           `json:"messages"`
+	Journal      []string           `json:"journal,omitempty"`
 	Influence    []VisibleInfluence `json:"influence,omitempty"`
 	Presentation *PresentationCue   `json:"presentation,omitempty"`
 	StopReason   string             `json:"stop_reason,omitempty"`

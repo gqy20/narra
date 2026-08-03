@@ -3144,6 +3144,12 @@ func _render_feedback_summary(parent: VBoxContainer, feedback: Dictionary) -> vo
 		stop_line.add_theme_color_override("font_color", COLORS.accent)
 	for index in range(mini(messages.size(), 2)):
 		_text(parent, "· %s" % messages[index], false, 14)
+	var journal: Array = feedback.get("journal", [])
+	if not journal.is_empty():
+		var journal_heading := _text(parent, "记入卷宗", true, TYPE_SCALE.meta)
+		journal_heading.add_theme_color_override("font_color", COLORS.accent)
+		for entry in journal:
+			_text(parent, "· %s" % entry, false, 14)
 	journal_feedback_details_button = _utility_button("收起推演过程" if journal_feedback_details_visible else "查看推演过程", _toggle_journal_feedback_details)
 	journal_feedback_details_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	parent.add_child(journal_feedback_details_button)

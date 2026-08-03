@@ -427,6 +427,30 @@ func TestValidateRejectsInvalidStoryConsequence(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsIncompleteStoryFeedback(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	arc := bundle.StoryArcs["qinglan_intel"]
+	arc.Nodes[0].Choices[0].Feedback.Messages = nil
+	bundle.StoryArcs[arc.ID] = arc
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "feedback requires") {
+		t.Fatalf("incomplete story feedback error = %v", err)
+	}
+
+	bundle, err = Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("reload bundle: %v", err)
+	}
+	arc = bundle.StoryArcs["qinglan_intel"]
+	arc.Nodes[0].Choices[0].Feedback.Presentation.Subject = "hidden_actor"
+	bundle.StoryArcs[arc.ID] = arc
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "presentation subject") {
+		t.Fatalf("invalid story presentation error = %v", err)
+	}
+}
+
 func TestValidateRejectsInvalidContestContentRule(t *testing.T) {
 	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
 	if err != nil {

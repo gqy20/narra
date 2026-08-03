@@ -727,6 +727,9 @@ func TestMissedMarketCanRecoverPersonalRouteThroughInformationTrade(t *testing.T
 	if got := session.engine.State().StoryStates["antidote_recovery"]; got != "recovered" {
 		t.Fatalf("recovery story state = %q", got)
 	}
+	if view.LastTurn == nil || !containsMessage(view.LastTurn.Messages, "苏晚照接受了核实日期") || !containsMessage(view.LastTurn.Journal, "亲自入谷路线重新开放") || view.LastTurn.Presentation == nil || view.LastTurn.Presentation.Kind != "recovery" {
+		t.Fatalf("content-backed recovery feedback = %+v", view.LastTurn)
+	}
 }
 
 func TestTravelGuidanceSeparatesItemRouteAndKnownDeadline(t *testing.T) {

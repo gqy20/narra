@@ -83,22 +83,35 @@ type StoryNode struct {
 }
 
 type StoryChoice struct {
-	ID                 string      `json:"id"`
-	TermID             string      `json:"term_id"`
-	TermLabel          string      `json:"term_label"`
-	Name               string      `json:"name"`
-	Description        string      `json:"description"`
-	CommandDescription string      `json:"command_description,omitempty"`
-	PersonalOutcome    string      `json:"personal_outcome"`
-	Relevance          string      `json:"relevance,omitempty"`
-	Risk               string      `json:"risk,omitempty"`
-	ExpectedOutcomes   []string    `json:"expected_outcomes,omitempty"`
-	Resolves           []string    `json:"resolves,omitempty"`
-	Warnings           []string    `json:"warnings,omitempty"`
-	Irreversible       bool        `json:"irreversible,omitempty"`
-	Conditions         []Condition `json:"conditions,omitempty"`
-	Effects            []Effect    `json:"effects"`
-	ToState            string      `json:"to_state"`
+	ID                 string        `json:"id"`
+	TermID             string        `json:"term_id"`
+	TermLabel          string        `json:"term_label"`
+	Name               string        `json:"name"`
+	Description        string        `json:"description"`
+	CommandDescription string        `json:"command_description,omitempty"`
+	PersonalOutcome    string        `json:"personal_outcome"`
+	Relevance          string        `json:"relevance,omitempty"`
+	Risk               string        `json:"risk,omitempty"`
+	ExpectedOutcomes   []string      `json:"expected_outcomes,omitempty"`
+	Resolves           []string      `json:"resolves,omitempty"`
+	Warnings           []string      `json:"warnings,omitempty"`
+	Irreversible       bool          `json:"irreversible,omitempty"`
+	Conditions         []Condition   `json:"conditions,omitempty"`
+	Effects            []Effect      `json:"effects"`
+	ToState            string        `json:"to_state"`
+	Feedback           StoryFeedback `json:"feedback"`
+}
+
+type StoryFeedback struct {
+	Messages     []string          `json:"messages"`
+	Journal      []string          `json:"journal,omitempty"`
+	Presentation StoryPresentation `json:"presentation"`
+}
+
+type StoryPresentation struct {
+	Kind      string `json:"kind"`
+	Intensity int    `json:"intensity"`
+	Subject   string `json:"subject,omitempty"`
 }
 
 type FlagDefinition struct {
