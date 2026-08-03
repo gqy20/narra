@@ -173,7 +173,9 @@ Godot 的开始页和游戏内都可以打开“体验设置 → 大模型”，
 ./tools/record-gameplay.ps1
 ```
 
-默认路线由 `godot/demo/recordings/tianqi-evidence-route.json` 定义，依次展示天启片头、交割残页入手、官署登记、补造账册格式比对、周良辅自陈串证和最终裁定。脚本使用独立临时存档，自动等待服务就绪、录制游戏音轨、转码为 1080p H.264/AAC、校验时长和流信息，并将 MP4、日志及录制清单写入 `artifacts/recordings/tianqi/<时间-路线>/`。可通过 `-Route` 选择其他路线配置，通过 `-OutputDirectory` 指定固定输出目录。
+默认路线由 `godot/demo/recordings/tianqi-evidence-route.json` 定义，依次展示天启片头、交割残页入手、官署登记、补造账册格式比对、周良辅自陈串证和最终裁定。脚本使用独立临时存档，自动等待服务就绪、录制游戏音轨、转码为 1080p H.264/AAC、校验时长和流信息，并将 MP4、日志及录制清单写入 `artifacts/recordings/tianqi/<时间-路线-规格>/`。可通过 `-Route` 选择其他路线配置，通过 `-OutputDirectory` 指定固定输出目录。
+
+使用 `./tools/record-gameplay.ps1 -Profile 4k` 可录制原生 3840×2160、30 FPS 的 4K 源帧并以 H.264/AAC 输出。4K 档会临时覆盖 Godot 录制视口、校验 Movie Writer 的实际源分辨率，并要求输出磁盘至少保留 15 GB 空间；正常退出后会自动移除临时覆盖。默认 `1080p` 档同样使用原生 1920×1080 源帧。项目的默认窗口基准为 1600×900，并可在体验设置中选择 1080p、1440p、4K或跟随显示器的全屏输出。
 
 ## 构建 Windows 发行包
 

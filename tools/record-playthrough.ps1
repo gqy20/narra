@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$Route = "godot/demo/recordings/tianqi-evidence-route.json",
-    [int]$CaptureWidth = 2048,
-    [int]$CaptureHeight = 1152,
+    [ValidateSet("1080p", "4k")]
+    [string]$Profile = "1080p",
     [int]$FramesPerSecond = 30,
     [string]$OutputDirectory = "",
     [switch]$KeepSource
@@ -17,18 +17,29 @@ $routeConfig = Get-Content -Raw -Encoding utf8 $routePath | ConvertFrom-Json
 $routeID = [string]$routeConfig.id
 if ([string]::IsNullOrWhiteSpace($routeID)) { throw "Recording route has no id: $routePath" }
 
-$runID = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ") + "-" + $routeID
+$profileConfig = switch ($Profile) {
+    "4k" { [pscustomobject]@{ Width = 3840; Height = 2160; Crf = 16; Preset = "slow"; MinimumFreeSpaceGB = 15 } }
+    default { [pscustomobject]@{ Width = 1920; Height = 1080; Crf = 18; Preset = "medium"; MinimumFreeSpaceGB = 4 } }
+}
+$captureWidth = [int]$profileConfig.Width
+$captureHeight = [int]$profileConfig.Height
+
+$runID = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ") + "-" + $routeID + "-" + $Profile
 $recordingRoot = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     Join-Path $projectRoot ("artifacts\recordings\tianqi\" + $runID)
 } else {
     [System.IO.Path]::GetFullPath($OutputDirectory)
 }
 $sourcePath = Join-Path $recordingRoot "source.avi"
-$videoPath = Join-Path $recordingRoot ($routeID + ".mp4")
+$videoSuffix = ""
+if ($Profile -eq "4k") { $videoSuffix = "-4k" }
+$videoName = $routeID + $videoSuffix + ".mp4"
+$videoPath = Join-Path $recordingRoot $videoName
 $godotLogPath = Join-Path $recordingRoot "godot.log"
 $serverLogPath = Join-Path $recordingRoot "server.log"
 $serverErrorLogPath = Join-Path $recordingRoot "server-error.log"
 $manifestPath = Join-Path $recordingRoot "manifest.json"
+$overridePath = Join-Path $godotProject "override.cfg"
 $minimumDuration = [double]$routeConfig.min_duration_seconds
 
 $go = Get-Command go -ErrorAction Stop
@@ -38,6 +49,11 @@ Get-Command ffprobe -ErrorAction Stop | Out-Null
 
 New-Item -ItemType Directory -Force (Split-Path -Parent $serverPath) | Out-Null
 New-Item -ItemType Directory -Force $recordingRoot | Out-Null
+$recordingDrive = [System.IO.DriveInfo]::new([System.IO.Path]::GetPathRoot($recordingRoot))
+$minimumFreeBytes = [int64]$profileConfig.MinimumFreeSpaceGB * 1GB
+if ($recordingDrive.AvailableFreeSpace -lt $minimumFreeBytes) {
+    throw "$Profile recording requires at least $($profileConfig.MinimumFreeSpaceGB) GB free on $($recordingDrive.Name)."
+}
 
 $temporarySaves = Join-Path ([System.IO.Path]::GetTempPath()) ("fantu-recording-saves-" + [Guid]::NewGuid().ToString("N"))
 $resolvedTemporarySaves = [System.IO.Path]::GetFullPath($temporarySaves)
@@ -62,6 +78,7 @@ function Wait-ForServer {
 }
 
 $server = $null
+$createdOverride = $false
 Push-Location $projectRoot
 try {
     & $go.Source build -o $serverPath ./cmd/server
@@ -78,7 +95,8 @@ try {
 
     $server = Start-Process -FilePath $serverPath -WorkingDirectory $projectRoot -WindowStyle Hidden -ArgumentList @(
         "-data", (Join-Path $projectRoot "data\tianqi"),
-        "-saves", $resolvedTemporarySaves
+        "-saves", $resolvedTemporarySaves,
+        "-ai-enabled=false"
     ) -RedirectStandardOutput $serverLogPath -RedirectStandardError $serverErrorLogPath -PassThru
     Wait-ForServer
 
@@ -87,9 +105,27 @@ try {
         throw "Recording route must be inside the Godot project: $routePath"
     }
     $routeResourcePath = "res://" + $routePath.Substring($resolvedGodotProject.Length + 1).Replace('\', '/')
+    $resolvedOverridePath = [System.IO.Path]::GetFullPath($overridePath)
+    $expectedOverridePath = [System.IO.Path]::Combine($resolvedGodotProject, "override.cfg")
+    if (-not $resolvedOverridePath.Equals($expectedOverridePath, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Unsafe Godot override path: $resolvedOverridePath"
+    }
+    if (Test-Path -LiteralPath $resolvedOverridePath) {
+        throw "Refusing to replace existing Godot override: $resolvedOverridePath"
+    }
+    $overrideContent = @"
+[display]
+
+window/size/viewport_width=$captureWidth
+window/size/viewport_height=$captureHeight
+window/size/window_width_override=$captureWidth
+window/size/window_height_override=$captureHeight
+"@
+    [System.IO.File]::WriteAllText($resolvedOverridePath, $overrideContent, [System.Text.UTF8Encoding]::new($false))
+    $createdOverride = $true
     $godotArguments = @(
         "--path", $godotProject,
-        "--resolution", "${CaptureWidth}x${CaptureHeight}",
+        "--resolution", "${captureWidth}x${captureHeight}",
         "--write-movie", $sourcePath,
         "--fixed-fps", "$FramesPerSecond",
         "--disable-vsync",
@@ -118,19 +154,23 @@ try {
     $sourceVideo = @($sourceProbe.streams) | Select-Object -First 1
     $actualCaptureWidth = [int]$sourceVideo.width
     $actualCaptureHeight = [int]$sourceVideo.height
+    if ($actualCaptureWidth -ne $captureWidth -or $actualCaptureHeight -ne $captureHeight) {
+        throw "Movie Writer produced ${actualCaptureWidth}x${actualCaptureHeight}; $Profile requires ${captureWidth}x${captureHeight} native source frames."
+    }
 
-    & (Join-Path $PSScriptRoot "postprocess-recording.ps1") -SourcePath $sourcePath -OutputPath $videoPath
-    & (Join-Path $PSScriptRoot "validate-recording.ps1") -Path $videoPath -MinimumDurationSeconds $minimumDuration
+    & (Join-Path $PSScriptRoot "postprocess-recording.ps1") -SourcePath $sourcePath -OutputPath $videoPath -Width $captureWidth -Height $captureHeight -Crf ([int]$profileConfig.Crf) -Preset ([string]$profileConfig.Preset)
+    & (Join-Path $PSScriptRoot "validate-recording.ps1") -Path $videoPath -ExpectedWidth $captureWidth -ExpectedHeight $captureHeight -MinimumDurationSeconds $minimumDuration
 
     $gitCommit = (& git rev-parse HEAD).Trim()
     $manifest = [ordered]@{
         run_id = $runID
         route_id = $routeID
+        profile = $Profile
         scenario_id = [string]$routeConfig.scenario_id
         git_commit = $gitCommit
         recorded_at_utc = [DateTime]::UtcNow.ToString("o")
-        capture = [ordered]@{ width = $actualCaptureWidth; height = $actualCaptureHeight; requested_width = $CaptureWidth; requested_height = $CaptureHeight; fps = $FramesPerSecond }
-        output = [ordered]@{ width = 1920; height = 1080; fit = "contain"; codec = "h264"; audio = "aac"; path = [System.IO.Path]::GetFileName($videoPath) }
+        capture = [ordered]@{ width = $actualCaptureWidth; height = $actualCaptureHeight; requested_width = $captureWidth; requested_height = $captureHeight; fps = $FramesPerSecond; native = $true }
+        output = [ordered]@{ width = $captureWidth; height = $captureHeight; fit = "contain"; codec = "h264"; audio = "aac"; crf = [int]$profileConfig.Crf; path = [System.IO.Path]::GetFileName($videoPath) }
         route_file = $routePath.Substring([System.IO.Path]::GetFullPath($projectRoot).TrimEnd('\').Length + 1).Replace('\', '/')
         source_preserved = [bool]$KeepSource
     }
@@ -142,6 +182,9 @@ try {
     Write-Host "Playthrough recording completed: $videoPath"
 }
 finally {
+    if ($createdOverride -and (Test-Path -LiteralPath $overridePath)) {
+        Remove-Item -LiteralPath $overridePath -Force
+    }
     if ($null -ne $server -and -not $server.HasExited) {
         Stop-Process -Id $server.Id
         $server.WaitForExit()
