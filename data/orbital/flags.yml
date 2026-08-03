@@ -1,21 +1,21 @@
 - {id: chen_sabotageed, scope: actor, description: 赫克托已遭破坏}
 - {id: market_watched, scope: actor, description: 人物已观察补给环局势}
 - {id: player_source_checked, scope: actor, description: 人物已核查玩家消息来源}
-- {id: prepared, scope: actor, description: 人物已形成额外决策窗口准备}
-- {id: command_deck_eva_suit_kept, scope: actor, description: 玩家拒绝归还青岚舱外服}
+- {id: prepared, scope: actor, description: 人物已形成额外争夺准备}
+- {id: command_deck_eva_suit_kept, scope: actor, description: 玩家拒绝归还指挥部舱外服}
 - {id: command_deck_eva_suit_late_resolved, scope: actor, description: 维修耗材路线后期选择已结算}
-- {id: command_deck_eva_suit_lent, scope: actor, description: 玩家已将舱外服借回青岚队伍}
+- {id: command_deck_eva_suit_lent, scope: actor, description: 玩家已将舱外服交回指挥部}
 - {id: command_deck_eva_suit_liquidated, scope: actor, description: 玩家已变现维修耗材与独行路线}
 - {id: command_deck_eva_suit_midgame_resolved, scope: actor, description: 维修耗材路线中段选择已结算}
 - {id: command_deck_eva_suit_scouted, scope: actor, description: 玩家已使用舱外服提前踩点}
-- {id: command_deck_escort_approved, scope: actor, description: 玩家已通过青岚同行审核}
-- {id: command_deck_escort_fulfilled, scope: actor, description: 玩家已兑现青岚同行承诺}
+- {id: command_deck_escort_approved, scope: actor, description: 玩家已通过指挥部同行审核}
+- {id: command_deck_escort_fulfilled, scope: actor, description: 玩家已兑现指挥部同行承诺}
 - {id: command_deck_escort_late_resolved, scope: actor, description: 同行路线后期分工已结算}
 - {id: command_deck_escort_midgame_resolved, scope: actor, description: 同行路线审核选择已结算}
-- {id: command_deck_escort_promised, scope: actor, description: 玩家获得青岚同行承诺}
-- {id: command_deck_escort_quartermaster, scope: actor, description: 玩家选择青岚随队后勤}
-- {id: command_deck_escort_refused, scope: actor, description: 玩家退出青岚同行名单}
-- {id: command_deck_escort_vanguard, scope: actor, description: 玩家选择青岚随队先锋}
+- {id: command_deck_escort_promised, scope: actor, description: 玩家获得指挥部同行承诺}
+- {id: command_deck_escort_quartermaster, scope: actor, description: 玩家选择指挥部随队后勤}
+- {id: command_deck_escort_refused, scope: actor, description: 玩家退出指挥部同行名单}
+- {id: command_deck_escort_vanguard, scope: actor, description: 玩家选择指挥部随队先锋}
 - {id: command_deck_intel_term_eva_suit, scope: actor, description: 玩家以数据交换舱外服}
 - {id: command_deck_intel_term_escort, scope: actor, description: 玩家以数据交换同行承诺}
 - {id: command_deck_intel_term_trust, scope: actor, description: 玩家无偿提供数据建立信任}
@@ -28,7 +28,7 @@
 - {id: command_deck_trust_vouched, scope: actor, description: 玩家已公开担保数据来源}
 - {id: route_leaked, scope: actor, description: 人物已泄露关键路线}
 
-- {id: N02_withdrawn, scope: world, description: 赫克托已退出亲自决策窗口}
+- {id: N02_withdrawn, scope: world, description: 赫克托已退出核心争夺}
 - {id: N07_disinherited, scope: world, description: 周景明已被财团剥夺资格}
 - {id: N07_fugitive, scope: world, description: 周景明已成为撤离者}
 - {id: sabotage_open, scope: world, description: 破坏机会已经出现}
@@ -39,7 +39,7 @@
 - {id: chen_entering_inner, scope: world, description: 赫利俄斯财团正在进入核心舱}
 - {id: chen_on_sabotage_route, scope: world, description: 赫克托位于破坏路线}
 - {id: chen_seek_cooperation, scope: world, description: 赫利俄斯财团开始寻求合作}
-- {id: chen_treats_player_as_command_deck, scope: world, description: 赫利俄斯财团将玩家视为青岚阵营}
+- {id: chen_treats_player_as_command_deck, scope: world, description: 赫利俄斯财团将玩家视为指挥部阵营}
 - {id: injury_public, scope: world, description: 赫克托伤势已经公开}
 - {id: li_betrayed, scope: world, description: 李寒鸦已遭背叛}
 - {id: li_hunts_player, scope: world, description: 李寒鸦开始追猎玩家}
@@ -47,13 +47,13 @@
 - {id: outer_valley_crowded, scope: world, description: 受损维护环人员拥挤}
 - {id: player_backed_shen, scope: world, description: 玩家公开支持顾岚, public_label: 你已公开支持顾岚}
 - {id: player_declared_independent, scope: world, description: 玩家公开声明保持独立}
-- {id: player_joining_command_deck, scope: world, description: 玩家准备加入青岚行动}
+- {id: player_joining_command_deck, scope: world, description: 玩家准备加入指挥部行动}
 - {id: player_took_shen_eva_suit, scope: world, description: 玩家取走顾岚的舱外服, public_label: 你带走了环站指挥部的舱外服}
 - {id: command_deck_chen_alliance, scope: world, description: 环站指挥部与赫利俄斯财团达成合作}
 - {id: command_deck_review, scope: world, description: 环站指挥部启动公开审核, public_label: 环站指挥部进入公开审核}
 - {id: route_changed, scope: world, description: 远星环站公开路线已经变化}
 - {id: rumor_public, scope: world, description: 跃迁核心传闻已经公开}
 - {id: su_requests_eva_suit, scope: world, description: 苏弥请求取回舱外服}
-- {id: transplant_backed, scope: world, description: 移植方案已获得支持, public_label: 提前移植方案获得支持}
-- {id: transplant_window, scope: world, description: 跃迁核心移植窗口已经出现}
+- {id: transplant_backed, scope: world, description: 转移方案已获得支持, public_label: 提前转移方案获得支持}
+- {id: transplant_window, scope: world, description: 跃迁核心转移窗口已经出现}
 - {id: valley_open, scope: world, description: 远星环站已经开放, public_label: 远星环站入口开放, blocked_label: 远星环站入口尚未开放}

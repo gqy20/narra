@@ -40,7 +40,7 @@
   - succession
   - sabotage
 - id: F07
-  truth: 跃迁核心可在第19至20天使用磁封容器提前移植
+  truth: 跃迁核心可在第19至20天使用磁封容器提前转移
   discoverable: true
   topics:
   - jump_core
@@ -52,7 +52,7 @@
   - command_deck
   - intrigue
 - id: F09
-  truth: 魏川只想制造竞价，不打算亲自夺药
+  truth: 魏川只想制造竞价，不打算亲自争夺跃迁核心
   discoverable: true
   topics:
   - market

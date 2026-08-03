@@ -341,7 +341,7 @@ func TestT05EvidencePreventsAmbushAndChangesSuccession(t *testing.T) {
 			t.Fatal("Wang Heng ambushed a caravan after its route changed")
 		}
 	}
-	if !strings.Contains(state.Outcome, "玩家保护") {
+	if !strings.Contains(state.Outcome, "避开伏击") || strings.Contains(state.Outcome, "玩家") {
 		t.Fatalf("outcome = %q, want protected caravan outcome", state.Outcome)
 	}
 	if got := state.Player.Resources["credit"]; got != 2 {

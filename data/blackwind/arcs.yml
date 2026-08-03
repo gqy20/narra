@@ -542,73 +542,73 @@
     - id: trust-rewarded
       states: [trust_reviewed, trust_joined, trust_commissioned]
       conditions: [{type: flag, scope: actor, key: qinglan_trust_rewarded}]
-      text: 你在宗门审核中兑现了担保；沈砚秋取得青髓芝后为你记功，你获得 2 点信用与 1 点支援。
+      text: 担保兑现：沈砚秋为你记功；信用 +2，支援 +1。
     - id: trust-betrayed
       states: [trust_betrayed]
-      text: 你把沈砚秋的计划转交赵鹤鸣换取 20 灵石；沈砚秋对你的最终信任为 {{value}}。
+      text: 你出卖沈砚秋，获得 20 灵石；最终信任为 {{value}}。
       relation_from_id: N03
       relation_to_id: player
       relation_metric: trust
     - id: trust-vouched
       states: [trust_reviewed, trust_joined, trust_commissioned]
       conditions: [{type: missing_flag, scope: actor, key: qinglan_trust_rewarded}]
-      text: 你公开为消息担保并完成了信任路线的履约；沈砚秋对你的最终信任为 {{value}}。
+      text: 你兑现担保；沈砚秋的最终信任为 {{value}}。
       relation_from_id: N03
       relation_to_id: player
       relation_metric: trust
     - id: trust-review-missed
       states: [trust_committed]
-      text: 你最初无偿帮助沈砚秋，却没有回应赵鹤鸣的公开质疑；关系停留在 {{value}} 点信任，未形成宗门记功。
+      text: 你未回应质疑；沈砚秋的最终信任为 {{value}}，未获记功。
       relation_from_id: N03
       relation_to_id: player
       relation_metric: trust
     - id: trust-operation-joined
       states: [trust_joined]
-      text: 你把公开担保兑现为行动席位，取得解瘴丹、2 点支援与额外筹备，获得亲自争夺的完整条件。
+      text: 担保换得行动席位、解瘴丹、2 点支援与额外筹备。
     - id: trust-commissioned
       states: [trust_commissioned]
-      text: 你没有占用青岚门行动席位，而是把情报与担保结算为 30 灵石和 1 点信用。
+      text: 你放弃行动席位，获得 30 灵石与 1 点信用。
 
     - id: antidote-request-missed
       states: [antidote_committed]
-      text: 你用成熟日期换得解瘴丹，但没有正面回应苏晚照的借丹请求；丹药仍是你的独行筹码。
+      text: 你未回应借丹；解瘴丹仍归你使用。
     - id: antidote-lent
       states: [antidote_lent]
-      text: 苏晚照提出队伍药物缺口后，你交回解瘴丹，放弃独行资格并换得 2 点支援与她的信任。
+      text: 你交回解瘴丹，放弃独行；支援 +2，苏晚照更加信任你。
     - id: antidote-kept
       states: [antidote_kept, antidote_scouted, antidote_liquidated]
-      text: 你拒绝归还交易所得的解瘴丹，保留独自决定入谷时机的自由，也失去了苏晚照的信任。
+      text: 你拒绝归还解瘴丹，保留独自决定入谷时机的自由；苏晚照不再信任你。
     - id: antidote-scouted
       states: [antidote_scouted]
-      text: 你用稀缺解瘴丹提前踩点，保留丹药并取得 2 点支援与额外筹备。
+      text: 你用解瘴丹提前踩点；支援 +2，并获额外筹备。
     - id: antidote-liquidated
       states: [antidote_liquidated]
-      text: 你主动放弃核心争夺，把解瘴丹与独行路线转售为 60 灵石，锁定了个人交易收益。
+      text: 你放弃争夺，卖出解瘴丹，获得 60 灵石。
 
     - id: escort-review-missed
       states: [escort_committed]
-      text: 你换得同行承诺，却没有完成宗门审核，因而失去了第16日的集结资格。
+      text: 你未完成宗门审核，同行承诺失效。
     - id: escort-assembly-missed
       states: [escort_approved]
-      text: 你通过了青岚门审核，却没有在开谷前返回驻地集结，同行承诺最终失效。
+      text: 你错过驻地集结，同行承诺失效。
     - id: escort-refused
       states: [escort_refused]
-      text: 你在宗门审核时退出同行名单，放弃随队收益并保留了公开的散修身份。
+      text: 你退出同行名单，放弃随队收益，保持散修身份。
     - id: escort-fulfilled
       states: [escort_fulfilled, escort_vanguard, escort_quartermaster]
-      text: 你通过青岚门审核并兑现同行承诺，取得随队解瘴丹与 1 点支援。
+      text: 你兑现同行承诺，获得解瘴丹与 1 点支援。
     - id: escort-vanguard
       states: [escort_vanguard]
-      text: 你在集结后接下先锋分工，取得 3 点支援、额外筹备与独立指挥权。
+      text: 你接下先锋分工；支援 +3，并获额外筹备与独立指挥权。
     - id: escort-quartermaster
       states: [escort_quartermaster]
-      text: 你选择负责随队后勤，获得 30 灵石、2 点信用与 1 点支援。
+      text: 你负责后勤，获得 30 灵石、2 点信用与 1 点支援。
     - id: escort-chen-affiliation
       states: [escort_committed, escort_approved, escort_refused, escort_fulfilled, escort_vanguard, escort_quartermaster]
       conditions:
         - {type: flag, key: chen_treats_player_as_qinglan}
         - {type: missing_flag, key: player_declared_independent}
-      text: 陈青山已经把你视为青岚门行动的一员，陈氏后续合作将以阵营关系重新评估。
+      text: 陈青山视你为青岚门行动的一员。
 
   progress_rules:
     - id: trust-operation-joined
@@ -1016,4 +1016,4 @@
   consequence_rules:
     - id: antidote-recovered
       states: [recovered]
-      text: 你在坊市封锁后以已核实情报换得备用解瘴丹，重新取得了独自入谷的条件。
+      text: 你用核实情报换得备用解瘴丹，恢复独行资格。

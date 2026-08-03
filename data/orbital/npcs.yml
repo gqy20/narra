@@ -17,8 +17,8 @@
   - integrity
   location: L01
   injury: 0
-  public_profile: 常年出入险地的独行站员，正在收购解瘴物资并扫描远星环站路线。
-  public_role: 独行决策窗口者
+  public_profile: 常年出入险地的独行站员，正在收购舱外物资并扫描远星环站路线。
+  public_role: 独立回收者
   public_interests:
   - topic: jump_core
     label: 跃迁核心归属
@@ -172,8 +172,8 @@
       value: 'true'
 - id: N02
   name: 赫克托
-  faction: 赫利俄斯财团财团
-  goal: 为赫利俄斯财团回收跃迁核心并维持家主权威
+  faction: 赫利俄斯财团
+  goal: 为赫利俄斯财团回收跃迁核心并维持董事权威
   goals:
   - type: acquire
     target_id: jump_core
@@ -191,7 +191,7 @@
   - succession
   location: L03
   injury: 2
-  public_profile: 赫利俄斯财团维修坞家主，近期旧伤反复，仍在组织财团队伍参与远星环站之行。
+  public_profile: 赫利俄斯财团维修坞负责人，近期旧伤反复，仍在组织队伍前往远星环站。
   public_role: 赫利俄斯财团领队
   public_interests:
   - topic: helios_corp
@@ -199,7 +199,7 @@
   - topic: jump_core
     label: 跃迁核心归属
   - topic: integrity
-    label: 决策窗口风险
+    label: 争夺风险
   public_risk: 看重财团利益，涉及伤势或商路的消息可能引发强烈反应。
   resources:
     integrity: 5
@@ -379,7 +379,7 @@
 - id: N03
   name: 顾岚
   faction: 环站指挥部
-  goal: 代表舰队回收灵药且避免丑闻
+  goal: 代表舰队回收跃迁核心且避免丑闻
   goals:
   - type: acquire
     target_id: jump_core
@@ -399,7 +399,7 @@
   injury: 0
   public_profile: 环站指挥部此次行动的负责人，行事谨慎，正在核对跃迁核心消息与进入核心舱准备。
   public_role: 环站指挥部行动负责人
-  public_goal: 代表环站指挥部完成进入核心舱准备并回收灵药
+  public_goal: 代表环站指挥部完成核心舱准备并回收跃迁核心
   track_public_plan: true
   public_interests:
   - topic: jump_core
@@ -483,7 +483,7 @@
       value: 'true'
   - id: N03-early-prepare
     action_id: assign
-    description: 顾岚因信任消息来源，立即调集弟子与解瘴物资
+    description: 顾岚因信任消息来源，立即调集人员与舱外物资
     target_id: P00
     from_day: 2
     until_day: 5
@@ -532,7 +532,7 @@
       value: 'true'
   - id: N03-to-outer
     action_id: assign
-    description: 顾岚带领青岚弟子前往受损维护环
+    description: 顾岚带领指挥部维修队前往受损维护环
     from_day: 17
     until_day: 18
     once: true
@@ -620,7 +620,7 @@
     learned_on: 0
     secrecy: 1
   - fact_id: F09
-    claim: 自己不准备亲自夺药
+    claim: 自己不准备亲自争夺跃迁核心
     confidence: 3
     source: 自身计划
     learned_on: 0
@@ -635,7 +635,7 @@
   strategies:
   - id: N04-auction-date
     action_id: auction
-    description: 魏川把真实完成充能日期卖给赫利俄斯财团财团
+    description: 魏川把真实完成充能日期卖给赫利俄斯财团
     target_id: N02
     from_day: 6
     until_day: 7
@@ -710,7 +710,7 @@
   - topic: orbital
     label: 核心舱外动向
   - topic: integrity
-    label: 决策窗口实力
+    label: 争夺实力
   public_risk: 信誉较差，可能把消息用于破坏或牟利。
   resources:
     integrity: 5
@@ -770,7 +770,7 @@
 - id: N06
   name: 苏弥
   faction: 环站指挥部
-  goal: 保存跃迁核心药性并回收研究机会
+  goal: 保存跃迁核心数据并争取研究机会
   goals:
   - type: protect
     target_id: jump_core
@@ -784,18 +784,18 @@
   - command_deck
   location: L02
   injury: 0
-  public_profile: 环站指挥部药理弟子，关注灵药保存与移植，对正面决策窗口兴趣不大。
-  public_role: 药理与移植研究者
-  public_goal: 保存跃迁核心药性并争取研究机会
+  public_profile: 环站指挥部核心工程师，关注跃迁核心的保存与转移，对正面争夺兴趣不大。
+  public_role: 核心保存与转移研究者
+  public_goal: 保存跃迁核心数据并争取研究机会
   track_public_plan: true
   public_interests:
   - topic: jump_core
-    label: 灵药归属
+    label: 核心归属
   - topic: medicine
-    label: 保存与移植
+    label: 保存与转移
   - topic: command_deck
-    label: 舰队药务
-  public_risk: 更重视药性保存，可靠的药理消息容易促使她寻求合作。
+    label: 舰队研究
+  public_risk: 更重视核心完整性，可靠的技术消息容易促使她合作。
   resources:
     integrity: 2
     crew_support: 1
@@ -803,9 +803,9 @@
   items: []
   beliefs:
   - fact_id: F07
-    claim: 第19至20天可用磁封容器提前移植
+    claim: 第19至20天可用磁封容器提前转移
     confidence: 3
-    source: 药典
+    source: 技术档案
     learned_on: 0
     secrecy: 1
   personality:
@@ -818,7 +818,7 @@
   strategies:
   - id: N06-requisition-eva_suit
     action_id: requisition
-    description: 苏弥为提前移植准备舱外服
+    description: 苏弥为提前转移准备舱外服
     from_day: 7
     until_day: 10
     once: true
@@ -871,7 +871,7 @@
       value: 'true'
   - id: N06-inform-shen
     action_id: dock
-    description: 苏弥将提前移植方法告知顾岚
+    description: 苏弥将提前转移方法告知顾岚
     target_id: N03
     from_day: 11
     until_day: 13
@@ -925,7 +925,7 @@
       value: L04
   - id: N06-to-inner
     action_id: navigate
-    description: 苏弥依照药理记录进入核心舱
+    description: 苏弥依照技术记录进入核心舱
     from_day: 19
     until_day: 19
     duration: 1
@@ -953,7 +953,7 @@
       value: L05
   - id: N06-transplant
     action_id: charge_drive
-    description: 苏弥与玩家合作，用磁封容器提前移植跃迁核心
+    description: 苏弥与玩家合作，用磁封容器提前转移跃迁核心
     target_id: jump_core
     from_day: 20
     until_day: 20
@@ -985,11 +985,11 @@
       target_id: N06
       key: jump_core
     - type: set_outcome
-      value: 苏弥与玩家合作，在完成充能日前成功移植跃迁核心
+      value: 苏弥与你合作，在充能完成前转移跃迁核心
 - id: N07
   name: 赫莉娅
-  faction: 赫利俄斯财团财团
-  goal: 取代赫克托成为下一任家主
+  faction: 赫利俄斯财团
+  goal: 取代赫克托成为下一任董事
   goals:
   - type: status
     target_id: chen_successor
@@ -1012,7 +1012,7 @@
     label: 财团权力
   - topic: intrigue
     label: 隐秘交易
-  public_risk: 立场不稳，敏感消息可能被用来决策窗口财团地位。
+  public_risk: 立场不稳，敏感消息可能被她用来争夺财团地位。
   resources:
     integrity: 3
     crew_support: 0
@@ -1116,7 +1116,7 @@
     label: 核心舱外地形
   - topic: intel
     label: 路线数据
-  public_risk: 熟悉路线但以获利为先，消息可能被卖给其他决策窗口者。
+  public_risk: 熟悉路线但以获利为先，消息可能被卖给其他竞争者。
   resources:
     integrity: 2
     crew_support: 0
@@ -1196,15 +1196,15 @@
   - succession
   location: L02
   injury: 0
-  public_profile: 环站指挥部弟子，热衷广播补给环消息，与顾岚在门内存在竞争。
-  public_role: 门内竞争者
+  public_profile: 环站指挥部站员，热衷广播补给环消息，与顾岚存在内部竞争。
+  public_role: 指挥部竞争者
   public_goal: 维护舰队审核与内部秩序
   track_public_plan: true
   public_interests:
   - topic: command_deck
-    label: 门内声望
+    label: 内部声望
   - topic: intrigue
-    label: 门内竞争
+    label: 内部竞争
   - topic: intel
     label: 补给环传言
   public_risk: 热衷广播未经核实的消息，告诉他可能加速传闻扩散。
@@ -1293,7 +1293,7 @@
 - id: N10
   name: 罗茵
   faction: 中立商人
-  goal: 从药材波动中获利并保住商铺
+  goal: 从物资波动中获利并保住商铺
   goals:
   - type: profit
     target_id: medicine_market
@@ -1311,11 +1311,11 @@
   - medicine
   location: L01
   injury: 0
-  public_profile: 白石补给环药商，掌握舱外服货源，对价格变化格外敏感。
-  public_role: 补给环药商
+  public_profile: 白石补给环物资商，掌握舱外服货源，对价格变化格外敏感。
+  public_role: 补给环物资商
   public_interests:
   - topic: market
-    label: 药材行情
+    label: 物资行情
   - topic: medicine
     label: 维修耗材供给
   - topic: orbital

@@ -168,7 +168,7 @@ func _run() -> void:
 		return _fail("ending leaked an internal score")
 	if "本局余波" not in _descendant_text(app.ending_box):
 		return _fail("ending overlay does not expose the aftermath section")
-	if "2 点信用" not in _descendant_text(app.ending_box):
+	if "信用 +2" not in _descendant_text(app.ending_box):
 		return _fail("ending does not surface the player's intelligence-route return")
 	if "本局余波" in _visible_descendant_text(app.ending_box):
 		return _fail("ending exposes route accounting before the aftermath section is opened")

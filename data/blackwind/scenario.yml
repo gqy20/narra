@@ -1,5 +1,5 @@
 id: blackwind_t00
-title: 黑风谷青髓芝争夺：无玩家基线
+title: 黑风谷青髓芝争夺
 duration: 30
 topics:
 - qingsuizhi
@@ -199,10 +199,10 @@ contest:
   preparation_flag: prepared
   verified_date_fact_id: F01
   rumored_date_fact_id: F02
-  early_outcome: "{winner} 已在成熟日前取得青髓芝"
+  early_outcome: "{winner}抢在成熟日前取得青髓芝。"
   cancelled_outcome: "成熟日争夺取消：{outcome}"
-  no_winner_outcome: 无人满足进入内谷并采摘青髓芝的条件
-  default_outcome: "{winner} 以准备值 {score} 取得青髓芝"
+  no_winner_outcome: 青髓芝成熟，无人进入内谷。
+  default_outcome: "{winner}取得青髓芝。"
   outcome_rules:
   - id: chen-caravan-protected
     priority: 100
@@ -210,13 +210,13 @@ contest:
     required_world_flags:
     - caravan_protected
     - betrayal_exposed
-    template: "陈氏在玩家保护下避开伏击，由{winner}以准备值 {score} 取得青髓芝"
+    template: "陈氏避开伏击，{winner}取得青髓芝。"
   - id: qinglan-chen-alliance
     priority: 90
     winner_id: N03
     required_world_flags:
     - qinglan_chen_alliance
-    template: "青岚门与陈氏合作，由{winner}以准备值 {score} 取得青髓芝"
+    template: "青岚门与陈氏合作，{winner}取得青髓芝。"
   reward_rules:
   - id: qinglan-player-credit
     priority: 100
@@ -224,7 +224,7 @@ contest:
     required_player_flags:
     - qinglan_trust_vouched
     min_winner_trust: 2
-    suffix: "；沈砚秋依约为你在青岚门记功"
+    suffix: "沈砚秋依约为你在青岚门记功。"
     effects:
     - type: adjust_resource
       target_id: player

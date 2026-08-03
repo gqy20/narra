@@ -25,7 +25,7 @@ fallback_strategies:
 - strategy:
     id: generic-requisition-eva_suit
     action_id: requisition
-    description: "{actor}为决策窗口行动补充舱外服"
+    description: "{actor}为核心争夺补充舱外服"
     once: true
     conditions:
     - {type: missing_item, key: eva_suit}
@@ -56,7 +56,7 @@ navigation:
   contest:
     enabled: true
     action_id: navigate
-    description: 沿可行路线接近决策窗口目标
+    description: 沿可行路线接近核心舱
     knowledge_facts: [F01, F04]
     blocking_facts: [F09]
     min_confidence: 2

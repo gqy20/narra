@@ -1,5 +1,5 @@
 id: orbital_t00
-title: 远星环站跃迁核心决策窗口：无玩家基线
+title: 远星环站：跃迁核心
 duration: 30
 topics:
 - jump_core
@@ -28,7 +28,7 @@ markets:
   blockade_flag: eva_suit_blockade
 directives:
 - id: quiet-broker-arrival
-  description: 补给环数日没有新的公开变化，一名游商趁平静短暂停留，带来额外扫描渠道
+  description: 补给环数日没有新的公开变化，一名流动商人短暂停留，带来额外消息渠道
   trigger: quiet_days
   from_day: 3
   until_day: 12
@@ -39,7 +39,7 @@ directives:
   - type: open_opportunity
     target_id: world
     key: wandering_broker
-    value: 游商正在白石补给环短暂停留
+    value: 流动商人正在白石补给环短暂停留
 - id: eva_suit-demand-visible
   description: 舱外服库存持续下降，补给环开始公开议论远星环站行装需求
   trigger: market_stock_at_most
@@ -75,8 +75,8 @@ opportunity_actions:
 - id: opportunity:wandering_broker
   key: wandering_broker
   action_id: scan
-  name: 向短暂停留的游商扫描消息
-  description: 游商只停留一段时间；询问他最近替谁在补给环制造声势
+  name: 向流动商人打听消息
+  description: 他只停留一段时间；可询问最近是谁在补给环制造声势
   location_id: L01
   duration: 1
   effects:
@@ -126,7 +126,7 @@ fixed_events:
 - id: EV08
   day: 8
   timing: start
-  description: 赫利俄斯财团财团限制舱外服外售
+  description: 赫利俄斯财团限制舱外服外售
   effects:
   - type: set_flag
     target_id: world
@@ -135,7 +135,7 @@ fixed_events:
 - id: EV10
   day: 10
   timing: start
-  description: 环站指挥部要求弟子申报远星环站数据
+  description: 环站指挥部要求成员申报远星环站数据
   effects:
   - type: set_flag
     target_id: world
@@ -167,7 +167,7 @@ fixed_events:
 - id: EV19
   day: 19
   timing: start
-  description: 跃迁核心提前移植窗口开启
+  description: 跃迁核心提前转移窗口开启
   effects:
   - type: set_flag
     target_id: world
@@ -176,7 +176,7 @@ fixed_events:
 - id: EV24
   day: 24
   timing: start
-  description: 相信错误日期的迟到者抵达，决策窗口早已结束
+  description: 相信错误日期的迟到者抵达，核心争夺早已结束
   effects: []
 - id: EV27
   day: 27
@@ -199,10 +199,10 @@ contest:
   preparation_flag: prepared
   verified_date_fact_id: F01
   rumored_date_fact_id: F02
-  early_outcome: "{winner} 已在完成充能日前回收跃迁核心"
-  cancelled_outcome: "完成充能日决策窗口取消：{outcome}"
-  no_winner_outcome: 无人满足进入核心舱并回收跃迁核心的条件
-  default_outcome: "{winner} 以准备值 {score} 回收跃迁核心"
+  early_outcome: "{winner}抢在充能完成前回收跃迁核心。"
+  cancelled_outcome: "核心争夺取消：{outcome}"
+  no_winner_outcome: 核心舱封闭，无人回收跃迁核心。
+  default_outcome: "{winner}回收跃迁核心。"
   outcome_rules:
   - id: chen-caravan-protected
     priority: 100
@@ -210,13 +210,13 @@ contest:
     required_world_flags:
     - caravan_protected
     - betrayal_exposed
-    template: "赫利俄斯财团在玩家保护下避开破坏，由{winner}以准备值 {score} 回收跃迁核心"
+    template: "赫利俄斯财团避开破坏，{winner}回收跃迁核心。"
   - id: command_deck-chen-alliance
     priority: 90
     winner_id: N03
     required_world_flags:
     - command_deck_chen_alliance
-    template: "环站指挥部与赫利俄斯财团合作，由{winner}以准备值 {score} 回收跃迁核心"
+    template: "环站指挥部与赫利俄斯财团合作，{winner}回收跃迁核心。"
   reward_rules:
   - id: command_deck-player-reputation
     priority: 100
@@ -224,7 +224,7 @@ contest:
     required_player_flags:
     - command_deck_trust_vouched
     min_winner_trust: 2
-    suffix: "；顾岚依约为你在环站指挥部记功"
+    suffix: "顾岚依约为你在环站指挥部记功。"
     effects:
     - type: adjust_resource
       target_id: player

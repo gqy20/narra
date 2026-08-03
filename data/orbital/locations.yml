@@ -24,7 +24,7 @@
   map_x: 0.38
   map_y: 0.22
   scene_key: command_deck
-  description: 环站指挥部在核心舱外布置的临时驻地，弟子与物资都在等待最终的出发时机。
+  description: 环站指挥部在核心舱外布置的临时驻地，人员与物资都在等待出发指令。
   atmosphere: 指挥信标沿循环气流展开，营地里的脚步始终克制而匆忙。
   routes:
   - to: L01
@@ -87,8 +87,8 @@
   map_x: 0.88
   map_y: 0.36
   scene_key: inner_valley
-  description: 跃迁核心生长的核心舱，也是所有公开路线最终指向的决策窗口核心。
-  atmosphere: 天光被峭壁切成窄线，幽蓝能量流在谷底若隐若现。
+  description: 跃迁核心所在的核心舱，也是所有公开路线的终点。
+  atmosphere: 舱壁警示灯明灭，幽蓝能量流在隔离层后若隐若现。
   routes:
   - to: L04
     duration: 1

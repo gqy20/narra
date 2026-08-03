@@ -313,11 +313,11 @@ func TestStoryConsequencesProjectStateAndRuntimeValues(t *testing.T) {
 	state.StoryStates["qinglan_intel"] = "escort_vanguard"
 	state.WorldFlags["chen_treats_player_as_qinglan"] = true
 	consequences = session.storyConsequences(state)
-	if len(consequences) != 3 || !containsMessage(consequences, "兑现同行承诺") || !containsMessage(consequences, "先锋分工") || !containsMessage(consequences, "视为青岚门行动的一员") {
+	if len(consequences) != 3 || !containsMessage(consequences, "兑现同行承诺") || !containsMessage(consequences, "先锋分工") || !containsMessage(consequences, "视你为青岚门行动的一员") {
 		t.Fatalf("escort consequences = %v", consequences)
 	}
 	state.WorldFlags["player_declared_independent"] = true
-	if consequences = session.storyConsequences(state); len(consequences) != 2 || containsMessage(consequences, "视为青岚门行动的一员") {
+	if consequences = session.storyConsequences(state); len(consequences) != 2 || containsMessage(consequences, "视你为青岚门行动的一员") {
 		t.Fatalf("independent escort consequences = %v", consequences)
 	}
 }

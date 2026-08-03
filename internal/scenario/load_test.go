@@ -1,12 +1,55 @@
 package scenario
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"fantu/internal/domain"
 )
+
+func TestOfficialContestOutcomesHideMechanicalScores(t *testing.T) {
+	for _, world := range []string{"blackwind", "orbital"} {
+		bundle, err := Load(filepath.Join("..", "..", "data", world))
+		if err != nil {
+			t.Fatalf("load %s: %v", world, err)
+		}
+		texts := []string{
+			bundle.Scenario.Title,
+			bundle.Scenario.Contest.EarlyOutcome,
+			bundle.Scenario.Contest.NoWinnerOutcome,
+			bundle.Scenario.Contest.DefaultOutcome,
+		}
+		for _, rule := range bundle.Scenario.Contest.OutcomeRules {
+			texts = append(texts, rule.Template)
+		}
+		for _, text := range texts {
+			if strings.Contains(text, "准备值") || strings.Contains(text, "玩家保护") || strings.Contains(text, "无玩家基线") {
+				t.Fatalf("%s exposes implementation language in %q", world, text)
+			}
+		}
+	}
+}
+
+func TestOrbitalContentHasNoBlackwindTerminology(t *testing.T) {
+	paths, err := filepath.Glob(filepath.Join("..", "..", "data", "orbital", "*.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	forbidden := []string{"青岚", "黑风谷", "青髓芝", "解瘴丹", "灵石", "宗门", "散修", "开谷", "借丹", "药理", "药典", "灵药", "药商", "药材", "门内", "弟子", "瘴气", "家主", "移植", "决策窗口", "财团财团", "静心吐纳", "收入行囊"}
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, term := range forbidden {
+			if strings.Contains(string(data), term) {
+				t.Errorf("%s contains blackwind term %q", filepath.Base(path), term)
+			}
+		}
+	}
+}
 
 func TestLoadBlackwindBundle(t *testing.T) {
 	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
