@@ -459,3 +459,23 @@ func TestValidateRejectsUnknownEffectType(t *testing.T) {
 		t.Fatalf("unknown effect error = %v", err)
 	}
 }
+
+func TestValidateRejectsUnknownConditionTypeAndInvalidFields(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	bundle.NPCs[0].Strategies[0].Conditions = append(bundle.NPCs[0].Strategies[0].Conditions, domain.Condition{Type: "script"})
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "unknown condition type") {
+		t.Fatalf("unknown condition error = %v", err)
+	}
+
+	bundle, err = Load(filepath.Join("..", "..", "data", "blackwind"))
+	if err != nil {
+		t.Fatalf("reload bundle: %v", err)
+	}
+	bundle.NPCs[0].Strategies[0].Conditions = append(bundle.NPCs[0].Strategies[0].Conditions, domain.Condition{Type: domain.ConditionHasItem, Key: "antidote", Value: "unexpected"})
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "invalid item or fields") {
+		t.Fatalf("invalid condition fields error = %v", err)
+	}
+}

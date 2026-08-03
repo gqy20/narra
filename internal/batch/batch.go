@@ -136,7 +136,7 @@ func summarize(bundle domain.Bundle, state *domain.WorldState) Result {
 			}
 		}
 		for _, condition := range event.Conditions {
-			result.RuleCoverage["condition:"+condition.Type]++
+			result.RuleCoverage["condition:"+string(condition.Type)]++
 		}
 		if event.Type == "action_failed" || event.Type == "action_interrupted" || event.Type == "player_command_skipped" || event.Type == "debt_defaulted" {
 			result.RuleCoverage["failure:"+event.Type]++

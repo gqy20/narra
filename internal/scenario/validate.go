@@ -479,7 +479,7 @@ func validConsequenceActorReference(actorID string, npcs map[string]bool) bool {
 
 func validStoryCondition(condition domain.Condition) bool {
 	switch condition.Type {
-	case "has_item", "missing_item", "flag", "missing_flag":
+	case domain.ConditionHasItem, domain.ConditionMissingItem, domain.ConditionFlag, domain.ConditionMissingFlag:
 		return condition.Key != ""
 	default:
 		return false
@@ -679,8 +679,8 @@ func validGoalType(goalType string) bool {
 
 func validateConditionsAndEffects(start, completion []domain.Condition, effects []domain.Effect, bundle domain.Bundle) error {
 	for _, condition := range append(append([]domain.Condition(nil), start...), completion...) {
-		if condition.Scope != "" && condition.Scope != "world" && condition.Scope != "actor" {
-			return fmt.Errorf("condition %s has invalid scope %q", condition.Type, condition.Scope)
+		if err := validateCondition(condition, bundle); err != nil {
+			return err
 		}
 	}
 	for _, effect := range effects {
@@ -725,6 +725,58 @@ func validateConditionsAndEffects(start, completion []domain.Condition, effects 
 			if effect.DelayDays < 0 || effect.Distortion < 0 || effect.Distortion > 2 || effect.Secrecy < 0 || effect.Secrecy > 3 {
 				return fmt.Errorf("set_belief has invalid delay, distortion, or secrecy")
 			}
+		}
+	}
+	return nil
+}
+
+func validateCondition(condition domain.Condition, bundle domain.Bundle) error {
+	if !condition.Type.Valid() {
+		return fmt.Errorf("unknown condition type %q", condition.Type)
+	}
+	if condition.Scope != "" && condition.Scope != "world" && condition.Scope != "actor" {
+		return fmt.Errorf("condition %s has invalid scope %q", condition.Type, condition.Scope)
+	}
+	switch condition.Type {
+	case domain.ConditionBelief:
+		if _, ok := bundle.Facts[condition.Key]; !ok || condition.MinConfidence < 1 || condition.MinConfidence > 3 || condition.Value != "" || condition.MaxConfidence != 0 || condition.Scope != "" {
+			return fmt.Errorf("belief condition references invalid fact, confidence, or fields")
+		}
+	case domain.ConditionBeliefMax:
+		if _, ok := bundle.Facts[condition.Key]; !ok || condition.MaxConfidence < 0 || condition.MaxConfidence > 3 || condition.Value != "" || condition.MinConfidence != 0 || condition.Scope != "" {
+			return fmt.Errorf("belief_max condition references invalid fact, confidence, or fields")
+		}
+	case domain.ConditionHasItem, domain.ConditionMissingItem:
+		if _, ok := bundle.Items[condition.Key]; !ok || condition.Value != "" || condition.MinConfidence != 0 || condition.MaxConfidence != 0 || condition.Scope != "" {
+			return fmt.Errorf("%s condition references invalid item or fields", condition.Type)
+		}
+	case domain.ConditionLocation:
+		if _, ok := bundle.Locations[condition.Value]; !ok || condition.Key != "" || condition.MinConfidence != 0 || condition.MaxConfidence != 0 || condition.Scope != "" {
+			return fmt.Errorf("location condition references invalid location or fields")
+		}
+	case domain.ConditionFlag, domain.ConditionMissingFlag:
+		if condition.Key == "" || condition.Value != "" || condition.MinConfidence != 0 || condition.MaxConfidence != 0 {
+			return fmt.Errorf("%s condition has invalid fields", condition.Type)
+		}
+	case domain.ConditionResourceAtLeast:
+		if condition.Key == "" || condition.MinConfidence < 0 || condition.Value != "" || condition.MaxConfidence != 0 || condition.Scope != "" {
+			return fmt.Errorf("resource_at_least condition has invalid fields")
+		}
+	case domain.ConditionResourceAtMost:
+		if condition.Key == "" || condition.MaxConfidence < 0 || condition.Value != "" || condition.MinConfidence != 0 || condition.Scope != "" {
+			return fmt.Errorf("resource_at_most condition has invalid fields")
+		}
+	case domain.ConditionInjuryAtLeast:
+		if condition.MinConfidence < 0 || condition.Key != "" || condition.Value != "" || condition.MaxConfidence != 0 || condition.Scope != "" {
+			return fmt.Errorf("injury_at_least condition has invalid fields")
+		}
+	case domain.ConditionInjuryAtMost:
+		if condition.MaxConfidence < 0 || condition.Key != "" || condition.Value != "" || condition.MinConfidence != 0 || condition.Scope != "" {
+			return fmt.Errorf("injury_at_most condition has invalid fields")
+		}
+	case domain.ConditionOpportunity:
+		if condition.Key == "" || condition.Value != "" || condition.MinConfidence != 0 || condition.MaxConfidence != 0 || condition.Scope != "" {
+			return fmt.Errorf("opportunity condition has invalid fields")
 		}
 	}
 	return nil

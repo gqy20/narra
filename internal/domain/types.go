@@ -310,13 +310,41 @@ type Strategy struct {
 	PlanStepID           string         `json:"-"`
 }
 
+type ConditionType string
+
+const (
+	ConditionBelief          ConditionType = "belief"
+	ConditionBeliefMax       ConditionType = "belief_max"
+	ConditionHasItem         ConditionType = "has_item"
+	ConditionMissingItem     ConditionType = "missing_item"
+	ConditionLocation        ConditionType = "location"
+	ConditionFlag            ConditionType = "flag"
+	ConditionMissingFlag     ConditionType = "missing_flag"
+	ConditionResourceAtLeast ConditionType = "resource_at_least"
+	ConditionResourceAtMost  ConditionType = "resource_at_most"
+	ConditionInjuryAtLeast   ConditionType = "injury_at_least"
+	ConditionInjuryAtMost    ConditionType = "injury_at_most"
+	ConditionOpportunity     ConditionType = "opportunity"
+)
+
+func (conditionType ConditionType) Valid() bool {
+	switch conditionType {
+	case ConditionBelief, ConditionBeliefMax, ConditionHasItem, ConditionMissingItem,
+		ConditionLocation, ConditionFlag, ConditionMissingFlag, ConditionResourceAtLeast,
+		ConditionResourceAtMost, ConditionInjuryAtLeast, ConditionInjuryAtMost, ConditionOpportunity:
+		return true
+	default:
+		return false
+	}
+}
+
 type Condition struct {
-	Type          string `json:"type"`
-	Scope         string `json:"scope,omitempty"`
-	Key           string `json:"key"`
-	Value         string `json:"value"`
-	MinConfidence int    `json:"min_confidence"`
-	MaxConfidence int    `json:"max_confidence"`
+	Type          ConditionType `json:"type"`
+	Scope         string        `json:"scope,omitempty"`
+	Key           string        `json:"key"`
+	Value         string        `json:"value"`
+	MinConfidence int           `json:"min_confidence"`
+	MaxConfidence int           `json:"max_confidence"`
 }
 
 type ScoreInput struct {
