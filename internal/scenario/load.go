@@ -15,7 +15,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const supportedSchemaVersion = 1
+const CurrentSchemaVersion = 2
 
 type manifest struct {
 	SchemaVersion       int    `json:"schema_version"`
@@ -31,8 +31,8 @@ func Load(dir string) (domain.Bundle, error) {
 	if err != nil {
 		return bundle, err
 	}
-	if metadata.SchemaVersion != supportedSchemaVersion {
-		return bundle, fmt.Errorf("manifest uses unsupported schema version %d", metadata.SchemaVersion)
+	if metadata.SchemaVersion != CurrentSchemaVersion {
+		return bundle, fmt.Errorf("manifest uses unsupported schema version %d; run content-migrate", metadata.SchemaVersion)
 	}
 	if strings.TrimSpace(metadata.ContentVersion) == "" {
 		return bundle, fmt.Errorf("manifest requires content_version")
