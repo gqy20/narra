@@ -8,6 +8,7 @@ POWERSHELL ?= powershell.exe
 PYTHON ?= py
 GO ?= go
 GODOT ?= godot
+BASH ?= bash
 GODOT_VERSION ?= 4.7.1.stable
 VERSION ?=
 PACKAGE_DIR ?= dist/narra-windows-x86_64
@@ -17,8 +18,8 @@ VERSION_ARG := $(if $(strip $(VERSION)),-Version "$(VERSION)",)
 
 .PHONY: help doctor fmt test test-go test-godot test-logging vet verify \
 	run-cli run-server run-godot record-gameplay \
-	build build-server templates-windows package-windows package-windows-fast \
-	release-windows smoke-windows clean clean-package clean-server
+	build build-server templates-windows templates-macos package-windows package-windows-fast \
+	package-macos package-macos-fast release-windows smoke-windows clean clean-package clean-server
 
 help:
 	@echo Narra development commands
@@ -39,8 +40,11 @@ help:
 	@echo.
 	@echo   make build-server           Build bin/narra-server.exe
 	@echo   make templates-windows      Install matching Windows export templates
+	@echo   make templates-macos        Install matching macOS export template
 	@echo   make package-windows        Test and create the Windows portable ZIP
 	@echo   make package-windows-fast   Package without rerunning Go tests
+	@echo   make package-macos          On macOS, test and create an unsigned Universal ZIP
+	@echo   make package-macos-fast     On macOS, package without rerunning Go tests
 	@echo   make release-windows        Run all checks and create the release ZIP
 	@echo   make smoke-windows          Smoke-test an existing Windows package
 	@echo.
@@ -95,13 +99,22 @@ build-server:
 	$(GO) build -trimpath -ldflags="-s -w" -o bin/narra-server.exe ./cmd/server
 
 templates-windows:
-	$(PYTHON) tools/install-godot-windows-templates.py --version $(GODOT_VERSION)
+	$(PYTHON) tools/install-godot-templates.py --platform windows --version $(GODOT_VERSION)
+
+templates-macos:
+	$(PYTHON) tools/install-godot-templates.py --platform macos --version $(GODOT_VERSION)
 
 package-windows:
 	$(PS_FILE) tools/build-windows.ps1 $(VERSION_ARG)
 
 package-windows-fast:
 	$(PS_FILE) tools/build-windows.ps1 -SkipTests $(VERSION_ARG)
+
+package-macos:
+	$(BASH) tools/build-macos.sh "$(if $(strip $(VERSION)),$(VERSION),dev)"
+
+package-macos-fast:
+	SKIP_TESTS=1 $(BASH) tools/build-macos.sh "$(if $(strip $(VERSION)),$(VERSION),dev)"
 
 release-windows:
 	$(MAKE) verify

@@ -3,17 +3,16 @@ extends Node
 
 signal log_event(level: String, event: String, message: String, fields: Dictionary)
 
-const SERVER_NAME := "narra-server.exe"
-
 var pid := -1
 var data_dir := ""
 
 
 func start(config: Dictionary) -> int:
-	if OS.has_feature("editor") or OS.get_name() != "Windows":
+	var platform := OS.get_name()
+	if OS.has_feature("editor") or not supports_bundled_server(platform):
 		return pid
 	var install_dir := OS.get_executable_path().get_base_dir()
-	var server_path := install_dir.path_join(SERVER_NAME)
+	var server_path := install_dir.path_join(server_name_for_platform(platform))
 	if not FileAccess.file_exists(server_path):
 		push_error("Bundled game server is missing: %s" % server_path)
 		return pid
@@ -49,6 +48,18 @@ func start(config: Dictionary) -> int:
 	else:
 		log_event.emit("ERROR", "server_start_failed", "could not create bundled service process", {"path": server_path})
 	return pid
+
+
+func supports_bundled_server(platform: String) -> bool:
+	return platform in ["Windows", "macOS"]
+
+
+func server_name_for_platform(platform: String) -> String:
+	if platform == "Windows":
+		return "narra-server.exe"
+	if platform == "macOS":
+		return "narra-server"
+	return ""
 
 
 func resolve_data_dir(config: Dictionary, install_dir := "") -> String:

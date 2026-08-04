@@ -181,7 +181,7 @@ Godot 的开始页和游戏内都可以打开“体验设置 → 大模型”，
 
 录制必须使用新的输出目录；如果目录中已有 `source.avi`，脚本会拒绝覆盖。正常退出后会自动移除临时显示覆盖、中间源、独立存档和本次启动的服务进程，并在 `manifest.json` 中记录源格式、源质量、分辨率、帧率与最终编码参数。默认 `1080p` 档同样使用原生 1920×1080 源帧。项目的默认窗口基准为 1600×900，并可在体验设置中选择 1080p、1440p、4K 或跟随显示器的全屏输出。
 
-## 构建 Windows 发行包
+## 构建桌面发行包
 
 安装与当前 Godot 版本匹配的 Windows 导出模板后运行：
 
@@ -189,9 +189,17 @@ Godot 的开始页和游戏内都可以打开“体验设置 → 大模型”，
 ./tools/build-windows.ps1
 ```
 
-构建结果使用英文文件名，输出到 `dist/narra-windows-x86_64/`，并生成 `dist/narra-windows-x86_64.zip`。完整说明见 [Windows 打包说明](docs/development/PACKAGING.md)。
+构建结果使用英文文件名，输出到 `dist/narra-windows-x86_64/`，并生成 `dist/narra-windows-x86_64.zip`。完整说明见 [桌面打包与发布说明](docs/development/PACKAGING.md)。
 
-发行版的客户端日志、服务端日志和存档统一写入 `%APPDATA%\Narra`；日志轮转、故障排查和便携开发模式见 [运行日志说明](docs/development/LOGGING.md)。
+macOS 可在 Mac 或 GitHub Actions 的 macOS Runner 上生成同时支持 Apple Silicon 与 Intel 的 Universal 应用包：
+
+```bash
+bash ./tools/build-macos.sh 0.1.0
+```
+
+推送与 `godot/project.godot` 版本一致的标签（例如 `v0.1.0`）会自动执行 CI，并把 Windows ZIP 与未签名 macOS ZIP 发布到同一个 GitHub Release。完整说明见 [桌面打包与发布说明](docs/development/PACKAGING.md)。
+
+发行版的客户端日志、服务端日志和存档统一写入用户数据目录：Windows 为 `%APPDATA%\Narra`，macOS 为 `~/Library/Application Support/Narra`。日志轮转、故障排查和便携开发模式见 [运行日志说明](docs/development/LOGGING.md)。
 
 ## 运行 T00
 

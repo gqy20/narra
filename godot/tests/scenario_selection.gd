@@ -11,6 +11,12 @@ func _initialize() -> void:
 		return _fail("explicit data directory was not preserved: " + explicit)
 	if process.resolve_data_dir({"scenario": "../outside"}, "C:/Games/Narra") != "":
 		return _fail("relative scenario traversal was accepted")
+	if not process.supports_bundled_server("Windows") or process.server_name_for_platform("Windows") != "narra-server.exe":
+		return _fail("Windows bundled server naming is invalid")
+	if not process.supports_bundled_server("macOS") or process.server_name_for_platform("macOS") != "narra-server":
+		return _fail("macOS bundled server naming is invalid")
+	if process.supports_bundled_server("Linux") or process.server_name_for_platform("Linux") != "":
+		return _fail("unsupported platforms should not select a bundled server")
 	process.free()
 	quit(0)
 

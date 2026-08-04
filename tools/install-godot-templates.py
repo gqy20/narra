@@ -1,8 +1,7 @@
-"""Install only the Windows x86_64 files from an official Godot template archive.
+"""Install selected files from an official Godot export-template archive.
 
-The official archive contains templates for every platform and is much larger than
-the Windows files needed by this project. This helper uses HTTP range requests so
-it does not have to download the entire archive.
+The official archive contains templates for every platform. This helper uses HTTP
+range requests so CI and local builds only download the selected platform files.
 """
 
 from __future__ import annotations
@@ -11,7 +10,9 @@ import argparse
 import io
 import os
 import shutil
+import sys
 import time
+import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -24,6 +25,10 @@ WINDOWS_TEMPLATE_FILES = (
     "windows_release_x86_64.exe",
     "windows_release_x86_64_console.exe",
 )
+PLATFORM_TEMPLATE_FILES = {
+    "windows": WINDOWS_TEMPLATE_FILES,
+    "macos": ("macos.zip",),
+}
 
 
 class HTTPRangeReader(io.RawIOBase):
@@ -101,7 +106,21 @@ class HTTPRangeReader(io.RawIOBase):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", default="4.7.1.stable")
+    parser.add_argument("--platform", choices=sorted(PLATFORM_TEMPLATE_FILES), required=True)
     return parser.parse_args()
+
+
+def template_root() -> Path:
+    if sys.platform == "win32":
+        app_data = os.environ.get("APPDATA")
+        if not app_data:
+            raise RuntimeError("APPDATA is not defined")
+        return Path(app_data) / "Godot" / "export_templates"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Godot" / "export_templates"
+    xdg_data_home = os.environ.get("XDG_DATA_HOME")
+    data_home = Path(xdg_data_home) if xdg_data_home else Path.home() / ".local" / "share"
+    return data_home / "godot" / "export_templates"
 
 
 def main() -> None:
@@ -113,17 +132,14 @@ def main() -> None:
         "https://github.com/godotengine/godot-builds/releases/download/"
         f"{release_tag}/Godot_v{archive_version}_export_templates.tpz"
     )
-    app_data = os.environ.get("APPDATA")
-    if not app_data:
-        raise RuntimeError("APPDATA is not defined")
-    destination = Path(app_data) / "Godot" / "export_templates" / version
+    destination = template_root() / version
     destination.mkdir(parents=True, exist_ok=True)
 
-    print(f"Reading official Godot template archive for {version}...")
+    print(f"Reading official Godot template archive for {version} ({args.platform})...")
     remote = HTTPRangeReader(url)
     with zipfile.ZipFile(remote) as archive:
         entries = {Path(info.filename).name: info for info in archive.infolist()}
-        for filename in WINDOWS_TEMPLATE_FILES:
+        for filename in PLATFORM_TEMPLATE_FILES[args.platform]:
             archive_info = entries.get(filename)
             if archive_info is None:
                 raise RuntimeError(f"Template is missing from the official archive: {filename}")
@@ -138,7 +154,7 @@ def main() -> None:
             temporary_target.replace(target)
 
     (destination / "version.txt").write_text(version, encoding="ascii")
-    print(f"Windows export templates installed in {destination}")
+    print(f"{args.platform} export templates installed in {destination}")
 
 
 if __name__ == "__main__":

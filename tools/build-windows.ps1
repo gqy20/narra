@@ -120,7 +120,7 @@ Files:
 - Disable-Crash-Dumps.cmd: remove the native minidump opt-in
 - narra-server.exe: local rules service
 - build-info.json: release version and source revision
-- data/tianqi/: bundled Tianqi story
+- data/tianqi/: bundled story 《天启邪抄》
 "@
     Set-Content -LiteralPath (Join-Path $packageDir "README.txt") -Value $releaseNotes -Encoding utf8
 

@@ -4,7 +4,7 @@
 > Last verified: 2026-08-04
 > Validation details: [`VALIDATION.md`](VALIDATION.md)
 
-GNU Make is the single command entry point for local development, validation, and Windows packaging. PowerShell scripts under `tools/` contain the implementation so the same operations can also be run directly or from CI.
+GNU Make is the single command entry point for local development, validation, and desktop packaging. Scripts under `tools/` contain the implementation so the same operations can also be run directly or from CI.
 
 Run `make` or `make help` to list available commands.
 
@@ -14,7 +14,7 @@ Run `make` or `make help` to list available commands.
 make doctor
 ```
 
-The doctor checks Go, Godot, GNU Make, Python, and Windows x86_64 Godot export templates. Missing templates can be installed with:
+On Windows, the doctor checks Go, Godot, GNU Make, Python, and Windows x86_64 Godot export templates. Missing templates can be installed with:
 
 ```powershell
 make templates-windows GODOT_VERSION=4.7.1.stable
@@ -39,7 +39,7 @@ make run-cli
 make run-godot
 ```
 
-## Windows releases
+## Desktop releases
 
 Create a testable portable package and ZIP:
 
@@ -56,6 +56,15 @@ make release-windows VERSION=0.1.0
 The release remains under `dist/narra-windows-x86_64/`; the version is added to the archive filename. Test an existing package independently with `make smoke-windows`.
 
 `make package-windows-fast` skips duplicate Go tests but still exports the game and runs the packaged client/server smoke test. It is intended for use after `make verify`, as done by `make release-windows`.
+
+On macOS, install the matching template and build an unsigned Universal 2 package with:
+
+```bash
+make templates-macos GODOT_VERSION=4.7.1.stable
+make package-macos VERSION=0.1.0
+```
+
+Pushes and pull requests run `.github/workflows/ci.yml`. Pushing a version tag such as `v0.1.0` runs `.github/workflows/release.yml`, verifies that the tag matches `godot/project.godot`, builds and smoke-tests both platforms, then publishes both ZIP files to one GitHub Release. The automated macOS artifact is unsigned; see [`PACKAGING.md`](PACKAGING.md) for signing and notarization requirements.
 
 ## Cleanup
 

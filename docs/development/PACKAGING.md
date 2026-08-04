@@ -1,4 +1,4 @@
-# Windows packaging
+# Desktop packaging and GitHub releases
 
 > Status: current operational guide
 > Last verified: 2026-08-04
@@ -9,15 +9,19 @@ All distributable file and directory names use ASCII English names so they work 
 
 - Go matching the version declared by `go.mod`
 - Godot 4.7.1 or a compatible 4.7 release
-- Godot Windows export templates for the installed Godot version
+- Godot export templates for the target platform and installed Godot version
 
-If the matching templates are not installed, Windows x86_64 templates can be fetched from the official Godot release archive without downloading templates for every platform:
+The template installer fetches only the files required by the selected platform:
 
 ```powershell
-py ./tools/install-godot-windows-templates.py --version 4.7.1.stable
+py ./tools/install-godot-templates.py --platform windows --version 4.7.1.stable
 ```
 
-## Build
+```bash
+python3 ./tools/install-godot-templates.py --platform macos --version 4.7.1.stable
+```
+
+## Windows build
 
 From the repository root:
 
@@ -33,7 +37,7 @@ For a versioned archive name:
 
 The script runs the Go test suite, builds a stripped Windows rules service, imports and exports the Godot project, copies the release scenario, runs a headless release smoke test, writes SHA-256 checksums, and creates a compressed ZIP archive.
 
-The public Windows package is intentionally a single-story release. It bundles only `data/tianqi`, and launching `Narra.exe` without arguments starts the Tianqi story (`tianqi_t00`). `blackwind` remains development/prototype content, while `orbital` remains portability-test content; neither is copied into a public package.
+The public Windows package is intentionally a single-story release. It bundles only 《天启邪抄》 (`data/tianqi`, internal scenario ID `tianqi_t00`), and launching `Narra.exe` without arguments starts that story. 《黑风谷》 remains development/prototype content, while 《远星环站》 remains portability-test content; neither is copied into a public package.
 
 `build-info.json` records the version, commit, build time, platform, and `source_dirty` state. A formal release should be built from a clean tree so its source revision is reproducible.
 
@@ -60,3 +64,37 @@ dist/
 `Narra.exe` starts the local service automatically in exported Windows builds and stops the process when the game exits. The release smoke test rejects packages that contain any story other than `tianqi`, then verifies that the running service reports `tianqi_t00`. Logs, saves, and crash diagnostics are written under `%APPDATA%/Narra/` instead of the installation directory. See [runtime logging](LOGGING.md) for log rotation and portable developer mode.
 
 Native Windows Error Reporting dumps for `Narra.exe` are intentionally opt-in. The two crash-dump scripts enable or remove the current-user WER setting without requiring administrator privileges. The service's own recovered-panic minidumps do not require this opt-in.
+
+## macOS build
+
+The macOS package must be built on macOS because it uses `lipo`, preserves application-bundle metadata with `ditto`, and runs the exported application as its smoke test:
+
+```bash
+bash ./tools/build-macos.sh 0.1.0
+```
+
+The script builds `narra-server` for both `amd64` and `arm64`, combines it into one Universal binary, exports `Narra.app`, installs the service and `data/tianqi` under `Contents/MacOS`, verifies the bundled service through the live health endpoint, and creates:
+
+```text
+dist/
+|-- narra-macos-universal-unsigned/
+|   |-- Narra.app/
+|   |-- README.txt
+|   `-- SHA256SUMS.txt
+`-- narra-macos-universal-0.1.0-unsigned.zip
+```
+
+The repository does not contain an Apple signing identity. Local and GitHub-hosted builds are therefore explicitly named `unsigned`. They are useful for internal verification, but Gatekeeper may block a downloaded copy. Public macOS distribution should import a Developer ID Application certificate into the CI keychain, sign the bundled service and application, submit the archive to Apple's notarization service, staple the result, and only then publish it. Those credentials must be stored as GitHub Actions secrets and must never be committed.
+
+## GitHub Actions
+
+`.github/workflows/ci.yml` runs the deterministic Go/content/docs gate on Ubuntu and the complete Godot gate on Windows for pushes to `main` and pull requests.
+
+`.github/workflows/release.yml` runs only for semantic version tags. Before tagging, update `config/version` in `godot/project.godot`; the workflow rejects mismatches:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+After both platform jobs pass their package smoke tests, the workflow creates one GitHub Release containing the Windows x86_64 ZIP and unsigned macOS Universal ZIP. The release still bundles only the Chinese story 《天启邪抄》 (`data/tianqi`, internal scenario ID `tianqi_t00`); the internal directory and ID remain stable configuration identifiers, not player-facing names.
