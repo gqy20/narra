@@ -4,6 +4,6 @@
 
 - `plans/`：旧路线图和已完成/被替代的重构方案。
 - `playtests/`：带版本背景的一次性试玩记录和优化清单。
-- `validation/`：阶段性验证 backlog 与量化基线。
+- `validation/`：阶段性验证 backlog、量化基线与已完成的设计 QA 记录。
 
 当前计划只维护在 [`../product/ROADMAP.md`](../product/ROADMAP.md)。如果归档文档中的命令、参数或状态与当前指南冲突，以 [`../development/`](../development/) 和可执行工具为准。
