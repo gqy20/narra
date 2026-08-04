@@ -64,7 +64,9 @@ make templates-macos GODOT_VERSION=4.7.1.stable
 make package-macos VERSION=0.1.0
 ```
 
-Pushes and pull requests run `.github/workflows/ci.yml`. Pushing a version tag such as `v0.1.0` runs `.github/workflows/release.yml`, verifies that the tag matches `godot/project.godot`, builds and smoke-tests both platforms, then publishes both ZIP files to one GitHub Release. The automated macOS artifact is unsigned; see [`PACKAGING.md`](PACKAGING.md) for signing and notarization requirements.
+Pushes to `main` and pull requests run `.github/workflows/ci.yml`. Every pushed commit also runs `.github/workflows/build.yml`; its independent Windows and macOS jobs build and smoke-test both packages in parallel, then retain the downloadable artifacts for seven days without creating a release. Pushing a version tag such as `v0.1.0` runs `.github/workflows/release.yml`, verifies that the tag matches `godot/project.godot`, builds both platforms in parallel, and publishes both ZIP files to one GitHub Release. The automated macOS artifact is unsigned; see [`PACKAGING.md`](PACKAGING.md) for signing and notarization requirements.
+
+Official GitHub Actions dependencies are kept on their current major versions, and `.github/dependabot.yml` checks them weekly for future updates.
 
 ## Cleanup
 

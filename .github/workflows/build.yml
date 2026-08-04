@@ -1,46 +1,21 @@
-name: Release
+name: Build
 
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches:
+      - "**"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
   GODOT_VERSION: 4.7.1.stable
+  BUILD_VERSION: ci-${{ github.run_number }}
 
 jobs:
-  validate:
-    name: Validate release version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-          cache: true
-      - name: Match tag and project version
-        id: version
-        shell: bash
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          project_version="$(sed -n 's/^config\/version="\([^"]*\)"/\1/p' godot/project.godot)"
-          if [[ -z "$version" || "$version" != "$project_version" ]]; then
-            echo "Tag version $version does not match Godot project version $project_version" >&2
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-      - name: Run deterministic verification
-        shell: pwsh
-        run: ./tools/verify.ps1
-
   windows:
-    name: Windows x86_64 package
-    needs: validate
+    name: Windows x86_64 artifact
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -64,22 +39,21 @@ jobs:
           Copy-Item -LiteralPath $editor.FullName -Destination (Join-Path $installDirectory 'godot.exe')
           $installDirectory | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Install Windows export templates
-        run: python tools/install-godot-templates.py --platform windows --version $env:GODOT_VERSION
-      - name: Run complete Godot gate
         shell: pwsh
-        run: ./tools/verify-godot.ps1 -Mode full
+        run: python tools/install-godot-templates.py --platform windows --version $env:GODOT_VERSION
       - name: Build and smoke-test package
         shell: pwsh
-        run: ./tools/build-windows.ps1 -SkipTests -Version "${{ needs.validate.outputs.version }}"
+        run: ./tools/build-windows.ps1 -SkipTests -Version $env:BUILD_VERSION
       - uses: actions/upload-artifact@v7
         with:
-          name: narra-windows-x86_64
-          path: dist/narra-windows-x86_64-${{ needs.validate.outputs.version }}.zip
+          name: narra-windows-x86_64-${{ github.run_number }}
+          path: dist/narra-windows-x86_64-${{ env.BUILD_VERSION }}.zip
           if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
 
   macos:
-    name: macOS Universal package (unsigned)
-    needs: validate
+    name: macOS Universal artifact (unsigned)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
@@ -103,30 +77,11 @@ jobs:
       - name: Build and smoke-test package
         env:
           SKIP_TESTS: "1"
-        run: bash tools/build-macos.sh "${{ needs.validate.outputs.version }}"
+        run: bash tools/build-macos.sh "$BUILD_VERSION"
       - uses: actions/upload-artifact@v7
         with:
-          name: narra-macos-universal-unsigned
-          path: dist/narra-macos-universal-${{ needs.validate.outputs.version }}-unsigned.zip
+          name: narra-macos-universal-unsigned-${{ github.run_number }}
+          path: dist/narra-macos-universal-${{ env.BUILD_VERSION }}-unsigned.zip
           if-no-files-found: error
-
-  release:
-    name: Publish GitHub Release
-    needs: [validate, windows, macos]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          path: release-assets
-          merge-multiple: true
-      - name: Create release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "$GITHUB_REF_NAME"
-          release-assets/*.zip
-          --verify-tag
-          --generate-notes
-          --title "Narra $GITHUB_REF_NAME"
+          retention-days: 7
+          compression-level: 0
