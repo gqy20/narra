@@ -1,5 +1,5 @@
 id: tianqi_t00
-title: 天变邸抄：五月初六
+title: 天变邸抄：天启六年五月初六
 duration: 15
 planning_mode: authored_priority
 topics: [inquiry, ledger, supply, witness, survivors, register, relief, politics, press, rumor, cause, evidence, forgery, draft, transport]
@@ -86,49 +86,49 @@ fixed_events:
 - id: EV01
   day: 1
   timing: start
-  description: 王恭厂一带灾变后的救援继续进行，奉命查勘与灾损登记同时展开。
+  description: 王恭厂原本存放火药与军需物料，如今街巷仍在救人。官署同时开始查勘灾情、登记死伤。
   effects:
   - {type: set_flag, scope: world, target_id: world, key: inquiry_open, value: "true"}
 - id: EV03
   day: 3
   timing: start
-  description: 官署要求上交民间捡拾的厂区文书，现场清理使原始位置关系迅速消失。
+  description: 官署开始收缴民间捡拾的厂区文书。瓦砾一旦清走，残纸与遗物原本所在的位置便无法复原。
   effects:
   - {type: set_flag, scope: world, target_id: world, key: evidence_window_narrowing, value: "true"}
 - id: EV04
   day: 4
   timing: start
-  description: 修省、优恤与灾异解释进入官员讨论，灾变开始产生超出会勘本身的政治后果。
+  description: 官员开始借灾变上疏请罪、减税和整顿军需。谁掌握材料，谁就能影响奏疏指向何人。
   effects:
   - {type: set_flag, scope: world, target_id: world, key: revision_debate, value: "true"}
 - id: EV05
   day: 5
   timing: start
-  description: 一份来源不明的外来人员名单在街巷传播，奸细纵火说开始获得听众。
+  description: 一份来源不明的外来人员名单传入街巷。“奸细纵火”尚无实证，却正在抢先成为答案。
   effects:
   - {type: set_flag, scope: world, target_id: world, key: spy_rumor_public, value: "true"}
 - id: EV07
   day: 7
   timing: start
-  description: 会勘官署形成“火药失慎、责任待核”的第一份内部稿。
+  description: 会勘官署形成“火药失慎、责任待核”的第一稿。若没有更可靠的材料进入，定稿将沿用这一结论。
   effects:
   - {type: set_flag, scope: world, target_id: world, key: negligence_draft, value: "true"}
 - id: EV09
   day: 9
   timing: start
-  description: 优恤官册接近封存，无法及时完成身份互证的姓名将失去本轮登记机会。
+  description: 优恤官册接近封存。不能及时完成身份互证的人，将领不到本轮抚恤，姓名也不会进入官册。
   effects:
   - {type: set_flag, scope: world, target_id: world, key: relief_register_closing, value: "true"}
 - id: EV11
   day: 11
   timing: start
-  description: 一套文面完整的灾后账册被作为寻回材料送进会勘公署核验。
+  description: 一套过于完整的账册被当作失而复得的旧档送进公署。一旦通过核验，它将补上会勘最关键的账目缺口。
   effects:
   - {type: set_flag, scope: world, target_id: world, key: forged_ledger_submitted, value: "true"}
 - id: EV15
   day: 15
   timing: start
-  description: 京师另一处火灾再次引发陈言；已经完成的会勘却没有自动重启。
+  description: 京师另一处火灾再次引发陈言，已经封印上呈的会勘报告却没有重开。定稿留下的取舍开始成为历史。
   effects: []
 contest:
   day: 14
@@ -137,32 +137,32 @@ contest:
   required_item_id: ""
   score_resources: [authority, evidence, allies]
   preparation_flag: prepared
-  early_outcome: "{winner}提前定稿。这份文书就此成为官署采用的版本。"
+  early_outcome: "第十四日前，官署已经采用{winner}提出的文本。其余材料不再等待复核。"
   cancelled_outcome: "第十四日定稿程序取消：{outcome}"
-  no_winner_outcome: 会勘逾期未成，官署以“原因未明”封存材料。
-  default_outcome: "{winner}主导定稿。官署以厂内失慎结案，爆炸成因未明。"
+  no_winner_outcome: 第十四日，会勘逾期未成。官署以“原因未明”封存材料，未解决的矛盾也随之停止追查。
+  default_outcome: "第十四日，会勘报告封印上呈。官署采用{winner}的定稿意见，以厂内失慎结案；未解释的矛盾没有进入正文。"
   outcome_rules:
   - id: bounded-official-report
     priority: 120
     winner_id: N02
     required_world_flags: [systemic_caveat]
-    template: "{winner}主导定稿。报告承认记录冲突与管理积弊，爆炸成因列为未决。"
+    template: "第十四日，会勘报告封印上呈。正文承认记录冲突与军需积弊，并将爆炸成因列为未决。"
   - id: correlated-ledger-report
     priority: 115
     required_world_flags: [forged_ledger_exposed, ledger_chain_correlated]
-    template: "{winner}主导定稿。会勘确认军需账目长期被改，灾后又有人补造账册；爆炸成因仍无定论。"
+    template: "第十四日，会勘报告封印上呈。交割残页、格式核验与周良辅自陈相互印证：军需账目长期被改，灾后又有人补造记录；这仍不能证明爆炸由谁制造。"
   - id: forged-ledger-exposed
     priority: 110
     required_world_flags: [forged_ledger_exposed]
-    template: "{winner}主导定稿。补造账册被揭穿，军需旧账重开，爆炸成因仍未决。"
+    template: "第十四日，会勘报告封印上呈。补造账册因纸墨与印记破绽退出可信材料，军需旧账重开；爆炸成因仍未决。"
   - id: press-version
     priority: 100
     winner_id: N07
-    template: "{winner}抢先刊出民间长抄。更多见闻得以流传，未经互证的说法也混入其中。"
+    template: "会勘尚未封印，余墨林的民间长抄已经流出京城。更多见闻得以保存，未经互证的说法也先于官署结论成为答案。"
   - id: remonstrance-version
     priority: 90
     winner_id: N05
-    template: "{winner}把灾变写入陈言。军需积弊进入朝议，部分证据仍受质疑。"
+    template: "郑怀朴把灾变写入陈言，军需积弊由此进入朝议。奏疏推动追责，也采用了部分尚未完成互证的材料。"
   reward_rules:
   - id: official-source-credit
     priority: 100

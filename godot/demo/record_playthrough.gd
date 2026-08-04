@@ -146,11 +146,18 @@ func _wait_until_stable(timeout_ms: int, include_cinematic: bool) -> bool:
 		await process_frame
 		var cinematic_director: Variant = app.get("cinematic_director")
 		var cinematic_active: bool = cinematic_director != null and bool(cinematic_director.get("active"))
-		if app.pending_operation == "" and not app.presentation_busy and (not include_cinematic or not cinematic_active):
+		var prologue_director: Variant = app.get("prologue_director")
+		var prologue_active: bool = prologue_director != null and bool(prologue_director.get("active"))
+		if include_cinematic and prologue_active and int(prologue_director.get("current_beat_index")) >= prologue_director.get("beats").size() - 1:
+			prologue_director.advance()
+			prologue_active = bool(prologue_director.get("active"))
+		if app.pending_operation == "" and not app.presentation_busy and (not include_cinematic or not cinematic_active and not prologue_active):
 			await process_frame
 			cinematic_director = app.get("cinematic_director")
 			cinematic_active = cinematic_director != null and bool(cinematic_director.get("active"))
-			if app.pending_operation == "" and not app.presentation_busy and (not include_cinematic or not cinematic_active):
+			prologue_director = app.get("prologue_director")
+			prologue_active = prologue_director != null and bool(prologue_director.get("active"))
+			if app.pending_operation == "" and not app.presentation_busy and (not include_cinematic or not cinematic_active and not prologue_active):
 				return true
 	return false
 

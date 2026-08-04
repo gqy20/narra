@@ -142,6 +142,7 @@ type ScenarioPresentation struct {
 	WorldTitle   string                          `json:"world_title" yaml:"world_title"`
 	Objective    string                          `json:"objective" yaml:"objective"`
 	Intro        string                          `json:"intro,omitempty" yaml:"intro,omitempty"`
+	Prologue     ProloguePresentation            `json:"prologue" yaml:"prologue"`
 	StartAction  string                          `json:"start_action,omitempty" yaml:"start_action,omitempty"`
 	AssetRoot    string                          `json:"asset_root,omitempty" yaml:"asset_root,omitempty"`
 	OpeningEvent string                          `json:"opening_event,omitempty" yaml:"opening_event,omitempty"`
@@ -155,6 +156,20 @@ type ScenarioPresentation struct {
 	Events       map[string]string               `json:"events,omitempty" yaml:"events,omitempty"`
 	EventCues    map[string]string               `json:"event_cues,omitempty" yaml:"event_cues,omitempty"`
 	UI           map[string]string               `json:"ui,omitempty" yaml:"ui,omitempty"`
+}
+
+type ProloguePresentation struct {
+	Skippable bool                       `json:"skippable" yaml:"skippable"`
+	Beats     []PrologueBeatPresentation `json:"beats" yaml:"beats"`
+}
+
+type PrologueBeatPresentation struct {
+	Text       string  `json:"text" yaml:"text"`
+	Duration   float64 `json:"duration,omitempty" yaml:"duration,omitempty"`
+	AwaitInput bool    `json:"await_input,omitempty" yaml:"await_input,omitempty"`
+	Font       string  `json:"font" yaml:"font"`
+	FontSize   int     `json:"font_size" yaml:"font_size"`
+	Position   string  `json:"position" yaml:"position"`
 }
 
 type AudioPresentation struct {

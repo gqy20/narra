@@ -166,19 +166,15 @@ func _run() -> void:
 		return _fail("unexpected propagation outcome")
 	if "准备值" in str(app.current_view.get("outcome", "")):
 		return _fail("ending leaked an internal score")
-	if "本局余波" not in _descendant_text(app.ending_box):
-		return _fail("ending overlay does not expose the aftermath section")
+	if "你的去向" not in _visible_descendant_text(app.ending_box):
+		return _fail("ending does not show its concise player coda by default")
 	if "信用 +2" not in _descendant_text(app.ending_box):
 		return _fail("ending does not surface the player's intelligence-route return")
-	if "本局余波" in _visible_descendant_text(app.ending_box):
-		return _fail("ending exposes route accounting before the aftermath section is opened")
 	app.presentation_controller._toggle_ending_annex()
 	if not app.ending_annex_box.visible:
 		return _fail("ending aftermath section does not expand")
-	if "本局余波" not in _visible_descendant_text(app.ending_box):
-		return _fail("ending aftermath content remains hidden after expansion")
 	var expanded_ending := _visible_descendant_text(app.ending_box)
-	if "本局记录" in expanded_ending or "人物计划改写" in expanded_ending:
+	if expanded_ending.count("信用 +2") != 1 or "本局记录" in expanded_ending or "人物计划改写" in expanded_ending:
 		return _fail("ending repeats metrics or actor changes already explained by the causal summary")
 	app.presentation_controller._toggle_ending_annex()
 	print("Godot propagation journey passed: ending visible on day %d" % app.current_view.get("day", 0))

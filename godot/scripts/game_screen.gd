@@ -741,6 +741,7 @@ func _sync_action_canvas_visibility() -> void:
 		and not host.causal_layer.visible
 		and not host.ending_layer.visible
 		and not (host.cinematic_director and host.cinematic_director.active)
+		and not (host.prologue_director and host.prologue_director.active)
 	)
 	host.action_canvas.visible = should_show
 	host.action_dock.visible = should_show

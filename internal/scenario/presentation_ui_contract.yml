@@ -132,6 +132,7 @@ keys:
     ending_action_route: {}
     ending_action_tell: {}
     ending_action_verify: {}
+    ending_coda_heading: {}
     ending_influence:
         named:
             - count
@@ -218,6 +219,10 @@ keys:
     guidance_pending:
         named:
             - day
+    guidance_urgent_route:
+        named:
+            - label
+            - next_step
     guidance_verified_item_missing:
         named:
             - name

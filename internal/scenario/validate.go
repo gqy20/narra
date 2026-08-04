@@ -429,6 +429,29 @@ func validatePresentation(bundle domain.Bundle) error {
 	if strings.TrimSpace(presentation.Brand) == "" || strings.TrimSpace(presentation.WorldTitle) == "" || strings.TrimSpace(presentation.Objective) == "" {
 		return fmt.Errorf("presentation requires brand, world_title, and objective")
 	}
+	if len(presentation.Prologue.Beats) < 2 || len(presentation.Prologue.Beats) > 8 {
+		return fmt.Errorf("presentation prologue requires 2 to 8 beats")
+	}
+	for index, beat := range presentation.Prologue.Beats {
+		if strings.TrimSpace(beat.Text) == "" {
+			return fmt.Errorf("presentation prologue beat %d requires text", index+1)
+		}
+		if beat.Font != "display" && beat.Font != "narrative" && beat.Font != "body" {
+			return fmt.Errorf("presentation prologue beat %d has invalid font %q", index+1, beat.Font)
+		}
+		if beat.FontSize < 20 || beat.FontSize > 52 {
+			return fmt.Errorf("presentation prologue beat %d has invalid font_size %d", index+1, beat.FontSize)
+		}
+		if beat.Position != "center" && beat.Position != "lower_left" && beat.Position != "lower_center" {
+			return fmt.Errorf("presentation prologue beat %d has invalid position %q", index+1, beat.Position)
+		}
+		if beat.Duration < 0 || beat.Duration > 10 {
+			return fmt.Errorf("presentation prologue beat %d has invalid duration %.1f", index+1, beat.Duration)
+		}
+	}
+	if !presentation.Prologue.Beats[len(presentation.Prologue.Beats)-1].AwaitInput {
+		return fmt.Errorf("presentation prologue final beat must await input")
+	}
 	seenResources := make(map[string]bool, len(presentation.Resources))
 	for _, resource := range presentation.Resources {
 		if resource.ID == "" || resource.Label == "" || seenResources[resource.ID] {

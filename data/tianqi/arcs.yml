@@ -197,14 +197,14 @@
       to_state: published_sensational
       feedback: {messages: [限定语被删去，残页开始被当作军需侵盗的直接证明。], journal: [选择用超过证据边界的措辞扩大交割残页影响。], presentation: {kind: danger, intensity: 3, subject: fact}}
   progress_rules:
-  - {id: e01-unclaimed, priority: 100, from_day: 1, until_day: 2, conditions: [{type: missing_flag, scope: actor, key: player_kept_original}, {type: missing_flag, scope: actor, key: player_kept_copy}], route_id: e01, label: 交割残页, status: 原件仍在余墨林手中, next_step: 前往王恭厂外街决定是否接手, window: 第2日前, deadline_day: 2, location_id: L01, personal_return: 取得一条可进入官署、书坊或灰网的关键材料, urgent: true}
-  - {id: e01-original-held, priority: 110, conditions: [{type: flag, scope: actor, key: player_kept_original}], route_id: e01, label: 交割残页, status: 你正在保管原件, next_step: 核验后决定交官、交给灰网或继续持有, window: 第10日前价值最高, deadline_day: 10, personal_return: 原件具有最高核验价值，也带来最高暴露, urgent: true}
+  - {id: e01-unclaimed, priority: 100, from_day: 1, until_day: 2, conditions: [{type: missing_flag, scope: actor, key: player_kept_original}, {type: missing_flag, scope: actor, key: player_kept_copy}], route_id: e01, label: 交割残页, status: 周良辅失踪，余墨林暂持残页原件, next_step: 第2日前决定接下原件、只留抄件或退出, window: 现场文书收缴前, deadline_day: 2, location_id: L01, personal_return: 原件可核验经手痕迹，也会把来源追查引向你, urgent: true}
+  - {id: e01-original-held, priority: 110, conditions: [{type: flag, scope: actor, key: player_kept_original}], route_id: e01, label: 交割残页, status: 原件在你手中，尚未决定去向, next_step: 第10日前核验、交官、刊出或换取灰网保护, window: 补造账册进入公署前, deadline_day: 10, personal_return: 选择谁能核验原件，也选择谁会追查你, urgent: true}
   consequence_rules:
   - {id: e01-unclaimed-result, states: [unclaimed], text: 你没有接手残页；原件落入军需灰网，书坊只存抄件。}
   - {id: e01-held-result, states: [original_held], text: 原件留在你手中，直到定稿也未获核验。}
   - {id: e01-copy-held-result, states: [copy_held], text: 你只留抄件，原件去向不明。}
   - {id: e01-official-result, states: [delivered_official], text: 残页原件入官档，补造账册不再是唯一版本。}
-  - {id: e01-format-result, states: [format_verified], text: 残页原件核出了补造账册的灾后痕迹。}
+  - {id: e01-format-result, states: [format_verified], text: 残页原件留在官档，后来的抄本仍可复核其纸墨与印记。}
   - {id: e01-grey-result, states: [delivered_grey], text: 灰网收走原件，你换得暂时保护。}
   - {id: e01-bounded-result, states: [published_bounded], text: 残页抄件保留限定语，流传于官档之外。}
   - {id: e01-sensational-result, states: [published_sensational], text: 残页被写成侵盗实证，影响扩大，破绽也随之放大。}
@@ -263,7 +263,7 @@
       to_state: officialized
       feedback: {messages: [刘六安进入正式询问流程，他的证词开始被整理成官样文本。], journal: [选择刘六安证词立即入档，换取行政效力并承担证词污染风险。], presentation: {kind: danger, intensity: 2, subject: target}}
   progress_rules:
-  - {id: witness-window, priority: 105, from_day: 2, until_day: 6, conditions: [{type: missing_flag, key: witness_protected}, {type: missing_flag, key: witness_pressured}], route_id: e07, label: 刘六安证词, status: 第一版口述尚未获得独立保全, next_step: 第6日前前往春和药铺决定匿名保全或立即入档, window: 第2日至第6日, deadline_day: 6, location_id: L02, personal_return: 决定证词版本与证人安全谁优先, urgent: true}
+  - {id: witness-window, priority: 105, from_day: 2, until_day: 6, conditions: [{type: missing_flag, key: witness_protected}, {type: missing_flag, key: witness_pressured}], route_id: e07, label: 刘六安证词, status: 刘六安的第一版口述尚未独立保存, next_step: 第6日前决定匿名保全，或让他接受官署询问, window: 受控询问开始前, deadline_day: 6, location_id: L02, personal_return: 正式效力与证人安全无法同时保证, urgent: true}
   consequence_rules:
   - {id: witness-unresolved-result, states: [unresolved], text: 刘六安受压改口，官署只存下后来的版本。}
   - {id: witness-protected-result, states: [protected], text: 刘六安的早期证词得以保全。}
@@ -372,7 +372,7 @@
       to_state: published
       feedback: {messages: [匿名分级名册进入书坊；姓名被保存，住址和互证者仍留在受保护对应表中。], journal: [利用证词保护网络公开灾民自建名册匿名版。], presentation: {kind: reveal, intensity: 2, subject: target}}
   progress_rules:
-  - {id: register-window, priority: 95, from_day: 2, until_day: 8, conditions: [{type: missing_flag, key: register_verified}, {type: missing_flag, key: register_published}], route_id: e08, label: 灾民自建名册, status: 叶春娘仍在整理官册外姓名, next_step: 第8日前前往春和药铺决定分级核名或民间刊存, window: 第2日至第8日, deadline_day: 8, location_id: L02, personal_return: 影响无籍者优恤与姓名保存方式, urgent: true}
+  - {id: register-window, priority: 95, from_day: 2, until_day: 8, conditions: [{type: missing_flag, key: register_verified}, {type: missing_flag, key: register_published}], route_id: e08, label: 灾民自建名册, status: 一批死伤者仍在官册之外, next_step: 第8日前分级核名，或把完整名册交给书坊, window: 优恤官册封存前, deadline_day: 8, location_id: L02, personal_return: 决定谁能领到抚恤，以及公开哪些证人身份, urgent: true}
   consequence_rules:
   - {id: register-unresolved-result, states: [collecting], text: 官册封存，册外姓名只留在叶春娘手中。}
   - {id: register-verified-result, states: [verified], text: 一部分无籍者凭互证进入官册。}
@@ -441,10 +441,12 @@
       - {type: adjust_relation, from_id: N09, target_id: player, key: hatred, amount: 2}
       to_state: forgery_exposed
       feedback: {messages: [补造账册的纸墨与印记破绽被正式记录；补造事实成立，爆炸成因仍未因此确定。], journal: [揭穿灾后补造账册，同时保留对爆炸因果的限定。], presentation: {kind: reveal, intensity: 3, subject: fact}}
+  progress_rules:
+  - {id: final-caveat-window, priority: 140, from_day: 8, until_day: 13, conditions: [{type: missing_flag, key: systemic_caveat}, {type: missing_flag, key: forged_ledger_exposed}], route_id: final_caveat, label: 会勘结论, status: 官署正在把开放疑点压成可结案的措辞, next_step: 第12日前请沈惟实保留成因未决，或在第13日前提交补造证据, window: 正文封印前, deadline_day: 13, location_id: L03, personal_return: 决定未知被如实保留，还是被“厂内失慎”覆盖, urgent: true}
   consequence_rules:
-  - {id: final-open-result, states: [open], text: 会勘以确定措辞结案，未保留成因疑点。}
-  - {id: caveat-result, states: [caveat_lodged], text: 最终文本将爆炸成因列为未决。}
-  - {id: forgery-result, states: [forgery_exposed], text: 补造账册被揭穿，但未被写成纵火证据。}
+  - {id: final-open-result, states: [open], text: 会勘以“厂内失慎”结案，尚未解释的矛盾没有进入正文。}
+  - {id: caveat-result, states: [caveat_lodged], text: 沈惟实的限定随报告入档，要求迅速归责的人没有得到一个确定答案。}
+  - {id: forgery-result, states: [forgery_exposed], text: 补造账册被揭穿，但没有被夸写成纵火证据。}
 
 - id: zhou_statement
   title: 周良辅自陈
@@ -533,11 +535,11 @@
       to_state: copy_preserved
       feedback: {messages: [周良辅自陈形成独立封存抄件；原件和周良辅仍留在追索链上。], journal: [保全周良辅自陈内容但放弃护送周良辅。], presentation: {kind: acquire, intensity: 2, subject: player}}
   progress_rules:
-  - {id: e10-window, priority: 130, from_day: 12, until_day: 13, conditions: [{type: missing_flag, key: zhou_protected}, {type: missing_flag, key: zhou_intercepted}], route_id: e10, label: 周良辅自陈, status: 周良辅正在怀朴书斋等待接应, next_step: 第13日前前往书斋决定护送或只留抄件, window: 仅剩两日, deadline_day: 13, location_id: L06, personal_return: 取得持续改账的内部证词, urgent: true}
+  - {id: e10-window, priority: 130, from_day: 12, until_day: 13, conditions: [{type: missing_flag, key: zhou_protected}, {type: missing_flag, key: zhou_intercepted}], route_id: e10, label: 周良辅自陈, status: 周良辅带着自陈躲在书斋，灰网正在追来, next_step: 第13日前护送他与原件，或只留下密封抄件, window: 灰网找到书斋前, deadline_day: 13, location_id: L06, personal_return: 既要保存内部证词，也要决定是否保护一个参与假账的人, urgent: true}
   consequence_rules:
   - {id: e10-unreached-result, states: [unreached], text: 罗三槐截回自陈原件，周良辅失去申辩渠道。}
   - {id: e10-protected-result, states: [original_protected], conditions: [{type: missing_flag, key: ledger_chain_correlated}], text: 周良辅与自陈原件脱离灰网，假账仍待追查。}
-  - {id: e10-correlated-result, states: [original_protected], conditions: [{type: flag, key: ledger_chain_correlated}], text: 三份材料相互印证，周良辅获救但仍须担责。}
+  - {id: e10-correlated-result, states: [original_protected], conditions: [{type: flag, key: ledger_chain_correlated}], text: 周良辅脱离灰网控制，但仍须为参与假账担责。}
   - {id: e10-copy-result, states: [copy_preserved], text: 自陈留下抄件，原件仍被灰网截回。}
 
 - id: final_record
@@ -642,7 +644,7 @@
       to_state: anonymous_circulation
       feedback: {messages: [完整刊载被阻断，你把证据等级和未决边界拆入数条匿名短抄；内容仍在流动，却不再拥有统一署名。], journal: [高暴露下放弃正式刊载，改用匿名拆分传播。], presentation: {kind: danger, intensity: 2, subject: player}}
   progress_rules:
-  - {id: record-window, priority: 120, from_day: 9, until_day: 12, conditions: [{type: missing_flag, scope: actor, key: player_bounded_record}, {type: missing_flag, scope: actor, key: player_accusatory_record}, {type: missing_flag, scope: actor, key: player_private_record}, {type: missing_flag, scope: actor, key: player_anonymous_record}], route_id: final_record, label: 编成邸抄, status: 余墨林正在等待你的终稿原则, next_step: 第12日前前往墨林书坊选择公开、私档或受阻后的匿名传播, window: 第9日至第12日, deadline_day: 12, location_id: L04, personal_return: 决定你留下的是哪一种记录, urgent: true}
+  - {id: record-window, priority: 120, from_day: 9, until_day: 12, conditions: [{type: missing_flag, scope: actor, key: player_bounded_record}, {type: missing_flag, scope: actor, key: player_accusatory_record}, {type: missing_flag, scope: actor, key: player_private_record}, {type: missing_flag, scope: actor, key: player_anonymous_record}], route_id: final_record, label: 你的邸抄, status: 余墨林只等你决定最后的写法, next_step: 第12日前选择分级公开、强化归责、私档或匿名传播, window: 书坊付印前, deadline_day: 12, location_id: L04, personal_return: 决定你留下严谨记录、政治檄文，还是一份无人得见的私档, urgent: true}
   consequence_rules:
   - {id: record-unwritten-result, states: [unwritten], text: 你没有留下自己的邸抄。}
   - {id: record-bounded-result, states: [bounded_publication], text: 你留下分级邸抄，出处与疑点一并刊明。}
@@ -656,7 +658,7 @@
   states: [active]
   nodes: []
   progress_rules:
-  - {id: exposure-response, priority: 125, from_day: 3, until_day: 13, conditions: [{type: flag, key: source_inquiry_open}, {type: missing_flag, key: witness_relocated}, {type: missing_flag, key: source_accounted}], route_id: exposure, label: 来源压力, status: 官署正在追问材料来源，证人住处也可能被顺藤摸瓜, next_step: 前往公署提交有限说明，或去春和药铺转移证人, window: 压力已经生效, deadline_day: 13, personal_return: 降低即时暴露并决定由证据还是盟援承担代价, urgent: true}
+  - {id: exposure-response, priority: 125, from_day: 3, until_day: 13, conditions: [{type: flag, key: source_inquiry_open}, {type: missing_flag, key: witness_relocated}, {type: missing_flag, key: source_accounted}], route_id: exposure, label: 来源追查, status: 官署追问材料来源，证人住处也可能被顺藤摸瓜, next_step: 提交有限来源说明，或请叶春娘秘密转移证人, window: 署名渠道被彻底封死前, deadline_day: 13, personal_return: 选择留下经手记录，还是消耗盟援保护证人, urgent: true}
   consequence_rules:
   - {id: exposure-watched-result, states: [active], conditions: [{type: flag, key: exposure_watched}, {type: missing_flag, key: source_inquiry_open}], text: 有人开始记录你的行踪与来往。}
   - {id: exposure-inquiry-result, states: [active], conditions: [{type: flag, key: source_inquiry_open}, {type: missing_flag, key: exposure_compromised}], text: 官署追问材料来源，你尚未回应。}

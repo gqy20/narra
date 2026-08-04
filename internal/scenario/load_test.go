@@ -120,11 +120,25 @@ func TestDialogueAndPresentationPoliciesAreScenarioAuthored(t *testing.T) {
 	if blackwind.Dialogue.ConfidenceLabels.Rumored != "只是听说" || tianqi.Dialogue.ConfidenceLabels.Rumored != "仅是传言" {
 		t.Fatalf("scenario confidence language was not loaded: blackwind=%+v tianqi=%+v", blackwind.Dialogue.ConfidenceLabels, tianqi.Dialogue.ConfidenceLabels)
 	}
-	if blackwind.Presentation.UI["default_player_name"] != "无名修士" || tianqi.Presentation.UI["default_player_name"] != "无名记录者" || blackwind.Presentation.UI["term_clue"] == tianqi.Presentation.UI["term_clue"] {
+	if blackwind.Presentation.UI["default_player_name"] != "无名修士" || tianqi.Presentation.UI["default_player_name"] != "无名抄手" || blackwind.Presentation.UI["term_clue"] == tianqi.Presentation.UI["term_clue"] {
 		t.Fatalf("scenario UI terminology was not loaded: blackwind=%v tianqi=%v", blackwind.Presentation.UI, tianqi.Presentation.UI)
 	}
 	if blackwind.Presentation.Locations["qinglan"].FallbackKind != "camp" || blackwind.Presentation.Locations["qinglan"].AmbientFrequency != 72 {
 		t.Fatalf("location fallback presentation was not loaded: %+v", blackwind.Presentation.Locations["qinglan"])
+	}
+	if len(tianqi.Presentation.Prologue.Beats) != 5 || tianqi.Presentation.Prologue.Beats[0].Font != "display" || tianqi.Presentation.Prologue.Beats[0].FontSize != 40 || tianqi.Presentation.Prologue.Beats[0].Position != "center" || !tianqi.Presentation.Prologue.Beats[4].AwaitInput {
+		t.Fatalf("tianqi prologue presentation was not loaded: %+v", tianqi.Presentation.Prologue)
+	}
+}
+
+func TestValidateRejectsInvalidPrologueTypography(t *testing.T) {
+	bundle, err := Load(filepath.Join("..", "..", "data", "tianqi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle.Presentation.Prologue.Beats[0].Position = "top_right"
+	if err := Validate(bundle); err == nil || !strings.Contains(err.Error(), "invalid position") {
+		t.Fatalf("invalid prologue position error = %v", err)
 	}
 }
 

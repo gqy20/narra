@@ -15,6 +15,7 @@ const PresentationDirectorScript = preload("res://scripts/presentation_director.
 const PresentationRegistryScript = preload("res://scripts/presentation_registry.gd")
 const AudioDirectorScript = preload("res://scripts/audio_director.gd")
 const CinematicDirectorScript = preload("res://scripts/cinematic_director.gd")
+const PrologueDirectorScript = preload("res://scripts/prologue_director.gd")
 const CausalSealTexture = preload("res://assets/ui/causal/causal-seal.png")
 const DecisionFrameTexture = preload("res://assets/ui/causal/decision-frame.png")
 const TimelineArrowTexture = preload("res://assets/ui/causal/timeline-arrow.png")
@@ -151,6 +152,10 @@ var ai_base_url := "https://api.stepfun.com/step_plan/v1/messages"
 var ai_api_key := ""
 var presentation_busy := false
 var opening_cinematic_active := false
+var prologue_active := false
+var prologue_presented := false
+var opening_sequence_ready := false
+var new_game_view_ready := false
 var ending_cinematic_presented := false
 var active_action_category := ""
 var show_all_actions := false
@@ -271,6 +276,7 @@ var location_stage: Control
 var presentation_director: Control
 var audio_director: Node
 var cinematic_director: Control
+var prologue_director: Control
 var actor_portrait_frame: PanelContainer
 var actor_portrait: TextureRect
 var actor_portrait_name: Label
@@ -337,6 +343,8 @@ func _ready() -> void:
 	cinematic_director = CinematicDirectorScript.new()
 	add_child(cinematic_director)
 	cinematic_director.set_enabled(motion_enabled)
+	prologue_director = PrologueDirectorScript.new()
+	add_child(prologue_director)
 	if runtime_warning != "":
 		_show_error(runtime_warning)
 	local_server_process.start({
@@ -536,6 +544,9 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 			presentation_controller._apply_feedback_actor_state(current_view.get("last_turn", {}))
 		_show_game()
 		game_screen_controller._render_view()
+		if operation == "new":
+			new_game_view_ready = true
+			_try_start_prologue()
 		if operation == "action":
 			presentation_controller._play_action_presentation(previous_view, current_view)
 		view_before_action = {}
@@ -645,17 +656,46 @@ func _new_game() -> void:
 	selected_followup_action_id = ""
 	queued_followup_action_id = ""
 	ending_cinematic_presented = false
+	prologue_presented = false
+	prologue_active = false
+	new_game_view_ready = false
+	opening_sequence_ready = false
 	action_panel_controller._reset_action_focus()
 	ending_layer.hide()
 	game_screen_controller._set_visual_mode("location")
 	var opening_event_key := str(scenario_presentation.get("opening_event", ""))
 	var opening_video: VideoStream = presentation_registry.event_video(opening_event_key) if opening_event_key != "" else null
 	opening_cinematic_active = cinematic_director != null and cinematic_director.play(opening_video, opening_event_key, _on_opening_cinematic_finished)
+	opening_sequence_ready = not opening_cinematic_active
 	_request("new", HTTPClient.METHOD_POST, "/game/new", {"player_name": player_name})
 
 
 func _on_opening_cinematic_finished(_skipped: bool) -> void:
 	opening_cinematic_active = false
+	opening_sequence_ready = true
+	_try_start_prologue()
+
+
+func _try_start_prologue() -> void:
+	if prologue_presented or not opening_sequence_ready or not new_game_view_ready:
+		return
+	prologue_presented = true
+	var prologue: Dictionary = scenario_presentation.get("prologue", {})
+	var opening_event_key := str(scenario_presentation.get("opening_event", ""))
+	var opening_texture: Texture2D = presentation_registry.event_texture(opening_event_key) if opening_event_key != "" else null
+	prologue_active = prologue_director != null and prologue_director.play(
+		prologue,
+		opening_texture,
+		str(scenario_presentation.get("start_action", "进入故事")),
+		_on_prologue_finished
+	)
+	game_screen_controller._sync_action_canvas_visibility()
+	if not prologue_active and game_layer.visible:
+		audio_director.play_music()
+
+
+func _on_prologue_finished(_skipped: bool) -> void:
+	prologue_active = false
 	game_screen_controller._sync_action_canvas_visibility()
 	if game_layer.visible:
 		audio_director.play_music()
@@ -717,6 +757,10 @@ func _show_start() -> void:
 	view_before_action = {}
 	presentation_busy = false
 	opening_cinematic_active = false
+	prologue_active = false
+	prologue_presented = false
+	opening_sequence_ready = false
+	new_game_view_ready = false
 	ending_cinematic_presented = false
 	causal_change_count_by_actor.clear()
 	causal_actor_id_by_name.clear()
@@ -731,6 +775,8 @@ func _show_start() -> void:
 	ending_layer.hide()
 	if cinematic_director and cinematic_director.active:
 		cinematic_director.skip()
+	if prologue_director and prologue_director.active:
+		prologue_director.cancel()
 	audio_director.stop_music(0.8)
 	if presentation_director:
 		presentation_director.cancel()
@@ -741,7 +787,7 @@ func _show_start() -> void:
 func _show_game() -> void:
 	start_layer.hide()
 	game_layer.show()
-	if not opening_cinematic_active:
+	if not opening_cinematic_active and not prologue_active:
 		audio_director.play_music()
 	game_screen_controller._sync_action_canvas_visibility()
 

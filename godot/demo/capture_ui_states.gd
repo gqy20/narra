@@ -41,6 +41,26 @@ func _run() -> void:
 	if app.cinematic_director and app.cinematic_director.active:
 		app.cinematic_director.skip()
 		await _settle_layout()
+	if app.prologue_director and app.prologue_director.active:
+		app.prologue_director._settle_current_beat()
+		await _settle_layout()
+		if not await _capture("ui-prologue-date-%s.png" % capture_label):
+			return
+		for beat_index in range(1, app.prologue_director.beats.size() - 1):
+			app.prologue_director.current_beat_index = beat_index - 1
+			app.prologue_director._show_next_beat()
+			app.prologue_director._settle_current_beat()
+			await _settle_layout()
+			if not await _capture("ui-prologue-beat-%02d-%s.png" % [beat_index + 1, capture_label]):
+				return
+		app.prologue_director.current_beat_index = app.prologue_director.beats.size() - 2
+		app.prologue_director._show_next_beat()
+		app.prologue_director._settle_current_beat()
+		await _settle_layout()
+		if not await _capture("ui-prologue-deadline-%s.png" % capture_label):
+			return
+		app.prologue_director.advance()
+		await _settle_layout()
 	app.game_screen_controller._set_visual_mode("location")
 	await _settle_layout()
 	if not await _capture("ui-overview-%s.png" % capture_label):

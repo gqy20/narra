@@ -338,10 +338,20 @@ func _render_ending(ending: Dictionary) -> void:
 		var outcome_body = host.game_screen_controller._text(host.ending_box, str(outcome_parts[index]).strip_edges(), false, 19)
 		outcome_body.add_theme_constant_override("line_spacing", 6)
 		outcome_body.add_theme_color_override("font_color", Color("ded4c1"))
+	var coda: Array = ending.get("coda", [])
+	if not coda.is_empty():
+		var coda_heading = host.game_screen_controller._text(host.ending_box, host._ui_text("ending_coda_heading"), true, 16)
+		coda_heading.add_theme_color_override("font_color", host.COLORS.accent)
+		for consequence in coda:
+			host.game_screen_controller._text(host.ending_box, "· %s" % consequence, true, 15)
 	var rule = HSeparator.new()
 	rule.modulate = Color(host.COLORS.accent, 0.46)
 	host.ending_box.add_child(rule)
 	var consequences: Array = ending.get("player_consequences", [])
+	var annex_consequences: Array = []
+	for consequence in consequences:
+		if consequence not in coda:
+			annex_consequences.append(consequence)
 	var review: Array = ending.get("review", [])
 	host.ending_annex_button = host.game_screen_controller._action_button("回看本局选择与余波", host.presentation_controller._toggle_ending_annex)
 	host.ending_annex_button.custom_minimum_size.y = 42
@@ -351,10 +361,10 @@ func _render_ending(ending: Dictionary) -> void:
 	host.ending_annex_box.add_theme_constant_override("separation", 6)
 	host.ending_annex_box.hide()
 	host.ending_box.add_child(host.ending_annex_box)
-	if not consequences.is_empty():
+	if not annex_consequences.is_empty():
 		var consequence_heading = host.game_screen_controller._text(host.ending_annex_box, "本局余波", true, 16)
 		consequence_heading.add_theme_color_override("font_color", host.COLORS.accent)
-		for consequence in consequences:
+		for consequence in annex_consequences:
 			host.game_screen_controller._text(host.ending_annex_box, "· %s" % consequence, true, 15)
 	if not review.is_empty():
 		var review_heading = host.game_screen_controller._text(host.ending_annex_box, "结算依据", true, 16)

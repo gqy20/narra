@@ -2,6 +2,37 @@ brand: 凡途
 world_title: 远星环站轨道结构
 objective: 跃迁核心将在这里决定归属
 intro: 三十日内，跃迁核心的归属将被决定。你未必亲手夺取它，也能让一条消息改写别人的去向。
+prologue:
+  skippable: true
+  beats:
+  - text: |-
+      远星环站。
+      一座正在失去维护配额的轨道结构。
+    duration: 2.5
+    font: display
+    font_size: 37
+    position: center
+  - text: |-
+      三十日后，跃迁核心将完成充能。
+      船团、站务与承包商都想取得控制权。
+    duration: 3.5
+    font: narrative
+    font_size: 29
+    position: lower_left
+  - text: |-
+      你未必能直接接触核心。
+      一条经过交叉校验的遥测记录，也能改变别人的航线。
+    duration: 3.7
+    font: body
+    font_size: 28
+    position: lower_center
+  - text: |-
+      从白石补给环入局。
+      在充能完成前，决定谁会抵达核心舱。
+    await_input: true
+    font: display
+    font_size: 30
+    position: lower_center
 start_action: 从白石补给环入局
 resources:
 - {id: integrity, label: 系统完整度, emphasis: normal}
@@ -57,6 +88,7 @@ ui:
   feedback_belief_changed: 遥测记录更新为{confidence}：{claim}
   guidance_outcome_settled: 跃迁核心归属已经结算；你可以继续观察局势余波直到场景结束。
   guidance_pending: 当前行动还需等待到第 {day} 天完成。
+  guidance_urgent_route: '{label}即将失去窗口：{next_step}'
   guidance_verify_date: 完成充能时间目前只是传闻，交叉校验后再据此安排路线更稳妥。
   guidance_item_market: '{name}仍可从市场取得；进入核心舱必须携带它，供应可能随局势变化。'
   guidance_item_missing: 当前仍缺少{name}；留意人物回应与路线进展中是否出现新的获取方式。
@@ -99,6 +131,7 @@ ui:
   decision_growth_ready: 当前没有伤势妨碍离线校准
   decision_growth_unknown: 离线校准期间局势仍会按日推进
   ending_metrics: 局势推进到第 {day} 天；你做出 {decisions} 次决策，其中主动行动 {active} 次、推进时间 {waits} 次。
+  ending_coda_heading: 你的余波
   ending_action_verify: 交叉校验数据
   ending_action_tell: 分享数据
   ending_action_route: 回应路线考验

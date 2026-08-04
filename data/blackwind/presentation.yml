@@ -2,6 +2,37 @@ brand: 凡途
 world_title: 黑风谷山川
 objective: 青髓芝争夺将在这里落定
 intro: 三十日内，青髓芝的归属将被决定。你未必亲手夺取它，也能让一条消息改写别人的去向。
+prologue:
+  skippable: true
+  beats:
+  - text: |-
+      黑风谷将开。
+      青髓芝只会现世一次。
+    duration: 2.4
+    font: display
+    font_size: 39
+    position: center
+  - text: |-
+      三十日内，散修、宗门与商队都会入谷。
+      每个人都在估算别人会先走哪条路。
+    duration: 3.4
+    font: narrative
+    font_size: 29
+    position: lower_left
+  - text: |-
+      你不必亲手夺取青髓芝。
+      一条可信的消息，也足以改写争夺者的去向。
+    duration: 3.6
+    font: body
+    font_size: 28
+    position: lower_center
+  - text: |-
+      从白石坡市入局。
+      在谷门开启前，决定你要帮助谁，又要让谁走错一步。
+    await_input: true
+    font: display
+    font_size: 29
+    position: lower_center
 start_action: 从白石坊市入局
 terrain: res://assets/locations/valley_edge/background.png
 resources:
@@ -75,6 +106,7 @@ ui:
   feedback_belief_changed: 线索更新为{confidence}：{claim}
   guidance_outcome_settled: 青髓芝归属已经结算；你可以继续观察局势余波直到场景结束。
   guidance_pending: 当前行动还需等待到第 {day} 天完成。
+  guidance_urgent_route: '{label}即将失去窗口：{next_step}'
   guidance_verify_date: 成熟时间目前只是传闻，核验后再据此安排路线更稳妥。
   guidance_item_market: '{name}仍可从市场取得；它是入谷争夺的必要条件，供应可能随局势变化。'
   guidance_item_missing: 当前仍缺少{name}；留意人物回应与路线进展中是否出现新的获取方式。
@@ -117,6 +149,7 @@ ui:
   decision_growth_ready: 当前没有伤势妨碍闭关
   decision_growth_unknown: 闭关期间局势仍会按日推进
   ending_metrics: 局势推进到第 {day} 天；你做出 {decisions} 次决策，其中主动行动 {active} 次、推进时间 {waits} 次。
+  ending_coda_heading: 你的去向
   ending_action_verify: 核验情报
   ending_action_tell: 分享情报
   ending_action_route: 回应路线考验

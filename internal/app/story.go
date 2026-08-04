@@ -151,6 +151,9 @@ func (s *Session) storyRouteProgresses(state *domain.WorldState) []RouteProgress
 		}
 	}
 	sort.SliceStable(candidates, func(i, j int) bool {
+		if candidates[i].rule.Urgent && candidates[j].rule.Urgent && candidates[i].rule.DeadlineDay > 0 && candidates[j].rule.DeadlineDay > 0 && candidates[i].rule.DeadlineDay != candidates[j].rule.DeadlineDay {
+			return candidates[i].rule.DeadlineDay < candidates[j].rule.DeadlineDay
+		}
 		if candidates[i].rule.Priority != candidates[j].rule.Priority {
 			return candidates[i].rule.Priority > candidates[j].rule.Priority
 		}
@@ -177,10 +180,17 @@ func (s *Session) storyRouteProgresses(state *domain.WorldState) []RouteProgress
 		if candidate.rule.LocationID != "" {
 			location = s.visibleLocation(candidate.rule.LocationID).Name
 		}
+		ifIgnored := ""
+		if !candidate.rule.Complete {
+			consequences := s.storyConsequenceTextsForArc(state, candidate.arcID)
+			if len(consequences) > 0 {
+				ifIgnored = consequences[0]
+			}
+		}
 		result = append(result, RouteProgress{
 			ID: candidate.rule.RouteID, Label: candidate.rule.Label, Status: candidate.rule.Status, NextStep: candidate.rule.NextStep,
 			Window: candidate.rule.Window, DeadlineDay: candidate.rule.DeadlineDay, Location: location,
-			PersonalReturn: candidate.rule.PersonalReturn, Urgent: candidate.rule.Urgent, Complete: candidate.rule.Complete,
+			PersonalReturn: candidate.rule.PersonalReturn, IfIgnored: ifIgnored, Urgent: candidate.rule.Urgent, Complete: candidate.rule.Complete,
 		})
 	}
 	return result
@@ -201,20 +211,59 @@ func (s *Session) storyConsequencesForArcs(state *domain.WorldState, included ma
 	sort.Strings(arcIDs)
 	result := make([]string, 0)
 	for _, arcID := range arcIDs {
-		arc := s.bundle.StoryArcs[arcID]
-		stateID := state.StoryStates[arcID]
-		for _, rule := range arc.ConsequenceRules {
-			if !containsStoryState(rule.States, stateID) || !storyConditionsMet(state, rule.Conditions) {
-				continue
+		result = append(result, s.storyConsequenceTextsForArc(state, arcID)...)
+	}
+	return result
+}
+
+func (s *Session) storyConsequenceTextsForArc(state *domain.WorldState, arcID string) []string {
+	arc, ok := s.bundle.StoryArcs[arcID]
+	if !ok {
+		return nil
+	}
+	stateID := state.StoryStates[arcID]
+	result := make([]string, 0, 1)
+	for _, rule := range arc.ConsequenceRules {
+		if !containsStoryState(rule.States, stateID) || !storyConditionsMet(state, rule.Conditions) {
+			continue
+		}
+		text := rule.Text
+		if rule.RelationMetric != "" {
+			fromID := materializeStoryActorID(rule.RelationFromID, state.Player.ID)
+			toID := materializeStoryActorID(rule.RelationToID, state.Player.ID)
+			value := storyRelationMetric(state.RelationBetween(fromID, toID), rule.RelationMetric)
+			text = strings.ReplaceAll(text, "{{value}}", fmt.Sprintf("%d", value))
+		}
+		result = append(result, text)
+	}
+	return result
+}
+
+func (s *Session) playerConsequenceCoda(state *domain.WorldState, limit int) []string {
+	if limit <= 0 {
+		return nil
+	}
+	actionArcs := make(map[string]string)
+	for arcID, arc := range s.bundle.StoryArcs {
+		for _, node := range arc.Nodes {
+			for _, choice := range node.Choices {
+				actionArcs[choice.ID] = arcID
 			}
-			text := rule.Text
-			if rule.RelationMetric != "" {
-				fromID := materializeStoryActorID(rule.RelationFromID, state.Player.ID)
-				toID := materializeStoryActorID(rule.RelationToID, state.Player.ID)
-				value := storyRelationMetric(state.RelationBetween(fromID, toID), rule.RelationMetric)
-				text = strings.ReplaceAll(text, "{{value}}", fmt.Sprintf("%d", value))
-			}
+		}
+	}
+	seen := make(map[string]bool)
+	result := make([]string, 0, limit)
+	for index := len(s.history) - 1; index >= 0 && len(result) < limit; index-- {
+		arcID := actionArcs[s.history[index]]
+		if arcID == "" || seen[arcID] {
+			continue
+		}
+		seen[arcID] = true
+		for _, text := range s.storyConsequenceTextsForArc(state, arcID) {
 			result = append(result, text)
+			if len(result) == limit {
+				break
+			}
 		}
 	}
 	return result

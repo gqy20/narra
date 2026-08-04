@@ -81,6 +81,22 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 	}
 	fmt.Fprintf(output, "%s · %s\n", view.Presentation.Brand, headerTitle)
 	fmt.Fprintln(output, "输入 help 查看命令；输入 actions 查看当前选择。")
+	if view.Day == 0 && (len(view.Presentation.Prologue.Beats) > 0 || view.Presentation.Intro != "") {
+		fmt.Fprintln(output, "\n【序章】")
+		if len(view.Presentation.Prologue.Beats) > 0 {
+			for index, beat := range view.Presentation.Prologue.Beats {
+				if index > 0 {
+					fmt.Fprintln(output)
+				}
+				fmt.Fprintln(output, beat.Text)
+			}
+		} else {
+			fmt.Fprintln(output, view.Presentation.Intro)
+		}
+		if view.Presentation.Objective != "" {
+			fmt.Fprintln(output, "\n目标："+view.Presentation.Objective)
+		}
+	}
 	if game.saves != nil {
 		if game.autosave {
 			fmt.Fprintf(output, "自动存档已开启：每次成功行动后写入 %s 槽。\n", autosaveSlot)
@@ -707,10 +723,17 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 	fmt.Fprintf(output, "\n=== 第 %d/%d 天 · %s · %s ===\n", view.Day, view.Duration, phaseLabel(view.Phase), view.Location.Name)
 	if view.Resolved || view.Ended {
 		fmt.Fprintf(output, "局势结束：%s\n", view.Outcome)
+		if view.Ending != nil && len(view.Ending.Coda) > 0 {
+			fmt.Fprintln(output, presentationText(view, "ending_coda_heading", "你的余波")+"：")
+			for _, consequence := range view.Ending.Coda {
+				fmt.Fprintf(output, "  - %s\n", consequence)
+			}
+		}
 		if debug && view.Ending != nil {
-			if len(view.Ending.PlayerConsequences) > 0 {
+			additionalConsequences := endingConsequencesExcept(view.Ending.PlayerConsequences, view.Ending.Coda)
+			if len(additionalConsequences) > 0 {
 				fmt.Fprintln(output, "本局余波：")
-				for _, consequence := range view.Ending.PlayerConsequences {
+				for _, consequence := range additionalConsequences {
 					fmt.Fprintf(output, "  - %s\n", consequence)
 				}
 			}
@@ -798,6 +821,20 @@ func renderView(output io.Writer, view app.PlayerView, debug bool) {
 			fmt.Fprintln(output, "  - "+view.Travel.Timing)
 		}
 	}
+}
+
+func endingConsequencesExcept(all, visible []string) []string {
+	hidden := make(map[string]bool, len(visible))
+	for _, text := range visible {
+		hidden[text] = true
+	}
+	result := make([]string, 0, len(all))
+	for _, text := range all {
+		if !hidden[text] {
+			result = append(result, text)
+		}
+	}
+	return result
 }
 
 func renderActions(output io.Writer, actions []app.AvailableAction, debug bool) {

@@ -470,7 +470,11 @@ func _render_route_progress(parent: VBoxContainer, route_progress, compact: bool
 		host.game_screen_controller._text(parent, "窗口 · %s%s" % [window, (" · " + location) if location != "" else ""], true, 13)
 	var personal_return = str(route_progress.get("personal_return", ""))
 	if personal_return != "":
-		host.game_screen_controller._text(parent, "个人收益 · %s" % personal_return, true, 13)
+		host.game_screen_controller._text(parent, "关系到 · %s" % personal_return, true, 13)
+	var if_ignored = str(route_progress.get("if_ignored", ""))
+	if if_ignored != "":
+		var ignored_line = host.game_screen_controller._text(parent, "若未处理 · %s" % if_ignored, true, 13)
+		ignored_line.add_theme_color_override("font_color", host.COLORS.danger)
 
 
 func _render_route_progresses(parent: VBoxContainer, route_progresses, compact: bool = false) -> void:

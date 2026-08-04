@@ -62,6 +62,7 @@ type RouteProgress struct {
 	DeadlineDay    int    `json:"deadline_day,omitempty"`
 	Location       string `json:"location,omitempty"`
 	PersonalReturn string `json:"personal_return,omitempty"`
+	IfIgnored      string `json:"if_ignored,omitempty"`
 	Urgent         bool   `json:"urgent"`
 	Complete       bool   `json:"complete"`
 }
@@ -82,6 +83,7 @@ type PresentationCue struct {
 
 type EndingSummary struct {
 	Outcome            string             `json:"outcome"`
+	Coda               []string           `json:"coda,omitempty"`
 	PlayerConsequences []string           `json:"player_consequences,omitempty"`
 	Review             []string           `json:"review,omitempty"`
 	Highlights         []string           `json:"highlights"`

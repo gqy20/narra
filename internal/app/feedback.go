@@ -179,6 +179,11 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 	if state.Player.Pending != nil {
 		return []string{s.uiText("guidance_pending", "day", intText(state.Player.Pending.CompleteDay))}
 	}
+	for _, progress := range s.routeProgresses(state) {
+		if progress.Urgent && !progress.Complete {
+			return []string{s.uiText("guidance_urgent_route", "label", progress.Label, "next_step", progress.NextStep)}
+		}
+	}
 
 	available := make(map[string]bool, len(actions))
 	for _, action := range actions {
@@ -225,6 +230,7 @@ func (s *Session) guidance(state *domain.WorldState, actions []AvailableAction) 
 func (s *Session) endingSummary(state *domain.WorldState) *EndingSummary {
 	ending := &EndingSummary{Outcome: visibleOutcome(state.Outcome)}
 	ending.PlayerConsequences = s.playerConsequences(state)
+	ending.Coda = s.playerConsequenceCoda(state, 3)
 	ending.Review = s.endingReview(state)
 	counts := make(map[string]int)
 	for _, actionID := range s.history {

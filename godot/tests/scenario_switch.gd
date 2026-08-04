@@ -19,12 +19,22 @@ func _run() -> void:
 		return _fail("scenario brand was not applied to the header")
 	if app.start_title_label.text != "天变邸抄":
 		return _fail("scenario brand was not applied to the start screen")
-	if app.start_eyebrow_label.text != "五月初六":
+	if app.start_eyebrow_label.text != "天启六年五月初六":
 		return _fail("scenario qualifier still repeats the tianqi brand on the start screen")
-	if app.start_begin_button.text != "从王恭厂外街开始记录":
+	if app.start_begin_button.text != "走进王恭厂外街":
 		return _fail("scenario start action was not applied")
-	if "灾变之后" not in app.start_intro_label.text:
-		return _fail("scenario introduction was not applied")
+	if "冲突的证词、残账与传言" not in app.start_intro_label.text or "天启六年五月初六" in app.start_intro_label.text or "十四日后" in app.start_intro_label.text:
+		return _fail("start screen should carry a short hook instead of the full prologue")
+	var prologue: Dictionary = app.scenario_presentation.get("prologue", {})
+	var prologue_beats: Array = prologue.get("beats", [])
+	if prologue_beats.size() != 5 or not bool(prologue.get("skippable", false)):
+		return _fail("tianqi progressive prologue was not loaded")
+	if prologue_beats[0].get("font", "") != "display" or int(prologue_beats[0].get("font_size", 0)) != 40 or prologue_beats[0].get("position", "") != "center":
+		return _fail("tianqi date beat typography or position is invalid")
+	if prologue_beats[1].get("position", "") != "lower_left" or int(prologue_beats[2].get("font_size", 0)) != 28:
+		return _fail("tianqi disaster beats lost their lower-left information hierarchy")
+	if prologue_beats[4].get("position", "") != "lower_center" or not bool(prologue_beats[4].get("await_input", false)):
+		return _fail("tianqi deadline beat must hold at the lower center for confirmation")
 	if app.scenario_presentation.get("asset_root", "") != "res://assets/tianqi":
 		return _fail("tianqi asset root was not applied")
 	if app.start_scene.texture == null or "opening-blast.png" not in app.start_scene.texture.resource_path:
@@ -67,6 +77,8 @@ func _run() -> void:
 		return _fail("tianqi background music was not configured on the music bus")
 	if app.cinematic_director.video_player == null or app.cinematic_director.skip_button == null:
 		return _fail("cinematic playback overlay was not initialized")
+	if app.prologue_director.beat_label == null or app.prologue_director.progress_label == null or app.prologue_director.prompt_button == null:
+		return _fail("progressive prologue overlay was not initialized")
 	if app.actor_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
 		return _fail("stage portrait still crops the actor's head")
 	if app.causal_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED or app.ending_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
@@ -78,7 +90,7 @@ func _run() -> void:
 		return _fail("tianqi new game request timed out")
 	if app.current_view.get("scenario_id", "") != "tianqi_t00":
 		return _fail("new game returned the wrong scenario")
-	if app.current_view.get("presentation", {}).get("world_title", "") != "京师灾变与会勘":
+	if app.current_view.get("presentation", {}).get("world_title", "") != "天启六年 · 京师王恭厂灾变":
 		return _fail("player view did not carry tianqi presentation metadata")
 	var internal_story_id_pattern := RegEx.new()
 	internal_story_id_pattern.compile("(^|[^A-Za-z0-9_])[EFN][0-9]{2}([^A-Za-z0-9_]|$)")
@@ -100,7 +112,7 @@ func _run() -> void:
 			app.game_screen_controller._on_map_location_selected(str(location.get("id", "")))
 			break
 	var map_text := _descendant_text(app.map_detail_box)
-	if "第十四日前，决定哪些材料进入会勘定稿" not in map_text:
+	if "第十四日封稿前，保住证人与材料" not in map_text:
 		return _fail("scenario objective was not applied to the world map")
 	if app.world_map_view.locations.size() != 7:
 		return _fail("tianqi world map did not render all seven locations")

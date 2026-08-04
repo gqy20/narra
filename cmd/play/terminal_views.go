@@ -383,6 +383,12 @@ func renderJournal(output io.Writer, view app.PlayerView, debug bool) {
 		if progress.NextStep != "" {
 			fmt.Fprintf(output, "  下一步：%s\n", progress.NextStep)
 		}
+		if progress.PersonalReturn != "" {
+			fmt.Fprintf(output, "  关系到：%s\n", progress.PersonalReturn)
+		}
+		if progress.IfIgnored != "" {
+			fmt.Fprintf(output, "  若未处理：%s\n", progress.IfIgnored)
+		}
 	}
 	if len(view.KnownFacts) > 0 {
 		fmt.Fprintf(output, "已知%s：\n", presentationText(view, "term_clues", "线索"))

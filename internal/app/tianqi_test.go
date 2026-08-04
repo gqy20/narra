@@ -86,8 +86,11 @@ func TestTianqiPlayerCanPublishBoundedFinalRecord(t *testing.T) {
 			t.Fatalf("advance to bounded record outcome: %v", err)
 		}
 	}
-	if !strings.Contains(view.Outcome, "报告承认记录冲突与管理积弊") || !strings.Contains(view.Outcome, "爆炸成因列为未决") {
+	if !strings.Contains(view.Outcome, "正文承认记录冲突与军需积弊") || !strings.Contains(view.Outcome, "爆炸成因列为未决") {
 		t.Fatalf("bounded record outcome = %q", view.Outcome)
+	}
+	if view.Ending == nil || !containsMessage(view.Ending.Coda, "分级邸抄") {
+		t.Fatalf("bounded record coda = %+v", view.Ending)
 	}
 }
 
@@ -144,12 +147,19 @@ func TestTianqiShowsConcurrentRouteDeadlines(t *testing.T) {
 		progressByID[progress.ID] = progress
 	}
 	for _, routeID := range []string{"e01", "e07", "e08"} {
-		if _, ok := progressByID[routeID]; !ok {
+		progress, ok := progressByID[routeID]
+		if !ok {
 			t.Fatalf("concurrent route %s missing: %+v", routeID, view.RouteProgresses)
+		}
+		if progress.IfIgnored == "" {
+			t.Fatalf("concurrent route %s omitted its missed consequence: %+v", routeID, progress)
 		}
 	}
 	if len(progressByID) != len(view.RouteProgresses) {
 		t.Fatalf("route progress contains duplicate route ids: %+v", view.RouteProgresses)
+	}
+	if len(view.RouteProgresses) == 0 || view.RouteProgresses[0].ID != "e01" || len(view.Guidance) == 0 || !strings.Contains(view.Guidance[0], "交割残页") {
+		t.Fatalf("nearest route deadline did not drive guidance: routes=%+v guidance=%v", view.RouteProgresses, view.Guidance)
 	}
 }
 
@@ -276,7 +286,7 @@ func TestTianqiOriginalLedgerChainCanExposeAndCorrelateForgery(t *testing.T) {
 			t.Fatalf("advance to correlated outcome: %v", err)
 		}
 	}
-	if !strings.Contains(view.Outcome, "军需账目长期被改") || !strings.Contains(view.Outcome, "爆炸成因仍无定论") {
+	if !strings.Contains(view.Outcome, "军需账目长期被改") || !strings.Contains(view.Outcome, "仍不能证明爆炸由谁制造") {
 		t.Fatalf("correlated ledger outcome = %q", view.Outcome)
 	}
 }

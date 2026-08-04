@@ -237,6 +237,12 @@
         "outcome": {
           "type": "string"
         },
+        "coda": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "player_consequences": {
           "items": {
             "type": "string"
@@ -571,6 +577,55 @@
         "intensity"
       ]
     },
+    "PrologueBeatPresentation": {
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "number"
+        },
+        "await_input": {
+          "type": "boolean"
+        },
+        "font": {
+          "type": "string"
+        },
+        "font_size": {
+          "type": "integer"
+        },
+        "position": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "text",
+        "font",
+        "font_size",
+        "position"
+      ]
+    },
+    "ProloguePresentation": {
+      "properties": {
+        "skippable": {
+          "type": "boolean"
+        },
+        "beats": {
+          "items": {
+            "$ref": "#/$defs/PrologueBeatPresentation"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "skippable",
+        "beats"
+      ]
+    },
     "ResourcePresentation": {
       "properties": {
         "id": {
@@ -649,6 +704,9 @@
         "personal_return": {
           "type": "string"
         },
+        "if_ignored": {
+          "type": "string"
+        },
         "urgent": {
           "type": "boolean"
         },
@@ -700,6 +758,9 @@
         },
         "intro": {
           "type": "string"
+        },
+        "prologue": {
+          "$ref": "#/$defs/ProloguePresentation"
         },
         "start_action": {
           "type": "string"
@@ -768,6 +829,7 @@
         "brand",
         "world_title",
         "objective",
+        "prologue",
         "resources"
       ]
     },

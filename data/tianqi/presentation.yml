@@ -1,8 +1,46 @@
 brand: 天变邸抄
-world_title: 京师灾变与会勘
-objective: 第十四日前，决定哪些材料进入会勘定稿
-intro: 灾变之后，事实不会自行汇成真相。官署、内廷、臣工、书坊、灾民与军需灰网都在争夺材料的去向和解释权。
-start_action: 从王恭厂外街开始记录
+world_title: 天启六年 · 京师王恭厂灾变
+objective: 第十四日封稿前，保住证人与材料，决定官册和会勘报告最终写下什么
+intro: 一场灾变留下冲突的证词、残账与传言。你将决定哪些内容进入正式记录。
+prologue:
+  skippable: true
+  beats:
+  - text: |-
+      天启六年五月初六。
+      京师西南，王恭厂。
+    duration: 2.2
+    font: display
+    font_size: 40
+    position: center
+  - text: |-
+      一声巨响掀倒沿街屋宇。
+      存放火药与军需物料的王恭厂，已成废墟。
+    duration: 3.2
+    font: narrative
+    font_size: 31
+    position: lower_left
+  - text: |-
+      没人说得清这是失火、地震，还是人为纵火。
+      官署开始会勘，街巷里却已有人高喊“奸细作乱”。
+    duration: 3.8
+    font: body
+    font_size: 28
+    position: lower_left
+  - text: |-
+      你是替邸舍与书坊抄录消息的抄手。
+      与你约定见面的库吏周良辅失踪，只留下一页残账。
+    duration: 3.8
+    font: narrative
+    font_size: 30
+    position: lower_center
+  - text: |-
+      十四日后，会勘报告与灾民官册封定。
+      谁被记下、谁来担责、哪种说法成为历史，都将在那一天决定。
+    await_input: true
+    font: display
+    font_size: 30
+    position: lower_center
+start_action: 走进王恭厂外街
 asset_root: res://assets/tianqi
 opening_event: opening-blast
 ending_event: final-verdict
@@ -38,7 +76,7 @@ event_cues:
   "route:final:caveat": official-draft
   "route:final:expose-forgery": forged-ledger-reveal
 ui:
-  default_player_name: 无名记录者
+  default_player_name: 无名抄手
   term_clue: 材料
   term_clues: 材料
   term_verify: 核验
@@ -86,6 +124,7 @@ ui:
   feedback_belief_changed: 材料判断更新为{confidence}：{claim}
   guidance_outcome_settled: 会勘结果已经形成；你可以继续观察记录产生的余波。
   guidance_pending: 当前处理还需等待到第 {day} 天完成。
+  guidance_urgent_route: '{label}即将失去窗口：{next_step}'
   guidance_verify_date: 关键时点目前只有传言，核验后再安排行动更稳妥。
   guidance_item_market: '{name}仍可取得；它是参与定稿的必要条件，来源可能随局势变化。'
   guidance_item_missing: 当前仍缺少{name}；留意人物回应与路线进展中是否出现新的取得方式。
@@ -128,6 +167,7 @@ ui:
   decision_growth_ready: 当前状态允许继续整理材料
   decision_growth_unknown: 整理期间局势仍会按日推进
   ending_metrics: 局势推进到第 {day} 天；你做出 {decisions} 次决策，其中主动行动 {active} 次、推进时间 {waits} 次。
+  ending_coda_heading: 你留下的余波
   ending_action_verify: 核验材料
   ending_action_tell: 转交材料
   ending_action_route: 回应路线考验

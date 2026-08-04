@@ -166,7 +166,7 @@ func TestTerminalUsesScenarioAuthoredHeaderAndClueTerm(t *testing.T) {
 		header    string
 		clueLabel string
 	}{
-		{"tianqi", "天变邸抄 · 京师灾变与会勘", "材料："},
+		{"tianqi", "天变邸抄 · 天启六年 · 京师王恭厂灾变", "材料："},
 		{"blackwind", "凡途 · 黑风谷山川", "线索："},
 		{"orbital", "凡途 · 远星环站轨道结构", "遥测记录："},
 	}
@@ -188,6 +188,36 @@ func TestTerminalUsesScenarioAuthoredHeaderAndClueTerm(t *testing.T) {
 				t.Fatalf("scenario-authored terminal labels missing:\n%s", output.String())
 			}
 		})
+	}
+}
+
+func TestTerminalShowsTianqiPrologueAndVisibleEndingCoda(t *testing.T) {
+	bundle, err := scenario.Load("../../data/tianqi")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := app.NewSession(bundle, app.DefaultPlayer(bundle, "终端玩家"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := runGame(bytes.NewBufferString("quit\n"), &output, testTerminalGame(session), nil, false); err != nil {
+		t.Fatal(err)
+	}
+	for _, wanted := range []string{"【序章】", "天启六年五月初六", "你是替邸舍与书坊抄录消息的抄手", "目标：第十四日封稿前"} {
+		if !strings.Contains(output.String(), wanted) {
+			t.Fatalf("terminal prologue omitted %q:\n%s", wanted, output.String())
+		}
+	}
+
+	output.Reset()
+	view := session.View()
+	view.Resolved = true
+	view.Outcome = "第十四日，会勘报告封印上呈。"
+	view.Ending = &app.EndingSummary{Outcome: view.Outcome, Coda: []string{"你留下分级邸抄，出处与疑点一并刊明。"}}
+	renderView(&output, view, false)
+	if !strings.Contains(output.String(), "你留下的余波：") || !strings.Contains(output.String(), "出处与疑点一并刊明") {
+		t.Fatalf("terminal ending omitted the visible coda:\n%s", output.String())
 	}
 }
 
