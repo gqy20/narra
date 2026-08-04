@@ -17,6 +17,7 @@ const AudioDirectorScript = preload("res://scripts/audio_director.gd")
 const CinematicDirectorScript = preload("res://scripts/cinematic_director.gd")
 const PrologueDirectorScript = preload("res://scripts/prologue_director.gd")
 const AppVisualThemeScript = preload("res://ui/theme/app_visual_theme.gd")
+const UIFactoryScript = preload("res://ui/components/ui_factory.gd")
 const CausalSealTexture = preload("res://assets/ui/causal/causal-seal.png")
 const DecisionFrameTexture = preload("res://assets/ui/causal/decision-frame.png")
 const TimelineArrowTexture = preload("res://assets/ui/causal/timeline-arrow.png")
@@ -69,6 +70,7 @@ var journal_panel_controller
 var action_panel_controller
 var dialogue_panel_controller
 var presentation_controller
+var ui_factory
 
 var current_view: Dictionary = {}
 var scenario_info: Dictionary = {}
@@ -164,9 +166,6 @@ var start_layer: Control
 var start_scene: TextureRect
 var start_vignette: TextureRect
 var start_seal: TextureRect
-var game_layer: Control
-var header_brand_label: Label
-var header_world_title_label: Label
 var start_eyebrow_label: Label
 var start_title_label: Label
 var start_intro_label: Label
@@ -174,11 +173,6 @@ var start_begin_button: Button
 var name_input: LineEdit
 var connection_label: Label
 var retry_button: Button
-var day_label: Label
-var place_label: Label
-var phase_label: Label
-var timing_label: Label
-var objective_label: Label
 var player_summary_label: Label
 var player_resources_box: HFlowContainer
 var journal_tabs: TabContainer
@@ -194,19 +188,6 @@ var journal_feedback_details_box: VBoxContainer
 var journal_feedback_details_button: Button
 var journal_travel_details_box: VBoxContainer
 var journal_travel_details_button: Button
-var actions_box: VBoxContainer
-var overview_actions_box: VBoxContainer
-var fact_action_scroll: ScrollContainer
-var actor_focus_workspace: HBoxContainer
-var actor_focus_message_list: VBoxContainer
-var actor_focus_detail_scroll: ScrollContainer
-var actor_focus_detail_box: VBoxContainer
-var actor_focus_footer: HBoxContainer
-var action_canvas: CanvasLayer
-var action_dock_host: Control
-var action_dock: PanelContainer
-var action_dock_title: Label
-var footer_label: Label
 var journal_layer: Control
 var journal_panel: PanelContainer
 var journal_paper: TextureRect
@@ -230,25 +211,10 @@ var confirmation_box: VBoxContainer
 var confirmation_actions_box: HBoxContainer
 var confirmation_details_box: VBoxContainer
 var confirmation_details_button: Button
-var visual_stack: Control
-var map_panel: HBoxContainer
-var location_panel: VBoxContainer
-var map_detail_box: VBoxContainer
-var location_detail_box: VBoxContainer
-var stage_people_box: HFlowContainer
-var map_mode_button: Button
-var location_mode_button: Button
-var world_map_view: Control
-var location_stage: Control
 var presentation_director: Control
 var audio_director: Node
 var cinematic_director: Control
 var prologue_director: Control
-var actor_portrait_frame: PanelContainer
-var actor_portrait: TextureRect
-var actor_portrait_name: Label
-var actor_portrait_meta: Label
-var sound_button: Button
 var motion_button: Button
 var settings_layer: Control
 var settings_box: VBoxContainer
@@ -269,14 +235,15 @@ var narrative_font: Font
 
 
 func _initialize_responsibility_controllers() -> void:
+	ui_factory = UIFactoryScript.new(AppVisualThemeScript, DecisionFrameTexture)
 	runtime_logger_controller = RuntimeLoggerScript.new(self)
 	display_settings_controller = DisplaySettingsScript.new(self)
-	start_settings_screen_controller = StartSettingsScreenScript.new(self)
 	game_screen_controller = GameScreenScript.new(self)
+	start_settings_screen_controller = StartSettingsScreenScript.new(self, game_screen_controller)
 	journal_panel_controller = JournalPanelScript.new(self)
-	action_panel_controller = ActionPanelScript.new(self)
-	dialogue_panel_controller = DialoguePanelScript.new(self)
-	presentation_controller = PresentationControllerScript.new(self)
+	action_panel_controller = ActionPanelScript.new(self, game_screen_controller)
+	dialogue_panel_controller = DialoguePanelScript.new(self, game_screen_controller)
+	presentation_controller = PresentationControllerScript.new(self, game_screen_controller)
 
 
 
@@ -402,12 +369,12 @@ func _request(operation: String, method: HTTPClient.Method, path: String, payloa
 		"operation": operation,
 		"path": path,
 	})
-	game_screen_controller._set_buttons_disabled(self, true)
-	if action_dock and action_dock.visible:
-		action_dock_title.text = _operation_label(operation) + "…"
-	if footer_label:
-		footer_label.text = "◆  " + _operation_label(operation) + "…"
-		footer_label.add_theme_color_override("font_color", COLORS.accent)
+	ui_factory.set_buttons_disabled(self, true)
+	if game_screen_controller.action_dock and game_screen_controller.action_dock.visible:
+		game_screen_controller.action_dock_title.text = _operation_label(operation) + "…"
+	if game_screen_controller.footer_label:
+		game_screen_controller.footer_label.text = "◆  " + _operation_label(operation) + "…"
+		game_screen_controller.footer_label.add_theme_color_override("font_color", COLORS.accent)
 	if start_layer and start_layer.visible and connection_label:
 		connection_label.text = "正在确认旅途入口…"
 	var error: Error = game_client.send(method, path, payload)
@@ -421,7 +388,7 @@ func _request(operation: String, method: HTTPClient.Method, path: String, payloa
 		pending_operation = ""
 		pending_request_path = ""
 		pending_request_method = ""
-		game_screen_controller._set_buttons_disabled(self, false)
+		ui_factory.set_buttons_disabled(self, false)
 		_show_error("无法发送请求（%s）" % error)
 
 
@@ -448,7 +415,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 	pending_operation = ""
 	pending_request_path = ""
 	pending_request_method = ""
-	game_screen_controller._set_buttons_disabled(self, presentation_busy)
+	ui_factory.set_buttons_disabled(self, presentation_busy)
 	var adapted: Dictionary = api_response_adapter.decode(response_code, body)
 	var parsed: Dictionary = adapted.get("payload", {})
 	var error_code := str(adapted.get("error_code", ""))
@@ -485,8 +452,8 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		var server_ai_settings: Dictionary = parsed.get("ai_settings", {})
 		ai_server_mode = str(server_ai_settings.get("mode", "disabled"))
 		start_settings_screen_controller._refresh_ai_settings_status()
-		if footer_label:
-			footer_label.text = ""
+		if game_screen_controller.footer_label:
+			game_screen_controller.footer_label.text = ""
 		return
 	if operation == "ai_settings":
 		var ai_capabilities: Dictionary = parsed.get("capabilities", {})
@@ -529,7 +496,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		_show_footer_message("存档已保存")
 		action_panel_controller._render_actions(available_actions_cache)
 	else:
-		footer_label.text = ""
+		game_screen_controller.footer_label.text = ""
 
 
 func _apply_scenario_info(value: Variant) -> void:
@@ -578,13 +545,13 @@ func _apply_scenario_presentation(value: Variant) -> void:
 	if ending_seal:
 		var scenario_seal: Texture2D = presentation_registry.ui_texture("title_seal")
 		ending_seal.texture = scenario_seal if scenario_seal else CausalSealTexture
-	if location_stage:
-		location_stage.registry = presentation_registry
-	if header_brand_label:
-		header_brand_label.text = str(scenario_presentation.get("brand", "游戏"))
-	if header_world_title_label:
+	if game_screen_controller.location_stage:
+		game_screen_controller.location_stage.registry = presentation_registry
+	if game_screen_controller.header_brand_label:
+		game_screen_controller.header_brand_label.text = str(scenario_presentation.get("brand", "游戏"))
+	if game_screen_controller.header_world_title_label:
 		var world_title := str(scenario_presentation.get("world_title", ""))
-		header_world_title_label.text = ("·  " + world_title) if world_title != "" else ""
+		game_screen_controller.header_world_title_label.text = ("·  " + world_title) if world_title != "" else ""
 	if start_title_label:
 		start_title_label.text = str(scenario_presentation.get("brand", "游戏"))
 	if start_intro_label:
@@ -594,8 +561,8 @@ func _apply_scenario_presentation(value: Variant) -> void:
 
 
 func _show_footer_message(message: String) -> void:
-	footer_label.text = message
-	footer_label.add_theme_color_override("font_color", COLORS.muted)
+	game_screen_controller.footer_label.text = message
+	game_screen_controller.footer_label.add_theme_color_override("font_color", COLORS.muted)
 	presentation_controller._clear_footer_message_later(message)
 
 
@@ -657,14 +624,14 @@ func _try_start_prologue() -> void:
 		_on_prologue_finished
 	)
 	game_screen_controller._sync_action_canvas_visibility()
-	if not prologue_active and game_layer.visible:
+	if not prologue_active and game_screen_controller.game_layer.visible:
 		audio_director.play_music()
 
 
 func _on_prologue_finished(_skipped: bool) -> void:
 	prologue_active = false
 	game_screen_controller._sync_action_canvas_visibility()
-	if game_layer.visible:
+	if game_screen_controller.game_layer.visible:
 		audio_director.play_music()
 
 
@@ -707,8 +674,8 @@ func _continue_queued_followup() -> bool:
 		_show_footer_message("局势提前变化，已停下等待你的判断")
 		action_panel_controller._render_actions(available_actions_cache)
 		return true
-	footer_label.text = "继续推进到这一阶段结束…"
-	footer_label.add_theme_color_override("font_color", COLORS.accent)
+	game_screen_controller.footer_label.text = "继续推进到这一阶段结束…"
+	game_screen_controller.footer_label.add_theme_color_override("font_color", COLORS.accent)
 	_execute_action(followup_id)
 	return true
 
@@ -734,7 +701,7 @@ func _show_start() -> void:
 	last_causal_actor_id = ""
 	active_action_category = ""
 	action_panel_controller._reset_action_focus()
-	game_layer.hide()
+	game_screen_controller.game_layer.hide()
 	journal_layer.hide()
 	confirmation_layer.hide()
 	settings_layer.hide()
@@ -753,7 +720,7 @@ func _show_start() -> void:
 
 func _show_game() -> void:
 	start_layer.hide()
-	game_layer.show()
+	game_screen_controller.game_layer.show()
 	if not opening_cinematic_active and not prologue_active:
 		audio_director.play_music()
 	game_screen_controller._sync_action_canvas_visibility()
@@ -765,5 +732,5 @@ func _show_error(message: String) -> void:
 		connection_label.add_theme_color_override("font_color", COLORS.danger)
 		retry_button.show()
 	else:
-		footer_label.text = message
-		footer_label.add_theme_color_override("font_color", COLORS.danger)
+		game_screen_controller.footer_label.text = message
+		game_screen_controller.footer_label.add_theme_color_override("font_color", COLORS.danger)

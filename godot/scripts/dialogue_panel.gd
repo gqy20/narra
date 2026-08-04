@@ -1,10 +1,12 @@
 extends RefCounted
 
 var host
+var screen
 
 
-func _init(value) -> void:
+func _init(value, game_screen) -> void:
 	host = value
+	screen = game_screen
 
 
 func _render_actor_dialogue_line(actor: Dictionary) -> void:
@@ -15,7 +17,7 @@ func _render_actor_dialogue_line(actor: Dictionary) -> void:
 		var from_player = str(exchange.get("speaker", "")) == "player"
 		var history_panel = PanelContainer.new()
 		var history_color = Color(host.COLORS.panel_hover, 0.34) if from_player else Color(host.COLORS.panel_alt, 0.42)
-		var history_style = host.game_screen_controller._panel_style(history_color, 0, 2, Color.TRANSPARENT, 12, 8)
+		var history_style = host.ui_factory.panel_style(history_color, 0, 2, Color.TRANSPARENT, 12, 8)
 		history_style.border_width_left = 2
 		history_style.border_color = Color(host.COLORS.muted, 0.52) if from_player else Color(host.COLORS.accent, 0.68)
 		history_panel.add_theme_stylebox_override("panel", history_style)
@@ -23,23 +25,23 @@ func _render_actor_dialogue_line(actor: Dictionary) -> void:
 		history_content.add_theme_constant_override("separation", 4)
 		history_panel.add_child(history_content)
 		var speaker_name: String = str(host.current_view.get("player", {}).get("name", "你")) if from_player else str(actor.get("name", host.focused_actor_name))
-		var history_speaker = host.game_screen_controller._text(history_content, speaker_name, true, 13)
+		var history_speaker = host.ui_factory.text(history_content, speaker_name, true, 13)
 		history_speaker.add_theme_color_override("font_color", host.COLORS.muted if from_player else host.COLORS.accent)
-		var history_line = host.game_screen_controller._text(history_content, str(exchange.get("text", "")), false, 16)
+		var history_line = host.ui_factory.text(history_content, str(exchange.get("text", "")), false, 16)
 		history_line.add_theme_font_override("font", host.narrative_font)
-		host.actor_focus_message_list.add_child(history_panel)
+		screen.actor_focus_message_list.add_child(history_panel)
 	if not history.is_empty() and host.actor_dialogue_loading_id != host.focused_actor_id and not host.actor_dialogue_error_by_id.has(host.focused_actor_id):
 		host.dialogue_panel_controller._render_actor_dialogue_input()
 		return
 	var panel = PanelContainer.new()
-	var style = host.game_screen_controller._panel_style(Color(host.COLORS.panel_alt, 0.42), 0, 2, Color.TRANSPARENT, 14, 10)
+	var style = host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.42), 0, 2, Color.TRANSPARENT, 14, 10)
 	style.border_width_left = 2
 	style.border_color = Color(host.COLORS.accent, 0.68)
 	panel.add_theme_stylebox_override("panel", style)
 	var content = VBoxContainer.new()
 	content.add_theme_constant_override("separation", 5)
 	panel.add_child(content)
-	var speaker = host.game_screen_controller._text(content, str(actor.get("name", host.focused_actor_name)), true, 13)
+	var speaker = host.ui_factory.text(content, str(actor.get("name", host.focused_actor_name)), true, 13)
 	speaker.add_theme_color_override("font_color", host.COLORS.accent)
 	var utterance = "正在等待人物回应……"
 	var quote_line = false
@@ -50,9 +52,9 @@ func _render_actor_dialogue_line(actor: Dictionary) -> void:
 		quote_line = true
 	elif host.actor_dialogue_error_by_id.has(host.focused_actor_id):
 		utterance = "对话生成失败：%s" % str(host.actor_dialogue_error_by_id[host.focused_actor_id])
-	var line = host.game_screen_controller._text(content, "“%s”" % utterance if quote_line else utterance, false, 17)
+	var line = host.ui_factory.text(content, "“%s”" % utterance if quote_line else utterance, false, 17)
 	line.add_theme_font_override("font", host.narrative_font)
-	host.actor_focus_message_list.add_child(panel)
+	screen.actor_focus_message_list.add_child(panel)
 	host.dialogue_panel_controller._render_actor_dialogue_input()
 
 
@@ -67,10 +69,10 @@ func _render_actor_dialogue_input() -> void:
 	input.text_submitted.connect(host.dialogue_panel_controller._submit_actor_dialogue)
 	row.add_child(input)
 	if host.actor_dialogue_loading_id == host.focused_actor_id:
-		row.add_child(host.game_screen_controller._utility_button("取消", host.dialogue_panel_controller._cancel_actor_dialogue_generation))
+		row.add_child(host.ui_factory.utility_button("取消", host.dialogue_panel_controller._cancel_actor_dialogue_generation))
 	else:
-		row.add_child(host.game_screen_controller._utility_button("发送", func(): host.dialogue_panel_controller._submit_actor_dialogue(input.text)))
-	host.actor_focus_message_list.add_child(row)
+		row.add_child(host.ui_factory.utility_button("发送", func(): host.dialogue_panel_controller._submit_actor_dialogue(input.text)))
+	screen.actor_focus_message_list.add_child(row)
 
 
 func _submit_actor_dialogue(message: String) -> void:
@@ -108,7 +110,7 @@ func _on_ai_dialogue_ready(actor_id: String, dialogue: Dictionary) -> void:
 	var emotion = str(dialogue.get("emotion", ""))
 	if emotion in ["neutral", "alert", "troubled", "decisive"]:
 		host.actor_expression_by_id[actor_id] = emotion
-		host.game_screen_controller._focus_portrait(actor_id)
+		screen._focus_portrait(actor_id)
 	host.action_panel_controller._render_actions(host.available_actions_cache)
 
 

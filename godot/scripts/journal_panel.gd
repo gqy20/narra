@@ -31,7 +31,7 @@ func _build_journal_layer() -> void:
 	host.journal_panel.anchor_right = 0.992
 	host.journal_panel.anchor_top = 0.026
 	host.journal_panel.anchor_bottom = 0.974
-	host.journal_panel.add_theme_stylebox_override("panel", host.game_screen_controller._panel_style(Color("101612ff"), 1, 3, Color(host.COLORS.accent, 0.44), 26, 22))
+	host.journal_panel.add_theme_stylebox_override("panel", host.ui_factory.panel_style(Color("101612ff"), 1, 3, Color(host.COLORS.accent, 0.44), 26, 22))
 	host.journal_layer.add_child(host.journal_panel)
 	host.journal_paper = TextureRect.new()
 	host.journal_paper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -54,7 +54,7 @@ func _build_journal_layer() -> void:
 	title.add_theme_font_size_override("font_size", host.TYPE_SCALE.title)
 	title.add_theme_color_override("font_color", host.COLORS.accent)
 	title_row.add_child(title)
-	var close_button = host.game_screen_controller._utility_button("收起", host.journal_panel_controller._close_journal)
+	var close_button = host.ui_factory.utility_button("收起", host.journal_panel_controller._close_journal)
 	close_button.custom_minimum_size = Vector2(72, 38)
 	title_row.add_child(close_button)
 	host.player_summary_label = Label.new()
@@ -96,7 +96,7 @@ func _build_reference_tabs(parent: VBoxContainer) -> void:
 
 
 func _journal_tab_button(label_text: String, index: int) -> Button:
-	var button = host.game_screen_controller._utility_button(label_text, host.journal_panel_controller._select_journal_tab.bind(index))
+	var button = host.ui_factory.utility_button(label_text, host.journal_panel_controller._select_journal_tab.bind(index))
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.custom_minimum_size = Vector2(0, 38)
 	button.add_theme_font_size_override("font_size", host.TYPE_SCALE.compact)
@@ -126,7 +126,7 @@ func _refresh_journal_tab_styles() -> void:
 		var status_color = host.journal_tab_colors[index]
 		button.add_theme_color_override("font_color", host.COLORS.accent if active and status_color == host.COLORS.muted else status_color)
 		button.add_theme_color_override("font_hover_color", host.COLORS.ink)
-		var normal = host.game_screen_controller._panel_style(Color.TRANSPARENT, 0, 0, Color.TRANSPARENT, 8, 7)
+		var normal = host.ui_factory.panel_style(Color.TRANSPARENT, 0, 0, Color.TRANSPARENT, 8, 7)
 		normal.border_width_bottom = 2 if active else 0
 		normal.border_color = host.COLORS.accent
 		button.add_theme_stylebox_override("normal", normal)
@@ -212,22 +212,22 @@ func _close_journal() -> void:
 
 
 func _render_clues(clues: Array, actions: Array) -> void:
-	host.game_screen_controller._clear(host.clues_box)
+	host.ui_factory.clear(host.clues_box)
 	if clues.is_empty():
-		host.game_screen_controller._text(host.clues_box, host._ui_text("journal_empty_clues"), true)
+		host.ui_factory.text(host.clues_box, host._ui_text("journal_empty_clues"), true)
 		return
 	var unverified = 0
 	for clue in clues:
 		if int(clue.get("confidence", 0)) < 3:
 			unverified += 1
 	var overview = str(host._ui_text("journal_unverified_count") % unverified).trim_prefix(" · ") if unverified > 0 else "材料均已核验"
-	var overview_label = host.game_screen_controller._text(host.clues_box, overview, true, host.TYPE_SCALE.meta)
+	var overview_label = host.ui_factory.text(host.clues_box, overview, true, host.TYPE_SCALE.meta)
 	overview_label.add_theme_color_override("font_color", host.COLORS.accent if unverified > 0 else host.COLORS.success)
 	for index in clues.size():
 		var clue: Dictionary = clues[index]
 		var fact_id = str(clue.get("fact_id", ""))
 		var clue_card := PanelContainer.new()
-		clue_card.add_theme_stylebox_override("panel", host.game_screen_controller._panel_style(Color(host.COLORS.panel_alt, 0.42), 1, 3, Color(host.COLORS.line, 0.72), 12, 11))
+		clue_card.add_theme_stylebox_override("panel", host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.42), 1, 3, Color(host.COLORS.line, 0.72), 12, 11))
 		host.clues_box.add_child(clue_card)
 		var card_row := HBoxContainer.new()
 		card_row.add_theme_constant_override("separation", 14)
@@ -245,22 +245,22 @@ func _render_clues(clues: Array, actions: Array) -> void:
 		clue_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		clue_content.add_theme_constant_override("separation", 7)
 		card_row.add_child(clue_content)
-		var claim = host.game_screen_controller._text(clue_content, str(clue.get("claim", "未知传言")), false, host.TYPE_SCALE.body)
+		var claim = host.ui_factory.text(clue_content, str(clue.get("claim", "未知传言")), false, host.TYPE_SCALE.body)
 		claim.add_theme_font_override("font", host.medium_font)
 		var confidence = int(clue.get("confidence", 0))
 		var status = "已核实" if confidence >= 3 else ("较可信" if confidence == 2 else "未经核实")
 		if bool(clue.get("contested", false)):
 			status += " · 与旧说法冲突"
-		var status_line = host.game_screen_controller._text(clue_content, "%s · %s" % [status, clue.get("source", "来源未知")], true, host.TYPE_SCALE.meta)
+		var status_line = host.ui_factory.text(clue_content, "%s · %s" % [status, clue.get("source", "来源未知")], true, host.TYPE_SCALE.meta)
 		status_line.add_theme_color_override("font_color", host.COLORS.success if confidence >= 3 else host.COLORS.accent)
 		var verify_action = host.journal_panel_controller._action_for_fact(actions, fact_id, "verify")
 		var target_count = host.action_panel_controller._count_tell_actions(actions, "", fact_id)
 		if not verify_action.is_empty() and confidence < 3:
-			var verify_link = host.game_screen_controller._action_button(host._ui_text("journal_verify_clue"), host.action_panel_controller._consider_action.bind(verify_action))
+			var verify_link = host.ui_factory.action_button(host._ui_text("journal_verify_clue"), host.action_panel_controller._consider_action.bind(verify_action))
 			verify_link.custom_minimum_size.y = 36
 			clue_content.add_child(verify_link)
 		elif target_count > 0:
-			var link = host.game_screen_controller._action_button("可告知 %d 人" % target_count, host.action_panel_controller._focus_fact_actions.bind(fact_id, str(clue.get("claim", "未知传言"))))
+			var link = host.ui_factory.action_button("可告知 %d 人" % target_count, host.action_panel_controller._focus_fact_actions.bind(fact_id, str(clue.get("claim", "未知传言"))))
 			link.custom_minimum_size.y = 36
 			clue_content.add_child(link)
 
@@ -280,7 +280,7 @@ func _has_action_for_fact(actions: Array, fact_id: String) -> bool:
 
 
 func _render_scene(events: Array, guidance: Array, travel, feedback, causal_threads: Array, player_name: String) -> void:
-	host.game_screen_controller._clear(host.scene_box)
+	host.ui_factory.clear(host.scene_box)
 	if feedback is Dictionary:
 		var feedback_signature = host.journal_panel_controller._feedback_signature(feedback)
 		if feedback_signature != host.journal_current_feedback_signature:
@@ -292,22 +292,22 @@ func _render_scene(events: Array, guidance: Array, travel, feedback, causal_thre
 		host.scene_box.add_child(separator)
 	host.journal_panel_controller._render_causal_threads(host.scene_box, causal_threads)
 	if not guidance.is_empty():
-		var guidance_heading = host.game_screen_controller._text(host.scene_box, "眼下", true, host.TYPE_SCALE.meta)
+		var guidance_heading = host.ui_factory.text(host.scene_box, "眼下", true, host.TYPE_SCALE.meta)
 		guidance_heading.add_theme_color_override("font_color", host.COLORS.accent)
 		for index in range(mini(guidance.size(), 2)):
-			host.game_screen_controller._text(host.scene_box, str(guidance[index]), true, 14)
+			host.ui_factory.text(host.scene_box, str(guidance[index]), true, 14)
 	if events.is_empty():
 		if not feedback is Dictionary:
-			host.game_screen_controller._text(host.scene_box, "四下暂时没有新的公开动静。", true)
+			host.ui_factory.text(host.scene_box, "四下暂时没有新的公开动静。", true)
 		return
-	var event_heading = host.game_screen_controller._text(host.scene_box, "近来风声", true, host.TYPE_SCALE.meta)
+	var event_heading = host.ui_factory.text(host.scene_box, "近来风声", true, host.TYPE_SCALE.meta)
 	event_heading.add_theme_color_override("font_color", host.COLORS.accent)
 	var rendered_events = 0
 	for index in range(events.size() - 1, -1, -1):
 		var event = events[index]
 		if str(event.get("actor_name", "")) == player_name:
 			continue
-		host.game_screen_controller._text(host.scene_box, "第 %d 日 · %s" % [int(event.get("day", 0)), event.get("description", "局势变化")], true, 14)
+		host.ui_factory.text(host.scene_box, "第 %d 日 · %s" % [int(event.get("day", 0)), event.get("description", "局势变化")], true, 14)
 		rendered_events += 1
 		if rendered_events >= 3:
 			break
@@ -316,18 +316,18 @@ func _render_scene(events: Array, guidance: Array, travel, feedback, causal_thre
 func _render_causal_threads(parent: VBoxContainer, threads: Array) -> void:
 	if threads.is_empty():
 		return
-	var heading = host.game_screen_controller._text(parent, host._ui_text("information_causal_heading"), true, host.TYPE_SCALE.meta)
+	var heading = host.ui_factory.text(parent, host._ui_text("information_causal_heading"), true, host.TYPE_SCALE.meta)
 	heading.add_theme_color_override("font_color", host.COLORS.accent)
 	var first = maxi(0, threads.size() - 2)
 	for index in range(threads.size() - 1, first - 1, -1):
 		var thread: Dictionary = threads[index]
 		var stage = str(thread.get("stage", "delivered"))
-		var stage_line = host.game_screen_controller._text(parent, "%s · %s" % [thread.get("actor_name", "有人"), thread.get("stage_label", "已送达")], false, 14)
+		var stage_line = host.ui_factory.text(parent, "%s · %s" % [thread.get("actor_name", "有人"), thread.get("stage_label", "已送达")], false, 14)
 		stage_line.add_theme_color_override("font_color", host.COLORS.success if stage == "changed" else host.COLORS.accent)
-		var fact_line = host.game_screen_controller._text(parent, "“%s”" % thread.get("fact_claim", "一条消息"), true, 16)
+		var fact_line = host.ui_factory.text(parent, "“%s”" % thread.get("fact_claim", "一条消息"), true, 16)
 		fact_line.add_theme_font_override("font", host.narrative_font)
 		fact_line.add_theme_constant_override("line_spacing", 4)
-		host.game_screen_controller._text(parent, str(thread.get("summary", "尚无公开回响")), true, 13)
+		host.ui_factory.text(parent, str(thread.get("summary", "尚无公开回响")), true, 13)
 
 
 func _render_feedback_summary(parent: VBoxContainer, feedback: Dictionary) -> void:
@@ -335,7 +335,7 @@ func _render_feedback_summary(parent: VBoxContainer, feedback: Dictionary) -> vo
 	var status_key = str(feedback.get("status", ""))
 	var status = str(status_names.get(status_key, "已结算"))
 	var day = int(feedback.get("day", host.current_view.get("day", 0)))
-	var meta = host.game_screen_controller._text(parent, "第 %d 日 · %s" % [day, status], true, host.TYPE_SCALE.meta)
+	var meta = host.ui_factory.text(parent, "第 %d 日 · %s" % [day, status], true, host.TYPE_SCALE.meta)
 	meta.add_theme_color_override("font_color", host.COLORS.danger if status_key == "failed" else host.COLORS.accent)
 	var influences: Array = feedback.get("influence", [])
 	var headline = str(feedback.get("action", "局势有了变化"))
@@ -346,24 +346,24 @@ func _render_feedback_summary(parent: VBoxContainer, feedback: Dictionary) -> vo
 		if not changes.is_empty():
 			headline = str(changes[0].get("with_information", headline))
 		cause = "%s因你透露“%s”改变了安排" % [influence.get("actor_name", "有人"), influence.get("fact_claim", "一条消息")]
-	var title = host.game_screen_controller._text(parent, headline, false, 18)
+	var title = host.ui_factory.text(parent, headline, false, 18)
 	title.add_theme_font_override("font", host.display_font)
 	if cause != "":
-		host.game_screen_controller._text(parent, cause, true, 14)
+		host.ui_factory.text(parent, cause, true, 14)
 	var messages: Array = feedback.get("messages", [])
 	var stop_reason = str(feedback.get("stop_reason", ""))
 	if stop_reason != "":
-		var stop_line = host.game_screen_controller._text(parent, "为何停下 · %s" % stop_reason, false, 14)
+		var stop_line = host.ui_factory.text(parent, "为何停下 · %s" % stop_reason, false, 14)
 		stop_line.add_theme_color_override("font_color", host.COLORS.accent)
 	for index in range(mini(messages.size(), 2)):
-		host.game_screen_controller._text(parent, "· %s" % messages[index], false, 14)
+		host.ui_factory.text(parent, "· %s" % messages[index], false, 14)
 	var journal: Array = feedback.get("journal", [])
 	if not journal.is_empty():
-		var journal_heading = host.game_screen_controller._text(parent, "记入卷宗", true, host.TYPE_SCALE.meta)
+		var journal_heading = host.ui_factory.text(parent, "记入卷宗", true, host.TYPE_SCALE.meta)
 		journal_heading.add_theme_color_override("font_color", host.COLORS.accent)
 		for entry in journal:
-			host.game_screen_controller._text(parent, "· %s" % entry, false, 14)
-	host.journal_feedback_details_button = host.game_screen_controller._utility_button("收起推演过程" if host.journal_feedback_details_visible else "查看推演过程", host.journal_panel_controller._toggle_journal_feedback_details)
+			host.ui_factory.text(parent, "· %s" % entry, false, 14)
+	host.journal_feedback_details_button = host.ui_factory.utility_button("收起推演过程" if host.journal_feedback_details_visible else "查看推演过程", host.journal_panel_controller._toggle_journal_feedback_details)
 	host.journal_feedback_details_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	parent.add_child(host.journal_feedback_details_button)
 	host.journal_feedback_details_box = VBoxContainer.new()
@@ -388,56 +388,56 @@ func _feedback_signature(feedback) -> String:
 
 
 func _render_travel_readiness(travel, preparation = {}) -> void:
-	host.game_screen_controller._clear(host.travel_box)
+	host.ui_factory.clear(host.travel_box)
 	host.journal_panel_controller._render_route_progresses(host.travel_box, host.current_view.get("route_progresses", []), false)
 	if not travel is Dictionary:
-		host.game_screen_controller._text(host.travel_box, "还没有明确的远行目标。", true)
+		host.ui_factory.text(host.travel_box, "还没有明确的远行目标。", true)
 		return
 	var route: Array = travel.get("route", [])
 	var destination = str(travel.get("destination", "目标地点"))
 	if destination == "" and not route.is_empty():
 		destination = str(route[route.size() - 1])
 	var meta_text = "%s · 约 %d 日" % [destination, int(travel.get("travel_days", 0))]
-	var meta = host.game_screen_controller._text(host.travel_box, meta_text, true, host.TYPE_SCALE.meta)
+	var meta = host.ui_factory.text(host.travel_box, meta_text, true, host.TYPE_SCALE.meta)
 	meta.add_theme_color_override("font_color", host.COLORS.accent)
 	var missing = host.journal_panel_controller._travel_missing_checks(travel)
 	var ready_checks = host.journal_panel_controller._travel_ready_checks(travel)
 	if missing.is_empty():
-		var ready_title = host.game_screen_controller._text(host.travel_box, "行装已经齐备", false, 19)
+		var ready_title = host.ui_factory.text(host.travel_box, "行装已经齐备", false, 19)
 		ready_title.add_theme_color_override("font_color", host.COLORS.success)
-		host.game_screen_controller._text(host.travel_box, "路已认清，可以按自己的时机启程。", true, 14)
+		host.ui_factory.text(host.travel_box, "路已认清，可以按自己的时机启程。", true, 14)
 	else:
-		var missing_title = host.game_screen_controller._text(host.travel_box, "仍缺 %d 项才能成行" % missing.size(), false, 19)
+		var missing_title = host.ui_factory.text(host.travel_box, "仍缺 %d 项才能成行" % missing.size(), false, 19)
 		missing_title.add_theme_color_override("font_color", host.COLORS.danger)
 		for check in missing:
 			var check_label = str(check.get("label", "路线条件"))
-			var missing_line = host.game_screen_controller._text(host.travel_box, host.journal_panel_controller._travel_blocker_text(check_label), false, 15)
+			var missing_line = host.ui_factory.text(host.travel_box, host.journal_panel_controller._travel_blocker_text(check_label), false, 15)
 			missing_line.add_theme_color_override("font_color", host.COLORS.danger)
 			var resolution_action = host.journal_panel_controller._travel_resolution_action(host.available_actions_cache, check_label)
 			if not resolution_action.is_empty():
-				var resolution_button = host.game_screen_controller._action_button(host.journal_panel_controller._travel_resolution_label(resolution_action), host.journal_panel_controller._consider_action_from_journal.bind(resolution_action))
+				var resolution_button = host.ui_factory.action_button(host.journal_panel_controller._travel_resolution_label(resolution_action), host.journal_panel_controller._consider_action_from_journal.bind(resolution_action))
 				resolution_button.custom_minimum_size.y = 38
 				host.travel_box.add_child(resolution_button)
 	if preparation is Dictionary:
 		var score_sources: Array = preparation.get("score_sources", [])
 		if not score_sources.is_empty():
-			var preparation_heading = host.game_screen_controller._text(host.travel_box, host._ui_text("preparation_heading"), true, host.TYPE_SCALE.meta)
+			var preparation_heading = host.ui_factory.text(host.travel_box, host._ui_text("preparation_heading"), true, host.TYPE_SCALE.meta)
 			preparation_heading.add_theme_color_override("font_color", host.COLORS.accent)
 			var rating = str(preparation.get("rating", "尚未判断"))
 			var total_score = int(preparation.get("total_score", 0))
 			var target_score = int(preparation.get("target_score", 0))
-			var rating_line = host.game_screen_controller._text(host.travel_box, "综合准备 %d / 基线 %d · %s" % [total_score, target_score, rating], false, 18)
+			var rating_line = host.ui_factory.text(host.travel_box, "综合准备 %d / 基线 %d · %s" % [total_score, target_score, rating], false, 18)
 			rating_line.add_theme_color_override("font_color", host.COLORS.success if total_score >= target_score else host.COLORS.danger)
-			host.game_screen_controller._text(host.travel_box, str(preparation.get("rating_detail", "")), true, 13)
+			host.ui_factory.text(host.travel_box, str(preparation.get("rating_detail", "")), true, 13)
 			for factor in score_sources:
-				var factor_line = host.game_screen_controller._text(host.travel_box, "%s %d · %s" % [factor.get("label", "准备"), int(factor.get("value", 0)), factor.get("status", "")], false, 14)
+				var factor_line = host.ui_factory.text(host.travel_box, "%s %d · %s" % [factor.get("label", "准备"), int(factor.get("value", 0)), factor.get("status", "")], false, 14)
 				factor_line.add_theme_color_override("font_color", host.COLORS.success if bool(factor.get("ready", false)) else host.COLORS.muted)
-			host.game_screen_controller._text(host.travel_box, host._ui_text("preparation_explanation"), true, 13)
+			host.ui_factory.text(host.travel_box, host._ui_text("preparation_explanation"), true, 13)
 	var timing = str(travel.get("timing", ""))
 	if timing != "":
-		var timing_line = host.game_screen_controller._text(host.travel_box, timing, true, 13)
+		var timing_line = host.ui_factory.text(host.travel_box, timing, true, 13)
 		timing_line.add_theme_color_override("font_color", host.COLORS.danger if timing.contains("来不及") else host.COLORS.accent)
-	host.journal_travel_details_button = host.game_screen_controller._utility_button("收起完整行装" if host.journal_travel_details_visible else "查看已备与路线", host.journal_panel_controller._toggle_journal_travel_details)
+	host.journal_travel_details_button = host.ui_factory.utility_button("收起完整行装" if host.journal_travel_details_visible else "查看已备与路线", host.journal_panel_controller._toggle_journal_travel_details)
 	host.journal_travel_details_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	host.travel_box.add_child(host.journal_travel_details_button)
 	host.journal_travel_details_box = VBoxContainer.new()
@@ -445,47 +445,47 @@ func _render_travel_readiness(travel, preparation = {}) -> void:
 	host.journal_travel_details_box.visible = host.journal_travel_details_visible
 	host.travel_box.add_child(host.journal_travel_details_box)
 	if not route.is_empty():
-		host.game_screen_controller._text(host.journal_travel_details_box, "路线 · %s" % " → ".join(route), true, 13)
+		host.ui_factory.text(host.journal_travel_details_box, "路线 · %s" % " → ".join(route), true, 13)
 	for check in ready_checks:
-		var ready_line = host.game_screen_controller._text(host.journal_travel_details_box, host.journal_panel_controller._travel_ready_text(str(check.get("label", "路线条件"))), false, 13)
+		var ready_line = host.ui_factory.text(host.journal_travel_details_box, host.journal_panel_controller._travel_ready_text(str(check.get("label", "路线条件"))), false, 13)
 		ready_line.add_theme_color_override("font_color", host.COLORS.success)
 	if ready_checks.is_empty():
-		host.game_screen_controller._text(host.journal_travel_details_box, "尚无已经满足的准备项。", true, 13)
+		host.ui_factory.text(host.journal_travel_details_box, "尚无已经满足的准备项。", true, 13)
 
 
 func _render_route_progress(parent: VBoxContainer, route_progress, compact: bool) -> void:
 	if not route_progress is Dictionary or route_progress.is_empty():
 		return
-	var heading = host.game_screen_controller._text(parent, "当前路线 · %s" % route_progress.get("label", "未命名路线"), true, host.TYPE_SCALE.meta)
+	var heading = host.ui_factory.text(parent, "当前路线 · %s" % route_progress.get("label", "未命名路线"), true, host.TYPE_SCALE.meta)
 	heading.add_theme_color_override("font_color", host.COLORS.accent)
 	var status = str(route_progress.get("status", "推进中"))
 	var next_step = str(route_progress.get("next_step", "等待下一次变化"))
-	var status_line = host.game_screen_controller._text(parent, "%s · %s" % [status, next_step], false, 14 if compact else 15)
+	var status_line = host.ui_factory.text(parent, "%s · %s" % [status, next_step], false, 14 if compact else 15)
 	status_line.add_theme_color_override("font_color", host.COLORS.danger if bool(route_progress.get("urgent", false)) else (host.COLORS.success if bool(route_progress.get("complete", false)) else host.COLORS.ink))
 	if compact:
 		return
 	var window = str(route_progress.get("window", ""))
 	var location = str(route_progress.get("location", ""))
 	if window != "" or location != "":
-		host.game_screen_controller._text(parent, "窗口 · %s%s" % [window, (" · " + location) if location != "" else ""], true, 13)
+		host.ui_factory.text(parent, "窗口 · %s%s" % [window, (" · " + location) if location != "" else ""], true, 13)
 	var personal_return = str(route_progress.get("personal_return", ""))
 	if personal_return != "":
-		host.game_screen_controller._text(parent, "关系到 · %s" % personal_return, true, 13)
+		host.ui_factory.text(parent, "关系到 · %s" % personal_return, true, 13)
 	var if_ignored = str(route_progress.get("if_ignored", ""))
 	if if_ignored != "":
-		var ignored_line = host.game_screen_controller._text(parent, "若未处理 · %s" % if_ignored, true, 13)
+		var ignored_line = host.ui_factory.text(parent, "若未处理 · %s" % if_ignored, true, 13)
 		ignored_line.add_theme_color_override("font_color", host.COLORS.danger)
 
 
 func _render_route_progresses(parent: VBoxContainer, route_progresses, compact: bool = false) -> void:
 	if route_progresses is Array and not route_progresses.is_empty():
-		var heading = host.game_screen_controller._text(parent, "并行路线 · %d 项" % route_progresses.size(), true, host.TYPE_SCALE.meta)
+		var heading = host.ui_factory.text(parent, "并行路线 · %d 项" % route_progresses.size(), true, host.TYPE_SCALE.meta)
 		heading.add_theme_color_override("font_color", host.COLORS.accent)
 		var visible_count: int = mini(3, route_progresses.size()) if compact else route_progresses.size()
 		for index in visible_count:
 			_render_route_progress(parent, route_progresses[index], compact)
 		if compact and route_progresses.size() > visible_count:
-			host.game_screen_controller._text(parent, "另有 %d 条路线，详见卷宗。" % (route_progresses.size() - visible_count), true, 12)
+			host.ui_factory.text(parent, "另有 %d 条路线，详见卷宗。" % (route_progresses.size() - visible_count), true, 12)
 
 
 func _toggle_journal_travel_details() -> void:
@@ -559,10 +559,10 @@ func _travel_ready_text(label_text: String) -> String:
 
 
 func _render_people(actors: Array, actions: Array) -> void:
-	host.game_screen_controller._clear(host.people_box)
+	host.ui_factory.clear(host.people_box)
 	var tracked_plans: Array = host.current_view.get("world_map", {}).get("actors", [])
 	if actors.is_empty() and tracked_plans.is_empty():
-		host.game_screen_controller._text(host.people_box, "此地没有可交谈的人。", true)
+		host.ui_factory.text(host.people_box, "此地没有可交谈的人。", true)
 		return
 	var talkable_people = 0
 	for actor in actors:
@@ -571,46 +571,46 @@ func _render_people(actors: Array, actions: Array) -> void:
 	var overview = "%d 人在场" % actors.size()
 	if talkable_people > 0:
 		overview += " · %d 人有新话可谈" % talkable_people
-	var overview_label = host.game_screen_controller._text(host.people_box, overview, true, host.TYPE_SCALE.meta)
+	var overview_label = host.ui_factory.text(host.people_box, overview, true, host.TYPE_SCALE.meta)
 	overview_label.add_theme_color_override("font_color", host.COLORS.accent if talkable_people > 0 else host.COLORS.muted)
 	if not tracked_plans.is_empty():
-		var tracking_heading = host.game_screen_controller._text(host.people_box, "局势追踪 · 核心人物 %d" % tracked_plans.size(), false, 16)
+		var tracking_heading = host.ui_factory.text(host.people_box, "局势追踪 · 核心人物 %d" % tracked_plans.size(), false, 16)
 		tracking_heading.add_theme_color_override("font_color", host.COLORS.accent)
-		host.game_screen_controller._text(host.people_box, host._ui_text("people_information_hint"), true, 12)
+		host.ui_factory.text(host.people_box, host._ui_text("people_information_hint"), true, 12)
 		for plan in tracked_plans:
 			var title = "%s · %s · %s" % [plan.get("name", "无名者"), plan.get("location_name", "位置不明"), plan.get("status", "观望")]
-			host.game_screen_controller._text(host.people_box, title, false, 14)
-			host.game_screen_controller._text(host.people_box, "目标 · %s" % plan.get("public_goal", "尚未公开"), true, 12)
-			host.game_screen_controller._text(host.people_box, "计划 · %s" % plan.get("plan", "观察局势"), true, 13)
-			host.game_screen_controller._text(host.people_box, "缘由 · %s" % plan.get("reason", "尚未公开"), true, 12)
+			host.ui_factory.text(host.people_box, title, false, 14)
+			host.ui_factory.text(host.people_box, "目标 · %s" % plan.get("public_goal", "尚未公开"), true, 12)
+			host.ui_factory.text(host.people_box, "计划 · %s" % plan.get("plan", "观察局势"), true, 13)
+			host.ui_factory.text(host.people_box, "缘由 · %s" % plan.get("reason", "尚未公开"), true, 12)
 			if str(plan.get("destination_name", "")) != "":
-				host.game_screen_controller._text(host.people_box, "去向 · %s · 预计第 %d 日" % [plan.get("destination_name", "未知地点"), int(plan.get("expected_day", 0))], true, 12)
+				host.ui_factory.text(host.people_box, "去向 · %s · 预计第 %d 日" % [plan.get("destination_name", "未知地点"), int(plan.get("expected_day", 0))], true, 12)
 			if bool(plan.get("changed_by_player", false)):
-				var intervention = host.game_screen_controller._text(host.people_box, "因你改变 · 原本%s" % plan.get("previous_plan", "另有安排"), true, 12)
+				var intervention = host.ui_factory.text(host.people_box, "因你改变 · 原本%s" % plan.get("previous_plan", "另有安排"), true, 12)
 				intervention.add_theme_color_override("font_color", host.COLORS.accent)
 		var divider = HSeparator.new()
 		divider.modulate = Color(host.COLORS.accent, 0.46)
 		host.people_box.add_child(divider)
-		var local_heading = host.game_screen_controller._text(host.people_box, "此地人物", false, 16)
+		var local_heading = host.ui_factory.text(host.people_box, "此地人物", false, 16)
 		local_heading.add_theme_color_override("font_color", host.COLORS.accent)
 	for index in actors.size():
 		var actor: Dictionary = actors[index]
 		var actor_name = str(actor.get("name", "无名者"))
-		host.game_screen_controller._text(host.people_box, "%s · %s" % [actor_name, actor.get("public_role", "可交谈人物")], false, 16)
+		host.ui_factory.text(host.people_box, "%s · %s" % [actor_name, actor.get("public_role", "可交谈人物")], false, 16)
 		var focus: Array = actor.get("public_focus", [])
 		var context_parts: Array[String] = []
 		if not focus.is_empty():
 			context_parts.append("关注%s" % str(focus[0]))
 		if not context_parts.is_empty():
-			host.game_screen_controller._text(host.people_box, " · ".join(context_parts), true, 13)
+			host.ui_factory.text(host.people_box, " · ".join(context_parts), true, 13)
 		var local_plan: Dictionary = actor.get("plan", {}) if actor.get("plan", {}) is Dictionary else {}
 		if not local_plan.is_empty():
-			host.game_screen_controller._text(host.people_box, "当前计划 · %s" % local_plan.get("plan", "观察局势"), true, 13)
-			host.game_screen_controller._text(host.people_box, "缘由 · %s" % local_plan.get("reason", "尚未公开"), true, 12)
+			host.ui_factory.text(host.people_box, "当前计划 · %s" % local_plan.get("plan", "观察局势"), true, 13)
+			host.ui_factory.text(host.people_box, "缘由 · %s" % local_plan.get("reason", "尚未公开"), true, 12)
 		var actor_id = str(actor.get("id", ""))
 		var clue_count = host.action_panel_controller._count_tell_actions(actions, actor_id, "")
 		var link_text = host._ui_text("people_talk_clues") % clue_count if clue_count > 0 else host._ui_text("people_view")
-		var link = host.game_screen_controller._action_button(link_text, host.action_panel_controller._focus_actor_from_reference.bind(actor_id, actor_name))
+		var link = host.ui_factory.action_button(link_text, host.action_panel_controller._focus_actor_from_reference.bind(actor_id, actor_name))
 		link.custom_minimum_size.y = 36
 		host.people_box.add_child(link)
 		if index < actors.size() - 1:

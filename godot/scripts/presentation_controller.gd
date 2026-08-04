@@ -1,10 +1,12 @@
 extends RefCounted
 
 var host
+var screen
 
 
-func _init(value) -> void:
+func _init(value, game_screen) -> void:
 	host = value
+	screen = game_screen
 
 
 func _build_ending_layer() -> void:
@@ -87,9 +89,9 @@ func _build_causal_layer() -> void:
 	content.anchor_bottom = 0.94
 	content.add_theme_constant_override("separation", 13)
 	host.causal_layer.add_child(content)
-	host.causal_actor_meta = host.game_screen_controller._text(content, "一念入局", true, 14)
+	host.causal_actor_meta = host.ui_factory.text(content, "一念入局", true, 14)
 	host.causal_actor_meta.add_theme_color_override("font_color", host.COLORS.accent)
-	host.causal_message = host.game_screen_controller._text(content, "你送出的消息改变了一个人的判断", false, 27)
+	host.causal_message = host.ui_factory.text(content, "你送出的消息改变了一个人的判断", false, 27)
 	host.causal_message.add_theme_font_override("font", host.narrative_font)
 	host.causal_message.add_theme_color_override("font_color", host.COLORS.ink_warm)
 	host.causal_message.add_theme_constant_override("line_spacing", 6)
@@ -99,9 +101,9 @@ func _build_causal_layer() -> void:
 	timeline.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	timeline.add_theme_constant_override("separation", 7)
 	content.add_child(timeline)
-	var before_heading = host.game_screen_controller._text(timeline, "改写之前", true, host.TYPE_SCALE.meta)
+	var before_heading = host.ui_factory.text(timeline, "改写之前", true, host.TYPE_SCALE.meta)
 	before_heading.add_theme_color_override("font_color", host.COLORS.muted)
-	host.causal_original = host.game_screen_controller._text(timeline, "原本的安排", false, 16)
+	host.causal_original = host.ui_factory.text(timeline, "原本的安排", false, 16)
 	var arrow = TextureRect.new()
 	arrow.custom_minimum_size = Vector2(0, 38)
 	arrow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -119,9 +121,9 @@ func _build_causal_layer() -> void:
 	now_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	now_stack.add_theme_constant_override("separation", 7)
 	now_row.add_child(now_stack)
-	var now_heading = host.game_screen_controller._text(now_stack, "现在", true, host.TYPE_SCALE.meta)
+	var now_heading = host.ui_factory.text(now_stack, "现在", true, host.TYPE_SCALE.meta)
 	now_heading.add_theme_color_override("font_color", host.COLORS.accent)
-	host.causal_now = host.game_screen_controller._text(now_stack, "新的安排", false, 18)
+	host.causal_now = host.ui_factory.text(now_stack, "新的安排", false, 18)
 	host.causal_now.add_theme_color_override("font_color", host.COLORS.ink)
 	var seal = TextureRect.new()
 	seal.custom_minimum_size = Vector2(128, 116)
@@ -132,9 +134,9 @@ func _build_causal_layer() -> void:
 	seal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	now_row.add_child(seal)
 
-	host.causal_day = host.game_screen_controller._text(content, "已有决断", true, 15)
+	host.causal_day = host.ui_factory.text(content, "已有决断", true, 15)
 	host.causal_day.add_theme_color_override("font_color", host.COLORS.accent)
-	var continue_button = host.game_screen_controller._ornate_button("记下这次变化", host.presentation_controller._dismiss_causal)
+	var continue_button = host.ui_factory.ornate_button("记下这次变化", host.presentation_controller._dismiss_causal)
 	continue_button.custom_minimum_size = Vector2(380, 68)
 	continue_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	content.add_child(continue_button)
@@ -153,14 +155,14 @@ func _play_action_presentation(previous_view: Dictionary, next_view: Dictionary)
 	var to_id = str(next_location.get("id", ""))
 	if from_id != "" and to_id != "" and from_id != to_id:
 		host.presentation_busy = true
-		host.game_screen_controller._set_buttons_disabled(host, true)
-		host.game_screen_controller._set_visual_mode("map")
-		host.place_label.text = host.game_screen_controller._header_place("%s → %s" % [previous_location.get("name", ""), next_location.get("name", "")])
-		host.phase_label.text = host.game_screen_controller._header_phase_label("赶路中")
+		host.ui_factory.set_buttons_disabled(host, true)
+		screen._set_visual_mode("map")
+		screen.place_label.text = screen._header_place("%s → %s" % [previous_location.get("name", ""), next_location.get("name", "")])
+		screen.phase_label.text = screen._header_phase_label("赶路中")
 		host.audio_director.play_cue("travel", int(cue.get("intensity", 2)))
 		var callback = host.presentation_controller._finish_travel_presentation.bind(feedback, previous_location, next_location)
-		host.world_map_view.travel_finished.connect(callback, CONNECT_ONE_SHOT)
-		host.world_map_view.animate_travel(from_id, to_id, int(previous_view.get("day", 0)), int(next_view.get("day", 0)))
+		screen.world_map_view.travel_finished.connect(callback, CONNECT_ONE_SHOT)
+		screen.world_map_view.animate_travel(from_id, to_id, int(previous_view.get("day", 0)), int(next_view.get("day", 0)))
 		return
 	host.presentation_controller._apply_presentation_cue(cue)
 	if host.presentation_controller._has_causal_change(feedback):
@@ -171,12 +173,12 @@ func _play_action_presentation(previous_view: Dictionary, next_view: Dictionary)
 
 func _finish_travel_presentation(feedback: Dictionary, previous_location: Dictionary, next_location: Dictionary) -> void:
 	host.presentation_busy = false
-	host.game_screen_controller._set_buttons_disabled(host, host.pending_operation != "")
-	host.game_screen_controller._set_visual_mode("location")
-	host.day_label.text = host.game_screen_controller._header_day(int(host.current_view.get("day", 0)), int(host.current_view.get("duration", 0)))
-	host.place_label.text = host.game_screen_controller._header_place(str(next_location.get("name", "未知")))
-	host.phase_label.text = host.game_screen_controller._header_phase_label(host.game_screen_controller._phase_display(str(host.current_view.get("phase", ""))))
-	host.location_stage.play_establish()
+	host.ui_factory.set_buttons_disabled(host, host.pending_operation != "")
+	screen._set_visual_mode("location")
+	screen.day_label.text = screen._header_day(int(host.current_view.get("day", 0)), int(host.current_view.get("duration", 0)))
+	screen.place_label.text = screen._header_place(str(next_location.get("name", "未知")))
+	screen.phase_label.text = screen._header_phase_label(screen._phase_display(str(host.current_view.get("phase", ""))))
+	screen.location_stage.play_establish()
 	if host.presentation_controller._has_causal_change(feedback):
 		host.presentation_controller._present_causal_change(feedback, next_location)
 	else:
@@ -203,7 +205,7 @@ func _present_causal_change(feedback: Dictionary, location: Dictionary) -> void:
 		return
 	var change: Dictionary = changes[0]
 	var actor_name = str(influence.get("actor_name", "有人"))
-	var actor_id = host.game_screen_controller._actor_id_by_name(actor_name)
+	var actor_id = screen._actor_id_by_name(actor_name)
 	if actor_id != "":
 		host.causal_actor_id_by_name[actor_name] = actor_id
 		host.last_causal_actor_id = actor_id
@@ -232,7 +234,7 @@ func _present_causal_change(feedback: Dictionary, location: Dictionary) -> void:
 	host.causal_day.text = "第 %d 日 · 由原本到现在，已有决断" % change_day
 	host.causal_layer.modulate = Color(1, 1, 1, 0) if host.motion_enabled else Color.WHITE
 	host.causal_layer.show()
-	host.game_screen_controller._sync_action_canvas_visibility()
+	screen._sync_action_canvas_visibility()
 	var portrait_tint = Color(0.78, 0.78, 0.74, 1.0)
 	host.causal_portrait.modulate = Color(portrait_tint, 0) if host.motion_enabled else portrait_tint
 	host.causal_portrait.position.x = -32 if host.motion_enabled else 0
@@ -249,7 +251,7 @@ func _dismiss_causal() -> void:
 	host.audio_director.play_ui()
 	host.causal_layer.hide()
 	host.causal_layer.modulate = Color.WHITE
-	host.game_screen_controller._sync_action_canvas_visibility()
+	screen._sync_action_canvas_visibility()
 
 
 func _apply_presentation_cue(cue: Dictionary) -> void:
@@ -259,9 +261,9 @@ func _apply_presentation_cue(cue: Dictionary) -> void:
 	var intensity = int(cue.get("intensity", 1))
 	host.audio_director.play_cue(kind, intensity)
 	if kind in ["reveal", "danger", "focus", "acquire"]:
-		host.location_stage.play_reveal(intensity)
+		screen.location_stage.play_reveal(intensity)
 	if kind == "actor_focus":
-		host.game_screen_controller._focus_portrait(str(cue.get("subject_id", "")))
+		screen._focus_portrait(str(cue.get("subject_id", "")))
 
 
 func _apply_feedback_actor_state(feedback: Dictionary) -> void:
@@ -273,39 +275,39 @@ func _apply_feedback_actor_state(feedback: Dictionary) -> void:
 		if parts.size() >= 2:
 			host.actor_expression_by_id[str(parts[1])] = "troubled"
 	for influence in feedback.get("influence", []):
-		var actor_id = host.game_screen_controller._actor_id_by_name(str(influence.get("actor_name", "")))
+		var actor_id = screen._actor_id_by_name(str(influence.get("actor_name", "")))
 		if actor_id != "":
 			host.actor_expression_by_id[actor_id] = "decisive"
 
 
 func _on_travel_day_changed(day: int) -> void:
-	host.day_label.text = host.game_screen_controller._header_day(day, int(host.current_view.get("duration", 0)))
+	screen.day_label.text = screen._header_day(day, int(host.current_view.get("duration", 0)))
 
 
 func _clear_footer_message_later(expected: String) -> void:
 	await host.get_tree().create_timer(2.5).timeout
-	if host.footer_label.text == expected:
-		host.footer_label.text = ""
+	if screen.footer_label.text == expected:
+		screen.footer_label.text = ""
 
 
 func _render_feedback_evidence_into(parent: VBoxContainer, feedback: Dictionary) -> void:
 	var days = int(feedback.get("days_advanced", 0))
 	if days > 0:
-		var time_line = host.game_screen_controller._text(parent, "经过 · %d 日" % days, true, 13)
+		var time_line = host.ui_factory.text(parent, "经过 · %d 日" % days, true, 13)
 		time_line.add_theme_color_override("font_color", host.COLORS.accent)
 	var quiet_days = int(feedback.get("quiet_days", 0))
 	if quiet_days > 0:
-		host.game_screen_controller._text(parent, "其中 %d 日没有新的公开变化" % quiet_days, true, 13)
+		host.ui_factory.text(parent, "其中 %d 日没有新的公开变化" % quiet_days, true, 13)
 	var influences: Array = feedback.get("influence", [])
 	for influence in influences:
 		for change in influence.get("changes", []):
-			host.game_screen_controller._text(parent, "原本 · %s" % change.get("without_information", "其他安排"), true, 13)
-			var current_line = host.game_screen_controller._text(parent, "改为 · %s" % change.get("with_information", "新的安排"), false, 14)
+			host.ui_factory.text(parent, "原本 · %s" % change.get("without_information", "其他安排"), true, 13)
+			var current_line = host.ui_factory.text(parent, "改为 · %s" % change.get("with_information", "新的安排"), false, 14)
 			current_line.add_theme_color_override("font_color", host.COLORS.success)
 
 
 func _render_ending(ending: Dictionary) -> void:
-	host.game_screen_controller._clear(host.ending_box)
+	host.ui_factory.clear(host.ending_box)
 	var location_profile: LocationVisualProfile = host.presentation_registry.location_profile(str(host.current_view.get("location", {}).get("scene_key", "")))
 	var ending_event_key := str(host.scenario_presentation.get("ending_event", ""))
 	var ending_event_texture: Texture2D = host.presentation_registry.event_texture(ending_event_key) if ending_event_key != "" else null
@@ -321,29 +323,29 @@ func _render_ending(ending: Dictionary) -> void:
 	if ending_actor_id == "":
 		ending_actor_id = host.last_causal_actor_id
 	if ending_actor_id == "" and not influences.is_empty():
-		ending_actor_id = host.game_screen_controller._actor_id_by_name(str(influences[0].get("actor_name", "")))
+		ending_actor_id = screen._actor_id_by_name(str(influences[0].get("actor_name", "")))
 	var actor_profile: ActorVisualProfile = host.presentation_registry.actor_profile(ending_actor_id)
 	host.ending_portrait.texture = actor_profile.portrait("decisive") if actor_profile else null
 	host.ending_portrait.visible = host.ending_portrait.texture != null
 	host.ending_box.anchor_left = 0.47 if host.ending_portrait.visible else 0.28
 	host.ending_box.anchor_right = 0.90
-	var eyebrow = host.game_screen_controller._text(host.ending_box, "尘埃落定", true, host.TYPE_SCALE.meta)
+	var eyebrow = host.ui_factory.text(host.ending_box, "尘埃落定", true, host.TYPE_SCALE.meta)
 	eyebrow.add_theme_color_override("font_color", host.COLORS.accent)
 	var outcome_parts: PackedStringArray = outcome.split("。", false)
 	var outcome_title = str(outcome_parts[0]).strip_edges() if not outcome_parts.is_empty() else outcome
-	var title = host.game_screen_controller._text(host.ending_box, outcome_title, false, 42)
+	var title = host.ui_factory.text(host.ending_box, outcome_title, false, 42)
 	title.add_theme_font_override("font", host.display_font)
 	title.add_theme_color_override("font_color", host.COLORS.ink_warm)
 	for index in range(1, outcome_parts.size()):
-		var outcome_body = host.game_screen_controller._text(host.ending_box, str(outcome_parts[index]).strip_edges(), false, 19)
+		var outcome_body = host.ui_factory.text(host.ending_box, str(outcome_parts[index]).strip_edges(), false, 19)
 		outcome_body.add_theme_constant_override("line_spacing", 6)
 		outcome_body.add_theme_color_override("font_color", host.COLORS.ink_soft)
 	var coda: Array = ending.get("coda", [])
 	if not coda.is_empty():
-		var coda_heading = host.game_screen_controller._text(host.ending_box, host._ui_text("ending_coda_heading"), true, 16)
+		var coda_heading = host.ui_factory.text(host.ending_box, host._ui_text("ending_coda_heading"), true, 16)
 		coda_heading.add_theme_color_override("font_color", host.COLORS.accent)
 		for consequence in coda:
-			host.game_screen_controller._text(host.ending_box, "· %s" % consequence, true, 15)
+			host.ui_factory.text(host.ending_box, "· %s" % consequence, true, 15)
 	var rule = HSeparator.new()
 	rule.modulate = Color(host.COLORS.accent, 0.46)
 	host.ending_box.add_child(rule)
@@ -353,7 +355,7 @@ func _render_ending(ending: Dictionary) -> void:
 		if consequence not in coda:
 			annex_consequences.append(consequence)
 	var review: Array = ending.get("review", [])
-	host.ending_annex_button = host.game_screen_controller._action_button("回看本局选择与余波", host.presentation_controller._toggle_ending_annex)
+	host.ending_annex_button = host.ui_factory.action_button("回看本局选择与余波", host.presentation_controller._toggle_ending_annex)
 	host.ending_annex_button.custom_minimum_size.y = 42
 	host.ending_annex_button.add_theme_font_size_override("font_size", 16)
 	host.ending_box.add_child(host.ending_annex_button)
@@ -362,36 +364,36 @@ func _render_ending(ending: Dictionary) -> void:
 	host.ending_annex_box.hide()
 	host.ending_box.add_child(host.ending_annex_box)
 	if not annex_consequences.is_empty():
-		var consequence_heading = host.game_screen_controller._text(host.ending_annex_box, "本局余波", true, 16)
+		var consequence_heading = host.ui_factory.text(host.ending_annex_box, "本局余波", true, 16)
 		consequence_heading.add_theme_color_override("font_color", host.COLORS.accent)
 		for consequence in annex_consequences:
-			host.game_screen_controller._text(host.ending_annex_box, "· %s" % consequence, true, 15)
+			host.ui_factory.text(host.ending_annex_box, "· %s" % consequence, true, 15)
 	if not review.is_empty():
-		var review_heading = host.game_screen_controller._text(host.ending_annex_box, "结算依据", true, 16)
+		var review_heading = host.ui_factory.text(host.ending_annex_box, "结算依据", true, 16)
 		review_heading.add_theme_color_override("font_color", host.COLORS.accent)
 		for review_line in review:
-			host.game_screen_controller._text(host.ending_annex_box, "· %s" % review_line, true, 15)
+			host.ui_factory.text(host.ending_annex_box, "· %s" % review_line, true, 15)
 	if not influences.is_empty():
-		var impact_heading = host.game_screen_controller._text(host.ending_annex_box, "你的介入", true, 16)
+		var impact_heading = host.ui_factory.text(host.ending_annex_box, "你的介入", true, 16)
 		impact_heading.add_theme_color_override("font_color", host.COLORS.accent)
 		for influence in influences:
-			host.game_screen_controller._text(host.ending_annex_box, "· 你将“%s”告诉了%s。" % [influence.get("fact_claim", "消息"), influence.get("actor_name", "某人")], true, 15)
+			host.ui_factory.text(host.ending_annex_box, "· 你将“%s”告诉了%s。" % [influence.get("fact_claim", "消息"), influence.get("actor_name", "某人")], true, 15)
 			for change in influence.get("changes", []):
-				host.game_screen_controller._text(host.ending_annex_box, "  第 %d 日：原本%s；后来%s。" % [int(change.get("day", 0)), change.get("without_information", "另有安排"), change.get("with_information", "改变计划")], true, 14)
+				host.ui_factory.text(host.ending_annex_box, "  第 %d 日：原本%s；后来%s。" % [int(change.get("day", 0)), change.get("without_information", "另有安排"), change.get("with_information", "改变计划")], true, 14)
 	var plan_changes: Array = ending.get("actor_plan_changes", [])
 	if influences.is_empty() and not plan_changes.is_empty():
-		var plan_heading = host.game_screen_controller._text(host.ending_annex_box, "人物计划改写", true, 16)
+		var plan_heading = host.ui_factory.text(host.ending_annex_box, "人物计划改写", true, 16)
 		plan_heading.add_theme_color_override("font_color", host.COLORS.accent)
 		for change in plan_changes:
-			host.game_screen_controller._text(host.ending_annex_box, "· %s" % change, true, 15)
+			host.ui_factory.text(host.ending_annex_box, "· %s" % change, true, 15)
 	var ending_actions = HBoxContainer.new()
 	ending_actions.add_theme_constant_override("separation", 12)
 	host.ending_box.add_child(ending_actions)
-	var restart_button = host.game_screen_controller._ornate_button("换一条路 · 重新入局", host._restart_from_ending)
+	var restart_button = host.ui_factory.ornate_button("换一条路 · 重新入局", host._restart_from_ending)
 	restart_button.custom_minimum_size = Vector2(360, 60)
 	restart_button.add_theme_font_size_override("font_size", 20)
 	ending_actions.add_child(restart_button)
-	var return_button = host.game_screen_controller._utility_button("返回卷首", host._return_to_start)
+	var return_button = host.ui_factory.utility_button("返回卷首", host._return_to_start)
 	return_button.custom_minimum_size = Vector2(132, 62)
 	return_button.add_theme_font_size_override("font_size", 16)
 	ending_actions.add_child(return_button)
@@ -401,7 +403,7 @@ func _render_ending(ending: Dictionary) -> void:
 		var ending_video: VideoStream = host.presentation_registry.event_video(ending_event_key) if ending_event_key != "" else null
 		if host.cinematic_director.play(ending_video, ending_event_key, host.presentation_controller._show_ending_after_cinematic):
 			host.ending_layer.hide()
-			host.game_screen_controller._sync_action_canvas_visibility()
+			screen._sync_action_canvas_visibility()
 			return
 	if host.cinematic_director.active and host.cinematic_director.current_event_key == ending_event_key:
 		host.ending_layer.hide()
@@ -411,7 +413,7 @@ func _render_ending(ending: Dictionary) -> void:
 
 func _show_ending_after_cinematic(_skipped: bool) -> void:
 	host.ending_layer.show()
-	host.game_screen_controller._sync_action_canvas_visibility()
+	screen._sync_action_canvas_visibility()
 
 
 func _toggle_ending_annex() -> void:

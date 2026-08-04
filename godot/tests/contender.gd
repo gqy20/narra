@@ -56,7 +56,7 @@ func _run() -> void:
 
 	if not bool(app.current_view.get("resolved", false)):
 		return _fail("prepared contender route did not resolve")
-	if not app.ending_layer.visible or app.action_canvas.visible:
+	if not app.ending_layer.visible or app.game_screen_controller.action_canvas.visible:
 		return _fail("ending overlay is not visible")
 	var player: Dictionary = app.current_view.get("player", {})
 	if int(player.get("resources", {}).get("combat", 0)) < 7:
@@ -88,10 +88,10 @@ func _execute_cultivation_stage() -> bool:
 		_fail("missing action: cultivate")
 		return false
 	var before_combat := int(app.current_view.get("player", {}).get("resources", {}).get("combat", 0))
-	var action_text := _descendant_text(app.overview_actions_box)
+	var action_text := _descendant_text(app.game_screen_controller.overview_actions_box)
 	if str(action.get("description", "")) not in action_text:
 		app.action_panel_controller._toggle_all_actions()
-		action_text = _descendant_text(app.overview_actions_box)
+		action_text = _descendant_text(app.game_screen_controller.overview_actions_box)
 	if str(action.get("name", "")) not in action_text or str(action.get("expected_outcomes", [""])[0]) not in action_text:
 		_fail("cultivation action does not render its server-provided outcome")
 		return false

@@ -15,7 +15,7 @@ func _run() -> void:
 		return _fail("tianqi health request timed out")
 	if app.scenario_info.get("id", "") != "tianqi_t00":
 		return _fail("client did not connect to the selected tianqi scenario")
-	if app.header_brand_label.text != "天变邸抄":
+	if app.game_screen_controller.header_brand_label.text != "天变邸抄":
 		return _fail("scenario brand was not applied to the header")
 	if app.start_title_label.text != "天变邸抄":
 		return _fail("scenario brand was not applied to the start screen")
@@ -79,7 +79,7 @@ func _run() -> void:
 		return _fail("cinematic playback overlay was not initialized")
 	if app.prologue_director.beat_label == null or app.prologue_director.progress_label == null or app.prologue_director.prompt_button == null:
 		return _fail("progressive prologue overlay was not initialized")
-	if app.actor_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
+	if app.game_screen_controller.actor_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
 		return _fail("stage portrait still crops the actor's head")
 	if app.causal_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED or app.ending_portrait.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
 		return _fail("overlay portraits still crop the actor's head")
@@ -111,10 +111,10 @@ func _run() -> void:
 		if bool(location.get("contest", false)):
 			app.game_screen_controller._on_map_location_selected(str(location.get("id", "")))
 			break
-	var map_text := _descendant_text(app.map_detail_box)
+	var map_text := _descendant_text(app.game_screen_controller.map_detail_box)
 	if "第十四日封稿前，保住证人与材料" not in map_text:
 		return _fail("scenario objective was not applied to the world map")
-	if app.world_map_view.locations.size() != 7:
+	if app.game_screen_controller.world_map_view.locations.size() != 7:
 		return _fail("tianqi world map did not render all seven locations")
 
 	var actions: Array = app.current_view.get("available_actions", [])

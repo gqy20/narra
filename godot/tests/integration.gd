@@ -34,11 +34,11 @@ func _run() -> void:
 		return _fail("shared visual-theme alpha helper does not preserve byte-accurate colors")
 	var minimum_size_probe_parent = VBoxContainer.new()
 	app.add_child(minimum_size_probe_parent)
-	var minimum_size_probe = app.game_screen_controller._text(minimum_size_probe_parent, "", false, 1)
+	var minimum_size_probe = app.ui_factory.text(minimum_size_probe_parent, "", false, 1)
 	if minimum_size_probe.get_theme_font_size("font_size") < app.MIN_READABLE_TEXT_SIZE:
 		return _fail("standard UI text can render below the minimum readable size")
 	minimum_size_probe_parent.queue_free()
-	if app.world_map_view.minimum_font_size < app.MIN_READABLE_TEXT_SIZE:
+	if app.game_screen_controller.world_map_view.minimum_font_size < app.MIN_READABLE_TEXT_SIZE:
 		return _fail("custom-drawn map text can render below the minimum readable size")
 	if "从白石坊市入局" not in _descendant_text(app.start_layer):
 		return _fail("start call to action does not match the actual opening location")
@@ -54,7 +54,7 @@ func _run() -> void:
 	var actions: Array = app.current_view.get("available_actions", [])
 	if actions.is_empty():
 		return _fail("new game returned no actions")
-	if not app.location_panel.visible or app.map_panel.visible or not app.action_dock.visible:
+	if not app.game_screen_controller.location_panel.visible or app.game_screen_controller.map_panel.visible or not app.game_screen_controller.action_dock.visible:
 		return _fail("new players do not enter through the first actionable location view")
 	for action in actions:
 		if not app.action_panel_controller._action_has_visible_entry(action):
@@ -62,42 +62,42 @@ func _run() -> void:
 	var world_map: Dictionary = app.current_view.get("world_map", {})
 	if world_map.get("locations", []).size() != 5 or world_map.get("routes", []).is_empty():
 		return _fail("new game returned no public world map")
-	if app.world_map_view.locations.size() != 5:
+	if app.game_screen_controller.world_map_view.locations.size() != 5:
 		return _fail("dimensional world map did not consume the player view")
-	if world_map.get("actors", []).size() != 3 or app.world_map_view.actors.size() != 3 or not app.world_map_view.has_actor_plan_presentation():
+	if world_map.get("actors", []).size() != 3 or app.game_screen_controller.world_map_view.actors.size() != 3 or not app.game_screen_controller.world_map_view.has_actor_plan_presentation():
 		return _fail("world map did not expose the three core actor plans")
-	if not app.world_map_view.has_formal_assets():
+	if not app.game_screen_controller.world_map_view.has_formal_assets():
 		return _fail("world map does not use the registered scenic assets")
 	var direct_route := {}
-	for candidate in app.world_map_view.routes:
+	for candidate in app.game_screen_controller.world_map_view.routes:
 		if str(candidate.get("from_id", "")) == "L01" and str(candidate.get("to_id", "")) == "L02":
 			direct_route = candidate
 			break
-	if direct_route.is_empty() or app.world_map_view._route_destination(direct_route) != "L02":
+	if direct_route.is_empty() or app.game_screen_controller.world_map_view._route_destination(direct_route) != "L02":
 		return _fail("raised map routes are not selectable navigation targets")
-	if app.world_map_view.visible_route_mark_count() != 0:
+	if app.game_screen_controller.world_map_view.visible_route_mark_count() != 0:
 		return _fail("world map shows route duration badges before route focus")
-	app.world_map_view.hovered_route_key = app.world_map_view._route_key(direct_route)
-	if app.world_map_view.visible_route_mark_count() != 1:
+	app.game_screen_controller.world_map_view.hovered_route_key = app.game_screen_controller.world_map_view._route_key(direct_route)
+	if app.game_screen_controller.world_map_view.visible_route_mark_count() != 1:
 		return _fail("world map does not reveal exactly one focused route duration")
-	app.world_map_view.hovered_route_key = ""
-	if app.world_map_view.visible_actor_token_count() > 2:
+	app.game_screen_controller.world_map_view.hovered_route_key = ""
+	if app.game_screen_controller.world_map_view.visible_actor_token_count() > 2:
 		return _fail("world map exposes more than two actor chips in the focused location plate")
 	app.game_screen_controller._set_visual_mode("map")
-	var map_text := _descendant_text(app.map_detail_box)
+	var map_text := _descendant_text(app.game_screen_controller.map_detail_box)
 	var current_map_name := str(app.current_view.get("location", {}).get("name", ""))
-	if not (app.map_panel is HBoxContainer) or "路线沙盘" in map_text or "选择地点，查看人物、耗时与道路风险" in map_text or current_map_name not in map_text:
+	if not (app.game_screen_controller.map_panel is HBoxContainer) or "路线沙盘" in map_text or "选择地点，查看人物、耗时与道路风险" in map_text or current_map_name not in map_text:
 		return _fail("world map detail panel did not preserve the reduced location hierarchy")
 	app.game_screen_controller._set_visual_mode("location")
-	var action_text := _descendant_text(app.overview_actions_box)
+	var action_text := _descendant_text(app.game_screen_controller.overview_actions_box)
 	var contextual_actions: Array = app.action_panel_controller._location_context_actions(actions)
 	if contextual_actions.is_empty() or str(contextual_actions[0].get("name", "")) not in action_text or "01 · " not in action_text or "日" not in action_text or "起手可选" in action_text or "查证与探索" in action_text or app.active_action_category != "":
 		return _fail("contextual action cards did not preserve the reduced title, timing, and outcome hierarchy")
-	if not app.overview_actions_box.visible or app.fact_action_scroll.visible or app.actor_focus_workspace.visible:
+	if not app.game_screen_controller.overview_actions_box.visible or app.game_screen_controller.fact_action_scroll.visible or app.game_screen_controller.actor_focus_workspace.visible:
 		return _fail("default location state is not the compact non-scrolling overview")
-	if str(app.location_stage.location.get("scene_key", "")) != "market":
+	if str(app.game_screen_controller.location_stage.location.get("scene_key", "")) != "market":
 		return _fail("location stage did not render the current place")
-	if not app.location_stage.has_formal_asset():
+	if not app.game_screen_controller.location_stage.has_formal_asset():
 		return _fail("market did not load its registered production background")
 	for scene_key in ["market", "qinglan", "apothecary", "valley_edge", "inner_valley"]:
 		if not app.presentation_registry.has_location(scene_key):
@@ -112,9 +112,9 @@ func _run() -> void:
 		return _fail("presentation manifest counts are invalid")
 	if app.presentation_registry.actor_token_offset("N06", Vector2.ZERO) != Vector2(0, -52):
 		return _fail("presentation manifest did not supply actor map-token metadata")
-	if not app.actor_portrait.visible or app.actor_portrait.texture == null:
+	if not app.game_screen_controller.actor_portrait.visible or app.game_screen_controller.actor_portrait.texture == null:
 		return _fail("initial core actor did not load its registered portrait")
-	if app.stage_actor_id != "N01" or app.actor_portrait_name.text != "李玄":
+	if app.stage_actor_id != "N01" or app.game_screen_controller.actor_portrait_name.text != "李玄":
 		return _fail("location stage did not establish the first visible actor")
 	app.game_screen_controller._focus_actor_from_stage("N04", "魏无咎")
 	await process_frame
@@ -132,29 +132,29 @@ func _run() -> void:
 			return _fail("NPC dialogue did not identify its model generation source")
 	elif str(app.actor_dialogue_error_by_id.get("N04", "")) == "":
 		return _fail("NPC dialogue failure was hidden instead of reported")
-	if app.actor_portrait.texture != app.presentation_registry.actor_profile("N04").portrait():
+	if app.game_screen_controller.actor_portrait.texture != app.presentation_registry.actor_profile("N04").portrait():
 		return _fail("actor selection did not switch the production portrait")
-	if app.actor_portrait_name.text != "魏无咎" or not app.location_panel.visible:
+	if app.game_screen_controller.actor_portrait_name.text != "魏无咎" or not app.game_screen_controller.location_panel.visible:
 		return _fail("actor selection did not update the visible stage caption")
-	var actor_focus_text := _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + _descendant_text(app.actor_focus_footer)
-	if not app.actor_focus_workspace.visible or app.fact_action_scroll.visible or "选择要传达的话" not in actor_focus_text or "传播风险" not in actor_focus_text or "送出后不可撤回" not in actor_focus_text:
+	var actor_focus_text := _descendant_text(app.game_screen_controller.actor_focus_message_list) + _descendant_text(app.game_screen_controller.actor_focus_detail_box) + _descendant_text(app.game_screen_controller.actor_focus_footer)
+	if not app.game_screen_controller.actor_focus_workspace.visible or app.game_screen_controller.fact_action_scroll.visible or "选择要传达的话" not in actor_focus_text or "传播风险" not in actor_focus_text or "送出后不可撤回" not in actor_focus_text:
 		return _fail("actor focus does not expose selection, decision context, and fixed commitment footer")
-	if not app.actor_focus_detail_scroll.visible or app.action_dock_title.text != "魏无咎":
+	if not app.game_screen_controller.actor_focus_detail_scroll.visible or app.game_screen_controller.action_dock_title.text != "魏无咎":
 		return _fail("populated actor focus did not keep a single actor title and its decision detail")
-	if app.location_detail_box.visible or app.stage_people_box.visible:
+	if app.game_screen_controller.location_detail_box.visible or app.game_screen_controller.stage_people_box.visible:
 		return _fail("actor focus keeps unrelated location chrome above the dialogue action")
 	app.action_panel_controller._render_actions([])
 	await process_frame
-	var actor_empty_text := _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box)
-	if "暂无可传达的新消息" not in actor_empty_text or "查看人物卷宗" not in actor_empty_text or "选择要传达的话" in actor_empty_text or app.actor_focus_detail_scroll.visible or app.actor_focus_footer.visible:
-		return _fail("actor focus empty state did not collapse to one clear message and next step: detail=%s footer=%s text=%s" % [app.actor_focus_detail_scroll.visible, app.actor_focus_footer.visible, actor_empty_text])
+	var actor_empty_text := _descendant_text(app.game_screen_controller.actor_focus_message_list) + _descendant_text(app.game_screen_controller.actor_focus_detail_box)
+	if "暂无可传达的新消息" not in actor_empty_text or "查看人物卷宗" not in actor_empty_text or "选择要传达的话" in actor_empty_text or app.game_screen_controller.actor_focus_detail_scroll.visible or app.game_screen_controller.actor_focus_footer.visible:
+		return _fail("actor focus empty state did not collapse to one clear message and next step: detail=%s footer=%s text=%s" % [app.game_screen_controller.actor_focus_detail_scroll.visible, app.game_screen_controller.actor_focus_footer.visible, actor_empty_text])
 	app.action_panel_controller._render_actions(actions)
 	await process_frame
 	for bus_name in ["Ambient", "Event", "UI"]:
 		if AudioServer.get_bus_index(bus_name) < 0:
 			return _fail("missing audio bus: " + bus_name)
 	app.start_settings_screen_controller._open_audio_settings()
-	if not app.settings_layer.visible or app.action_canvas.visible:
+	if not app.settings_layer.visible or app.game_screen_controller.action_canvas.visible:
 		return _fail("audio settings entry did not open")
 	var settings_text := _descendant_text(app.settings_box)
 	if "窗口模式" not in settings_text or "输出分辨率" not in settings_text or "界面缩放" not in settings_text:
@@ -173,36 +173,36 @@ func _run() -> void:
 	app.display_mode = original_display_mode
 	app.display_settings_controller._apply_display_settings(false)
 	app.start_settings_screen_controller._toggle_motion()
-	if app.motion_enabled or app.world_map_view.motion_enabled or app.presentation_director.motion_enabled:
+	if app.motion_enabled or app.game_screen_controller.world_map_view.motion_enabled or app.presentation_director.motion_enabled:
 		return _fail("reduced-motion preference did not propagate to presentation components")
 	app.start_settings_screen_controller._toggle_motion()
 	app.start_settings_screen_controller._close_audio_settings()
-	if not app.action_canvas.visible:
+	if not app.game_screen_controller.action_canvas.visible:
 		return _fail("closing audio settings did not restore the location action layer")
 	app.game_screen_controller._on_map_location_selected("L02")
-	if app.selected_map_location_id != "L02" or app.map_detail_box.get_child_count() == 0:
+	if app.selected_map_location_id != "L02" or app.game_screen_controller.map_detail_box.get_child_count() == 0:
 		return _fail("map location selection has no detail state")
-	var qinglan_map_text := _descendant_text(app.map_detail_box)
+	var qinglan_map_text := _descendant_text(app.game_screen_controller.map_detail_box)
 	if "前往青岚门驻地" not in qinglan_map_text:
 		return _fail("map travel call to action does not name its destination")
 	if "人物动向" not in qinglan_map_text or "沈砚秋" not in qinglan_map_text:
 		return _fail("map detail does not explain who is acting at the selected place")
 	app.game_screen_controller._set_visual_mode("location")
-	if not app.location_panel.visible or app.map_panel.visible or not app.action_dock.visible:
+	if not app.game_screen_controller.location_panel.visible or app.game_screen_controller.map_panel.visible or not app.game_screen_controller.action_dock.visible:
 		return _fail("location scene mode did not replace the map")
 	app.game_screen_controller._set_visual_mode("map")
-	if app.action_dock.visible:
+	if app.game_screen_controller.action_dock.visible:
 		return _fail("map mode keeps the narrative action dock open")
-	if app.map_mode_button.text != "◇ 地图" or app.location_mode_button.text != "◉ 当前地点":
+	if app.game_screen_controller.map_mode_button.text != "◇ 地图" or app.game_screen_controller.location_mode_button.text != "◉ 当前地点":
 		return _fail("map and location modes still rely on unexplained poetic labels")
-	if app.day_label.text != "◷ 1 / 30":
+	if app.game_screen_controller.day_label.text != "◷ 1 / 30":
 		return _fail("initial day is not player-facing day one")
-	if app.place_label.visible or app.phase_label.text != "◌ 筹备":
+	if app.game_screen_controller.place_label.visible or app.game_screen_controller.phase_label.text != "◌ 筹备":
 		return _fail("global header repeats the location name or loses the preparation phase")
-	if app.timing_label.text != "第24天 · 传闻":
+	if app.game_screen_controller.timing_label.text != "第24天 · 传闻":
 		return _fail("initial known timing is not visible")
 	app.journal_panel_controller._open_journal()
-	if not app.journal_layer.visible or app.action_canvas.visible or app.player_summary_label.visible or app.player_resources_box.visible:
+	if not app.journal_layer.visible or app.game_screen_controller.action_canvas.visible or app.player_summary_label.visible or app.player_resources_box.visible:
 		return _fail("journal overview repeats the player summary outside the gear section")
 	if app.journal_tabs.get_tab_count() != 4 or app.journal_travel_button.text != "行装 !2":
 		return _fail("travel dossier does not expose four layered sections with blocking gear status")
@@ -230,7 +230,7 @@ func _run() -> void:
 		return _fail("gear section cannot reveal completed checks on demand")
 	app.journal_panel_controller._select_journal_tab(0)
 	app.journal_panel_controller._close_journal()
-	if app.journal_layer.visible or app.action_canvas.visible != (app.visual_mode == "location"):
+	if app.journal_layer.visible or app.game_screen_controller.action_canvas.visible != (app.visual_mode == "location"):
 		return _fail("travel dossier cannot be dismissed")
 	var found_verification := false
 	for action in actions:
