@@ -16,6 +16,9 @@ $routePath = (Resolve-Path -LiteralPath (Join-Path $projectRoot $Route)).Path
 $routeConfig = Get-Content -Raw -Encoding utf8 $routePath | ConvertFrom-Json
 $routeID = [string]$routeConfig.id
 if ([string]::IsNullOrWhiteSpace($routeID)) { throw "Recording route has no id: $routePath" }
+if ($routeID -cnotmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
+    throw "Recording route id must use lowercase kebab-case for stable file names: $routeID"
+}
 
 $profileConfig = switch ($Profile) {
     "4k" { [pscustomobject]@{ Width = 3840; Height = 2160; Crf = 14; Preset = "slow"; MinimumFreeSpaceGB = 15 } }
@@ -24,16 +27,15 @@ $profileConfig = switch ($Profile) {
 $captureWidth = [int]$profileConfig.Width
 $captureHeight = [int]$profileConfig.Height
 
-$runID = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ") + "-" + $routeID + "-" + $Profile
+$recordingStartedAt = Get-Date
+$runID = $recordingStartedAt.ToString("yyyyMMdd-HHmmss") + "-" + $routeID + "-" + $Profile
 $recordingRoot = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     Join-Path $projectRoot ("artifacts\recordings\tianqi\" + $runID)
 } else {
     [System.IO.Path]::GetFullPath($OutputDirectory)
 }
 $sourcePath = Join-Path $recordingRoot "source.avi"
-$videoSuffix = ""
-if ($Profile -eq "4k") { $videoSuffix = "-4k" }
-$videoName = $routeID + $videoSuffix + ".mp4"
+$videoName = $routeID + "-" + $Profile + ".mp4"
 $videoPath = Join-Path $recordingRoot $videoName
 $godotLogPath = Join-Path $recordingRoot "godot.log"
 $serverLogPath = Join-Path $recordingRoot "server.log"
@@ -180,6 +182,7 @@ movie_writer/video_quality=1.0
         scenario_id = [string]$routeConfig.scenario_id
         git_commit = $gitCommit
         recorded_at_utc = [DateTime]::UtcNow.ToString("o")
+        recording_name = $runID
         capture = [ordered]@{ width = $actualCaptureWidth; height = $actualCaptureHeight; requested_width = $captureWidth; requested_height = $captureHeight; fps = $FramesPerSecond; native = $true; source_format = "mjpeg"; source_quality = 1.0 }
         output = [ordered]@{ width = $captureWidth; height = $captureHeight; fit = "contain"; codec = "h264"; audio = "aac"; crf = [int]$profileConfig.Crf; path = [System.IO.Path]::GetFileName($videoPath) }
         route_file = $routePath.Substring([System.IO.Path]::GetFullPath($projectRoot).TrimEnd('\').Length + 1).Replace('\', '/')

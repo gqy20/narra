@@ -173,7 +173,7 @@ Godot 的开始页和游戏内都可以打开“体验设置 → 大模型”，
 ./tools/record-gameplay.ps1
 ```
 
-默认路线由 `godot/demo/recordings/tianqi-evidence-route.json` 定义，依次展示天启片头、交割残页入手、官署登记、补造账册格式比对、周良辅自陈串证和最终裁定。脚本使用独立临时存档，自动等待服务就绪、录制游戏音轨、转码为 1080p H.264/AAC、校验时长和流信息，并将 MP4、日志及录制清单写入 `artifacts/recordings/tianqi/<时间-路线-规格>/`。可通过 `-Route` 选择其他路线配置，通过 `-OutputDirectory` 指定固定输出目录。
+默认路线由 `godot/demo/recordings/tianqi-evidence-route.json` 定义，依次展示天启片头、交割残页入手、官署登记、补造账册格式比对、周良辅自陈串证和最终裁定。脚本使用独立临时存档，自动等待服务就绪、录制游戏音轨、转码为 1080p H.264/AAC、校验时长和流信息，并将 MP4、日志及录制清单写入 `artifacts/recordings/tianqi/<yyyyMMdd-HHmmss>-<路线ID>-<档位>/`。目录时间使用本地时区，成片统一命名为 `<路线ID>-<档位>.mp4`，例如 `20260804-011557-tianqi-evidence-route-4k/tianqi-evidence-route-4k.mp4`；1080p 成片对应 `tianqi-evidence-route-1080p.mp4`。路线 ID 必须使用小写 kebab-case。可通过 `-Route` 选择其他路线配置，通过 `-OutputDirectory` 指定固定输出目录。
 
 使用 `./tools/record-gameplay.ps1 -Profile 4k` 可录制原生 3840×2160、30 FPS 的 4K 源帧并以 H.264/AAC 输出。4K 档不仅覆盖 Movie Writer 的输出尺寸，还会把运行时内容画布锁定为 3840×2160，并以 2 倍 UI 缩放进行原生栅格化，避免把默认 1600×900 画面放大后装入 4K 容器。录制中间源使用质量 1.0 的 MJPEG，最终以 `libx264` slow、CRF 14、`yuv420p`、BT.709 编码；脚本会校验 Movie Writer 的实际源分辨率，并要求输出磁盘至少保留 15 GB 空间。
 
