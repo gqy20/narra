@@ -84,7 +84,7 @@ func _ready() -> void:
 
 	title_label = Label.new()
 	title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	title_label.add_theme_font_size_override("font_size", 13)
+	title_label.add_theme_font_size_override("font_size", 14)
 	title_label.add_theme_color_override("font_color", Color("d6ae62"))
 	title_label.add_theme_color_override("font_outline_color", Color("050806e8"))
 	title_label.add_theme_constant_override("outline_size", 3)
@@ -102,12 +102,14 @@ func _ready() -> void:
 	card.hide()
 
 
-func configure(display_font: Font, medium_font: Font, registry = null) -> void:
+func configure(display_font: Font, medium_font: Font, registry = null, type_scale := {}) -> void:
 	presentation_registry = registry
 	if title_label:
 		title_label.add_theme_font_override("font", display_font)
+		title_label.add_theme_font_size_override("font_size", int(type_scale.get("meta", 14)))
 	if message_label:
 		message_label.add_theme_font_override("font", medium_font)
+		message_label.add_theme_font_size_override("font_size", int(type_scale.get("compact", 15)))
 
 
 func present(feedback: Dictionary, from_location: String, to_location: String) -> void:

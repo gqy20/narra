@@ -27,11 +27,11 @@ func _build_journal_layer() -> void:
 	dismiss_area.pressed.connect(host.journal_panel_controller._close_journal)
 	host.journal_layer.add_child(dismiss_area)
 	host.journal_panel = PanelContainer.new()
-	host.journal_panel.anchor_left = 0.57
+	host.journal_panel.anchor_left = 0.59
 	host.journal_panel.anchor_right = 0.992
 	host.journal_panel.anchor_top = 0.026
 	host.journal_panel.anchor_bottom = 0.974
-	host.journal_panel.add_theme_stylebox_override("panel", host.game_screen_controller._panel_style(Color("101612ff"), 1, 3, Color(host.COLORS.accent, 0.44), 24, 20))
+	host.journal_panel.add_theme_stylebox_override("panel", host.game_screen_controller._panel_style(Color("101612ff"), 1, 3, Color(host.COLORS.accent, 0.44), 26, 22))
 	host.journal_layer.add_child(host.journal_panel)
 	host.journal_paper = TextureRect.new()
 	host.journal_paper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -51,7 +51,7 @@ func _build_journal_layer() -> void:
 	title.text = "随身卷宗"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.add_theme_font_override("font", host.display_font)
-	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_font_size_override("font_size", host.TYPE_SCALE.title)
 	title.add_theme_color_override("font_color", host.COLORS.accent)
 	title_row.add_child(title)
 	var close_button = host.game_screen_controller._utility_button("收起", host.journal_panel_controller._close_journal)
@@ -225,40 +225,43 @@ func _render_clues(clues: Array, actions: Array) -> void:
 	for index in clues.size():
 		var clue: Dictionary = clues[index]
 		var fact_id = str(clue.get("fact_id", ""))
+		var clue_card := PanelContainer.new()
+		clue_card.add_theme_stylebox_override("panel", host.game_screen_controller._panel_style(Color(host.COLORS.panel_alt, 0.42), 1, 3, Color(host.COLORS.line, 0.72), 12, 11))
+		host.clues_box.add_child(clue_card)
+		var card_row := HBoxContainer.new()
+		card_row.add_theme_constant_override("separation", 14)
+		clue_card.add_child(card_row)
 		var clue_texture: Texture2D = host.presentation_registry.fact_texture(fact_id)
 		if clue_texture:
-			var preview_panel := PanelContainer.new()
-			preview_panel.custom_minimum_size.y = 138
-			preview_panel.add_theme_stylebox_override("panel", host.game_screen_controller._panel_style(Color("090c0ab8"), 1, 2, Color(host.COLORS.accent, 0.22), 5, 5))
 			var preview := TextureRect.new()
+			preview.custom_minimum_size = Vector2(132, 104)
 			preview.texture = clue_texture
 			preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			preview_panel.add_child(preview)
-			host.clues_box.add_child(preview_panel)
-		var claim = host.game_screen_controller._text(host.clues_box, str(clue.get("claim", "未知传言")), false, 15)
+			card_row.add_child(preview)
+		var clue_content := VBoxContainer.new()
+		clue_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		clue_content.add_theme_constant_override("separation", 7)
+		card_row.add_child(clue_content)
+		var claim = host.game_screen_controller._text(clue_content, str(clue.get("claim", "未知传言")), false, host.TYPE_SCALE.body)
 		claim.add_theme_font_override("font", host.medium_font)
 		var confidence = int(clue.get("confidence", 0))
 		var status = "已核实" if confidence >= 3 else ("较可信" if confidence == 2 else "未经核实")
 		if bool(clue.get("contested", false)):
 			status += " · 与旧说法冲突"
-		var status_line = host.game_screen_controller._text(host.clues_box, "%s · %s" % [status, clue.get("source", "来源未知")], true, 13)
+		var status_line = host.game_screen_controller._text(clue_content, "%s · %s" % [status, clue.get("source", "来源未知")], true, host.TYPE_SCALE.meta)
 		status_line.add_theme_color_override("font_color", host.COLORS.success if confidence >= 3 else host.COLORS.accent)
 		var verify_action = host.journal_panel_controller._action_for_fact(actions, fact_id, "verify")
 		var target_count = host.action_panel_controller._count_tell_actions(actions, "", fact_id)
 		if not verify_action.is_empty() and confidence < 3:
 			var verify_link = host.game_screen_controller._action_button(host._ui_text("journal_verify_clue"), host.action_panel_controller._consider_action.bind(verify_action))
 			verify_link.custom_minimum_size.y = 36
-			host.clues_box.add_child(verify_link)
+			clue_content.add_child(verify_link)
 		elif target_count > 0:
 			var link = host.game_screen_controller._action_button("可告知 %d 人" % target_count, host.action_panel_controller._focus_fact_actions.bind(fact_id, str(clue.get("claim", "未知传言"))))
 			link.custom_minimum_size.y = 36
-			host.clues_box.add_child(link)
-		if index < clues.size() - 1:
-			var separator = HSeparator.new()
-			separator.modulate = Color(host.COLORS.line, 0.58)
-			host.clues_box.add_child(separator)
+			clue_content.add_child(link)
 
 
 func _action_for_fact(actions: Array, fact_id: String, kind: String = "") -> Dictionary:

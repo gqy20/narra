@@ -88,7 +88,7 @@ func _build_interface() -> void:
 	host.presentation_controller._build_ending_layer()
 	host.presentation_director = host.PresentationDirectorScript.new()
 	host.add_child(host.presentation_director)
-	host.presentation_director.configure(host.display_font, host.medium_font, host.presentation_registry)
+	host.presentation_director.configure(host.display_font, host.medium_font, host.presentation_registry, host.TYPE_SCALE)
 
 
 func _build_header() -> void:
@@ -97,7 +97,7 @@ func _build_header() -> void:
 	header_style.border_width_bottom = 1
 	header_style.border_color = Color(host.COLORS.accent, 0.22)
 	header.add_theme_stylebox_override("panel", header_style)
-	header.custom_minimum_size.y = 56
+	header.custom_minimum_size.y = 62
 	host.game_layer.add_child(header)
 	var row = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
@@ -106,13 +106,13 @@ func _build_header() -> void:
 	host.header_brand_label = Label.new()
 	host.header_brand_label.text = "游戏"
 	host.header_brand_label.add_theme_font_override("font", host.display_font)
-	host.header_brand_label.add_theme_font_size_override("font_size", 24)
+	host.header_brand_label.add_theme_font_size_override("font_size", host.TYPE_SCALE.brand)
 	host.header_brand_label.add_theme_color_override("font_color", host.COLORS.accent)
 	row.add_child(host.header_brand_label)
 	host.header_world_title_label = Label.new()
 	host.header_world_title_label.text = ""
 	host.header_world_title_label.add_theme_font_override("font", host.display_font)
-	host.header_world_title_label.add_theme_font_size_override("font_size", 16)
+	host.header_world_title_label.add_theme_font_size_override("font_size", host.TYPE_SCALE.body)
 	host.header_world_title_label.add_theme_color_override("font_color", Color(host.COLORS.accent, 0.78))
 	row.add_child(host.header_world_title_label)
 	var header_spacer = Control.new()
@@ -125,26 +125,26 @@ func _build_header() -> void:
 	host.timing_label = Label.new()
 	host.timing_label.hide()
 	header.add_child(host.timing_label)
-	var journal_button = host.game_screen_controller._utility_button("卷", host.journal_panel_controller._open_journal)
+	var journal_button = host.game_screen_controller._utility_button("卷宗", host.journal_panel_controller._open_journal)
 	journal_button.tooltip_text = "随身卷宗"
-	journal_button.custom_minimum_size = Vector2(42, 34)
+	journal_button.custom_minimum_size = Vector2(64, 36)
 	row.add_child(journal_button)
-	var save_button = host.game_screen_controller._utility_button("存", host._save_game)
+	var save_button = host.game_screen_controller._utility_button("保存", host._save_game)
 	save_button.tooltip_text = "保存当前进度"
-	save_button.custom_minimum_size = Vector2(42, 34)
+	save_button.custom_minimum_size = Vector2(64, 36)
 	row.add_child(save_button)
 	var tool_divider = Label.new()
 	tool_divider.text = "│"
 	tool_divider.add_theme_color_override("font_color", Color(host.COLORS.line, 0.72))
 	tool_divider.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(tool_divider)
-	host.sound_button = host.game_screen_controller._utility_button("⚙", host.start_settings_screen_controller._open_audio_settings)
+	host.sound_button = host.game_screen_controller._utility_button("设置", host.start_settings_screen_controller._open_audio_settings)
 	host.sound_button.tooltip_text = "声音与显示设置"
-	host.sound_button.custom_minimum_size = Vector2(42, 34)
+	host.sound_button.custom_minimum_size = Vector2(64, 36)
 	row.add_child(host.sound_button)
-	var return_button = host.game_screen_controller._utility_button("↩", host._return_to_start)
+	var return_button = host.game_screen_controller._utility_button("卷首", host._return_to_start)
 	return_button.tooltip_text = "返回卷首"
-	return_button.custom_minimum_size = Vector2(42, 34)
+	return_button.custom_minimum_size = Vector2(64, 36)
 	row.add_child(return_button)
 
 
@@ -162,9 +162,9 @@ func _build_dashboard() -> void:
 
 	host.action_dock_host = Control.new()
 	host.action_dock_host.anchor_left = 0.025
-	host.action_dock_host.anchor_right = 0.62
-	host.action_dock_host.anchor_top = 0.50
-	host.action_dock_host.anchor_bottom = 0.985
+	host.action_dock_host.anchor_right = 0.60
+	host.action_dock_host.anchor_top = 0.52
+	host.action_dock_host.anchor_bottom = 0.965
 	host.action_dock_host.clip_contents = true
 	# Keep the decision layer on its own canvas so focused content can never
 	# enlarge either the dashboard workspace or the root interface.
@@ -175,7 +175,7 @@ func _build_dashboard() -> void:
 
 	host.action_dock = PanelContainer.new()
 	host.action_dock.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var dock_style = host.game_screen_controller._panel_style(Color("0b100ddf"), 0, 2, Color.TRANSPARENT, 22, 16)
+	var dock_style = host.game_screen_controller._panel_style(Color("0b100dea"), 0, 2, Color.TRANSPARENT, 24, 18)
 	dock_style.border_width_left = 2
 	dock_style.border_color = Color(host.COLORS.accent, 0.68)
 	host.action_dock.add_theme_stylebox_override("panel", dock_style)
@@ -196,7 +196,7 @@ func _build_dashboard() -> void:
 	host.action_dock_title = Label.new()
 	host.action_dock_title.text = "眼前"
 	host.action_dock_title.add_theme_font_override("font", host.display_font)
-	host.action_dock_title.add_theme_font_size_override("font_size", 22)
+	host.action_dock_title.add_theme_font_size_override("font_size", host.TYPE_SCALE.headline)
 	host.action_dock_title.add_theme_color_override("font_color", host.COLORS.accent)
 	host.action_dock_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(host.action_dock_title)
@@ -306,6 +306,7 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	host.visual_stack.add_child(host.map_panel)
 	host.world_map_view = host.WorldMapViewScript.new()
 	host.world_map_view.presentation_registry = host.presentation_registry
+	host.world_map_view.minimum_font_size = host.MIN_READABLE_TEXT_SIZE
 	host.world_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	host.world_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	host.world_map_view.size_flags_stretch_ratio = 1.0
@@ -313,16 +314,17 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	host.world_map_view.travel_day_changed.connect(host.presentation_controller._on_travel_day_changed)
 	host.map_panel.add_child(host.world_map_view)
 	var map_detail_frame = PanelContainer.new()
-	map_detail_frame.custom_minimum_size.x = 310
+	map_detail_frame.custom_minimum_size.x = 360
 	map_detail_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var map_detail_style = host.game_screen_controller._panel_style(Color("08100be8"), 0, 0, Color.TRANSPARENT, 18, 18)
+	var map_detail_style = host.game_screen_controller._panel_style(Color("08100bf0"), 0, 0, Color.TRANSPARENT, 22, 20)
 	map_detail_style.border_width_left = 1
 	map_detail_style.border_color = Color(host.COLORS.accent, 0.42)
 	map_detail_frame.add_theme_stylebox_override("panel", map_detail_style)
 	host.map_panel.add_child(map_detail_frame)
 	host.map_detail_box = VBoxContainer.new()
-	host.map_detail_box.custom_minimum_size = Vector2(274, 88)
-	host.map_detail_box.add_theme_constant_override("separation", 9)
+	host.map_detail_box.custom_minimum_size = Vector2(316, 88)
+	host.map_detail_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	host.map_detail_box.add_theme_constant_override("separation", 10)
 	map_detail_frame.add_child(host.map_detail_box)
 
 	host.location_panel = VBoxContainer.new()
@@ -363,32 +365,36 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	var portrait_caption = PanelContainer.new()
 	portrait_caption.anchor_left = 0.18
 	portrait_caption.anchor_right = 0.94
-	portrait_caption.anchor_top = 0.79
-	portrait_caption.anchor_bottom = 0.96
+	portrait_caption.anchor_top = 0.815
+	portrait_caption.anchor_bottom = 0.955
 	portrait_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var caption_style = host.game_screen_controller._panel_style(Color("070b08a6"), 0, 0, Color.TRANSPARENT, 14, 8)
+	var caption_style = host.game_screen_controller._panel_style(Color("070b08b8"), 0, 0, Color.TRANSPARENT, 16, 10)
 	caption_style.border_width_left = 1
 	caption_style.border_color = Color(host.COLORS.accent, 0.48)
 	portrait_caption.add_theme_stylebox_override("panel", caption_style)
 	portrait_stack.add_child(portrait_caption)
 	var portrait_caption_content = VBoxContainer.new()
-	portrait_caption_content.add_theme_constant_override("separation", 2)
+	portrait_caption_content.add_theme_constant_override("separation", 4)
 	portrait_caption.add_child(portrait_caption_content)
-	host.actor_portrait_name = host.game_screen_controller._text(portrait_caption_content, "", false, 17)
+	host.actor_portrait_name = host.game_screen_controller._text(portrait_caption_content, "", false, host.TYPE_SCALE.section)
 	host.actor_portrait_name.add_theme_color_override("font_color", host.COLORS.accent)
-	host.actor_portrait_meta = host.game_screen_controller._text(portrait_caption_content, "", true, 12)
+	host.actor_portrait_meta = host.game_screen_controller._text(portrait_caption_content, "", true, host.TYPE_SCALE.compact)
 	host.actor_portrait_frame.hide()
 	host.game_screen_controller._set_visual_mode("map")
 
 
 func _build_footer() -> void:
+	var footer_panel = PanelContainer.new()
+	footer_panel.custom_minimum_size.y = 30
+	footer_panel.add_theme_stylebox_override("panel", host.game_screen_controller._panel_style(Color(host.COLORS.bg_lift, 0.76), 0, 0, Color.TRANSPARENT, 10, 4))
+	host.game_layer.add_child(footer_panel)
 	host.footer_label = Label.new()
 	host.footer_label.text = ""
 	host.footer_label.add_theme_color_override("font_color", host.COLORS.muted)
 	host.footer_label.add_theme_font_override("font", host.medium_font)
-	host.footer_label.add_theme_font_size_override("font_size", host.TYPE_SCALE.meta)
-	host.footer_label.custom_minimum_size.y = 20
-	host.game_layer.add_child(host.footer_label)
+	host.footer_label.add_theme_font_size_override("font_size", host.TYPE_SCALE.detail)
+	host.footer_label.custom_minimum_size.y = 22
+	footer_panel.add_child(host.footer_label)
 
 
 func _header_value(parent: Container, caption: String) -> Label:
@@ -616,18 +622,19 @@ func _style_menu_button(button: MenuButton) -> void:
 
 
 func _text(parent: Container, value: String, muted := false, size := 16) -> Label:
+	var resolved_size := maxi(size, host.MIN_READABLE_TEXT_SIZE)
 	var label = Label.new()
 	label.text = value
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	if size >= 24:
+	if resolved_size >= 24:
 		label.add_theme_font_override("font", host.display_font)
-	elif size >= 17 or size <= host.TYPE_SCALE.meta:
+	elif resolved_size >= 17 or resolved_size <= host.TYPE_SCALE.meta:
 		label.add_theme_font_override("font", host.medium_font)
-	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_font_size_override("font_size", resolved_size)
 	label.add_theme_color_override("font_color", host.COLORS.muted if muted else host.COLORS.ink)
-	if size <= host.TYPE_SCALE.body:
+	if resolved_size <= host.TYPE_SCALE.body:
 		label.add_theme_constant_override("line_spacing", 4)
-	elif size < 24:
+	elif resolved_size < 24:
 		label.add_theme_constant_override("line_spacing", 3)
 	parent.add_child(label)
 	return label
@@ -751,9 +758,9 @@ func _on_map_location_selected(location_id: String) -> void:
 func _render_map_detail(world_map: Dictionary, current_location: Dictionary, actions: Array) -> void:
 	host.game_screen_controller._clear(host.map_detail_box)
 	var map_title = str(host.scenario_presentation.get("world_title", host.current_view.get("title", "世界地图")))
-	var eyebrow = host.game_screen_controller._text(host.map_detail_box, "%s · 立体路线沙盘" % map_title, true, 12)
+	var eyebrow = host.game_screen_controller._text(host.map_detail_box, "%s · 路线沙盘" % map_title, true, host.TYPE_SCALE.meta)
 	eyebrow.add_theme_color_override("font_color", host.COLORS.accent)
-	var guidance = host.game_screen_controller._text(host.map_detail_box, "点击地点或发光路径，查看目的地、耗时与阻碍。", true, 12)
+	var guidance = host.game_screen_controller._text(host.map_detail_box, "选择地点，查看人物、耗时与道路风险。", true, host.TYPE_SCALE.detail)
 	guidance.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var map_separator = HSeparator.new()
 	map_separator.add_theme_color_override("separator", Color(host.COLORS.accent, 0.24))
@@ -762,11 +769,12 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 	if selected.is_empty():
 		host.game_screen_controller._text(host.map_detail_box, "选择地点查看路线", false, 18)
 		return
-	var title_line = host.game_screen_controller._text(host.map_detail_box, str(selected.get("name", "未知地点")), false, 22)
+	var title_line = host.game_screen_controller._text(host.map_detail_box, str(selected.get("name", "未知地点")), false, host.TYPE_SCALE.headline)
+	title_line.add_theme_font_override("font", host.display_font)
 	title_line.add_theme_color_override("font_color", host.COLORS.accent if bool(selected.get("current", false)) else host.COLORS.ink)
 	var place_state = "当前据点" if bool(selected.get("current", false)) else ("安全落脚点" if bool(selected.get("safe", false)) else "危险区域")
 	var state_line = host.game_screen_controller._text(host.map_detail_box, place_state, false, 13)
-	state_line.add_theme_color_override("font_color", host.COLORS.success if bool(selected.get("safe", false)) else host.COLORS.danger)
+	state_line.add_theme_color_override("font_color", host.COLORS.accent if bool(selected.get("current", false)) else (host.COLORS.success if bool(selected.get("safe", false)) else host.COLORS.danger))
 	host.game_screen_controller._text(host.map_detail_box, str(selected.get("description", "尚无公开地点资料")), true, 13)
 	if bool(selected.get("contest", false)):
 		var contest_line = host.game_screen_controller._text(host.map_detail_box, "核心目标 · %s" % host.scenario_presentation.get("objective", "目标将在这里落定"), false, 13)
@@ -776,8 +784,10 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 		host.journal_panel_controller._render_route_progresses(host.map_detail_box, host.current_view.get("route_progresses", []), true)
 		var hint = host.game_screen_controller._text(host.map_detail_box, "沙盘上的金色道路当前可以通行。", true, 12)
 		hint.add_theme_color_override("font_color", host.COLORS.muted)
+		var current_spacer = Control.new()
+		current_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		host.map_detail_box.add_child(current_spacer)
 		var enter_button = host.game_screen_controller._utility_button("回到眼前", host.game_screen_controller._set_visual_mode.bind("location"))
-		enter_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		enter_button.custom_minimum_size.y = 42
 		host.map_detail_box.add_child(enter_button)
 		return
@@ -793,6 +803,9 @@ func _render_map_detail(world_map: Dictionary, current_location: Dictionary, act
 	if route_status == "available":
 		var action = host.game_screen_controller._action_by_id(actions, str(route.get("action_id", "")))
 		if not action.is_empty():
+			var route_spacer = Control.new()
+			route_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			host.map_detail_box.add_child(route_spacer)
 			var move_button = host.game_screen_controller._button("前往%s · %d 日" % [selected.get("name", "目的地"), int(route.get("duration", 1))], host.action_panel_controller._consider_action.bind(action), false)
 			move_button.custom_minimum_size.y = 46
 			move_button.tooltip_text = "危险 %d · 途中局势会继续推进" % int(route.get("danger", 0))

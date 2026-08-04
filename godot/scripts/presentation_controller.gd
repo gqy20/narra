@@ -325,16 +325,18 @@ func _render_ending(ending: Dictionary) -> void:
 	var actor_profile: ActorVisualProfile = host.presentation_registry.actor_profile(ending_actor_id)
 	host.ending_portrait.texture = actor_profile.portrait("decisive") if actor_profile else null
 	host.ending_portrait.visible = host.ending_portrait.texture != null
-	host.ending_box.anchor_left = 0.445 if host.ending_portrait.visible else 0.225
-	var eyebrow = host.game_screen_controller._text(host.ending_box, "尘埃落定", true, 16)
+	host.ending_box.anchor_left = 0.47 if host.ending_portrait.visible else 0.28
+	host.ending_box.anchor_right = 0.90
+	var eyebrow = host.game_screen_controller._text(host.ending_box, "尘埃落定", true, host.TYPE_SCALE.meta)
 	eyebrow.add_theme_color_override("font_color", host.COLORS.accent)
 	var outcome_parts: PackedStringArray = outcome.split("。", false)
 	var outcome_title = str(outcome_parts[0]).strip_edges() if not outcome_parts.is_empty() else outcome
-	var title = host.game_screen_controller._text(host.ending_box, outcome_title, false, 40)
+	var title = host.game_screen_controller._text(host.ending_box, outcome_title, false, 42)
 	title.add_theme_font_override("font", host.display_font)
 	title.add_theme_color_override("font_color", Color("ead6a8"))
 	for index in range(1, outcome_parts.size()):
-		var outcome_body = host.game_screen_controller._text(host.ending_box, str(outcome_parts[index]).strip_edges(), false, 21)
+		var outcome_body = host.game_screen_controller._text(host.ending_box, str(outcome_parts[index]).strip_edges(), false, 19)
+		outcome_body.add_theme_constant_override("line_spacing", 6)
 		outcome_body.add_theme_color_override("font_color", Color("ded4c1"))
 	var rule = HSeparator.new()
 	rule.modulate = Color(host.COLORS.accent, 0.46)
@@ -376,9 +378,8 @@ func _render_ending(ending: Dictionary) -> void:
 	ending_actions.add_theme_constant_override("separation", 12)
 	host.ending_box.add_child(ending_actions)
 	var restart_button = host.game_screen_controller._ornate_button("换一条路 · 重新入局", host._restart_from_ending)
-	restart_button.custom_minimum_size = Vector2(330, 62)
-	restart_button.add_theme_font_size_override("font_size", 22)
-	restart_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	restart_button.custom_minimum_size = Vector2(360, 60)
+	restart_button.add_theme_font_size_override("font_size", 20)
 	ending_actions.add_child(restart_button)
 	var return_button = host.game_screen_controller._utility_button("返回卷首", host._return_to_start)
 	return_button.custom_minimum_size = Vector2(132, 62)

@@ -35,6 +35,11 @@ var travel_end_day := 0
 var emitted_travel_day := -1
 var travel_tween: Tween
 var presentation_registry = PresentationRegistryScript.new()
+var minimum_font_size := 14
+
+
+func _font_size(requested: int) -> int:
+	return maxi(requested, minimum_font_size)
 
 
 func _ready() -> void:
@@ -285,7 +290,7 @@ func _draw_route_mark(curve: PackedVector2Array, route: Dictionary, color: Color
 	draw_rect(Rect2(plaque.position + Vector2(3, 5), plaque.size), Color("020403a6"), true)
 	draw_rect(plaque, Color("0c130ff4"), true)
 	draw_rect(plaque, Color(color, 0.76), false, 1.0, true)
-	draw_string(font, plaque.position + Vector2(5, 16), text, HORIZONTAL_ALIGNMENT_CENTER, 30, 12, color)
+	draw_string(font, plaque.position + Vector2(5, 16), text, HORIZONTAL_ALIGNMENT_CENTER, 30, _font_size(12), color)
 
 
 func _draw_route_flow(curve: PackedVector2Array, color: Color) -> void:
@@ -334,15 +339,15 @@ func _draw_location(location: Dictionary, bounds: Rect2) -> void:
 	var label_color := ACCENT if current or selected else INK
 	var label_width := 132.0
 	var label_position := position + Vector2(-label_width * 0.5, 40)
-	draw_string(font, label_position + Vector2(1, 1), name, HORIZONTAL_ALIGNMENT_CENTER, label_width, 15, Color("030504"))
-	draw_string(font, label_position, name, HORIZONTAL_ALIGNMENT_CENTER, label_width, 15, label_color)
+	draw_string(font, label_position + Vector2(1, 1), name, HORIZONTAL_ALIGNMENT_CENTER, label_width, _font_size(15), Color("030504"))
+	draw_string(font, label_position, name, HORIZONTAL_ALIGNMENT_CENTER, label_width, _font_size(15), label_color)
 	if current and not travel_active:
-		draw_string(font, beacon + Vector2(-26, -25), "此刻", HORIZONTAL_ALIGNMENT_CENTER, 52, 12, ACCENT)
+		draw_string(font, beacon + Vector2(-26, -25), "此刻", HORIZONTAL_ALIGNMENT_CENTER, 52, _font_size(12), ACCENT)
 	elif contest:
-		draw_string(font, beacon + Vector2(-30, -25), presentation_registry.ui_text("map_contest_location"), HORIZONTAL_ALIGNMENT_CENTER, 60, 12, Color("d87761"))
+		draw_string(font, beacon + Vector2(-30, -25), presentation_registry.ui_text("map_contest_location"), HORIZONTAL_ALIGNMENT_CENTER, 60, _font_size(12), Color("d87761"))
 	var actor_count := int(location.get("actor_count", 0))
 	if actor_count > 0 and not travel_active:
-		draw_string(font, position + Vector2(-36, 59), "%d 人在场" % actor_count, HORIZONTAL_ALIGNMENT_CENTER, 72, 11, MUTED)
+		draw_string(font, position + Vector2(-36, 59), "%d 人在场" % actor_count, HORIZONTAL_ALIGNMENT_CENTER, 72, _font_size(11), MUTED)
 
 
 func _draw_actor_plan(actor: Dictionary, bounds: Rect2, index: int) -> void:
@@ -373,9 +378,9 @@ func _draw_actor_plan(actor: Dictionary, bounds: Rect2, index: int) -> void:
 		draw_circle(position, halo, Color(ACCENT, 0.62), false, 1.5, true)
 	var name := str(actor.get("name", "?"))
 	var mark := name.substr(0, 1) if not name.is_empty() else "?"
-	draw_string(get_theme_default_font(), position + Vector2(-7, 5), mark, HORIZONTAL_ALIGNMENT_CENTER, 14, 12, color.lightened(0.28))
+	draw_string(get_theme_default_font(), position + Vector2(-7, 5), mark, HORIZONTAL_ALIGNMENT_CENTER, 14, _font_size(12), color.lightened(0.28))
 	if str(actor.get("destination_id", "")) != "" and str(actor.get("destination_id", "")) != str(actor.get("location_id", "")):
-		draw_string(get_theme_default_font(), position + Vector2(11, -8), "↗", HORIZONTAL_ALIGNMENT_LEFT, 18, 13, ACCENT)
+		draw_string(get_theme_default_font(), position + Vector2(11, -8), "↗", HORIZONTAL_ALIGNMENT_LEFT, 18, _font_size(13), ACCENT)
 
 
 func _actor_token_offset(actor_id: String, fallback_index: int) -> Vector2:

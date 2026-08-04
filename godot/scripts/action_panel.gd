@@ -18,18 +18,32 @@ func _build_confirmation_layer() -> void:
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.confirmation_layer.add_child(shade)
 	var card = PanelContainer.new()
-	card.anchor_left = 0.055
-	card.anchor_right = 0.72
-	card.anchor_top = 0.53
-	card.anchor_bottom = 0.94
-	var confirmation_style = host.game_screen_controller._panel_style(Color("0b100df4"), 0, 2, Color.TRANSPARENT, 30, 22)
+	card.anchor_left = 0.10
+	card.anchor_right = 0.68
+	card.anchor_top = 0.38
+	card.anchor_bottom = 0.93
+	var confirmation_style = host.game_screen_controller._panel_style(Color("0b100df8"), 0, 2, Color.TRANSPARENT, 34, 26)
 	confirmation_style.border_width_left = 3
 	confirmation_style.border_color = host.COLORS.accent
 	card.add_theme_stylebox_override("panel", confirmation_style)
 	host.confirmation_layer.add_child(card)
+	var card_content = VBoxContainer.new()
+	card_content.add_theme_constant_override("separation", 12)
+	card.add_child(card_content)
+	var confirmation_scroll = ScrollContainer.new()
+	confirmation_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	confirmation_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	card_content.add_child(confirmation_scroll)
 	host.confirmation_box = VBoxContainer.new()
-	host.confirmation_box.add_theme_constant_override("separation", 11)
-	card.add_child(host.confirmation_box)
+	host.confirmation_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	host.confirmation_box.add_theme_constant_override("separation", 12)
+	confirmation_scroll.add_child(host.confirmation_box)
+	var action_rule = HSeparator.new()
+	action_rule.modulate = Color(host.COLORS.accent, 0.26)
+	card_content.add_child(action_rule)
+	host.confirmation_actions_box = HBoxContainer.new()
+	host.confirmation_actions_box.add_theme_constant_override("separation", 12)
+	card_content.add_child(host.confirmation_actions_box)
 
 
 func _render_actions(actions: Array) -> void:
@@ -93,8 +107,9 @@ func _render_actions(actions: Array) -> void:
 func _configure_action_dock_layout(has_action_focus: bool) -> void:
 	if not host.action_dock or not host.action_dock_host:
 		return
-	host.action_dock_host.anchor_top = 0.22 if has_action_focus else 0.45
-	var dock_style = host.game_screen_controller._panel_style(Color("0b100df2") if has_action_focus else Color("0b100de8"), 0, 2, Color.TRANSPARENT, 22, 16)
+	host.action_dock_host.anchor_top = 0.25 if has_action_focus else 0.47
+	host.action_dock_host.anchor_bottom = 0.965
+	var dock_style = host.game_screen_controller._panel_style(Color("0b100df4") if has_action_focus else Color("0b100dec"), 0, 2, Color.TRANSPARENT, 24, 18)
 	dock_style.border_width_left = 2
 	dock_style.border_color = Color(host.COLORS.accent, 0.72 if has_action_focus else 0.62)
 	host.action_dock.add_theme_stylebox_override("panel", dock_style)
@@ -575,6 +590,7 @@ func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 	host.selected_action = action
 	host.selected_followup_action_id = followup_action_id
 	host.game_screen_controller._clear(host.confirmation_box)
+	host.game_screen_controller._clear(host.confirmation_actions_box)
 	var eyebrow = host.game_screen_controller._text(host.confirmation_box, "一念将定", true, 13)
 	eyebrow.add_theme_color_override("font_color", host.COLORS.accent)
 	host.game_screen_controller._text(host.confirmation_box, str(action.get("name", "行动")), false, 27)
@@ -583,23 +599,32 @@ func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 		warning.add_theme_color_override("font_color", host.COLORS.accent)
 	else:
 		host.game_screen_controller._text(host.confirmation_box, str(action.get("description", "")), true, 15)
+	var summary_rule = HSeparator.new()
+	summary_rule.modulate = Color(host.COLORS.accent, 0.24)
+	host.confirmation_box.add_child(summary_rule)
 	var outcomes = host.action_panel_controller._joined_action_values(action.get("expected_outcomes", []))
 	if outcomes != "":
-		var outcome_line = host.game_screen_controller._text(host.confirmation_box, "此举或将 · %s" % outcomes, false, 15)
+		var outcome_heading = host.game_screen_controller._text(host.confirmation_box, "可能结果", true, host.TYPE_SCALE.meta)
+		outcome_heading.add_theme_color_override("font_color", host.COLORS.accent)
+		var outcome_line = host.game_screen_controller._text(host.confirmation_box, outcomes, false, host.TYPE_SCALE.body)
 		outcome_line.add_theme_color_override("font_color", host.COLORS.success)
 	var timing = str(action.get("timing", ""))
+	var has_warnings: bool = warnings is Array and not warnings.is_empty()
+	var costs: Dictionary = action.get("costs", {})
+	if timing != "" or has_warnings or bool(action.get("irreversible", false)) or not costs.is_empty():
+		var consequence_heading = host.game_screen_controller._text(host.confirmation_box, "时机与代价", true, host.TYPE_SCALE.meta)
+		consequence_heading.add_theme_color_override("font_color", host.COLORS.accent)
 	if timing != "":
-		var timing_line = host.game_screen_controller._text(host.confirmation_box, "时机 · %s" % timing, true, 14)
+		var timing_line = host.game_screen_controller._text(host.confirmation_box, timing, true, 14)
 		if timing.contains("挤压") or timing.contains("来不及") or timing.contains("无法预先保证"):
 			timing_line.add_theme_color_override("font_color", host.COLORS.danger)
 	if warnings is Array:
 		for warning_text in warnings:
-			var warning_line = host.game_screen_controller._text(host.confirmation_box, "注意 · %s" % warning_text, false, 14)
+			var warning_line = host.game_screen_controller._text(host.confirmation_box, "风险 · %s" % warning_text, false, 14)
 			warning_line.add_theme_color_override("font_color", host.COLORS.danger)
 	if bool(action.get("irreversible", false)):
 		var irreversible_line = host.game_screen_controller._text(host.confirmation_box, "不可撤回 · 行动产生的公开信息与交换结果会保留", false, 14)
 		irreversible_line.add_theme_color_override("font_color", host.COLORS.danger)
-	var costs: Dictionary = action.get("costs", {})
 	if not costs.is_empty():
 		var cost_parts: Array[String] = []
 		for key in costs:
@@ -619,15 +644,15 @@ func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 		var relevance_line = host.game_screen_controller._text(host.confirmation_details_box, str(action.get("relevance", "关联尚不明确")), false, 14)
 		relevance_line.add_theme_color_override("font_color", host.COLORS.accent)
 		host.game_screen_controller._text(host.confirmation_details_box, "使用倾向 · %s" % action.get("risk", "尚不了解"), true, 14)
-	var button_row = HBoxContainer.new()
-	button_row.add_theme_constant_override("separation", 12)
-	host.confirmation_box.add_child(button_row)
 	var cancel_button = host.game_screen_controller._utility_button("暂且不动", host.action_panel_controller._cancel_confirmation)
-	cancel_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button_row.add_child(cancel_button)
+	cancel_button.custom_minimum_size = Vector2(150, 46)
+	host.confirmation_actions_box.add_child(cancel_button)
+	var button_spacer = Control.new()
+	button_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	host.confirmation_actions_box.add_child(button_spacer)
 	var confirm_button = host.game_screen_controller._button(host.action_panel_controller._commitment_label(action), host.action_panel_controller._confirm_selected_action, false)
-	confirm_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button_row.add_child(confirm_button)
+	confirm_button.custom_minimum_size = Vector2(320, 48)
+	host.confirmation_actions_box.add_child(confirm_button)
 	if host.action_dock:
 		host.action_dock.hide()
 	host.confirmation_layer.show()

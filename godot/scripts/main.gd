@@ -57,17 +57,21 @@ const DISPLAY_RESOLUTION_PRESETS: Array[Vector2i] = [
 ]
 const UI_SCALE_PRESETS: Array[float] = [1.0, 1.25, 1.5, 1.75]
 const MINIMUM_UI_CANVAS := Vector2i(1100, 700)
+const MIN_READABLE_TEXT_SIZE := 14
 const DIAGNOSTIC_FILE_MAX_BYTES := 25 * 1024 * 1024
 const TYPE_SCALE := {
 	"display": 60,
 	"brand": 28,
-	"section": 18,
+	"title": 28,
+	"headline": 22,
+	"section": 20,
 	"metric": 18,
-	"body": 16,
+	"body": 17,
 	"compact": 15,
 	"detail": 14,
-	"meta": 13,
-	"button": 15,
+	"meta": 14,
+	"caption": 14,
+	"button": 16,
 }
 const COLORS := {
 	"bg": Color("090c0a"),
@@ -251,6 +255,7 @@ var causal_now: Label
 var causal_day: Label
 var confirmation_layer: Control
 var confirmation_box: VBoxContainer
+var confirmation_actions_box: HBoxContainer
 var confirmation_details_box: VBoxContainer
 var confirmation_details_button: Button
 var visual_stack: Control
@@ -426,7 +431,7 @@ func _request(operation: String, method: HTTPClient.Method, path: String, payloa
 	if action_dock and action_dock.visible:
 		action_dock_title.text = _operation_label(operation) + "…"
 	if footer_label:
-		footer_label.text = _operation_label(operation) + "…"
+		footer_label.text = "◆  " + _operation_label(operation) + "…"
 		footer_label.add_theme_color_override("font_color", COLORS.accent)
 	if start_layer and start_layer.visible and connection_label:
 		connection_label.text = "正在确认旅途入口…"

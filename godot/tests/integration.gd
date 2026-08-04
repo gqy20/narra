@@ -23,6 +23,14 @@ func _run() -> void:
 		return _fail("display typography is not using bundled Source Han Serif")
 	if app.narrative_font.resource_path != "res://assets/fonts/LXGWWenKaiLite-Regular.ttf":
 		return _fail("narrative typography is not using LXGW WenKai Lite")
+	var minimum_size_probe_parent = VBoxContainer.new()
+	app.add_child(minimum_size_probe_parent)
+	var minimum_size_probe = app.game_screen_controller._text(minimum_size_probe_parent, "", false, 1)
+	if minimum_size_probe.get_theme_font_size("font_size") < app.MIN_READABLE_TEXT_SIZE:
+		return _fail("standard UI text can render below the minimum readable size")
+	minimum_size_probe_parent.queue_free()
+	if app.world_map_view.minimum_font_size < app.MIN_READABLE_TEXT_SIZE:
+		return _fail("custom-drawn map text can render below the minimum readable size")
 	if "从白石坊市入局" not in _descendant_text(app.start_layer):
 		return _fail("start call to action does not match the actual opening location")
 
@@ -58,7 +66,7 @@ func _run() -> void:
 		return _fail("raised map routes are not selectable navigation targets")
 	app.game_screen_controller._set_visual_mode("map")
 	var map_text := _descendant_text(app.map_detail_box)
-	if not (app.map_panel is HBoxContainer) or "立体路线沙盘" not in map_text or "点击地点或发光路径" not in map_text:
+	if not (app.map_panel is HBoxContainer) or "路线沙盘" not in map_text or "选择地点，查看人物、耗时与道路风险" not in map_text:
 		return _fail("world map did not expose the 2.5D sandbox and fixed route detail panel")
 	app.game_screen_controller._set_visual_mode("location")
 	var action_text := _descendant_text(app.overview_actions_box)
