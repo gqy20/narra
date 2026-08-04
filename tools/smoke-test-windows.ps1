@@ -1,7 +1,13 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [string]$PackageDirectory
+    [string]$PackageDirectory,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedScenario,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedScenarioID
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,6 +16,19 @@ $packageDirectory = (Resolve-Path -LiteralPath $PackageDirectory).Path
 $gamePath = Join-Path $packageDirectory "Fantu.exe"
 if (-not (Test-Path -LiteralPath $gamePath -PathType Leaf)) {
     throw "Fantu.exe was not found in the package directory."
+}
+
+$dataDirectory = Join-Path $packageDirectory "data"
+$packagedScenarios = @(
+    Get-ChildItem -LiteralPath $dataDirectory -Directory -ErrorAction Stop |
+        Select-Object -ExpandProperty Name
+)
+if ($packagedScenarios.Count -ne 1 -or $packagedScenarios[0] -ne $ExpectedScenario) {
+    throw "Expected only the '$ExpectedScenario' scenario in the release package; found: $($packagedScenarios -join ', ')"
+}
+$scenarioManifest = Join-Path $dataDirectory "$ExpectedScenario\scenario.yml"
+if (-not (Test-Path -LiteralPath $scenarioManifest -PathType Leaf)) {
+    throw "The release scenario manifest was not found: $scenarioManifest"
 }
 
 $existingServerIds = @(
@@ -22,7 +41,7 @@ if ($existingServerIds.Count -gt 0) {
 
 $game = Start-Process `
     -FilePath $gamePath `
-    -ArgumentList @("--headless", "--quit-after", "600") `
+    -ArgumentList @("--headless", "--quit-after", "600", "--", "--scenario=$ExpectedScenario") `
     -WorkingDirectory $packageDirectory `
     -WindowStyle Hidden `
     -PassThru
@@ -38,7 +57,7 @@ try {
     for ($attempt = 0; $attempt -lt 20; $attempt++) {
         try {
             $response = Invoke-RestMethod -Uri "http://127.0.0.1:8787/api/v1/health" -TimeoutSec 1
-            if ($response.api_version -eq "v1") {
+            if ($response.api_version -eq "v1" -and $response.scenario.id -eq $ExpectedScenarioID) {
                 $healthPassed = $true
                 break
             }
@@ -55,7 +74,7 @@ try {
         throw "Fantu.exe exited with code $($game.ExitCode)."
     }
     if (-not $healthPassed) {
-        throw "The bundled rules service did not pass its health check."
+        throw "The bundled rules service did not report scenario '$ExpectedScenarioID' in its health check."
     }
 
     Start-Sleep -Milliseconds 500
@@ -100,6 +119,9 @@ try {
     $buildInfo = Get-Content -LiteralPath (Join-Path $packageDirectory "build-info.json") -Raw | ConvertFrom-Json
     if ($null -eq $buildInfo.source_dirty) {
         throw "build-info.json does not declare whether the source tree was dirty."
+    }
+    if ($buildInfo.scenario -ne $ExpectedScenario -or $buildInfo.scenario_id -ne $ExpectedScenarioID) {
+        throw "build-info.json does not identify the expected release scenario."
     }
     if (-not (Test-Path -LiteralPath (Join-Path $packageDirectory "Fantu-Portable.cmd") -PathType Leaf)) {
         throw "The Windows package does not contain Fantu-Portable.cmd."

@@ -11,6 +11,8 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $godotProject = Join-Path $projectRoot "godot"
 $distRoot = Join-Path $projectRoot "dist"
 $packageName = "fantu-windows-x86_64"
+$releaseScenario = "tianqi"
+$releaseScenarioID = "tianqi_t00"
 $packageDir = Join-Path $distRoot $packageName
 $archiveBaseName = if ([string]::IsNullOrWhiteSpace($Version)) {
     $packageName
@@ -73,9 +75,13 @@ try {
     & $godot.Source --headless --path $godotProject --export-release "Windows Desktop" $clientPath
     if ($LASTEXITCODE -ne 0) { throw "Godot Windows export failed." }
 
+    $scenarioSource = Join-Path $projectRoot "data\$releaseScenario"
+    if (-not (Test-Path -LiteralPath (Join-Path $scenarioSource "scenario.yml") -PathType Leaf)) {
+        throw "Release scenario is missing its manifest: $scenarioSource"
+    }
     $dataDestination = Join-Path $packageDir "data"
     New-Item -ItemType Directory -Path $dataDestination -Force | Out-Null
-    Copy-Item -Path (Join-Path $projectRoot "data\*") -Destination $dataDestination -Recurse -Force
+    Copy-Item -LiteralPath $scenarioSource -Destination $dataDestination -Recurse -Force
 
     $resolvedVersion = if ([string]::IsNullOrWhiteSpace($Version)) { "dev" } else { $Version }
     $gitCommit = "unknown"
@@ -94,6 +100,8 @@ try {
         source_dirty = $sourceDirty
         built_at_utc = [DateTime]::UtcNow.ToString("o")
         platform = "windows-x86_64"
+        scenario = $releaseScenario
+        scenario_id = $releaseScenarioID
     } | ConvertTo-Json
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText((Join-Path $packageDir "build-info.json"), $buildInfo, $utf8NoBom)
@@ -112,7 +120,7 @@ Files:
 - Disable-Crash-Dumps.cmd: remove the native minidump opt-in
 - fantu-server.exe: local rules service
 - build-info.json: release version and source revision
-- data/: switchable scenario packages (select with --scenario=<directory-name>)
+- data/tianqi/: bundled Tianqi story
 "@
     Set-Content -LiteralPath (Join-Path $packageDir "README.txt") -Value $releaseNotes -Encoding utf8
 
@@ -147,7 +155,10 @@ echo Native Fantu.exe crash dumps are disabled.
     Set-Content -LiteralPath (Join-Path $packageDir "Disable-Crash-Dumps.cmd") -Value $disableCrashDumps -Encoding ascii
 
     if (-not $SkipSmokeTest) {
-        & (Join-Path $PSScriptRoot "smoke-test-windows.ps1") -PackageDirectory $packageDir
+        & (Join-Path $PSScriptRoot "smoke-test-windows.ps1") `
+            -PackageDirectory $packageDir `
+            -ExpectedScenario $releaseScenario `
+            -ExpectedScenarioID $releaseScenarioID
         if ($LASTEXITCODE -ne 0) { throw "Windows release smoke test failed." }
     }
 
