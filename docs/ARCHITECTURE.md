@@ -139,6 +139,8 @@ app.Session ──脱敏快照 + 会话历史──> internal/ai ──> Anthrop
 
 正式表现资源通过 `LocationVisualProfile`、`ActorVisualProfile` 和 `presentation_registry.gd` 注册。已注册地点使用位图背景，未注册地点继续使用 `location_stage.gd` 的程序化 fallback。`audio_director.gd` 建立 Music、Ambient、Event、UI 总线，地点环境声按 `scene_key` 交叉淡入。
 
+Godot 客户端外壳的字体角色、最小可读字号、字号阶梯、语义色和通用控件样式统一由 `godot/ui/theme/app_visual_theme.gd` 提供。`main.gd` 上的字体、`TYPE_SCALE` 与 `COLORS` 只是屏幕控制器迁移期间的兼容别名，不得形成第二份默认值。世界专属素材、人物强调色和地图标记颜色仍由内容包 `presentation.yml` 与资源注册层提供；程序化场景绘景可以保留不表达界面状态的局部画面色板。
+
 应用层通过 `TurnFeedback.presentation` 返回公开表现提示（例如 `travel`、`reveal`、`actor_focus`、`acquire`）。提示只描述已经结算的表现类型、强度和公开主体，不包含概率、隐藏目标或未发生结果。地图移动动画结束前客户端暂时阻止提交下一行动，但不会延迟或重复执行后端结算。
 
 地图坐标、场景键、地点描述和氛围文本属于场景公开表现数据，保存在 `data/blackwind/locations.yml`。远处 NPC 的实时位置、数量、目标和路线不进入 `PlayerView`；地图只在当前位置显示实际可见人物数量。路线按钮只提交应用层提供的 `move:*` 动作 ID，Godot 不复刻物品、开放时间或期限规则。

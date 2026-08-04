@@ -16,14 +16,11 @@ const PresentationRegistryScript = preload("res://scripts/presentation_registry.
 const AudioDirectorScript = preload("res://scripts/audio_director.gd")
 const CinematicDirectorScript = preload("res://scripts/cinematic_director.gd")
 const PrologueDirectorScript = preload("res://scripts/prologue_director.gd")
+const AppVisualThemeScript = preload("res://ui/theme/app_visual_theme.gd")
 const CausalSealTexture = preload("res://assets/ui/causal/causal-seal.png")
 const DecisionFrameTexture = preload("res://assets/ui/causal/decision-frame.png")
 const TimelineArrowTexture = preload("res://assets/ui/causal/timeline-arrow.png")
 const StartBackgroundTexture = preload("res://assets/locations/market/background.png")
-const SourceHanSansFont = preload("res://assets/fonts/SourceHanSansCN-Regular.otf")
-const SourceHanSansMediumFont = preload("res://assets/fonts/SourceHanSansCN-Medium.otf")
-const SourceHanSerifFont = preload("res://assets/fonts/SourceHanSerifCN-SemiBold.otf")
-const WenKaiFont = preload("res://assets/fonts/LXGWWenKaiLite-Regular.ttf")
 const AIDialogueClientScript = preload("res://scripts/ai/dialogue_client.gd")
 const APIResponseAdapterScript = preload("res://scripts/api_response_adapter.gd")
 const LocalServerProcessScript = preload("res://scripts/local_server_process.gd")
@@ -58,40 +55,10 @@ const DISPLAY_RESOLUTION_PRESETS: Array[Vector2i] = [
 ]
 const UI_SCALE_PRESETS: Array[float] = [1.0, 1.25, 1.5, 1.75]
 const MINIMUM_UI_CANVAS := Vector2i(1100, 700)
-const MIN_READABLE_TEXT_SIZE := 14
+const MIN_READABLE_TEXT_SIZE := AppVisualThemeScript.MIN_READABLE_TEXT_SIZE
 const DIAGNOSTIC_FILE_MAX_BYTES := 25 * 1024 * 1024
-const TYPE_SCALE := {
-	"display": 60,
-	"brand": 28,
-	"title": 28,
-	"headline": 22,
-	"section": 20,
-	"metric": 18,
-	"body": 17,
-	"compact": 15,
-	"detail": 14,
-	"meta": 14,
-	"caption": 14,
-	"button": 16,
-}
-const COLORS := {
-	"bg": Color("090c0a"),
-	"bg_lift": Color("101712"),
-	"panel": Color("121713"),
-	"panel_alt": Color("1a231d"),
-	"panel_hover": Color("232e26"),
-	"line": Color("344039"),
-	"line_soft": Color("242e28"),
-	"ink": Color("f2ebdd"),
-	"muted": Color("a9b3a6"),
-	"accent": Color("d6ae62"),
-	"accent_hover": Color("e4c079"),
-	"accent_pressed": Color("b98e47"),
-	"accent_ink": Color("15110a"),
-	"danger": Color("c46352"),
-	"danger_deep": Color("8f352c"),
-	"success": Color("82aa78"),
-}
+const TYPE_SCALE := AppVisualThemeScript.TYPE_SCALE
+const COLORS := AppVisualThemeScript.COLORS
 
 
 var runtime_logger_controller

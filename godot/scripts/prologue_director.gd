@@ -2,9 +2,10 @@ extends Control
 
 signal playback_finished(skipped: bool)
 
-const BodyFont = preload("res://assets/fonts/SourceHanSansCN-Regular.otf")
-const DisplayFont = preload("res://assets/fonts/SourceHanSerifCN-SemiBold.otf")
-const NarrativeFont = preload("res://assets/fonts/LXGWWenKaiLite-Regular.ttf")
+const AppVisualThemeScript = preload("res://ui/theme/app_visual_theme.gd")
+const BodyFont = AppVisualThemeScript.BodyFont
+const DisplayFont = AppVisualThemeScript.DisplayFont
+const NarrativeFont = AppVisualThemeScript.NarrativeFont
 
 var background: TextureRect
 var beat_label: Label

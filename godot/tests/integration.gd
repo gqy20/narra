@@ -23,6 +23,13 @@ func _run() -> void:
 		return _fail("display typography is not using bundled Source Han Serif")
 	if app.narrative_font.resource_path != "res://assets/fonts/LXGWWenKaiLite-Regular.ttf":
 		return _fail("narrative typography is not using LXGW WenKai Lite")
+	if app.theme.default_font != app.AppVisualThemeScript.BodyFont:
+		return _fail("root theme does not come from the shared visual-theme authority")
+	if app.TYPE_SCALE.body != app.AppVisualThemeScript.TYPE_SCALE.body or app.COLORS.accent != app.AppVisualThemeScript.COLORS.accent:
+		return _fail("main compatibility tokens drifted from the visual-theme authority")
+	var theme_style: StyleBoxFlat = app.AppVisualThemeScript.panel_style(Color.BLACK, 1, 3, Color.WHITE, 7, 9)
+	if theme_style.border_width_left != 1 or theme_style.corner_radius_top_left != 3 or theme_style.content_margin_left != 7 or theme_style.content_margin_top != 9:
+		return _fail("shared visual-theme style factory lost its layout contract")
 	var minimum_size_probe_parent = VBoxContainer.new()
 	app.add_child(minimum_size_probe_parent)
 	var minimum_size_probe = app.game_screen_controller._text(minimum_size_probe_parent, "", false, 1)

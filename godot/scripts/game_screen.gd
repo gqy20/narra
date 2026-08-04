@@ -8,49 +8,18 @@ func _init(value) -> void:
 
 
 func _configure_theme() -> void:
-	host.body_font = host.SourceHanSansFont
-	host.medium_font = host.SourceHanSansMediumFont
-	host.display_font = host.SourceHanSerifFont
-	host.narrative_font = host.WenKaiFont
-	var app_theme = Theme.new()
-	app_theme.default_font = host.body_font
-	app_theme.default_font_size = host.TYPE_SCALE.body
-	app_theme.set_font("font", "Button", host.medium_font)
-	app_theme.set_font("font", "MenuButton", host.medium_font)
-	app_theme.set_font("font", "TabBar", host.medium_font)
-	app_theme.set_color("font_color", "Label", host.COLORS.ink)
-	app_theme.set_color("font_color", "Button", host.COLORS.ink)
-	app_theme.set_color("font_hover_color", "Button", host.COLORS.ink)
-	app_theme.set_color("font_pressed_color", "Button", host.COLORS.ink)
-	app_theme.set_color("font_focus_color", "Button", host.COLORS.ink)
-	app_theme.set_color("font_disabled_color", "Button", Color(host.COLORS.muted, 0.45))
-	app_theme.set_color("font_color", "LineEdit", host.COLORS.ink)
-	app_theme.set_color("font_placeholder_color", "LineEdit", Color(host.COLORS.muted, 0.62))
-	app_theme.set_color("caret_color", "LineEdit", host.COLORS.accent)
-	app_theme.set_color("selection_color", "LineEdit", Color(host.COLORS.accent, 0.28))
-	app_theme.set_stylebox("panel", "TabContainer", host.game_screen_controller._panel_style(Color.TRANSPARENT, 0, 0))
-	app_theme.set_stylebox("tab_selected", "TabBar", host.game_screen_controller._tab_style(host.COLORS.panel_hover, host.COLORS.accent))
-	app_theme.set_stylebox("tab_hovered", "TabBar", host.game_screen_controller._tab_style(host.COLORS.panel_alt, host.COLORS.line))
-	app_theme.set_stylebox("tab_unselected", "TabBar", host.game_screen_controller._tab_style(Color.TRANSPARENT, Color.TRANSPARENT))
-	app_theme.set_color("font_selected_color", "TabBar", host.COLORS.accent)
-	app_theme.set_color("font_hovered_color", "TabBar", host.COLORS.ink)
-	app_theme.set_color("font_unselected_color", "TabBar", host.COLORS.muted)
-	app_theme.set_stylebox("scroll", "VScrollBar", host.game_screen_controller._panel_style(Color.TRANSPARENT, 0, 0, Color.TRANSPARENT, 0, 0))
-	app_theme.set_stylebox("grabber", "VScrollBar", host.game_screen_controller._panel_style(Color(host.COLORS.line, 0.82), 0, 4, Color.TRANSPARENT, 0, 0))
-	app_theme.set_stylebox("grabber_highlight", "VScrollBar", host.game_screen_controller._panel_style(host.COLORS.accent_pressed, 0, 4, Color.TRANSPARENT, 0, 0))
-	app_theme.set_stylebox("grabber_pressed", "VScrollBar", host.game_screen_controller._panel_style(host.COLORS.accent, 0, 4, Color.TRANSPARENT, 0, 0))
-	app_theme.set_constant("minimum_grab_thickness", "VScrollBar", 28)
-	app_theme.set_stylebox("panel", "TooltipPanel", host.game_screen_controller._panel_style(host.COLORS.panel_alt, 1, 5, host.COLORS.line, 10, 8))
-	app_theme.set_color("font_color", "TooltipLabel", host.COLORS.ink)
-	app_theme.set_font_size("font_size", "TooltipLabel", host.TYPE_SCALE.meta)
-	host.theme = app_theme
+	host.body_font = host.AppVisualThemeScript.BodyFont
+	host.medium_font = host.AppVisualThemeScript.MediumFont
+	host.display_font = host.AppVisualThemeScript.DisplayFont
+	host.narrative_font = host.AppVisualThemeScript.NarrativeFont
+	host.theme = host.AppVisualThemeScript.build_theme()
 
 
 func _build_interface() -> void:
 	var background = TextureRect.new()
 	var gradient = Gradient.new()
 	gradient.offsets = PackedFloat32Array([0.0, 0.46, 1.0])
-	gradient.colors = PackedColorArray([host.COLORS.bg_lift, host.COLORS.bg, Color("060806")])
+	gradient.colors = PackedColorArray([host.COLORS.bg_lift, host.COLORS.bg, host.COLORS.bg_deep])
 	var gradient_texture = GradientTexture2D.new()
 	gradient_texture.gradient = gradient
 	gradient_texture.width = 1024
@@ -458,27 +427,17 @@ func _zone(parent: VBoxContainer, title_text: String, ratio: float) -> VBoxConta
 	return box
 
 
-func _panel_style(color: Color, border: int, radius: int, border_color := Color("344039"), horizontal_margin := 16, vertical_margin := 14) -> StyleBoxFlat:
-	var style = StyleBoxFlat.new()
-	style.bg_color = color
-	style.border_color = border_color
-	style.set_border_width_all(border)
-	style.set_corner_radius_all(radius)
-	style.content_margin_left = horizontal_margin
-	style.content_margin_right = horizontal_margin
-	style.content_margin_top = vertical_margin
-	style.content_margin_bottom = vertical_margin
-	return style
+func _panel_style(color: Color, border: int, radius: int, border_color: Variant = null, horizontal_margin := 16, vertical_margin := 14) -> StyleBoxFlat:
+	var resolved_border_color: Color = host.COLORS.line if border_color == null else border_color
+	return host.AppVisualThemeScript.panel_style(color, border, radius, resolved_border_color, horizontal_margin, vertical_margin)
 
 
 func _tab_style(color: Color, border_color: Color) -> StyleBoxFlat:
-	var style = host.game_screen_controller._panel_style(color, 0, 5, border_color, 12, 8)
-	style.border_width_bottom = 2 if border_color.a > 0.0 else 0
-	return style
+	return host.AppVisualThemeScript.tab_style(color, border_color)
 
 
 func _input_style(color: Color, border_color: Color) -> StyleBoxFlat:
-	return host.game_screen_controller._panel_style(color, 1, 6, border_color, 16, 11)
+	return host.AppVisualThemeScript.input_style(color, border_color)
 
 
 func _button(text_value: String, callback: Callable, secondary: bool) -> Button:
