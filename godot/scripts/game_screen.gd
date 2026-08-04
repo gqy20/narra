@@ -306,6 +306,7 @@ func _build_world_stage(parent: VBoxContainer) -> void:
 	host.visual_stack.add_child(host.map_panel)
 	host.world_map_view = host.WorldMapViewScript.new()
 	host.world_map_view.presentation_registry = host.presentation_registry
+	host.world_map_view.display_font = host.display_font
 	host.world_map_view.minimum_font_size = host.MIN_READABLE_TEXT_SIZE
 	host.world_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	host.world_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -757,36 +758,30 @@ func _on_map_location_selected(location_id: String) -> void:
 
 func _render_map_detail(world_map: Dictionary, current_location: Dictionary, actions: Array) -> void:
 	host.game_screen_controller._clear(host.map_detail_box)
-	var map_title = str(host.scenario_presentation.get("world_title", host.current_view.get("title", "世界地图")))
-	var eyebrow = host.game_screen_controller._text(host.map_detail_box, "%s · 路线沙盘" % map_title, true, host.TYPE_SCALE.meta)
-	eyebrow.add_theme_color_override("font_color", host.COLORS.accent)
-	var guidance = host.game_screen_controller._text(host.map_detail_box, "选择地点，查看人物、耗时与道路风险。", true, host.TYPE_SCALE.detail)
-	guidance.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var map_separator = HSeparator.new()
-	map_separator.add_theme_color_override("separator", Color(host.COLORS.accent, 0.24))
-	host.map_detail_box.add_child(map_separator)
 	var selected = host.game_screen_controller._map_location(world_map.get("locations", []), host.selected_map_location_id)
 	if selected.is_empty():
-		host.game_screen_controller._text(host.map_detail_box, "选择地点查看路线", false, 18)
+		host.game_screen_controller._text(host.map_detail_box, "选择一个地点", true, host.TYPE_SCALE.body)
 		return
 	var title_line = host.game_screen_controller._text(host.map_detail_box, str(selected.get("name", "未知地点")), false, host.TYPE_SCALE.headline)
 	title_line.add_theme_font_override("font", host.display_font)
 	title_line.add_theme_color_override("font_color", host.COLORS.accent if bool(selected.get("current", false)) else host.COLORS.ink)
-	var place_state = "当前据点" if bool(selected.get("current", false)) else ("安全落脚点" if bool(selected.get("safe", false)) else "危险区域")
-	var state_line = host.game_screen_controller._text(host.map_detail_box, place_state, false, 13)
-	state_line.add_theme_color_override("font_color", host.COLORS.accent if bool(selected.get("current", false)) else (host.COLORS.success if bool(selected.get("safe", false)) else host.COLORS.danger))
-	host.game_screen_controller._text(host.map_detail_box, str(selected.get("description", "尚无公开地点资料")), true, 13)
+	if not bool(selected.get("current", false)):
+		var place_state = "安全落脚点" if bool(selected.get("safe", false)) else "危险区域"
+		var state_line = host.game_screen_controller._text(host.map_detail_box, place_state, true, host.TYPE_SCALE.meta)
+		state_line.add_theme_color_override("font_color", host.COLORS.success if bool(selected.get("safe", false)) else host.COLORS.danger)
+	var description = host.game_screen_controller._text(host.map_detail_box, str(selected.get("description", "尚无公开地点资料")), true, host.TYPE_SCALE.compact)
+	description.add_theme_constant_override("line_spacing", 6)
 	if bool(selected.get("contest", false)):
 		var contest_line = host.game_screen_controller._text(host.map_detail_box, "核心目标 · %s" % host.scenario_presentation.get("objective", "目标将在这里落定"), false, 13)
 		contest_line.add_theme_color_override("font_color", host.COLORS.accent)
 	host.game_screen_controller._render_map_actor_plans(host.map_detail_box, world_map.get("actors", []), host.selected_map_location_id)
 	if bool(selected.get("current", false)):
 		host.journal_panel_controller._render_route_progresses(host.map_detail_box, host.current_view.get("route_progresses", []), true)
-		var hint = host.game_screen_controller._text(host.map_detail_box, "沙盘上的金色道路当前可以通行。", true, 12)
-		hint.add_theme_color_override("font_color", host.COLORS.muted)
 		var current_spacer = Control.new()
 		current_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		host.map_detail_box.add_child(current_spacer)
+		var hint = host.game_screen_controller._text(host.map_detail_box, "金色路线 · 当前可通行", true, host.TYPE_SCALE.meta)
+		hint.add_theme_color_override("font_color", Color(host.COLORS.accent, 0.72))
 		var enter_button = host.game_screen_controller._utility_button("回到眼前", host.game_screen_controller._set_visual_mode.bind("location"))
 		enter_button.custom_minimum_size.y = 42
 		host.map_detail_box.add_child(enter_button)
@@ -826,18 +821,46 @@ func _render_map_actor_plans(parent: VBoxContainer, actor_plans, location_id: St
 	var separator = HSeparator.new()
 	separator.modulate = Color(host.COLORS.accent, 0.28)
 	parent.add_child(separator)
-	var heading = host.game_screen_controller._text(parent, "此地人物动向 · %d" % visible.size(), true, 13)
+	var heading = host.game_screen_controller._text(parent, "人物动向 · %d" % visible.size(), true, host.TYPE_SCALE.meta)
 	heading.add_theme_color_override("font_color", host.COLORS.accent)
+	var shared_plan: String = host.game_screen_controller._shared_actor_plan_value(visible, "plan")
+	var shared_reason: String = host.game_screen_controller._shared_actor_plan_value(visible, "reason")
 	for plan in visible:
-		var status_line = host.game_screen_controller._text(parent, "%s · %s" % [plan.get("name", "无名者"), plan.get("status", "观望")], false, 14)
-		status_line.add_theme_color_override("font_color", host.COLORS.success if str(plan.get("status", "")) == "行动中" else host.COLORS.ink)
-		host.game_screen_controller._text(parent, str(plan.get("plan", "观察局势")), true, 13)
-		host.game_screen_controller._text(parent, "缘由 · %s" % plan.get("reason", "尚未公开"), true, 12)
+		var card = PanelContainer.new()
+		card.add_theme_stylebox_override("panel", host.game_screen_controller._panel_style(Color(host.COLORS.panel_alt, 0.34), 1, 4, Color(host.COLORS.line, 0.34), 12, 10))
+		parent.add_child(card)
+		var content = VBoxContainer.new()
+		content.add_theme_constant_override("separation", 4)
+		card.add_child(content)
+		var status_line = host.game_screen_controller._text(content, str(plan.get("status", "观望")), true, host.TYPE_SCALE.meta)
+		status_line.add_theme_color_override("font_color", host.COLORS.success if str(plan.get("status", "")) == "行动中" else host.COLORS.muted)
+		var name_line = host.game_screen_controller._text(content, str(plan.get("name", "无名者")), false, host.TYPE_SCALE.body)
+		name_line.add_theme_font_override("font", host.medium_font)
+		if shared_plan == "":
+			host.game_screen_controller._text(content, str(plan.get("plan", "观察局势")), true, host.TYPE_SCALE.compact)
+		if shared_reason == "":
+			host.game_screen_controller._text(content, "缘由 · %s" % plan.get("reason", "尚未公开"), true, host.TYPE_SCALE.meta)
 		if str(plan.get("destination_name", "")) != "":
-			host.game_screen_controller._text(parent, "去向 · %s · 预计第 %d 日" % [plan.get("destination_name", "未知地点"), int(plan.get("expected_day", 0))], true, 12)
+			host.game_screen_controller._text(content, "去向 · %s · 预计第 %d 日" % [plan.get("destination_name", "未知地点"), int(plan.get("expected_day", 0))], true, host.TYPE_SCALE.meta)
 		if bool(plan.get("changed_by_player", false)):
-			var changed = host.game_screen_controller._text(parent, "因你改变 · 原本%s" % plan.get("previous_plan", "另有安排"), true, 12)
+			var changed = host.game_screen_controller._text(content, "因你改变 · 原本%s" % plan.get("previous_plan", "另有安排"), true, host.TYPE_SCALE.meta)
 			changed.add_theme_color_override("font_color", host.COLORS.accent)
+	if shared_plan != "":
+		host.game_screen_controller._text(parent, "共同动向 · %s" % shared_plan, true, host.TYPE_SCALE.meta)
+	if shared_reason != "":
+		host.game_screen_controller._text(parent, "共同判断 · %s" % shared_reason, true, host.TYPE_SCALE.meta)
+
+
+func _shared_actor_plan_value(plans: Array, key: String) -> String:
+	if plans.size() < 2:
+		return ""
+	var shared := str(plans[0].get(key, ""))
+	if shared == "":
+		return ""
+	for plan in plans:
+		if str(plan.get(key, "")) != shared:
+			return ""
+	return shared
 
 
 func _render_location_stage(location: Dictionary, actors: Array, actions: Array) -> void:

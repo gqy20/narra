@@ -64,10 +64,19 @@ func _run() -> void:
 			break
 	if direct_route.is_empty() or app.world_map_view._route_destination(direct_route) != "L02":
 		return _fail("raised map routes are not selectable navigation targets")
+	if app.world_map_view.visible_route_mark_count() != 0:
+		return _fail("world map shows route duration badges before route focus")
+	app.world_map_view.hovered_route_key = app.world_map_view._route_key(direct_route)
+	if app.world_map_view.visible_route_mark_count() != 1:
+		return _fail("world map does not reveal exactly one focused route duration")
+	app.world_map_view.hovered_route_key = ""
+	if app.world_map_view.visible_actor_token_count() > 2:
+		return _fail("world map exposes more than two actor chips in the focused location plate")
 	app.game_screen_controller._set_visual_mode("map")
 	var map_text := _descendant_text(app.map_detail_box)
-	if not (app.map_panel is HBoxContainer) or "路线沙盘" not in map_text or "选择地点，查看人物、耗时与道路风险" not in map_text:
-		return _fail("world map did not expose the 2.5D sandbox and fixed route detail panel")
+	var current_map_name := str(app.current_view.get("location", {}).get("name", ""))
+	if not (app.map_panel is HBoxContainer) or "路线沙盘" in map_text or "选择地点，查看人物、耗时与道路风险" in map_text or current_map_name not in map_text:
+		return _fail("world map detail panel did not preserve the reduced location hierarchy")
 	app.game_screen_controller._set_visual_mode("location")
 	var action_text := _descendant_text(app.overview_actions_box)
 	var contextual_actions: Array = app.action_panel_controller._location_context_actions(actions)
@@ -156,7 +165,7 @@ func _run() -> void:
 	var qinglan_map_text := _descendant_text(app.map_detail_box)
 	if "前往青岚门驻地" not in qinglan_map_text:
 		return _fail("map travel call to action does not name its destination")
-	if "此地人物动向" not in qinglan_map_text or "沈砚秋" not in qinglan_map_text or "当前" not in qinglan_map_text:
+	if "人物动向" not in qinglan_map_text or "沈砚秋" not in qinglan_map_text:
 		return _fail("map detail does not explain who is acting at the selected place")
 	app.game_screen_controller._set_visual_mode("location")
 	if not app.location_panel.visible or app.map_panel.visible or not app.action_dock.visible:

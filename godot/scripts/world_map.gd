@@ -35,6 +35,7 @@ var travel_end_day := 0
 var emitted_travel_day := -1
 var travel_tween: Tween
 var presentation_registry = PresentationRegistryScript.new()
+var display_font: Font
 var minimum_font_size := 14
 
 
@@ -102,6 +103,19 @@ func has_formal_assets() -> bool:
 
 func has_actor_plan_presentation() -> bool:
 	return not actors.is_empty()
+
+
+func visible_route_mark_count() -> int:
+	return 1 if hovered_route_key != "" else 0
+
+
+func visible_actor_token_count() -> int:
+	if travel_active:
+		return 0
+	var current_id := _current_location_id()
+	if selected_id != current_id:
+		return 0
+	return mini(_actors_at_location(current_id).size(), 2)
 
 
 func select_location(location_id: String) -> void:
@@ -190,7 +204,7 @@ func _reset_parallax() -> void:
 
 func _draw() -> void:
 	var bounds := _map_bounds()
-	var route_labels: Array = []
+	var current_id := _current_location_id()
 	_draw_terrain()
 	for route in _display_routes():
 		var from := _location_by_id(str(route.get("from_id", "")))
@@ -200,39 +214,36 @@ func _draw() -> void:
 		var from_position := _location_position(from, bounds)
 		var to_position := _location_position(to, bounds)
 		var status := str(route.get("status", "known"))
-		var color := LINE
-		var width := 2.0
-		if status == "available":
+		var touches_current := _route_touches_location(route, current_id)
+		var color := Color(LINE, 0.56)
+		var width := 1.6
+		if status == "available" and touches_current:
 			color = Color(ACCENT, 0.92)
-			width = 4.0
+			width = 3.2
 		elif status == "blocked":
-			color = Color(DANGER, 0.78)
+			color = Color(LINE, 0.46)
 		var curve := _route_curve(from_position, to_position)
 		var hovered := _route_key(route) == hovered_route_key
 		if hovered:
-			color = color.lightened(0.22)
-			width += 2.0
+			color = Color(ACCENT, 0.96) if status != "blocked" else Color(DANGER, 0.84)
+			width = maxf(width + 1.4, 3.0)
 		var shadow_curve := PackedVector2Array()
 		for point in curve:
-			shadow_curve.append(point + Vector2(3, 9))
-		draw_polyline(shadow_curve, Color("020403a8"), width + 8.0, true)
-		draw_polyline(curve, Color(color, 0.24), width + 7.0, true)
+			shadow_curve.append(point + Vector2(1, 4))
+		draw_polyline(shadow_curve, Color("0204038f"), width + 3.0, true)
+		draw_polyline(curve, Color(color, 0.16), width + 2.0, true)
 		draw_polyline(curve, color, width, true)
-		draw_polyline(curve, Color(color.lightened(0.28), 0.72), 1.0, true)
-		if status == "available":
+		if width >= 3.0:
+			draw_polyline(curve, Color(color.lightened(0.28), 0.56), 1.0, true)
+		if status == "available" and touches_current:
 			_draw_route_flow(curve, color)
 		elif status == "blocked":
-			_draw_blocked_route(curve, color)
-		route_labels.append({"curve": curve, "route": route, "color": color})
-
-	# Draw duration plaques after every road so another route can never cross over them.
-	for label_data in route_labels:
-		_draw_route_mark(label_data.get("curve", PackedVector2Array()), label_data.get("route", {}), label_data.get("color", LINE))
+			_draw_blocked_route(curve, Color(DANGER, 0.76))
+		if hovered:
+			_draw_route_mark(curve, route, color)
 
 	for location in locations:
 		_draw_location(location, bounds)
-	for index in actors.size():
-		_draw_actor_plan(actors[index], bounds, index)
 	if travel_active:
 		_draw_travel_marker(bounds)
 
@@ -304,8 +315,7 @@ func _draw_route_flow(curve: PackedVector2Array, color: Color) -> void:
 
 func _draw_blocked_route(curve: PackedVector2Array, color: Color) -> void:
 	var center := _sample_curve(curve, 0.5)
-	draw_line(center - Vector2(7, 7), center + Vector2(7, 7), color, 2.0, true)
-	draw_line(center + Vector2(7, -7), center - Vector2(7, -7), color, 2.0, true)
+	draw_arc(center, 6.0, -0.72, 0.72, 8, color, 2.0, true)
 
 
 func _draw_location(location: Dictionary, bounds: Rect2) -> void:
@@ -313,9 +323,10 @@ func _draw_location(location: Dictionary, bounds: Rect2) -> void:
 	var location_id := str(location.get("id", ""))
 	var current := bool(location.get("current", false))
 	var contest := bool(location.get("contest", false))
+	var unsafe := not bool(location.get("safe", false))
 	var hovered := location_id == hovered_id
 	var selected := location_id == selected_id
-	var state_color := SAFE if bool(location.get("safe", false)) else DANGER
+	var state_color := LINE if unsafe else SAFE
 	var border_color := ACCENT if current or selected or hovered else Color(state_color, 0.82)
 	var radius := 11.0 if selected or hovered else 8.0
 	var beacon := position - Vector2(0, 15.0 if selected or hovered else 11.0)
@@ -329,25 +340,68 @@ func _draw_location(location: Dictionary, bounds: Rect2) -> void:
 	draw_circle(beacon, radius, border_color, false, 2.0, true)
 	draw_circle(beacon, 3.0, border_color)
 	if current and not travel_active:
-		var halo_radius := radius + 13.0 + (sin(pulse * 2.0) * 2.0 if motion_enabled else 0.0)
-		draw_circle(beacon, halo_radius, Color(ACCENT, 0.44), false, 1.5, true)
-	if contest:
-		draw_arc(beacon, radius + 18.0, -PI * 0.85, PI * 0.75, 28, Color(DANGER, 0.72), 2.0, true)
+		var halo_radius := radius + 10.0 + (sin(pulse * 2.0) * 1.5 if motion_enabled else 0.0)
+		draw_circle(beacon, halo_radius, Color(ACCENT, 0.38), false, 1.5, true)
+	if contest or unsafe:
+		draw_arc(beacon, radius + 7.0, 0.10, 0.82, 9, Color(DANGER, 0.82), 2.0, true)
 
 	var font := get_theme_default_font()
 	var name := str(location.get("name", "未知地点"))
+	if current and selected and not travel_active:
+		_draw_location_plate(location, beacon, bounds)
+		return
 	var label_color := ACCENT if current or selected else INK
-	var label_width := 132.0
+	var label_width := 124.0
 	var label_position := position + Vector2(-label_width * 0.5, 40)
 	draw_string(font, label_position + Vector2(1, 1), name, HORIZONTAL_ALIGNMENT_CENTER, label_width, _font_size(15), Color("030504"))
 	draw_string(font, label_position, name, HORIZONTAL_ALIGNMENT_CENTER, label_width, _font_size(15), label_color)
-	if current and not travel_active:
-		draw_string(font, beacon + Vector2(-26, -25), "此刻", HORIZONTAL_ALIGNMENT_CENTER, 52, _font_size(12), ACCENT)
-	elif contest:
-		draw_string(font, beacon + Vector2(-30, -25), presentation_registry.ui_text("map_contest_location"), HORIZONTAL_ALIGNMENT_CENTER, 60, _font_size(12), Color("d87761"))
-	var actor_count := int(location.get("actor_count", 0))
-	if actor_count > 0 and not travel_active:
-		draw_string(font, position + Vector2(-36, 59), "%d 人在场" % actor_count, HORIZONTAL_ALIGNMENT_CENTER, 72, _font_size(11), MUTED)
+
+
+func _draw_location_plate(location: Dictionary, beacon: Vector2, bounds: Rect2) -> void:
+	var actor_count := _actors_at_location(str(location.get("id", ""))).size()
+	var available_count := _available_route_count(str(location.get("id", "")))
+	var plate_size := Vector2(204, 82)
+	var left_space := beacon.x - 30.0
+	var right_space := size.x - beacon.x - 30.0
+	var place_left := left_space >= plate_size.x or left_space > right_space
+	var plate_position := Vector2(beacon.x - plate_size.x - 28.0, beacon.y - 48.0) if place_left else Vector2(beacon.x + 28.0, beacon.y - 48.0)
+	plate_position.x = clampf(plate_position.x, bounds.position.x - 72.0, size.x - plate_size.x - 22.0)
+	plate_position.y = clampf(plate_position.y, 24.0, size.y - plate_size.y - 26.0)
+	var plate_rect := Rect2(plate_position, plate_size)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("0a100ded")
+	style.border_color = Color(ACCENT, 0.46)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(4)
+	style.shadow_color = Color("020403a8")
+	style.shadow_size = 7
+	style.shadow_offset = Vector2(3, 6)
+	draw_style_box(style, plate_rect)
+	var connector_start := Vector2(plate_rect.end.x, beacon.y) if place_left else Vector2(plate_rect.position.x, beacon.y)
+	draw_line(connector_start, beacon + Vector2(-10 if place_left else 10, 0), Color(ACCENT, 0.62), 1.0, true)
+	var font := get_theme_default_font()
+	var title_font := display_font if display_font != null else font
+	draw_string(font, plate_position + Vector2(14, 20), "当前据点", HORIZONTAL_ALIGNMENT_LEFT, 112, _font_size(12), Color(ACCENT, 0.86))
+	draw_string(title_font, plate_position + Vector2(14, 49), str(location.get("name", "未知地点")), HORIZONTAL_ALIGNMENT_LEFT, 158, _font_size(21), ACCENT)
+	var summary := "%d人在场 · 可通行路线 %d" % [actor_count, available_count]
+	draw_string(font, plate_position + Vector2(14, 71), summary, HORIZONTAL_ALIGNMENT_LEFT, 166, _font_size(12), MUTED)
+	_draw_plate_actor_chips(str(location.get("id", "")), plate_rect)
+
+
+func _draw_plate_actor_chips(location_id: String, plate_rect: Rect2) -> void:
+	var local_actors := _actors_at_location(location_id)
+	var visible_count := mini(local_actors.size(), 2)
+	for index in visible_count:
+		var actor: Dictionary = local_actors[index]
+		var actor_id := str(actor.get("id", ""))
+		var position := plate_rect.position + Vector2(plate_rect.size.x - 17.0, 24.0 + index * 28.0)
+		var color := presentation_registry.actor_token_color(actor_id, ACCENT)
+		draw_circle(position + Vector2(1, 3), 11.0, Color("020403a6"))
+		draw_circle(position, 10.0, Color("0b110edf"))
+		draw_circle(position, 10.0, color, false, 1.5, true)
+		var name := str(actor.get("name", "?"))
+		var mark := name.substr(0, 1) if not name.is_empty() else "?"
+		draw_string(get_theme_default_font(), position + Vector2(-9, 5), mark, HORIZONTAL_ALIGNMENT_CENTER, 18, _font_size(12), color.lightened(0.24))
 
 
 func _draw_actor_plan(actor: Dictionary, bounds: Rect2, index: int) -> void:
@@ -392,7 +446,10 @@ func _route_curve(from_position: Vector2, to_position: Vector2) -> PackedVector2
 	var delta := to_position - from_position
 	var normal := Vector2(-delta.y, delta.x).normalized()
 	var direction := 1.0 if from_position.x <= to_position.x else -1.0
-	var control := from_position.lerp(to_position, 0.5) + normal * minf(34.0, delta.length() * 0.10) * direction
+	var curvature := minf(42.0, delta.length() * 0.14)
+	if absf(delta.x) < 72.0 and absf(delta.y) > 140.0:
+		curvature = minf(72.0, delta.length() * 0.24)
+	var control := from_position.lerp(to_position, 0.5) + normal * curvature * direction
 	var points := PackedVector2Array()
 	for index in 17:
 		var t := float(index) / 16.0
@@ -428,6 +485,35 @@ func _display_routes() -> Array:
 		if not by_edge.has(key) or str(route.get("status", "known")) != "known":
 			by_edge[key] = route
 	return by_edge.values()
+
+
+func _current_location_id() -> String:
+	for location in locations:
+		if bool(location.get("current", false)):
+			return str(location.get("id", ""))
+	return ""
+
+
+func _route_touches_location(route: Dictionary, location_id: String) -> bool:
+	if location_id == "":
+		return false
+	return str(route.get("from_id", "")) == location_id or str(route.get("to_id", "")) == location_id
+
+
+func _available_route_count(location_id: String) -> int:
+	var count := 0
+	for route in _display_routes():
+		if str(route.get("status", "known")) == "available" and _route_touches_location(route, location_id):
+			count += 1
+	return count
+
+
+func _actors_at_location(location_id: String) -> Array:
+	var result: Array = []
+	for actor in actors:
+		if str(actor.get("location_id", "")) == location_id:
+			result.append(actor)
+	return result
 
 
 func _map_bounds() -> Rect2:

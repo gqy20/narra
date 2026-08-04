@@ -78,3 +78,44 @@ No actionable P0, P1, or P2 issue remains in the implemented path.
 - P3: dedicated text-scaling and ultrawide validation remains separate platform QA beyond the fixed desktop viewport used by the current game build.
 
 final result: passed
+
+---
+
+# Map option 2 design QA
+
+- Source visual truth: `C:\Users\gqy17\.codex\generated_images\019fca61-1e4c-7b50-89ad-4c3567c6b7c0\exec-6ef5cb59-82f8-4b1b-88c1-b51feab8eb76.png`
+- Rendered implementation: `C:\Users\gqy17\.codex\visualizations\2026\08\04\019fca61-1e4c-7b50-89ad-4c3567c6b7c0\map-option-2\ui-map-final-1600x900.png`
+- Full comparison: `C:\Users\gqy17\.codex\visualizations\2026\08\04\019fca61-1e4c-7b50-89ad-4c3567c6b7c0\map-option-2\design-qa-map-full.png`
+- Focused comparison: `C:\Users\gqy17\.codex\visualizations\2026\08\04\019fca61-1e4c-7b50-89ad-4c3567c6b7c0\map-option-2\design-qa-map-focus.png`
+- State: Tianqi, day 1, map mode, current location selected, motion settled.
+- Viewport: Godot internal canvas 1600×900 at density 1. Movie-writer output was also checked at 1280×800 and 1920×1080.
+- Density normalization: source pixels 1587×991; source content crop 1587×921 was resized to 1189×689. Implementation pixels 1600×900; the 1189×689 map canvas was cropped at its native density. The two 1189×689 regions were compared side by side.
+
+## Fidelity surfaces
+
+- Fonts and typography: the focused location uses the bundled Source Han Serif display font, a gold 21 px title, and the repository-wide 14 px readable-text floor. Ordinary map labels retain the bundled sans font. No clipping or unreadably small labels remain.
+- Spacing and layout rhythm: node topology and the compact side-mounted plate follow the selected composition. Route labels no longer occupy every edge; the plate clears the node and nearby routes at the captured state.
+- Colors and visual tokens: gold is reserved for current traversable routes and the current-location hierarchy; ordinary routes use muted gray-green; unsafe locations use a small red notch instead of a full persistent warning halo.
+- Image quality and asset fidelity: the implementation keeps the registered antique-map terrain texture at native quality. The source and implementation use different viewport crops but the same art direction and background treatment.
+- Copy and content: the implementation keeps authoritative live data. It reports four current traversable routes rather than the concept image's illustrative three. The right detail panel removes the redundant world-title/sandbox heading, generic guidance sentence, duplicate current-location label, and repeated actor reasons.
+
+## Comparison history
+
+1. Initial comparison found a P2 hierarchy mismatch in the current-location plate: the implementation title was smaller, used the body sans font, and placed actor chips horizontally. The plate was updated to use the display serif, larger gold title, and vertically stacked actor chips. Post-fix evidence: `design-qa-map-focus.png`.
+2. The second comparison found a P2 legibility issue: Chinese actor initials were clipped inside the chips. Chip radius and text drawing width were increased. The final focused comparison shows both initials clearly.
+3. The unusual near-vertical route between 墨林书坊 and 春和药铺 was verified against authoritative content data. Its curvature was increased so it reads as a road rather than a node stem.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain. The implementation intentionally differs from the concept where live route count and route topology require authoritative game data.
+
+Residual P3 polish: the implementation uses a thin connector between plate and node instead of the concept's pointed plate edge. This does not affect hierarchy or interaction.
+
+## Interaction and responsive evidence
+
+- Route durations are hidden at rest and exactly one appears on route hover.
+- Location selection and route destination selection remain covered by integration tests.
+- Actor chips are capped at two in the focused location plate; full actor detail remains in the right panel.
+- 1280×800 and 1920×1080 movie-writer renders completed without layout errors.
+
+final result: passed
