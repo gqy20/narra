@@ -1,5 +1,8 @@
 $ErrorActionPreference = "Stop"
 
+& (Join-Path $PSScriptRoot "verify-docs.ps1")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 $unformatted = @(gofmt -l .)
 if ($unformatted.Count -gt 0) {
     Write-Error ("These Go files need gofmt:`n" + ($unformatted -join "`n"))

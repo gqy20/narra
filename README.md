@@ -32,9 +32,9 @@ go run ./cmd/fantu-content simulate data/orbital --runs 200 --seed 1
 | `testdata` | T01～T07 验收玩家计划 |
 | `docs` | PRD、架构、M0 规格与验证结果 |
 
-完整依赖边界和扩展约束见 [架构说明](docs/ARCHITECTURE.md)。产品与验证入口分别见 [PRD](docs/PRD.md)、[M0 验收结果](docs/M0_RESULTS.md)、[CLI 玩家风格与试玩测试手册](docs/PLAYER_PERSONAS_CLI_PLAYTEST.md) 和 [30 项验证清单](docs/VALIDATION_OPTIMIZATION_BACKLOG.md)。
+完整文档从 [文档中心](docs/README.md) 进入。当前权威入口包括 [产品定义](docs/product/PRODUCT.md)、[架构说明](docs/architecture/OVERVIEW.md)、[验证指南](docs/development/VALIDATION.md) 和 [当前路线图](docs/product/ROADMAP.md)；阶段验收、旧计划和试玩记录统一保存在 [历史归档](docs/archive/README.md)。
 
-交互版本当前采用冻结范围开发，核心假设、明确不做的内容和完成门禁见 [交互 Demo 范围](docs/DEMO_SCOPE.md)。
+交互版本当前采用冻结范围开发，核心假设、明确不做的内容和完成门禁见 [交互 Demo 范围](docs/product/DEMO_SCOPE.md)。
 
 运行统一质量门禁：
 
@@ -51,7 +51,7 @@ make verify
 make release-windows VERSION=0.1.0
 ```
 
-完整命令说明见 [开发工作流](docs/DEVELOPMENT.md)。
+完整命令说明见 [开发工作流](docs/development/DEVELOPMENT.md)。
 
 ## 运行交互式 CLI
 
@@ -97,9 +97,9 @@ CLI 是可完整通关的正式客户端，根据当前地点、资源、物品�
 
 模型严格返回台词、情绪、对话行为、引用事实和最多 3 个建议行动。建议只能来自当前规则引擎已经公开的交涉选项，仍需玩家用 `do <编号>` 执行；自然语言本身不推进天数，也不修改关系、物品或世界状态。等待期间会周期性显示耗时；终端仍可输入 `context`，输入 `cancel` 会取消当次生成，输入 `quit` 会取消并退出。模型未启用时会明确显示不可用；模型已经启用后，取消、超时、网络错误、空响应或输出校验失败都会明确报错，不会伪造本地台词。
 
-真实模型的五类玩家试玩、发现的问题与修复记录见 [`docs/NPC_DIALOGUE_PLAYTEST.md`](docs/NPC_DIALOGUE_PLAYTEST.md)。
+真实模型试玩的历史证据见 [NPC 对话试玩记录](docs/archive/playtests/NPC_DIALOGUE_PLAYTEST.md)；它记录特定版本，不作为当前行为规范。
 
-世界推进已加入纯确定性的受限导演层：它根据局势沉寂、市场库存和地点聚集人数从场景白名单中选择环境指令，但不能直接修改角色资源、物品、关系、行动或胜负。设计与审计协议见 [`docs/WORLD_DIRECTOR.md`](docs/WORLD_DIRECTOR.md)。
+世界推进已加入纯确定性的受限导演层：它根据局势沉寂、市场库存和地点聚集人数从场景白名单中选择环境指令，但不能直接修改角色资源、物品、关系、行动或胜负。设计与审计协议见 [世界导演系统](docs/architecture/WORLD_DIRECTOR.md)。
 
 存档使用 `saves` 目录下的命名槽。自动存档默认开启，每次成功行动后覆盖 `autosave` 槽；手动覆盖已有槽需要追加 `confirm`：
 
@@ -187,9 +187,9 @@ Godot 的开始页和游戏内都可以打开“体验设置 → 大模型”，
 ./tools/build-windows.ps1
 ```
 
-构建结果使用英文文件名，输出到 `dist/fantu-windows-x86_64/`，并生成 `dist/fantu-windows-x86_64.zip`。完整说明见 [Windows 打包说明](docs/PACKAGING.md)。
+构建结果使用英文文件名，输出到 `dist/fantu-windows-x86_64/`，并生成 `dist/fantu-windows-x86_64.zip`。完整说明见 [Windows 打包说明](docs/development/PACKAGING.md)。
 
-发行版的客户端日志、服务端日志和存档统一写入 `%APPDATA%\Fantu`；日志轮转、故障排查和便携开发模式见 [运行日志说明](docs/LOGGING.md)。
+发行版的客户端日志、服务端日志和存档统一写入 `%APPDATA%\Fantu`；日志轮转、故障排查和便携开发模式见 [运行日志说明](docs/development/LOGGING.md)。
 
 ## 运行 T00
 
@@ -341,4 +341,4 @@ go test ./internal/engine -run ^$ -bench BenchmarkEngineScale -benchmem
 }
 ```
 
-设计规格见 [M0 黑风谷局势纸面与数据原型](docs/M0_BLACKWIND_SPEC.md)。
+黑风谷的原始设计与验收证据见 [黑风谷文档入口](docs/worlds/blackwind/README.md)。
