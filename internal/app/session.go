@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sort"
 
-	"fantu/internal/director"
-	"fantu/internal/domain"
-	"fantu/internal/engine"
+	"narra/internal/director"
+	"narra/internal/domain"
+	"narra/internal/engine"
 )
 
 type Session struct {

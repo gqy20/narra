@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"fantu/internal/ai"
-	"fantu/internal/app"
-	"fantu/internal/scenario"
+	"narra/internal/ai"
+	"narra/internal/app"
+	"narra/internal/scenario"
 )
 
 func TestCommittedAPIContractMatchesResponseTypes(t *testing.T) {

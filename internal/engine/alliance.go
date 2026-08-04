@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (e *Engine) FormAlliance(request domain.AllianceRequest) (*domain.WorldState, error) {

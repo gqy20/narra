@@ -7,15 +7,15 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$serverPath = Join-Path $projectRoot "bin\fantu-server.exe"
+$serverPath = Join-Path $projectRoot "bin\narra-server.exe"
 $godotProject = Join-Path $projectRoot "godot"
 $screenshotDirectory = if ($OutputDirectory) { [System.IO.Path]::GetFullPath($OutputDirectory) } else { Join-Path $projectRoot "artifacts\screenshots" }
 $godot = Get-Command godot -ErrorAction Stop
 $captureStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-$temporarySaves = Join-Path ([System.IO.Path]::GetTempPath()) ("fantu-ui-capture-" + [Guid]::NewGuid().ToString("N"))
+$temporarySaves = Join-Path ([System.IO.Path]::GetTempPath()) ("narra-ui-capture-" + [Guid]::NewGuid().ToString("N"))
 $resolvedTemporarySaves = [System.IO.Path]::GetFullPath($temporarySaves)
 $resolvedTemporaryBase = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\')
-if (-not $resolvedTemporarySaves.StartsWith("$resolvedTemporaryBase\fantu-ui-capture-", [System.StringComparison]::OrdinalIgnoreCase)) {
+if (-not $resolvedTemporarySaves.StartsWith("$resolvedTemporaryBase\narra-ui-capture-", [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "Refusing to use an unsafe temporary save path: $resolvedTemporarySaves"
 }
 
@@ -45,13 +45,13 @@ try {
     try {
         $healthDeadline = [DateTime]::UtcNow.AddSeconds(8)
         while ($true) {
-            if ($server.HasExited) { throw "Fantu server exited before becoming healthy." }
+            if ($server.HasExited) { throw "Narra server exited before becoming healthy." }
             try {
                 Invoke-RestMethod -Uri "http://127.0.0.1:8787/api/v1/health" -TimeoutSec 1 | Out-Null
                 break
             }
             catch {
-                if ([DateTime]::UtcNow -ge $healthDeadline) { throw "Timed out waiting for the Fantu server health endpoint." }
+                if ([DateTime]::UtcNow -ge $healthDeadline) { throw "Timed out waiting for the Narra server health endpoint." }
                 Start-Sleep -Milliseconds 50
             }
         }

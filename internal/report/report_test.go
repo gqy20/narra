@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/engine"
-	"fantu/internal/scenario"
+	"narra/internal/engine"
+	"narra/internal/scenario"
 )
 
 func TestMarkdownIncludesWorldDirectorAudit(t *testing.T) {

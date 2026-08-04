@@ -1,6 +1,6 @@
 package app
 
-import "fantu/internal/domain"
+import "narra/internal/domain"
 
 func (s *Session) preparationSummary(state *domain.WorldState) PreparationSummary {
 	contest := s.bundle.Scenario.Contest

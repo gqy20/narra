@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/diagnosticlog"
+	"narra/internal/diagnosticlog"
 )
 
 func TestAccessLogContainsMetadataWithoutBodyOrQuery(t *testing.T) {

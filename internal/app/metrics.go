@@ -3,7 +3,7 @@ package app
 import (
 	"strings"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 const quietWaitMessage = "一天过去，局势继续发展。"

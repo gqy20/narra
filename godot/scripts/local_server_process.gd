@@ -3,7 +3,7 @@ extends Node
 
 signal log_event(level: String, event: String, message: String, fields: Dictionary)
 
-const SERVER_NAME := "fantu-server.exe"
+const SERVER_NAME := "narra-server.exe"
 
 var pid := -1
 var data_dir := ""

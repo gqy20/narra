@@ -18,13 +18,13 @@ import (
 	"syscall"
 	"time"
 
-	"fantu/internal/ai"
-	"fantu/internal/aiconfig"
-	"fantu/internal/crashreport"
-	"fantu/internal/diagnosticlog"
-	"fantu/internal/logfile"
-	"fantu/internal/scenario"
-	gameserver "fantu/internal/server"
+	"narra/internal/ai"
+	"narra/internal/aiconfig"
+	"narra/internal/crashreport"
+	"narra/internal/diagnosticlog"
+	"narra/internal/logfile"
+	"narra/internal/scenario"
+	gameserver "narra/internal/server"
 )
 
 func main() {

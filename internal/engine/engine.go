@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"fantu/internal/director"
-	"fantu/internal/domain"
+	"narra/internal/director"
+	"narra/internal/domain"
 )
 
 type Engine struct {

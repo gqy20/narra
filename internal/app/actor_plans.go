@@ -3,7 +3,7 @@ package app
 import (
 	"sort"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (s *Session) visibleActorPlans(state *domain.WorldState) []VisibleActorPlan {

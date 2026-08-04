@@ -9,7 +9,7 @@ import (
 
 func ContractJSON() ([]byte, error) {
 	reflector := jsonschema.Reflector{
-		BaseSchemaID:               "https://fantu.local/schemas",
+		BaseSchemaID:               "https://narra.local/schemas",
 		RequiredFromJSONSchemaTags: false,
 	}
 	schema := reflector.Reflect(&Response{})

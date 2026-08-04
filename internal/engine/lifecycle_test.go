@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func TestMultiDayActionRevalidatesConditionsOnCompletion(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"fantu/internal/ai"
-	"fantu/internal/aiconfig"
+	"narra/internal/ai"
+	"narra/internal/aiconfig"
 )
 
 type playAIProfile struct {

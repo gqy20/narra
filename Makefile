@@ -1,4 +1,4 @@
-# Fantu development and release entry points.
+# Narra development and release entry points.
 # Keep implementation details in tools/ scripts so commands behave consistently
 # in local terminals, CI jobs, and direct PowerShell use.
 
@@ -10,7 +10,7 @@ GO ?= go
 GODOT ?= godot
 GODOT_VERSION ?= 4.7.1.stable
 VERSION ?=
-PACKAGE_DIR ?= dist/fantu-windows-x86_64
+PACKAGE_DIR ?= dist/narra-windows-x86_64
 
 PS_FILE := $(POWERSHELL) -NoLogo -NoProfile -ExecutionPolicy Bypass -File
 VERSION_ARG := $(if $(strip $(VERSION)),-Version "$(VERSION)",)
@@ -21,7 +21,7 @@ VERSION_ARG := $(if $(strip $(VERSION)),-Version "$(VERSION)",)
 	release-windows smoke-windows clean clean-package clean-server
 
 help:
-	@echo Fantu development commands
+	@echo Narra development commands
 	@echo.
 	@echo   make doctor                 Check required tools and export templates
 	@echo   make fmt                    Format Go source files
@@ -37,7 +37,7 @@ help:
 	@echo   make run-godot              Build the service and start the Godot game
 	@echo   make record-gameplay        Record the automated gameplay demo
 	@echo.
-	@echo   make build-server           Build bin/fantu-server.exe
+	@echo   make build-server           Build bin/narra-server.exe
 	@echo   make templates-windows      Install matching Windows export templates
 	@echo   make package-windows        Test and create the Windows portable ZIP
 	@echo   make package-windows-fast   Package without rerunning Go tests
@@ -92,7 +92,7 @@ build: build-server
 
 build-server:
 	$(POWERSHELL) -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "New-Item -ItemType Directory -Force bin | Out-Null"
-	$(GO) build -trimpath -ldflags="-s -w" -o bin/fantu-server.exe ./cmd/server
+	$(GO) build -trimpath -ldflags="-s -w" -o bin/narra-server.exe ./cmd/server
 
 templates-windows:
 	$(PYTHON) tools/install-godot-windows-templates.py --version $(GODOT_VERSION)

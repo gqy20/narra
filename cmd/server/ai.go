@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"fantu/internal/ai"
-	"fantu/internal/aiconfig"
-	gameserver "fantu/internal/server"
+	"narra/internal/ai"
+	"narra/internal/aiconfig"
+	gameserver "narra/internal/server"
 )
 
 type aiFlags struct {

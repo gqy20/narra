@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func Markdown(writer io.Writer, state *domain.WorldState, bundle domain.Bundle) error {

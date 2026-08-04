@@ -3,7 +3,7 @@ package engine
 import (
 	"sort"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func collectTriggerEvents(state *domain.WorldState, actorID string, beliefs map[string]domain.Belief, conditions []domain.Condition) []string {

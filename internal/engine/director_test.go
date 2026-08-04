@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/director"
-	"fantu/internal/domain"
+	"narra/internal/director"
+	"narra/internal/domain"
 )
 
 type testWorldSelector struct {

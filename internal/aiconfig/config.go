@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"fantu/internal/ai"
-	anthropicai "fantu/internal/ai/anthropic"
+	"narra/internal/ai"
+	anthropicai "narra/internal/ai/anthropic"
 )
 
 type Config struct {

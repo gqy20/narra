@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"fantu/internal/diagnosticlog"
+	"narra/internal/diagnosticlog"
 )
 
 // Report describes files created for one recovered failure.
@@ -44,7 +44,7 @@ func Write(directory, component, session, version, summary string, stack []byte)
 		GoVersion      string `json:"go_version"`
 		Stack          string `json:"stack"`
 	}{
-		Application:    "Fantu",
+		Application:    "Narra",
 		Component:      safeName(component),
 		GeneratedAtUTC: timestamp.Format(time.RFC3339Nano),
 		Session:        diagnosticlog.RedactText(session),

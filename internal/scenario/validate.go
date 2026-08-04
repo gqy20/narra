@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 var scenarioIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)

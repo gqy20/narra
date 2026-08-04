@@ -33,7 +33,7 @@ For a versioned archive name:
 
 The script runs the Go test suite, builds a stripped Windows rules service, imports and exports the Godot project, copies the release scenario, runs a headless release smoke test, writes SHA-256 checksums, and creates a compressed ZIP archive.
 
-The public Windows package is intentionally a single-story release. It bundles only `data/tianqi`, and launching `Fantu.exe` without arguments starts the Tianqi story (`tianqi_t00`). `blackwind` remains development/prototype content, while `orbital` remains portability-test content; neither is copied into a public package.
+The public Windows package is intentionally a single-story release. It bundles only `data/tianqi`, and launching `Narra.exe` without arguments starts the Tianqi story (`tianqi_t00`). `blackwind` remains development/prototype content, while `orbital` remains portability-test content; neither is copied into a public package.
 
 `build-info.json` records the version, commit, build time, platform, and `source_dirty` state. A formal release should be built from a clean tree so its source revision is reproducible.
 
@@ -44,19 +44,19 @@ Use `-SkipSmokeTest` only in an environment that cannot launch Windows executabl
 
 ```text
 dist/
-|-- fantu-windows-x86_64/
-|   |-- Fantu.exe
-|   |-- Fantu-Portable.cmd
+|-- narra-windows-x86_64/
+|   |-- Narra.exe
+|   |-- Narra-Portable.cmd
 |   |-- Enable-Crash-Dumps.cmd
 |   |-- Disable-Crash-Dumps.cmd
-|   |-- fantu-server.exe
+|   |-- narra-server.exe
 |   |-- build-info.json
 |   |-- data/tianqi/
 |   |-- README.txt
 |   `-- SHA256SUMS.txt
-`-- fantu-windows-x86_64.zip
+`-- narra-windows-x86_64.zip
 ```
 
-`Fantu.exe` starts the local service automatically in exported Windows builds and stops the process when the game exits. The release smoke test rejects packages that contain any story other than `tianqi`, then verifies that the running service reports `tianqi_t00`. Logs, saves, and crash diagnostics are written under `%APPDATA%/Fantu/` instead of the installation directory. See [runtime logging](LOGGING.md) for log rotation and portable developer mode.
+`Narra.exe` starts the local service automatically in exported Windows builds and stops the process when the game exits. The release smoke test rejects packages that contain any story other than `tianqi`, then verifies that the running service reports `tianqi_t00`. Logs, saves, and crash diagnostics are written under `%APPDATA%/Narra/` instead of the installation directory. See [runtime logging](LOGGING.md) for log rotation and portable developer mode.
 
-Native Windows Error Reporting dumps for `Fantu.exe` are intentionally opt-in. The two crash-dump scripts enable or remove the current-user WER setting without requiring administrator privileges. The service's own recovered-panic minidumps do not require this opt-in.
+Native Windows Error Reporting dumps for `Narra.exe` are intentionally opt-in. The two crash-dump scripts enable or remove the current-user WER setting without requiring administrator privileges. The service's own recovered-panic minidumps do not require this opt-in.

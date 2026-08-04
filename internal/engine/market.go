@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (e *Engine) marketPurchasesLegal(effects []domain.Effect, actorID string, costs map[string]int) (bool, string) {

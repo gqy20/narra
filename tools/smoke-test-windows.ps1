@@ -13,9 +13,9 @@ param(
 $ErrorActionPreference = "Stop"
 
 $packageDirectory = (Resolve-Path -LiteralPath $PackageDirectory).Path
-$gamePath = Join-Path $packageDirectory "Fantu.exe"
+$gamePath = Join-Path $packageDirectory "Narra.exe"
 if (-not (Test-Path -LiteralPath $gamePath -PathType Leaf)) {
-    throw "Fantu.exe was not found in the package directory."
+    throw "Narra.exe was not found in the package directory."
 }
 
 $dataDirectory = Join-Path $packageDirectory "data"
@@ -32,11 +32,11 @@ if (-not (Test-Path -LiteralPath $scenarioManifest -PathType Leaf)) {
 }
 
 $existingServerIds = @(
-    Get-Process -Name "fantu-server" -ErrorAction SilentlyContinue |
+    Get-Process -Name "narra-server" -ErrorAction SilentlyContinue |
         Select-Object -ExpandProperty Id
 )
 if ($existingServerIds.Count -gt 0) {
-    throw "A fantu-server process is already running; stop it before the release smoke test."
+    throw "A narra-server process is already running; stop it before the release smoke test."
 }
 
 $game = Start-Process `
@@ -46,7 +46,7 @@ $game = Start-Process `
     -WindowStyle Hidden `
     -PassThru
 
-$runtimeRoot = Join-Path $env:APPDATA "Fantu"
+$runtimeRoot = Join-Path $env:APPDATA "Narra"
 $logsDirectory = Join-Path $runtimeRoot "logs"
 $clientLog = Join-Path $logsDirectory "client.log"
 $engineLog = Join-Path $logsDirectory "engine.log"
@@ -68,10 +68,10 @@ try {
     }
 
     if (-not $game.WaitForExit(20000)) {
-        throw "Fantu.exe did not exit after the smoke-test timeout."
+        throw "Narra.exe did not exit after the smoke-test timeout."
     }
     if ($game.ExitCode -ne 0) {
-        throw "Fantu.exe exited with code $($game.ExitCode)."
+        throw "Narra.exe exited with code $($game.ExitCode)."
     }
     if (-not $healthPassed) {
         throw "The bundled rules service did not report scenario '$ExpectedScenarioID' in its health check."
@@ -79,11 +79,11 @@ try {
 
     Start-Sleep -Milliseconds 500
     $remainingServers = @(
-        Get-Process -Name "fantu-server" -ErrorAction SilentlyContinue |
+        Get-Process -Name "narra-server" -ErrorAction SilentlyContinue |
             Where-Object { $existingServerIds -notcontains $_.Id }
     )
     if ($remainingServers.Count -gt 0) {
-        throw "The bundled rules service remained active after Fantu.exe exited."
+        throw "The bundled rules service remained active after Narra.exe exited."
     }
 
     foreach ($directoryName in @("logs", "logs\archived", "saves", "crash", "diagnostics")) {
@@ -123,8 +123,8 @@ try {
     if ($buildInfo.scenario -ne $ExpectedScenario -or $buildInfo.scenario_id -ne $ExpectedScenarioID) {
         throw "build-info.json does not identify the expected release scenario."
     }
-    if (-not (Test-Path -LiteralPath (Join-Path $packageDirectory "Fantu-Portable.cmd") -PathType Leaf)) {
-        throw "The Windows package does not contain Fantu-Portable.cmd."
+    if (-not (Test-Path -LiteralPath (Join-Path $packageDirectory "Narra-Portable.cmd") -PathType Leaf)) {
+        throw "The Windows package does not contain Narra-Portable.cmd."
     }
     foreach ($crashScript in @("Enable-Crash-Dumps.cmd", "Disable-Crash-Dumps.cmd")) {
         if (-not (Test-Path -LiteralPath (Join-Path $packageDirectory $crashScript) -PathType Leaf)) {

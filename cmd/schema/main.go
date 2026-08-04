@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"fantu/internal/server"
+	"narra/internal/server"
 )
 
 func main() {

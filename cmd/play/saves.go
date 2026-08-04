@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"fantu/internal/ai"
-	"fantu/internal/app"
-	"fantu/internal/director"
-	"fantu/internal/domain"
+	"narra/internal/ai"
+	"narra/internal/app"
+	"narra/internal/director"
+	"narra/internal/domain"
 )
 
 const (

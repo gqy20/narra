@@ -1,6 +1,6 @@
 package engine
 
-import "fantu/internal/domain"
+import "narra/internal/domain"
 
 func (e *Engine) auditDecision(state *domain.WorldState, actorID string, strategies []domain.Strategy, selectedID string, record *domain.DecisionRecord) {
 	withoutRelations := cloneWorld(state)

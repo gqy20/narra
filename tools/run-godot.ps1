@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$serverPath = Join-Path $projectRoot "bin\fantu-server.exe"
+$serverPath = Join-Path $projectRoot "bin\narra-server.exe"
 $godotProject = Join-Path $projectRoot "godot"
 
 New-Item -ItemType Directory -Force (Split-Path -Parent $serverPath) | Out-Null

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/scenario"
+	"narra/internal/scenario"
 )
 
 func TestTianqiPlayerViewDoesNotLeakBlackwindLanguage(t *testing.T) {

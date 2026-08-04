@@ -1,4 +1,4 @@
-module fantu
+module narra
 
 go 1.26.0
 

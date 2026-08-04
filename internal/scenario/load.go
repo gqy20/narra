@@ -11,8 +11,8 @@ import (
 	"sort"
 	"strings"
 
-	"fantu/internal/domain"
 	"go.yaml.in/yaml/v4"
+	"narra/internal/domain"
 )
 
 const CurrentSchemaVersion = 6

@@ -26,9 +26,9 @@
 内容包可以独立验证：
 
 ```powershell
-go run ./cmd/fantu-content validate data/tianqi
-go run ./cmd/fantu-content graph data/tianqi
-go run ./cmd/fantu-content simulate data/tianqi --runs 200 --seed 1
+go run ./cmd/narra-content validate data/tianqi
+go run ./cmd/narra-content graph data/tianqi
+go run ./cmd/narra-content simulate data/tianqi --runs 200 --seed 1
 ```
 
 ## AI 模式

@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"fantu/internal/app"
-	"fantu/internal/director"
-	"fantu/internal/domain"
+	"narra/internal/app"
+	"narra/internal/director"
+	"narra/internal/domain"
 )
 
 type fakeWorldProvider struct {

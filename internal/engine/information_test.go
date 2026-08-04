@@ -3,7 +3,7 @@ package engine
 import (
 	"testing"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func TestInformationPropagationRespectsLocationDelayAndDistortion(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"fantu/internal/ai"
+	"narra/internal/ai"
 )
 
 func TestNewRequiresCredentialsAndModel(t *testing.T) {

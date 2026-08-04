@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/scenario"
+	"narra/internal/scenario"
 )
 
 func loadTianqiSession(t *testing.T) *Session {

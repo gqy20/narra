@@ -3,7 +3,7 @@ package engine
 import (
 	"fmt"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (e *Engine) attachPlan(actorID string, strategy *domain.Strategy) {

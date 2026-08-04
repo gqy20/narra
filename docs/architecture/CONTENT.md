@@ -9,10 +9,10 @@
 所有正式内容包在启动游戏前应通过统一入口：
 
 ```text
-go run ./cmd/fantu-content validate data/tianqi
-go run ./cmd/fantu-content graph data/tianqi
-go run ./cmd/fantu-content test data/tianqi
-go run ./cmd/fantu-content simulate data/tianqi --runs 200 --seed 1
+go run ./cmd/narra-content validate data/tianqi
+go run ./cmd/narra-content graph data/tianqi
+go run ./cmd/narra-content test data/tianqi
+go run ./cmd/narra-content simulate data/tianqi --runs 200 --seed 1
 ```
 
 `validate`/`test` 组合运行结构解码、字段契约、引用、剧情状态图、时间窗口、Flag 使用和表现资源检查；诊断尽可能带 YAML 文件与行号。`graph` 输出 Mermaid 状态图。`simulate` 使用可复现随机种子完整游玩并输出行动、剧情选择和结局覆盖率。
@@ -52,4 +52,4 @@ Godot 只读取这些字段，不再识别 `qinglan` 等故事专属场景键。
 
 Schema v6 要求完整的对话语言策略，以及 UI 契约登记的全部玩家可见术语和模板。
 
-加载器只接受 Schema v6，不提供旧内容自动迁移。旧内容必须由作者在仓库外显式升级并补齐 `dialogue.yml` 与 `presentation.ui`，再通过 `fantu-content validate` 验证；运行时不会推断或补写故事语义。
+加载器只接受 Schema v6，不提供旧内容自动迁移。旧内容必须由作者在仓库外显式升级并补齐 `dialogue.yml` 与 `presentation.ui`，再通过 `narra-content validate` 验证；运行时不会推断或补写故事语义。

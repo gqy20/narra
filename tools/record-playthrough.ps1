@@ -10,7 +10,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$serverPath = Join-Path $projectRoot "bin\fantu-server.exe"
+$serverPath = Join-Path $projectRoot "bin\narra-server.exe"
 $godotProject = Join-Path $projectRoot "godot"
 $routePath = (Resolve-Path -LiteralPath (Join-Path $projectRoot $Route)).Path
 $routeConfig = Get-Content -Raw -Encoding utf8 $routePath | ConvertFrom-Json
@@ -60,10 +60,10 @@ if ($recordingDrive.AvailableFreeSpace -lt $minimumFreeBytes) {
     throw "$Profile recording requires at least $($profileConfig.MinimumFreeSpaceGB) GB free on $($recordingDrive.Name)."
 }
 
-$temporarySaves = Join-Path ([System.IO.Path]::GetTempPath()) ("fantu-recording-saves-" + [Guid]::NewGuid().ToString("N"))
+$temporarySaves = Join-Path ([System.IO.Path]::GetTempPath()) ("narra-recording-saves-" + [Guid]::NewGuid().ToString("N"))
 $resolvedTemporarySaves = [System.IO.Path]::GetFullPath($temporarySaves)
 $resolvedTemporaryBase = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\')
-if (-not $resolvedTemporarySaves.StartsWith("$resolvedTemporaryBase\fantu-recording-saves-", [StringComparison]::OrdinalIgnoreCase)) {
+if (-not $resolvedTemporarySaves.StartsWith("$resolvedTemporaryBase\narra-recording-saves-", [StringComparison]::OrdinalIgnoreCase)) {
     throw "Refusing to use unsafe temporary save path: $resolvedTemporarySaves"
 }
 New-Item -ItemType Directory -Path $resolvedTemporarySaves -Force | Out-Null
@@ -92,7 +92,7 @@ try {
     try {
         $existingHealth = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:8787/api/v1/health" -TimeoutSec 1
         if ($existingHealth.StatusCode -eq 200) {
-            throw "Port 8787 already has a running Fantu server. Stop it before recording so the route uses an isolated save."
+            throw "Port 8787 already has a running Narra server. Stop it before recording so the route uses an isolated save."
         }
     } catch {
         if ($_.Exception.Message -like "Port 8787*") { throw }

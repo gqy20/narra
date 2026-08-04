@@ -28,7 +28,7 @@ func (writer *FallbackWriter) Write(data []byte) (int, error) {
 	if _, err := writer.Primary.Write(data); err != nil {
 		if !writer.reported && writer.Fallback != nil {
 			writer.reported = true
-			_, _ = fmt.Fprintf(writer.Fallback, "fantu logging fallback: file output disabled after write failure: %v\n", err)
+			_, _ = fmt.Fprintf(writer.Fallback, "narra logging fallback: file output disabled after write failure: %v\n", err)
 		}
 	}
 	return len(data), nil

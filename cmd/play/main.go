@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"fantu/internal/ai"
-	"fantu/internal/aiconfig"
-	"fantu/internal/app"
-	"fantu/internal/scenario"
+	"narra/internal/ai"
+	"narra/internal/aiconfig"
+	"narra/internal/app"
+	"narra/internal/scenario"
 )
 
 func main() {

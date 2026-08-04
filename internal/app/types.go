@@ -1,6 +1,6 @@
 package app
 
-import "fantu/internal/domain"
+import "narra/internal/domain"
 
 type PlayerView struct {
 	ScenarioID       string                      `json:"scenario_id"`

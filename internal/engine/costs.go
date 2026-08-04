@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (e *Engine) canAfford(actorID string, costs map[string]int) (bool, string) {

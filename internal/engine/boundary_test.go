@@ -3,7 +3,7 @@ package engine
 import (
 	"testing"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func boundaryBundle(t *testing.T, duration, actionDuration, fromDay, untilDay int) domain.Bundle {

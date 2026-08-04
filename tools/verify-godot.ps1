@@ -20,12 +20,12 @@ function Test-LocalPortAvailable {
     }
 }
 
-function Wait-FantuServer {
+function Wait-NarraServer {
     param([System.Diagnostics.Process]$Process)
     $deadline = [DateTime]::UtcNow.AddSeconds(8)
     while ([DateTime]::UtcNow -lt $deadline) {
         if ($Process.HasExited) {
-            throw "Fantu server exited before becoming healthy."
+            throw "Narra server exited before becoming healthy."
         }
         try {
             Invoke-RestMethod -Uri "http://127.0.0.1:8787/api/v1/health" -TimeoutSec 1 | Out-Null
@@ -35,11 +35,11 @@ function Wait-FantuServer {
             Start-Sleep -Milliseconds 50
         }
     }
-    throw "Timed out waiting for the Fantu server health endpoint."
+    throw "Timed out waiting for the Narra server health endpoint."
 }
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$serverPath = Join-Path $projectRoot "bin\fantu-server.exe"
+$serverPath = Join-Path $projectRoot "bin\narra-server.exe"
 $godotProject = Join-Path $projectRoot "godot"
 $godot = Get-Command godot -ErrorAction Stop
 $verificationStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -60,7 +60,7 @@ try {
     }
     $server = Start-Process -FilePath $serverPath -WorkingDirectory $projectRoot -WindowStyle Hidden -ArgumentList @("-ai-enabled=false") -PassThru
     try {
-        Wait-FantuServer -Process $server
+        Wait-NarraServer -Process $server
         if ($Mode -eq "full") {
             & $godot.Source --headless --path $godotProject --script res://tests/api_contract.gd
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -93,10 +93,10 @@ try {
         }
     }
 
-    $temporarySaves = Join-Path ([System.IO.Path]::GetTempPath()) ("fantu-tianqi-saves-" + [Guid]::NewGuid().ToString("N"))
+    $temporarySaves = Join-Path ([System.IO.Path]::GetTempPath()) ("narra-tianqi-saves-" + [Guid]::NewGuid().ToString("N"))
     $resolvedTemporarySaves = [System.IO.Path]::GetFullPath($temporarySaves)
     $resolvedTemporaryBase = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\')
-    if (-not $resolvedTemporarySaves.StartsWith("$resolvedTemporaryBase\fantu-tianqi-saves-", [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not $resolvedTemporarySaves.StartsWith("$resolvedTemporaryBase\narra-tianqi-saves-", [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Refusing to use an unsafe temporary save path: $resolvedTemporarySaves"
     }
     New-Item -ItemType Directory -Path $resolvedTemporarySaves -Force | Out-Null
@@ -109,7 +109,7 @@ try {
         "-ai-enabled=false"
     ) -PassThru
     try {
-        Wait-FantuServer -Process $tianqiServer
+        Wait-NarraServer -Process $tianqiServer
         & $godot.Source --headless --path $godotProject --script res://tests/scenario_switch.gd
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
@@ -124,9 +124,9 @@ try {
     }
 
     if ($Mode -eq "full") {
-        $orbitalTemporarySaves = Join-Path ([System.IO.Path]::GetTempPath()) ("fantu-orbital-saves-" + [Guid]::NewGuid().ToString("N"))
+        $orbitalTemporarySaves = Join-Path ([System.IO.Path]::GetTempPath()) ("narra-orbital-saves-" + [Guid]::NewGuid().ToString("N"))
         $resolvedOrbitalSaves = [System.IO.Path]::GetFullPath($orbitalTemporarySaves)
-        if (-not $resolvedOrbitalSaves.StartsWith("$resolvedTemporaryBase\fantu-orbital-saves-", [System.StringComparison]::OrdinalIgnoreCase)) {
+        if (-not $resolvedOrbitalSaves.StartsWith("$resolvedTemporaryBase\narra-orbital-saves-", [System.StringComparison]::OrdinalIgnoreCase)) {
             throw "Refusing to use an unsafe orbital save path: $resolvedOrbitalSaves"
         }
         New-Item -ItemType Directory -Path $resolvedOrbitalSaves -Force | Out-Null
@@ -139,7 +139,7 @@ try {
             "-ai-enabled=false"
         ) -PassThru
         try {
-            Wait-FantuServer -Process $orbitalServer
+            Wait-NarraServer -Process $orbitalServer
             & $godot.Source --headless --path $godotProject --script res://tests/scenario_portability.gd
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }

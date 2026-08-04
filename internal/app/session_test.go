@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/domain"
-	"fantu/internal/scenario"
+	"narra/internal/domain"
+	"narra/internal/scenario"
 )
 
 func testSession(t *testing.T) *Session {
@@ -546,7 +546,7 @@ func TestAtomicSaveFileCanReplaceAndReload(t *testing.T) {
 	if !reflect.DeepEqual(session.View(), restored.View()) {
 		t.Fatalf("atomic save reload differs")
 	}
-	matches, err := filepath.Glob(filepath.Join(filepath.Dir(path), ".fantu-save-*.tmp"))
+	matches, err := filepath.Glob(filepath.Join(filepath.Dir(path), ".narra-save-*.tmp"))
 	if err != nil || len(matches) != 0 {
 		t.Fatalf("temporary saves left behind: %v, %v", matches, err)
 	}

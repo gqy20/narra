@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (e *Engine) genericInvestigationStrategies(npc *domain.NPCState) []domain.Strategy {

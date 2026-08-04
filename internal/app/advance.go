@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (s *Session) advanceUntilDecision(ctx context.Context, before *domain.WorldState, actionID, actionName, mode string) (*domain.WorldState, *TurnFeedback, error) {

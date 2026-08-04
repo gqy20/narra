@@ -5,8 +5,8 @@ import (
 	"math/rand"
 	"sort"
 
-	"fantu/internal/domain"
-	"fantu/internal/engine"
+	"narra/internal/domain"
+	"narra/internal/engine"
 )
 
 // SweepConfig defines reproducible initial-state perturbations. The engine

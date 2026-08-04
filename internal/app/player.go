@@ -1,6 +1,6 @@
 package app
 
-import "fantu/internal/domain"
+import "narra/internal/domain"
 
 func DefaultPlayer(bundle domain.Bundle, name string) domain.PlayerConfig {
 	player := clonePlayerConfig(bundle.DefaultPlayer)

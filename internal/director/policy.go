@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sort"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 const DeterministicSource = "deterministic"

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"fantu/internal/director"
-	"fantu/internal/domain"
+	"narra/internal/director"
+	"narra/internal/domain"
 )
 
 // runWorldDirector lets the director select one scenario-authored capability

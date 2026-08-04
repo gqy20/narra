@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/domain"
-	"fantu/internal/scenario"
+	"narra/internal/domain"
+	"narra/internal/scenario"
 )
 
 func loadInputs(t *testing.T) (string, string) {

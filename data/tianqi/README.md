@@ -19,7 +19,7 @@ go run ./cmd/sim -data data/tianqi
 go run ./cmd/play -data data/tianqi
 go run ./cmd/server -data data/tianqi
 # 已启动独立服务时，Godot 编辑器客户端会自动读取该场景；Windows 成品可使用：
-# Fantu.exe --scenario=tianqi
+# Narra.exe --scenario=tianqi
 ```
 
 验证方式：

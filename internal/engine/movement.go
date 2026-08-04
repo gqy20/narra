@@ -3,7 +3,7 @@ package engine
 import (
 	"fmt"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (e *Engine) movementEffectsLegal(effects []domain.Effect, defaultTarget string, actionDuration int) (bool, string) {

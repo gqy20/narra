@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (e *Engine) genericNavigationStrategies(state *domain.WorldState, npc *domain.NPCState) []domain.Strategy {

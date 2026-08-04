@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"fantu/internal/ai"
-	"fantu/internal/app"
-	"fantu/internal/domain"
+	"narra/internal/ai"
+	"narra/internal/app"
+	"narra/internal/domain"
 )
 
 func renderLocation(output io.Writer, view app.PlayerView) {

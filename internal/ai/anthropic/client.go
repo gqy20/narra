@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"fantu/internal/ai"
+	"narra/internal/ai"
 
 	anthropicsdk "github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"

@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (s *Session) routeProgresses(state *domain.WorldState) []RouteProgress {

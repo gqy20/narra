@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	"fantu/internal/app"
+	"narra/internal/app"
 )
 
 type terminalActionResult struct {

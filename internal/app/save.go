@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 const (

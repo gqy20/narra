@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func TestOfficialContestOutcomesHideMechanicalScores(t *testing.T) {

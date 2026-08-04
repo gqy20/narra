@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (s *Session) turnFeedback(actionID, actionName string, before, after *domain.WorldState) *TurnFeedback {

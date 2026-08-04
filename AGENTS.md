@@ -118,9 +118,9 @@
 常用验证入口：
 
 - Go 全量验证：`./tools/verify.ps1`
-- 内容编译：`go run ./cmd/fantu-content validate data/<world>`
-- 内容图检查：`go run ./cmd/fantu-content graph data/<world>`
-- 内容批量试玩：`go run ./cmd/fantu-content simulate data/<world> --runs 200 --seed 1`
+- 内容编译：`go run ./cmd/narra-content validate data/<world>`
+- 内容图检查：`go run ./cmd/narra-content graph data/<world>`
+- 内容批量试玩：`go run ./cmd/narra-content simulate data/<world> --runs 200 --seed 1`
 - Godot 快速 UI 回归：`./tools/verify-godot.ps1 -Mode fast`
 - Godot 完整门禁：`./tools/verify-godot.ps1 -Mode full`
 - 多尺寸 UI 截图：`./tools/capture-ui-states.ps1 -DataDirectory data/tianqi -Resolutions @('1280x800','1920x1080')`
@@ -130,7 +130,7 @@
 
 执行 Godot 门禁时必须明确选择 AI 模式。确定性门禁应确保真实 API Key 不会被 `.env` 或用户设置重新启用；真实模型冒烟应单独记录为非确定性验证。
 
-正式内容包必须加入 `fantu-content` 与 Godot 可移植性门禁。新增世界的验收目标是只增加 `data/<world>` 和可选素材，不为其增加 Go/GDScript 场景 ID、人物 ID、地点 ID 或 Flag 分支。世界导演启用 AI 时，存档必须保存权威 `directive_id` 决策并在加载时重放，禁止重新请求模型或静默改用确定性选择。
+正式内容包必须加入 `narra-content` 与 Godot 可移植性门禁。新增世界的验收目标是只增加 `data/<world>` 和可选素材，不为其增加 Go/GDScript 场景 ID、人物 ID、地点 ID 或 Flag 分支。世界导演启用 AI 时，存档必须保存权威 `directive_id` 决策并在加载时重放，禁止重新请求模型或静默改用确定性选择。
 
 ## 安全操作
 

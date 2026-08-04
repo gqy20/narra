@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"unicode"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (s *Session) travelGuidance(state *domain.WorldState) *TravelGuidance {

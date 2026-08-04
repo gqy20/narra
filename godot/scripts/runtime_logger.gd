@@ -25,7 +25,7 @@ func _configure_runtime_paths() -> void:
 			failed_directories.append(directory)
 	if not failed_directories.is_empty():
 		var requested_root = host.runtime_root
-		host.runtime_root = OS.get_cache_dir().path_join("Fantu-Recovery")
+		host.runtime_root = OS.get_cache_dir().path_join("Narra-Recovery")
 		host.logs_dir = host.runtime_root.path_join("logs")
 		host.archived_logs_dir = host.logs_dir.path_join("archived")
 		host.saves_dir = host.runtime_root.path_join("saves")
@@ -192,7 +192,7 @@ func _initialize_crash_tracking() -> void:
 		host.runtime_logger_controller._log_event("ERROR", "crash_marker_failed", "could not create client crash marker", {"path": host.session_marker_path})
 		return
 	marker.store_string(JSON.stringify({
-		"application": "Fantu",
+		"application": "Narra",
 		"session_id": host.session_id,
 		"version": host.build_version,
 		"pid": OS.get_process_id(),

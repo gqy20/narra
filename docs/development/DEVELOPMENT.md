@@ -53,7 +53,7 @@ Create a versioned release after running the complete quality gate:
 make release-windows VERSION=0.1.0
 ```
 
-The release remains under `dist/fantu-windows-x86_64/`; the version is added to the archive filename. Test an existing package independently with `make smoke-windows`.
+The release remains under `dist/narra-windows-x86_64/`; the version is added to the archive filename. Test an existing package independently with `make smoke-windows`.
 
 `make package-windows-fast` skips duplicate Go tests but still exports the game and runs the packaged client/server smoke test. It is intended for use after `make verify`, as done by `make release-windows`.
 

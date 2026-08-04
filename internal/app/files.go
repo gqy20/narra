@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 // SaveFile writes and validates a save in the destination directory before
@@ -15,7 +15,7 @@ func (s *Session) SaveFile(path string) error {
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return fmt.Errorf("create save directory: %w", err)
 	}
-	temporary, err := os.CreateTemp(directory, ".fantu-save-*.tmp")
+	temporary, err := os.CreateTemp(directory, ".narra-save-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create temporary save: %w", err)
 	}

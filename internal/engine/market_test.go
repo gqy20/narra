@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func marketTestNPC(id string, score int) domain.NPCConfig {

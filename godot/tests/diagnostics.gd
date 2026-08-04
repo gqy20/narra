@@ -30,7 +30,7 @@ func _run() -> void:
 			_fail("diagnostics archive contains save data")
 			return
 	var manifest = JSON.parse_string(reader.read_file("manifest.json").get_string_from_utf8())
-	if not manifest is Dictionary or manifest.get("application", "") != "Fantu" or manifest.get("version", "") == "":
+	if not manifest is Dictionary or manifest.get("application", "") != "Narra" or manifest.get("version", "") == "":
 		_fail("diagnostics manifest is invalid")
 		return
 	var environment = JSON.parse_string(reader.read_file("environment.json").get_string_from_utf8())

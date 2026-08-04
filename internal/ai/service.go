@@ -10,8 +10,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"fantu/internal/app"
-	"fantu/internal/director"
+	"narra/internal/app"
+	"narra/internal/director"
 )
 
 type Service struct {

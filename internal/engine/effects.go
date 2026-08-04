@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (e *Engine) applyEffects(event domain.WorldEvent, effects []domain.Effect, defaultTarget string) error {

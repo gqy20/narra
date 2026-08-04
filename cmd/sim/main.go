@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"fantu/internal/engine"
-	"fantu/internal/report"
-	"fantu/internal/scenario"
+	"narra/internal/engine"
+	"narra/internal/report"
+	"narra/internal/scenario"
 )
 
 func main() {

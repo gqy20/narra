@@ -3,7 +3,7 @@ package engine
 import (
 	"testing"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func plannerBundle(t *testing.T, npc domain.NPCConfig, duration int) domain.Bundle {

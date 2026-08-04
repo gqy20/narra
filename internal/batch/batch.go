@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"sort"
 
-	"fantu/internal/domain"
-	"fantu/internal/engine"
-	"fantu/internal/scenario"
+	"narra/internal/domain"
+	"narra/internal/engine"
+	"narra/internal/scenario"
 )
 
 type Result struct {

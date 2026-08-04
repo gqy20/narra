@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func claimStrategy(id, actorID string) domain.Strategy {

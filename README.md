@@ -1,18 +1,20 @@
-# 凡途
+# Narra
+
+Narra 是一个数据驱动的叙事模拟框架，提供 Go 权威规则内核、Godot 桌面客户端、内容编译工具和可插拔故事包。框架不绑定具体世界观；《凡途》、`tianqi` 与 `orbital` 都作为内容层存在。
 
 ## 内容开发
 
 内容包可在不启动客户端的情况下编译、绘图和批量试玩：
 
 ```powershell
-go run ./cmd/fantu-content validate data/tianqi
-go run ./cmd/fantu-content graph data/tianqi
-go run ./cmd/fantu-content simulate data/orbital --runs 200 --seed 1
+go run ./cmd/narra-content validate data/tianqi
+go run ./cmd/narra-content graph data/tianqi
+go run ./cmd/narra-content simulate data/orbital --runs 200 --seed 1
 ```
 
 当前官方移植基线包括 `blackwind`、`tianqi` 与科幻测试世界 `orbital`。完整门禁使用 `./tools/verify.ps1` 和显式关闭 AI 的 `./tools/verify-godot.ps1`。
 
-当前仓库实现《凡途》黑风谷局势的确定性模拟内核，以及建立在同一权威规则之上的交互式 CLI。
+当前仓库同时维护通用运行时与多个移植基线，用来验证新增故事只需增加内容包和可选资源，不需要增加故事专属 Go 或 GDScript 分支。
 
 ## 项目结构
 
@@ -105,7 +107,7 @@ CLI 是可完整通关的正式客户端，根据当前地点、资源、物品�
 
 ```powershell
 go run ./cmd/play -load autosave
-go run ./cmd/play -saves D:\games\fantu-saves -load blackwind
+go run ./cmd/play -saves D:\games\narra-saves -load blackwind
 go run ./cmd/play -autosave=false
 ```
 
@@ -187,9 +189,9 @@ Godot 的开始页和游戏内都可以打开“体验设置 → 大模型”，
 ./tools/build-windows.ps1
 ```
 
-构建结果使用英文文件名，输出到 `dist/fantu-windows-x86_64/`，并生成 `dist/fantu-windows-x86_64.zip`。完整说明见 [Windows 打包说明](docs/development/PACKAGING.md)。
+构建结果使用英文文件名，输出到 `dist/narra-windows-x86_64/`，并生成 `dist/narra-windows-x86_64.zip`。完整说明见 [Windows 打包说明](docs/development/PACKAGING.md)。
 
-发行版的客户端日志、服务端日志和存档统一写入 `%APPDATA%\Fantu`；日志轮转、故障排查和便携开发模式见 [运行日志说明](docs/development/LOGGING.md)。
+发行版的客户端日志、服务端日志和存档统一写入 `%APPDATA%\Narra`；日志轮转、故障排查和便携开发模式见 [运行日志说明](docs/development/LOGGING.md)。
 
 ## 运行 T00
 

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"fantu/internal/app"
+	"narra/internal/app"
 )
 
 func (s *GameServer) generateDialogue(writer http.ResponseWriter, request *http.Request) {

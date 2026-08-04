@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"fantu/internal/batch"
-	"fantu/internal/scenario"
+	"narra/internal/batch"
+	"narra/internal/scenario"
 )
 
 func main() {

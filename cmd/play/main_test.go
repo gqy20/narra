@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"fantu/internal/ai"
-	"fantu/internal/app"
-	"fantu/internal/director"
-	"fantu/internal/domain"
-	"fantu/internal/scenario"
+	"narra/internal/ai"
+	"narra/internal/app"
+	"narra/internal/director"
+	"narra/internal/domain"
+	"narra/internal/scenario"
 )
 
 type terminalDialogueProvider struct {
@@ -168,7 +168,7 @@ func TestTerminalUsesScenarioAuthoredHeaderAndClueTerm(t *testing.T) {
 	}{
 		{"tianqi", "天变邸抄 · 天启六年 · 京师王恭厂灾变", "材料："},
 		{"blackwind", "凡途 · 黑风谷山川", "线索："},
-		{"orbital", "凡途 · 远星环站轨道结构", "遥测记录："},
+		{"orbital", "远星环站 · 远星环站轨道结构", "遥测记录："},
 	}
 	for _, test := range tests {
 		t.Run(test.world, func(t *testing.T) {

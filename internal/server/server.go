@@ -13,9 +13,9 @@ import (
 	"regexp"
 	"sync"
 
-	"fantu/internal/ai"
-	"fantu/internal/app"
-	"fantu/internal/domain"
+	"narra/internal/ai"
+	"narra/internal/app"
+	"narra/internal/domain"
 )
 
 const APIVersion = "v1"

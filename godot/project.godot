@@ -4,11 +4,11 @@ config_version=5
 
 [application]
 
-config/name="凡途：黑风谷"
+config/name="Narra"
 run/main_scene="res://main.tscn"
 config/version="0.1.0"
 config/use_custom_user_dir=true
-config/custom_user_dir_name="Fantu"
+config/custom_user_dir_name="Narra"
 run/flush_stdout_on_print=true
 
 [debug]
@@ -16,7 +16,7 @@ run/flush_stdout_on_print=true
 file_logging/enable_file_logging=true
 file_logging/log_path="user://logs/engine.log"
 file_logging/max_log_files=5
-settings/crash_handler/message="Fantu encountered a native engine failure. On the next launch, use Settings > Export Diagnostics and send the generated archive to support."
+settings/crash_handler/message="Narra encountered a native engine failure. On the next launch, use Settings > Export Diagnostics and send the generated archive to support."
 settings/gdscript/always_track_call_stacks=true
 
 [display]

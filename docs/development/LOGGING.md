@@ -8,7 +8,7 @@
 Normal Windows builds keep writable runtime data outside the installation directory:
 
 ```text
-%APPDATA%/Fantu/
+%APPDATA%/Narra/
 |-- logs/
 |   |-- client.log
 |   |-- engine.log
@@ -32,13 +32,13 @@ All structured fields pass through a centralized privacy filter. Token, password
 
 ## Failure handling and crash reports
 
-If the normal AppData runtime directory cannot be created, the client falls back to the OS cache under `Fantu-Recovery`, writes `client-recovery.log`, and shows a visible in-game warning. If the service log fails while running, events continue on standard error and the file failure is reported once.
+If the normal AppData runtime directory cannot be created, the client falls back to the OS cache under `Narra-Recovery`, writes `client-recovery.log`, and shows a visible in-game warning. If the service log fails while running, events continue on standard error and the file failure is reported once.
 
 The client writes a running-session marker. If a native crash or forced termination leaves it behind, the next launch creates `crash/client-unclean-exit-*.json`. Godot's exported crash handler also writes its backtrace to `engine.log`, with release call-stack tracking enabled.
 
 Recovered service panics create privacy-filtered JSON metadata and Go stacks under `crash/`. On Windows the service additionally calls `MiniDumpWriteDump` and creates a `.dmp` file when DbgHelp is available.
 
-Windows Error Reporting minidumps for native `Fantu.exe` failures are opt-in because enabling them modifies the current user's registry. Run `Enable-Crash-Dumps.cmd` from the release package to retain up to five full dumps under `%APPDATA%/Fantu/crash`; run `Disable-Crash-Dumps.cmd` to remove that registry configuration. Neither script requires administrator privileges.
+Windows Error Reporting minidumps for native `Narra.exe` failures are opt-in because enabling them modifies the current user's registry. Run `Enable-Crash-Dumps.cmd` from the release package to retain up to five full dumps under `%APPDATA%/Narra/crash`; run `Disable-Crash-Dumps.cmd` to remove that registry configuration. Neither script requires administrator privileges.
 
 ## In-game diagnostics
 
@@ -49,16 +49,16 @@ The settings panel provides **Open Log Folder**, **Export Diagnostics**, and the
 - current client, engine, and server logs plus retained archives;
 - the newest crash reports and minidumps, with individual files capped at 25 MiB.
 
-Diagnostics intentionally exclude saves, request bodies, command-line arguments, environment variables, and credentials. Archives are written under `%APPDATA%/Fantu/diagnostics/` in production mode or beside the executable in portable mode.
+Diagnostics intentionally exclude saves, request bodies, command-line arguments, environment variables, and credentials. Archives are written under `%APPDATA%/Narra/diagnostics/` in production mode or beside the executable in portable mode.
 
 ## Portable developer mode
 
-Run `Fantu-Portable.cmd` from an extracted Windows package to place runtime files beside `Fantu.exe`. The launcher redirects Godot engine output to `logs/engine.log`; structured client output remains in `logs/client.log`.
+Run `Narra-Portable.cmd` from an extracted Windows package to place runtime files beside `Narra.exe`. The launcher redirects Godot engine output to `logs/engine.log`; structured client output remains in `logs/client.log`.
 
 Portable mode requires a writable game directory and is intended for development and troubleshooting. The equivalent command is:
 
 ```powershell
-./Fantu.exe --log-file ./logs/engine.log -- --portable --log-level=DEBUG
+./Narra.exe --log-file ./logs/engine.log -- --portable --log-level=DEBUG
 ```
 
 Godot disables its built-in engine-log rotation when `--log-file` is supplied, so portable users should periodically remove an oversized `engine.log`. Client and server structured logs still use the normal 5 MiB rotation policy.

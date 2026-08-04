@@ -12,7 +12,7 @@ func export(context: Dictionary, open_folder := true) -> String:
 		log_event.emit("ERROR", "diagnostics_failed", "could not create diagnostics directory", {"error": mkdir_error})
 		return ""
 	var timestamp := Time.get_datetime_string_from_system(true, false).replace("-", "").replace(":", "")
-	var archive_path := diagnostics_dir.path_join("Fantu-Diagnostics-%sZ.zip" % timestamp)
+	var archive_path := diagnostics_dir.path_join("Narra-Diagnostics-%sZ.zip" % timestamp)
 	var packer := ZIPPacker.new()
 	var open_error := packer.open(archive_path)
 	if open_error != OK:
@@ -20,7 +20,7 @@ func export(context: Dictionary, open_folder := true) -> String:
 		return ""
 	var environment := environment(context)
 	var manifest := {
-		"application": "Fantu",
+		"application": "Narra",
 		"generated_at_utc": "%sZ" % Time.get_datetime_string_from_system(true, false),
 		"version": context.build_version,
 		"session_id": context.session_id,

@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$serverPath = Join-Path $projectRoot "bin\fantu-server.exe"
+$serverPath = Join-Path $projectRoot "bin\narra-server.exe"
 $godotProject = Join-Path $projectRoot "godot"
 $auditDirectory = Join-Path $projectRoot "artifacts\audits\playability-2026-08-01"
 $moviePath = Join-Path $auditDirectory "audit-capture-source.avi"

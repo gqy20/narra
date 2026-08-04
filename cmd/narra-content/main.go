@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"fantu/internal/contentcompiler"
+	"narra/internal/contentcompiler"
 )
 
 func main() {
@@ -73,6 +73,6 @@ func printAnalysis(report contentcompiler.Analysis) {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: fantu-content <validate|graph|test|simulate> <scenario-dir> [--runs N] [--seed N]")
+	fmt.Fprintln(os.Stderr, "usage: narra-content <validate|graph|test|simulate> <scenario-dir> [--runs N] [--seed N]")
 }
-func fail(err error) { fmt.Fprintln(os.Stderr, "fantu-content:", err); os.Exit(1) }
+func fail(err error) { fmt.Fprintln(os.Stderr, "narra-content:", err); os.Exit(1) }

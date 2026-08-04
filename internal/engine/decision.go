@@ -1,6 +1,6 @@
 package engine
 
-import "fantu/internal/domain"
+import "narra/internal/domain"
 
 func calculateScore(personality domain.Personality, input domain.ScoreInput, relationModifier int) domain.ScoreBreakdown {
 	personalityModifier := 0

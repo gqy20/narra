@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $godotProject = Join-Path $projectRoot "godot"
 $distRoot = Join-Path $projectRoot "dist"
-$packageName = "fantu-windows-x86_64"
+$packageName = "narra-windows-x86_64"
 $releaseScenario = "tianqi"
 $releaseScenarioID = "tianqi_t00"
 $packageDir = Join-Path $distRoot $packageName
@@ -51,7 +51,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Go tests failed." }
     }
 
-    $serverPath = Join-Path $packageDir "fantu-server.exe"
+    $serverPath = Join-Path $packageDir "narra-server.exe"
     $previousGoOs = $env:GOOS
     $previousGoArch = $env:GOARCH
     $previousCgoEnabled = $env:CGO_ENABLED
@@ -71,7 +71,7 @@ try {
     & $godot.Source --headless --path $godotProject --editor --quit
     if ($LASTEXITCODE -ne 0) { throw "Godot project import failed." }
 
-    $clientPath = Join-Path $packageDir "Fantu.exe"
+    $clientPath = Join-Path $packageDir "Narra.exe"
     & $godot.Source --headless --path $godotProject --export-release "Windows Desktop" $clientPath
     if ($LASTEXITCODE -ne 0) { throw "Godot Windows export failed." }
 
@@ -94,7 +94,7 @@ try {
         $gitCommit = "unknown"
     }
     $buildInfo = [ordered]@{
-        application = "Fantu"
+        application = "Narra"
         version = $resolvedVersion
         commit = $gitCommit
         source_dirty = $sourceDirty
@@ -107,18 +107,18 @@ try {
     [System.IO.File]::WriteAllText((Join-Path $packageDir "build-info.json"), $buildInfo, $utf8NoBom)
 
     $releaseNotes = @"
-Fantu for Windows
+Narra for Windows
 
-Run Fantu.exe to start the game. The bundled local rules service starts and stops automatically.
-Logs, saves, and crash diagnostics are stored under %APPDATA%\Fantu.
-Run Fantu-Portable.cmd only when you want logs and saves beside the game executable.
+Run Narra.exe to start the game. The bundled local rules service starts and stops automatically.
+Logs, saves, and crash diagnostics are stored under %APPDATA%\Narra.
+Run Narra-Portable.cmd only when you want logs and saves beside the game executable.
 
 Files:
-- Fantu.exe: game client
-- Fantu-Portable.cmd: optional portable developer launcher
-- Enable-Crash-Dumps.cmd: opt in to Windows native Fantu.exe minidumps
+- Narra.exe: game client
+- Narra-Portable.cmd: optional portable developer launcher
+- Enable-Crash-Dumps.cmd: opt in to Windows native Narra.exe minidumps
 - Disable-Crash-Dumps.cmd: remove the native minidump opt-in
-- fantu-server.exe: local rules service
+- narra-server.exe: local rules service
 - build-info.json: release version and source revision
 - data/tianqi/: bundled Tianqi story
 "@
@@ -128,29 +128,29 @@ Files:
 @echo off
 setlocal
 if not exist "%~dp0logs" mkdir "%~dp0logs"
-start "" "%~dp0Fantu.exe" --log-file "%~dp0logs\engine.log" -- --portable
+start "" "%~dp0Narra.exe" --log-file "%~dp0logs\engine.log" -- --portable
 "@
-    Set-Content -LiteralPath (Join-Path $packageDir "Fantu-Portable.cmd") -Value $portableLauncher -Encoding ascii
+    Set-Content -LiteralPath (Join-Path $packageDir "Narra-Portable.cmd") -Value $portableLauncher -Encoding ascii
 
     $enableCrashDumps = @"
 @echo off
 setlocal
-set "DUMP_DIR=%APPDATA%\Fantu\crash"
+set "DUMP_DIR=%APPDATA%\Narra\crash"
 if not exist "%DUMP_DIR%" mkdir "%DUMP_DIR%"
-reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Fantu.exe" /v DumpFolder /t REG_EXPAND_SZ /d "%DUMP_DIR%" /f
+reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Narra.exe" /v DumpFolder /t REG_EXPAND_SZ /d "%DUMP_DIR%" /f
 if errorlevel 1 exit /b 1
-reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Fantu.exe" /v DumpType /t REG_DWORD /d 2 /f
+reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Narra.exe" /v DumpType /t REG_DWORD /d 2 /f
 if errorlevel 1 exit /b 1
-reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Fantu.exe" /v DumpCount /t REG_DWORD /d 5 /f
-echo Native Fantu.exe crash dumps are enabled in "%DUMP_DIR%".
+reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Narra.exe" /v DumpCount /t REG_DWORD /d 5 /f
+echo Native Narra.exe crash dumps are enabled in "%DUMP_DIR%".
 "@
     Set-Content -LiteralPath (Join-Path $packageDir "Enable-Crash-Dumps.cmd") -Value $enableCrashDumps -Encoding ascii
 
     $disableCrashDumps = @"
 @echo off
-reg delete "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Fantu.exe" /f
+reg delete "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\Narra.exe" /f
 if errorlevel 1 exit /b 1
-echo Native Fantu.exe crash dumps are disabled.
+echo Native Narra.exe crash dumps are disabled.
 "@
     Set-Content -LiteralPath (Join-Path $packageDir "Disable-Crash-Dumps.cmd") -Value $disableCrashDumps -Encoding ascii
 

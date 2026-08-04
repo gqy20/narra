@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 // DialogueSnapshot is the immutable, deliberately redacted view supplied to

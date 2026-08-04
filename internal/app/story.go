@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (s *Session) addStoryActions(options map[string]actionOption, state *domain.WorldState) {

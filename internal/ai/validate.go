@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"fantu/internal/app"
+	"narra/internal/app"
 )
 
 var validEmotions = map[string]bool{"neutral": true, "alert": true, "troubled": true, "decisive": true}

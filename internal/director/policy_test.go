@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func TestChooseUsesPriorityAndStableIDWithoutMutatingState(t *testing.T) {

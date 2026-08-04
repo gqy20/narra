@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/domain"
-	"fantu/internal/scenario"
+	"narra/internal/domain"
+	"narra/internal/scenario"
 )
 
 func loadBlackwind(t testing.TB) domain.Bundle {

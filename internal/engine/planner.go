@@ -3,7 +3,7 @@ package engine
 import (
 	"strings"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 // genericStrategies supplies conservative fallback plans when none of the

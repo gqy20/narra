@@ -3,7 +3,7 @@ package engine
 import (
 	"fmt"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 // TradeInformation resolves a negotiated information transaction between

@@ -3,7 +3,7 @@ package app
 import (
 	"sort"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func dialogueAllowedClaims(config domain.DialogueConfig, state *domain.WorldState, npc *domain.NPCState) []DialogueClaim {

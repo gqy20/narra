@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"fantu/internal/director"
-	"fantu/internal/scenario"
+	"narra/internal/director"
+	"narra/internal/scenario"
 )
 
 type saveWorldSelector struct{ calls int }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func scaleBundle(b *testing.B, count int) domain.Bundle {

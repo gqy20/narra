@@ -13,9 +13,9 @@ import (
 	"sort"
 	"strings"
 
-	"fantu/internal/app"
-	"fantu/internal/domain"
-	"fantu/internal/scenario"
+	"narra/internal/app"
+	"narra/internal/domain"
+	"narra/internal/scenario"
 )
 
 type Diagnostic struct {

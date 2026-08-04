@@ -3,7 +3,7 @@ package engine
 import (
 	"sort"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func (e *Engine) resolveUniqueClaimConflicts(intents []domain.ActionIntent) map[string]string {

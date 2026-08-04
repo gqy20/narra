@@ -1,16 +1,16 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("fantu-server-diagnostics-" + [Guid]::NewGuid().ToString("N"))
+$temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("narra-server-diagnostics-" + [Guid]::NewGuid().ToString("N"))
 $resolvedTemporaryBase = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\')
 $resolvedTemporaryRoot = [System.IO.Path]::GetFullPath($temporaryRoot)
-if (-not $resolvedTemporaryRoot.StartsWith("$resolvedTemporaryBase\fantu-server-diagnostics-", [System.StringComparison]::OrdinalIgnoreCase)) {
+if (-not $resolvedTemporaryRoot.StartsWith("$resolvedTemporaryBase\narra-server-diagnostics-", [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "Unsafe diagnostics test directory: $resolvedTemporaryRoot"
 }
 
 New-Item -ItemType Directory -Path $temporaryRoot -Force | Out-Null
 try {
-    $serverPath = Join-Path $temporaryRoot "fantu-server.exe"
+    $serverPath = Join-Path $temporaryRoot "narra-server.exe"
     function Invoke-ExpectedServerFailure {
         param([string[]]$Arguments)
 

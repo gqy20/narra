@@ -15,7 +15,7 @@ go vet ./...
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 foreach ($scenario in @("data/blackwind", "data/tianqi", "data/orbital")) {
-    go run ./cmd/fantu-content test $scenario
+    go run ./cmd/narra-content test $scenario
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

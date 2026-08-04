@@ -3,7 +3,7 @@ package engine
 import (
 	"fmt"
 
-	"fantu/internal/domain"
+	"narra/internal/domain"
 )
 
 func cloneWorld(source *domain.WorldState) *domain.WorldState {
