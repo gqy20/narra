@@ -20,7 +20,7 @@ func _build_confirmation_layer() -> void:
 	var card = PanelContainer.new()
 	card.anchor_left = 0.10
 	card.anchor_right = 0.68
-	card.anchor_top = 0.38
+	card.anchor_top = 0.30
 	card.anchor_bottom = 0.93
 	var confirmation_style = host.game_screen_controller._panel_style(Color("0b100df8"), 0, 2, Color.TRANSPARENT, 34, 26)
 	confirmation_style.border_width_left = 3
@@ -581,6 +581,23 @@ func _on_tell_fact_selected(index: int, facts: Array) -> void:
 		host.action_panel_controller._consider_action(facts[index])
 
 
+func _confirmation_card(parent: VBoxContainer, label_text: String, tone: Color, minimum_height := 0.0) -> VBoxContainer:
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size.y = minimum_height
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var frame_style = host.game_screen_controller._panel_style(Color("111813e8"), 1, 3, Color(host.COLORS.line, 0.68), 16, 13)
+	frame_style.border_width_left = 2
+	frame_style.border_color = Color(tone, 0.76)
+	frame.add_theme_stylebox_override("panel", frame_style)
+	parent.add_child(frame)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 8)
+	frame.add_child(content)
+	var label = host.game_screen_controller._text(content, label_text, true, host.TYPE_SCALE.meta)
+	label.add_theme_color_override("font_color", Color(tone, 0.92))
+	return content
+
+
 func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 	var kind = str(action.get("kind", ""))
 	var warnings = action.get("warnings", [])
@@ -591,45 +608,41 @@ func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 	host.selected_followup_action_id = followup_action_id
 	host.game_screen_controller._clear(host.confirmation_box)
 	host.game_screen_controller._clear(host.confirmation_actions_box)
-	var eyebrow = host.game_screen_controller._text(host.confirmation_box, "一念将定", true, 13)
-	eyebrow.add_theme_color_override("font_color", host.COLORS.accent)
-	host.game_screen_controller._text(host.confirmation_box, str(action.get("name", "行动")), false, 27)
+	var decision_card: VBoxContainer = host.action_panel_controller._confirmation_card(host.confirmation_box, "一念将定", host.COLORS.accent, 118.0)
+	var decision_title = host.game_screen_controller._text(decision_card, str(action.get("name", "行动")), false, 27)
+	decision_title.add_theme_font_override("font", host.display_font)
 	if action.get("id", "") == "wait:next":
-		var warning = host.game_screen_controller._text(host.confirmation_box, "你会放下手边的事，直到新的风声找上门来。", false, 15)
+		var warning = host.game_screen_controller._text(decision_card, "你会放下手边的事，直到新的风声找上门来。", false, host.TYPE_SCALE.compact)
 		warning.add_theme_color_override("font_color", host.COLORS.accent)
 	else:
-		host.game_screen_controller._text(host.confirmation_box, str(action.get("description", "")), true, 15)
-	var summary_rule = HSeparator.new()
-	summary_rule.modulate = Color(host.COLORS.accent, 0.24)
-	host.confirmation_box.add_child(summary_rule)
+		host.game_screen_controller._text(decision_card, str(action.get("description", "")), true, host.TYPE_SCALE.compact)
 	var outcomes = host.action_panel_controller._joined_action_values(action.get("expected_outcomes", []))
 	if outcomes != "":
-		var outcome_heading = host.game_screen_controller._text(host.confirmation_box, "可能结果", true, host.TYPE_SCALE.meta)
-		outcome_heading.add_theme_color_override("font_color", host.COLORS.accent)
-		var outcome_line = host.game_screen_controller._text(host.confirmation_box, outcomes, false, host.TYPE_SCALE.body)
+		var outcome_card: VBoxContainer = host.action_panel_controller._confirmation_card(host.confirmation_box, "可能结果", host.COLORS.success, 92.0)
+		var outcome_line = host.game_screen_controller._text(outcome_card, outcomes, false, host.TYPE_SCALE.body)
 		outcome_line.add_theme_color_override("font_color", host.COLORS.success)
 	var timing = str(action.get("timing", ""))
 	var has_warnings: bool = warnings is Array and not warnings.is_empty()
 	var costs: Dictionary = action.get("costs", {})
+	var consequence_card: VBoxContainer
 	if timing != "" or has_warnings or bool(action.get("irreversible", false)) or not costs.is_empty():
-		var consequence_heading = host.game_screen_controller._text(host.confirmation_box, "时机与代价", true, host.TYPE_SCALE.meta)
-		consequence_heading.add_theme_color_override("font_color", host.COLORS.accent)
+		consequence_card = host.action_panel_controller._confirmation_card(host.confirmation_box, "时机与代价", host.COLORS.danger, 112.0)
 	if timing != "":
-		var timing_line = host.game_screen_controller._text(host.confirmation_box, timing, true, 14)
+		var timing_line = host.game_screen_controller._text(consequence_card, timing, false, host.TYPE_SCALE.body)
 		if timing.contains("挤压") or timing.contains("来不及") or timing.contains("无法预先保证"):
 			timing_line.add_theme_color_override("font_color", host.COLORS.danger)
 	if warnings is Array:
 		for warning_text in warnings:
-			var warning_line = host.game_screen_controller._text(host.confirmation_box, "风险 · %s" % warning_text, false, 14)
+			var warning_line = host.game_screen_controller._text(consequence_card, "风险 · %s" % warning_text, false, host.TYPE_SCALE.compact)
 			warning_line.add_theme_color_override("font_color", host.COLORS.danger)
 	if bool(action.get("irreversible", false)):
-		var irreversible_line = host.game_screen_controller._text(host.confirmation_box, "不可撤回 · 行动产生的公开信息与交换结果会保留", false, 14)
+		var irreversible_line = host.game_screen_controller._text(consequence_card, "不可撤回 · 行动产生的公开信息与交换结果会保留", false, host.TYPE_SCALE.compact)
 		irreversible_line.add_theme_color_override("font_color", host.COLORS.danger)
 	if not costs.is_empty():
 		var cost_parts: Array[String] = []
 		for key in costs:
 			cost_parts.append("%s %s" % [host.game_screen_controller._resource_label(str(key)), costs[key]])
-		var cost_line = host.game_screen_controller._text(host.confirmation_box, "消耗：" + "、".join(cost_parts), false, 15)
+		var cost_line = host.game_screen_controller._text(consequence_card, "消耗 · " + "、".join(cost_parts), false, host.TYPE_SCALE.compact)
 		cost_line.add_theme_color_override("font_color", host.COLORS.danger)
 	host.confirmation_details_button = host.game_screen_controller._utility_button("展开盘算", host.action_panel_controller._toggle_confirmation_details)
 	host.confirmation_details_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
