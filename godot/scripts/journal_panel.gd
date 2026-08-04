@@ -113,6 +113,9 @@ func _select_journal_tab(index: int) -> void:
 func _refresh_journal_tab_styles() -> void:
 	if not host.journal_tabs:
 		return
+	var show_player_summary: bool = host.journal_tabs.current_tab == 3
+	host.player_summary_label.visible = show_player_summary
+	host.player_resources_box.visible = show_player_summary
 	var buttons: Array[Button] = [host.journal_echo_button, host.journal_clues_button, host.journal_people_button, host.journal_travel_button]
 	for index in buttons.size():
 		var button = buttons[index]
@@ -217,9 +220,7 @@ func _render_clues(clues: Array, actions: Array) -> void:
 	for clue in clues:
 		if int(clue.get("confidence", 0)) < 3:
 			unverified += 1
-	var overview = "%d 条已知" % clues.size()
-	if unverified > 0:
-		overview += host._ui_text("journal_unverified_count") % unverified
+	var overview = str(host._ui_text("journal_unverified_count") % unverified).trim_prefix(" · ") if unverified > 0 else "材料均已核验"
 	var overview_label = host.game_screen_controller._text(host.clues_box, overview, true, host.TYPE_SCALE.meta)
 	overview_label.add_theme_color_override("font_color", host.COLORS.accent if unverified > 0 else host.COLORS.success)
 	for index in clues.size():

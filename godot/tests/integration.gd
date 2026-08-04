@@ -33,6 +33,8 @@ func _run() -> void:
 		return _fail("custom-drawn map text can render below the minimum readable size")
 	if "从白石坊市入局" not in _descendant_text(app.start_layer):
 		return _fail("start call to action does not match the actual opening location")
+	if app.start_title_label.text == app.start_eyebrow_label.text or app.start_eyebrow_label.text.begins_with(app.start_title_label.text + "："):
+		return _fail("start screen repeats the world title instead of using a distinct scenario qualifier")
 
 	app.name_input.text = "烟测修士"
 	app._new_game()
@@ -80,8 +82,8 @@ func _run() -> void:
 	app.game_screen_controller._set_visual_mode("location")
 	var action_text := _descendant_text(app.overview_actions_box)
 	var contextual_actions: Array = app.action_panel_controller._location_context_actions(actions)
-	if contextual_actions.is_empty() or str(contextual_actions[0].get("name", "")) not in action_text or "起手可选" not in action_text or "查证与探索" in action_text or app.active_action_category != "":
-		return _fail("compact contextual action dock fell back to dashboard categories")
+	if contextual_actions.is_empty() or str(contextual_actions[0].get("name", "")) not in action_text or "01 · " not in action_text or "日" not in action_text or "起手可选" in action_text or "查证与探索" in action_text or app.active_action_category != "":
+		return _fail("contextual action cards did not preserve the reduced title, timing, and outcome hierarchy")
 	if not app.overview_actions_box.visible or app.fact_action_scroll.visible or app.actor_focus_workspace.visible:
 		return _fail("default location state is not the compact non-scrolling overview")
 	if str(app.location_stage.location.get("scene_key", "")) != "market":
@@ -128,8 +130,17 @@ func _run() -> void:
 	var actor_focus_text := _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box) + _descendant_text(app.actor_focus_footer)
 	if not app.actor_focus_workspace.visible or app.fact_action_scroll.visible or "选择要传达的话" not in actor_focus_text or "传播风险" not in actor_focus_text or "送出后不可撤回" not in actor_focus_text:
 		return _fail("actor focus does not expose selection, decision context, and fixed commitment footer")
+	if not app.actor_focus_detail_scroll.visible or app.action_dock_title.text != "魏无咎":
+		return _fail("populated actor focus did not keep a single actor title and its decision detail")
 	if app.location_detail_box.visible or app.stage_people_box.visible:
 		return _fail("actor focus keeps unrelated location chrome above the dialogue action")
+	app.action_panel_controller._render_actions([])
+	await process_frame
+	var actor_empty_text := _descendant_text(app.actor_focus_message_list) + _descendant_text(app.actor_focus_detail_box)
+	if "暂无可传达的新消息" not in actor_empty_text or "查看人物卷宗" not in actor_empty_text or "选择要传达的话" in actor_empty_text or app.actor_focus_detail_scroll.visible or app.actor_focus_footer.visible:
+		return _fail("actor focus empty state did not collapse to one clear message and next step: detail=%s footer=%s text=%s" % [app.actor_focus_detail_scroll.visible, app.actor_focus_footer.visible, actor_empty_text])
+	app.action_panel_controller._render_actions(actions)
+	await process_frame
 	for bus_name in ["Ambient", "Event", "UI"]:
 		if AudioServer.get_bus_index(bus_name) < 0:
 			return _fail("missing audio bus: " + bus_name)
@@ -177,23 +188,29 @@ func _run() -> void:
 		return _fail("map and location modes still rely on unexplained poetic labels")
 	if app.day_label.text != "◷ 1 / 30":
 		return _fail("initial day is not player-facing day one")
-	if app.place_label.text != "◆ 白石坊市" or app.phase_label.text != "◌ 筹备":
-		return _fail("initial phase does not explain the preparation stage")
+	if app.place_label.visible or app.phase_label.text != "◌ 筹备":
+		return _fail("global header repeats the location name or loses the preparation phase")
 	if app.timing_label.text != "第24天 · 传闻":
 		return _fail("initial known timing is not visible")
 	app.journal_panel_controller._open_journal()
-	if not app.journal_layer.visible or app.action_canvas.visible or "烟测修士" not in _descendant_text(app.journal_panel):
-		return _fail("travel dossier does not expose the player summary")
+	if not app.journal_layer.visible or app.action_canvas.visible or app.player_summary_label.visible or app.player_resources_box.visible:
+		return _fail("journal overview repeats the player summary outside the gear section")
 	if app.journal_tabs.get_tab_count() != 4 or app.journal_travel_button.text != "行装 !2":
 		return _fail("travel dossier does not expose four layered sections with blocking gear status")
+	app.journal_panel_controller._select_journal_tab(1)
+	var clue_text := _descendant_text(app.clues_box)
+	if "待核验" not in clue_text or "条已知" in clue_text:
+		return _fail("material summary repeats the tab total instead of prioritizing unresolved work")
 	app.journal_panel_controller._select_journal_tab(2)
 	var people_text := _descendant_text(app.people_box)
 	if "局势追踪" not in people_text or "核心人物 3" not in people_text or "目标" not in people_text or "计划" not in people_text or "缘由" not in people_text:
 		return _fail("people dossier does not explain autonomous actor goals and plans")
-	var player_metrics := _descendant_text(app.player_resources_box)
-	if "战力 2" not in player_metrics or "灵石 100" not in player_metrics or "助力 0" in player_metrics or "伤势 0" in player_metrics:
-		return _fail("player summary did not hide zero-value secondary metrics")
+	if app.player_summary_label.visible or app.player_resources_box.visible:
+		return _fail("people dossier still competes with the player gear summary")
 	app.journal_panel_controller._select_journal_tab(3)
+	var player_metrics := _descendant_text(app.player_resources_box)
+	if not app.player_summary_label.visible or not app.player_resources_box.visible or "战力 2" not in player_metrics or "灵石 100" not in player_metrics or "助力 0" in player_metrics or "伤势 0" in player_metrics:
+		return _fail("gear section did not own the compact player summary")
 	var travel_text := _descendant_text(app.travel_box)
 	if app.journal_tabs.current_tab != 3 or "仍缺 2 项才能成行" not in travel_text or "缺少 · 解瘴丹" not in travel_text or "购买解瘴丹 · 灵石 20" not in travel_text or "入口尚未开放" not in travel_text or "你的争夺准备" not in travel_text or "助力 0 · 当前尚未建立" not in travel_text:
 		return _fail("gear section does not prioritize blocking preparation: " + travel_text)
@@ -239,6 +256,22 @@ func _run() -> void:
 			break
 	if not found_verification:
 		return _fail("initial verification action is missing")
+	var hierarchy_probe := {
+		"id": "test:hierarchy",
+		"name": "按约赴会",
+		"kind": "route",
+		"description": "确认是否按约行动。",
+		"timing": "明日抵达",
+		"expected_outcomes": ["换取一次会面"],
+		"costs": {"spirit_stones": 5},
+		"warnings": ["道路尚不安稳"],
+		"irreversible": true,
+	}
+	app.action_panel_controller._consider_action(hierarchy_probe)
+	var confirmation_text := _descendant_text(app.confirmation_box) + _descendant_text(app.confirmation_actions_box)
+	if "时机与消耗" not in confirmation_text or "风险与承诺" not in confirmation_text or "时机与代价" in confirmation_text or "按约赴会" not in _descendant_text(app.confirmation_actions_box):
+		return _fail("confirmation hierarchy does not separate neutral context from actual risk")
+	app.action_panel_controller._cancel_confirmation()
 
 	app.action_panel_controller._consider_action(actions[0])
 	if app.confirmation_layer.visible:

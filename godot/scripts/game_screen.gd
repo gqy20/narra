@@ -121,6 +121,8 @@ func _build_header() -> void:
 
 	host.day_label = host.game_screen_controller._hud_label(row, host.COLORS.accent)
 	host.place_label = host.game_screen_controller._hud_label(row, host.COLORS.ink)
+	# 地点名称由当前场景主标题或地图焦点表达；保留节点供演出状态同步，但不在全局页头重复。
+	host.place_label.hide()
 	host.phase_label = host.game_screen_controller._hud_label(row, host.COLORS.muted)
 	host.timing_label = Label.new()
 	host.timing_label.hide()

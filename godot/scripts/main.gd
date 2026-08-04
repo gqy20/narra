@@ -561,7 +561,18 @@ func _apply_scenario_info(value: Variant) -> void:
 	_apply_scenario_presentation(scenario_info.get("presentation", {}))
 	var title := str(scenario_info.get("title", ""))
 	if start_eyebrow_label:
-		start_eyebrow_label.text = title if title != "" else str(scenario_info.get("id", "场景内容"))
+		start_eyebrow_label.text = _start_eyebrow_text(title)
+
+
+func _start_eyebrow_text(scenario_title: String) -> String:
+	if scenario_title == "":
+		return str(scenario_info.get("id", "场景内容"))
+	var brand := str(scenario_presentation.get("brand", "")).strip_edges()
+	for separator: String in ["：", ":"]:
+		var prefix: String = brand + separator
+		if brand != "" and scenario_title.begins_with(prefix):
+			return scenario_title.trim_prefix(prefix).strip_edges()
+	return scenario_title
 
 
 func _apply_scenario_presentation(value: Variant) -> void:

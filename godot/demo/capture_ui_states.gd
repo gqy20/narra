@@ -3,6 +3,7 @@ extends SceneTree
 var app
 var capture_output_dir := ""
 var capture_label := "2048x1152"
+var capture_viewport: SubViewport
 
 
 func _initialize() -> void:
@@ -15,12 +16,24 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	var capture_size := _capture_size()
+	if capture_size != Vector2i.ZERO:
+		capture_viewport = SubViewport.new()
+		capture_viewport.size = capture_size
+		capture_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		root.add_child(capture_viewport)
 	app = load("res://main.tscn").instantiate()
-	root.add_child(app)
+	if capture_viewport:
+		capture_viewport.add_child(app)
+	else:
+		root.add_child(app)
 	await process_frame
 	if not await _wait_until_idle():
 		return _fail("health request timed out")
 	app.cinematic_director.set_enabled(false)
+	await _settle_layout()
+	if not await _capture("ui-start-%s.png" % capture_label):
+		return
 	app.name_input.text = "烟测修士"
 	app._new_game()
 	if not await _wait_until_idle():
@@ -48,6 +61,12 @@ func _run() -> void:
 	await _settle_layout()
 	if not await _capture("ui-actor-focus-%s.png" % capture_label):
 		return
+	app.action_panel_controller._render_actions([])
+	await _settle_layout()
+	if not await _capture("ui-actor-empty-%s.png" % capture_label):
+		return
+	app.action_panel_controller._render_actions(app.available_actions_cache)
+	await _settle_layout()
 	for action in app.available_actions_cache:
 		if app.action_panel_controller._action_needs_confirmation(action):
 			app.action_panel_controller._consider_action(action)
@@ -57,6 +76,13 @@ func _run() -> void:
 			break
 	print("UI state screenshots captured.")
 	quit(0)
+
+
+func _capture_size() -> Vector2i:
+	var parts := capture_label.to_lower().split("x")
+	if parts.size() != 2 or not parts[0].is_valid_int() or not parts[1].is_valid_int():
+		return Vector2i.ZERO
+	return Vector2i(int(parts[0]), int(parts[1]))
 
 
 func _capture(file_name: String) -> bool:

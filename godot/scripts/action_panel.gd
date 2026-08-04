@@ -64,7 +64,7 @@ func _render_actions(actions: Array) -> void:
 	host.actor_focus_footer.visible = host.focused_actor_id != "" and not focused_actions.is_empty()
 	host.fact_action_scroll.visible = host.focused_fact_id != ""
 	if host.focused_actor_id != "":
-		host.action_dock_title.text = "与%s说话" % host.focused_actor_name
+		host.action_dock_title.text = host.focused_actor_name
 		host.action_panel_controller._render_actor_focus_workspace(focused_actions)
 		return
 	if host.focused_fact_id != "":
@@ -90,7 +90,6 @@ func _render_actions(actions: Array) -> void:
 		host.game_screen_controller._text(host.overview_actions_box, "想赶路就翻开地图；想传话就先选中一个人。", true, 14)
 		return
 	host.journal_panel_controller._render_route_progresses(host.overview_actions_box, host.current_view.get("route_progresses", []), true)
-	host.action_panel_controller._render_first_day_route_compass(eligible, host.overview_actions_box)
 	var visible_count = eligible.size() if host.show_all_actions else mini(3, eligible.size())
 	for index in visible_count:
 		host.action_panel_controller._add_overview_choice(eligible[index], index)
@@ -117,26 +116,30 @@ func _configure_action_dock_layout(has_action_focus: bool) -> void:
 
 func _add_overview_choice(action: Dictionary, index: int) -> void:
 	var label = str(action.get("name", "做一件事"))
-	var meta: Array[String] = []
-	if int(action.get("completion_day", 0)) > 0:
-		meta.append("%d日" % int(action.get("duration", 1)))
-	else:
-		meta.append("%d日" % int(action.get("duration", 1)))
+	var card := PanelContainer.new()
+	var card_style = host.game_screen_controller._panel_style(Color(host.COLORS.panel_alt, 0.28), 0, 2, Color.TRANSPARENT, 10, 7)
+	card_style.border_width_left = 2
+	card_style.border_color = Color(host.COLORS.line, 0.76)
+	card.add_theme_stylebox_override("panel", card_style)
+	host.overview_actions_box.add_child(card)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 3)
+	card.add_child(content)
+	var meta = host.game_screen_controller._text(content, "%02d · %d日" % [index + 1, int(action.get("duration", 1))], true, host.TYPE_SCALE.meta)
+	meta.add_theme_color_override("font_color", host.COLORS.accent)
 	var outcomes = host.action_panel_controller._joined_action_values(action.get("expected_outcomes", []))
-	if outcomes != "":
-		meta.append(outcomes)
-	var button_label = "%d　%s" % [index + 1, label]
-	if not meta.is_empty():
-		button_label += "　·　%s" % " · ".join(meta)
 	var callback = host.action_panel_controller._consider_action.bind(action, "wait:complete") if action.get("kind", "") == "cultivate" else host.action_panel_controller._consider_action.bind(action)
-	var button = host.game_screen_controller._action_button(button_label, callback)
+	var button = host.game_screen_controller._action_button(label, callback)
 	button.custom_minimum_size.y = 44
 	button.tooltip_text = "%s\n%s" % [action.get("description", ""), action.get("timing", "")]
-	host.overview_actions_box.add_child(button)
+	content.add_child(button)
+	if outcomes != "":
+		var outcome = host.game_screen_controller._text(content, outcomes, true, host.TYPE_SCALE.compact)
+		outcome.add_theme_color_override("font_color", host.COLORS.muted)
 
 
 func _render_actor_focus_workspace(focused_actions: Array) -> void:
-	var back = host.game_screen_controller._utility_button("‹  返回%s" % host.current_view.get("location", {}).get("name", "眼前"), host.action_panel_controller._clear_action_focus)
+	var back = host.game_screen_controller._utility_button("‹  返回当前地点", host.action_panel_controller._clear_action_focus)
 	back.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	host.actor_focus_message_list.add_child(back)
 	var actor = host.game_screen_controller._actor_by_id(host.current_view.get("known_actors", []), host.focused_actor_id)
@@ -144,6 +147,7 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 	var expression = str(host.actor_expression_by_id.get(host.focused_actor_id, "alert"))
 	host.objective_label.text = "%s · %s" % [actor.get("public_role", "可交谈人物"), state_names.get(expression, expression)]
 	host.dialogue_panel_controller._render_actor_dialogue_line(actor)
+	host.actor_focus_detail_scroll.visible = not focused_actions.is_empty()
 	var has_terms = false
 	var has_route_response = false
 	for action in focused_actions:
@@ -151,15 +155,27 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 			has_terms = true
 		if str(action.get("kind", "")) == "route":
 			has_route_response = true
+	if focused_actions.is_empty():
+		host.focused_actor_action_id = ""
+		var empty_card := PanelContainer.new()
+		var empty_style = host.game_screen_controller._panel_style(Color(host.COLORS.panel_alt, 0.34), 1, 3, Color(host.COLORS.line, 0.66), 16, 14)
+		empty_style.border_width_left = 2
+		empty_style.border_color = Color(host.COLORS.accent, 0.62)
+		empty_card.add_theme_stylebox_override("panel", empty_style)
+		host.actor_focus_message_list.add_child(empty_card)
+		var empty_content := VBoxContainer.new()
+		empty_content.add_theme_constant_override("separation", 8)
+		empty_card.add_child(empty_content)
+		var empty_title = host.game_screen_controller._text(empty_content, "暂无可传达的新消息", false, host.TYPE_SCALE.headline)
+		empty_title.add_theme_color_override("font_color", host.COLORS.accent)
+		host.game_screen_controller._text(empty_content, "已送达的消息不会重复出现。你仍可直接交谈，或到随身卷宗查看完整人物档案。", true, host.TYPE_SCALE.compact)
+		var journal_button = host.game_screen_controller._utility_button("查看人物卷宗", host.action_panel_controller._open_focused_actor_journal)
+		journal_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		empty_content.add_child(journal_button)
+		return
 	var workspace_heading = "回应路线考验" if has_route_response else ("选择交换条件" if has_terms else "选择要传达的话")
 	var heading = host.game_screen_controller._text(host.actor_focus_message_list, workspace_heading, true, host.TYPE_SCALE.meta)
 	heading.add_theme_color_override("font_color", host.COLORS.accent)
-	if focused_actions.is_empty():
-		host.focused_actor_action_id = ""
-		host.game_screen_controller._text(host.actor_focus_message_list, "此刻没有新的话可说", true, 14)
-		host.game_screen_controller._text(host.actor_focus_detail_box, str(actor.get("public_profile", "公开资料尚未收集")), false, 16)
-		host.game_screen_controller._text(host.actor_focus_detail_box, "已经送达的消息不会重复出现。完整人物档案可在随身卷宗中查看。", true, 14)
-		return
 	var focused_choice = host.action_panel_controller._resolve_focused_actor_action(focused_actions)
 	var suggested_action_ids: Array = []
 	var raw_suggested_action_ids = host.actor_dialogue_by_id.get(host.focused_actor_id, {}).get("suggested_action_ids", [])
@@ -184,6 +200,11 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 			button.add_theme_stylebox_override("normal", selected_style)
 		host.actor_focus_message_list.add_child(button)
 	host.action_panel_controller._render_actor_focus_detail(focused_choice)
+
+
+func _open_focused_actor_journal() -> void:
+	host.journal_panel_controller._select_journal_tab(2)
+	host.journal_panel_controller._open_journal()
 
 
 func _resolve_focused_actor_action(actions: Array) -> Dictionary:
@@ -260,31 +281,6 @@ func _location_context_actions(actions: Array) -> Array:
 			continue
 		result.append(action)
 	return result
-
-
-func _render_first_day_route_compass(actions: Array, parent: VBoxContainer = null) -> void:
-	if int(host.current_view.get("day", 0)) > 1:
-		return
-	if parent == null:
-		parent = host.actions_box
-	if actions.size() < 2:
-		return
-	var panel = PanelContainer.new()
-	var style = host.game_screen_controller._panel_style(Color(host.COLORS.panel_alt, 0.26), 0, 2, Color.TRANSPARENT, 10, 4)
-	style.border_width_left = 2
-	style.border_color = Color(host.COLORS.accent, 0.64)
-	panel.add_theme_stylebox_override("panel", style)
-	var content = HBoxContainer.new()
-	content.add_theme_constant_override("separation", 10)
-	panel.add_child(content)
-	var opening_names: Array[String] = []
-	for index in range(mini(3, actions.size())):
-		opening_names.append(str(actions[index].get("name", "行动")))
-	var heading = host.game_screen_controller._text(content, "起手可选 · %s" % " / ".join(opening_names), false, 12)
-	heading.autowrap_mode = TextServer.AUTOWRAP_OFF
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	heading.add_theme_color_override("font_color", host.COLORS.accent)
-	parent.add_child(panel)
 
 
 func _add_contextual_choice(action: Dictionary) -> void:
@@ -624,13 +620,20 @@ func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 	var timing = str(action.get("timing", ""))
 	var has_warnings: bool = warnings is Array and not warnings.is_empty()
 	var costs: Dictionary = action.get("costs", {})
-	var consequence_card: VBoxContainer
-	if timing != "" or has_warnings or bool(action.get("irreversible", false)) or not costs.is_empty():
-		consequence_card = host.action_panel_controller._confirmation_card(host.confirmation_box, "时机与代价", host.COLORS.danger, 112.0)
+	var context_card: VBoxContainer
+	if timing != "" or not costs.is_empty():
+		context_card = host.action_panel_controller._confirmation_card(host.confirmation_box, "时机与消耗", host.COLORS.accent, 88.0)
 	if timing != "":
-		var timing_line = host.game_screen_controller._text(consequence_card, timing, false, host.TYPE_SCALE.body)
-		if timing.contains("挤压") or timing.contains("来不及") or timing.contains("无法预先保证"):
-			timing_line.add_theme_color_override("font_color", host.COLORS.danger)
+		host.game_screen_controller._text(context_card, timing, false, host.TYPE_SCALE.body)
+	if not costs.is_empty():
+		var cost_parts: Array[String] = []
+		for key in costs:
+			cost_parts.append("%s %s" % [host.game_screen_controller._resource_label(str(key)), costs[key]])
+		var cost_line = host.game_screen_controller._text(context_card, "消耗 · " + "、".join(cost_parts), false, host.TYPE_SCALE.compact)
+		cost_line.add_theme_color_override("font_color", host.COLORS.accent)
+	var consequence_card: VBoxContainer
+	if has_warnings or bool(action.get("irreversible", false)):
+		consequence_card = host.action_panel_controller._confirmation_card(host.confirmation_box, "风险与承诺", host.COLORS.danger, 92.0)
 	if warnings is Array:
 		for warning_text in warnings:
 			var warning_line = host.game_screen_controller._text(consequence_card, "风险 · %s" % warning_text, false, host.TYPE_SCALE.compact)
@@ -638,12 +641,6 @@ func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 	if bool(action.get("irreversible", false)):
 		var irreversible_line = host.game_screen_controller._text(consequence_card, "不可撤回 · 行动产生的公开信息与交换结果会保留", false, host.TYPE_SCALE.compact)
 		irreversible_line.add_theme_color_override("font_color", host.COLORS.danger)
-	if not costs.is_empty():
-		var cost_parts: Array[String] = []
-		for key in costs:
-			cost_parts.append("%s %s" % [host.game_screen_controller._resource_label(str(key)), costs[key]])
-		var cost_line = host.game_screen_controller._text(consequence_card, "消耗 · " + "、".join(cost_parts), false, host.TYPE_SCALE.compact)
-		cost_line.add_theme_color_override("font_color", host.COLORS.danger)
 	host.confirmation_details_button = host.game_screen_controller._utility_button("展开盘算", host.action_panel_controller._toggle_confirmation_details)
 	host.confirmation_details_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	host.confirmation_box.add_child(host.confirmation_details_button)
@@ -699,7 +696,7 @@ func _commitment_label(action: Dictionary) -> String:
 		"escort":
 			return "按约随队出发"
 		"route":
-			return "确认这个选择"
+			return str(action.get("name", "确认行动"))
 		"advance":
 			return "就此落子"
 	return "就这么做"

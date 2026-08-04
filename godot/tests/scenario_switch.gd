@@ -19,6 +19,8 @@ func _run() -> void:
 		return _fail("scenario brand was not applied to the header")
 	if app.start_title_label.text != "天变邸抄":
 		return _fail("scenario brand was not applied to the start screen")
+	if app.start_eyebrow_label.text != "五月初六":
+		return _fail("scenario qualifier still repeats the tianqi brand on the start screen")
 	if app.start_begin_button.text != "从王恭厂外街开始记录":
 		return _fail("scenario start action was not applied")
 	if "灾变之后" not in app.start_intro_label.text:

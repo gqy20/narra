@@ -110,13 +110,20 @@
 5. 正式录制前运行无画面或快速路线预检。
 6. 录制后校验视频流、音频流、分辨率、时长、像素格式和像素宽高比。
 
+- 开发期不得把完整 Godot 门禁当作单条断言或解析错误的调试循环。GDScript/UI 修改先运行 `./tools/verify-godot.ps1 -Mode fast`，修复局部失败并稳定后，提交前只运行一次 `./tools/verify-godot.ps1 -Mode full`。
+- `verify-godot.ps1 -Mode fast` 通过加载主场景覆盖脚本编译，并运行默认内容包集成测试和天启场景切换；它不启动编辑器资源扫描，也不替代传播旅程、竞争者旅程、诊断、日志和跨内容包可移植性门禁。
+- 验证脚本启动服务时必须先检查端口并轮询健康端点，不得用固定睡眠代替就绪条件。脚本应输出总耗时，便于发现回归和不必要的重复启动。
+- 静态 UI 验收应直接从目标尺寸的 `SubViewport` 截图，不得为截图启动 Movie Writer 或编码临时影片。只有需要验证动画、音频或时间序列时才使用 Movie Writer。
+
 常用验证入口：
 
 - Go 全量验证：`./tools/verify.ps1`
 - 内容编译：`go run ./cmd/fantu-content validate data/<world>`
 - 内容图检查：`go run ./cmd/fantu-content graph data/<world>`
 - 内容批量试玩：`go run ./cmd/fantu-content simulate data/<world> --runs 200 --seed 1`
-- Godot 验证：`./tools/verify-godot.ps1`
+- Godot 快速 UI 回归：`./tools/verify-godot.ps1 -Mode fast`
+- Godot 完整门禁：`./tools/verify-godot.ps1 -Mode full`
+- 多尺寸 UI 截图：`./tools/capture-ui-states.ps1 -DataDirectory data/tianqi -Resolutions @('1280x800','1920x1080')`
 - 天启快速验证：`./tools/verify-tianqi.ps1 -Mode fast`
 - 天启完整验证：`./tools/verify-tianqi.ps1 -Mode full -Fresh`
 - 标准游戏录制：`./tools/record-gameplay.ps1`
