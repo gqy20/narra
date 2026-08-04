@@ -30,6 +30,8 @@ func _run() -> void:
 	var theme_style: StyleBoxFlat = app.AppVisualThemeScript.panel_style(Color.BLACK, 1, 3, Color.WHITE, 7, 9)
 	if theme_style.border_width_left != 1 or theme_style.corner_radius_top_left != 3 or theme_style.content_margin_left != 7 or theme_style.content_margin_top != 9:
 		return _fail("shared visual-theme style factory lost its layout contract")
+	if app.AppVisualThemeScript.alpha8(app.COLORS.accent, 0x99) != Color("d6ae6299"):
+		return _fail("shared visual-theme alpha helper does not preserve byte-accurate colors")
 	var minimum_size_probe_parent = VBoxContainer.new()
 	app.add_child(minimum_size_probe_parent)
 	var minimum_size_probe = app.game_screen_controller._text(minimum_size_probe_parent, "", false, 1)

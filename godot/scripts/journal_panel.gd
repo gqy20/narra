@@ -14,7 +14,7 @@ func _build_journal_layer() -> void:
 	host.journal_layer.hide()
 	host.add_child(host.journal_layer)
 	var shade = ColorRect.new()
-	shade.color = Color("030504df")
+	shade.color = host.AppVisualThemeScript.alpha8(host.COLORS.scrim, 0xdf)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.journal_layer.add_child(shade)

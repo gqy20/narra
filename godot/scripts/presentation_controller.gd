@@ -20,7 +20,7 @@ func _build_ending_layer() -> void:
 	host.ending_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	host.ending_layer.add_child(host.ending_background)
 	var shade = ColorRect.new()
-	shade.color = Color("030504a8")
+	shade.color = host.AppVisualThemeScript.alpha8(host.COLORS.scrim, 0xa8)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.ending_layer.add_child(shade)
 	host.ending_portrait = TextureRect.new()
@@ -65,7 +65,7 @@ func _build_causal_layer() -> void:
 	host.causal_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	host.causal_layer.add_child(host.causal_background)
 	var shade = ColorRect.new()
-	shade.color = Color("030504a8")
+	shade.color = host.AppVisualThemeScript.alpha8(host.COLORS.scrim, 0xa8)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.causal_layer.add_child(shade)
@@ -91,7 +91,7 @@ func _build_causal_layer() -> void:
 	host.causal_actor_meta.add_theme_color_override("font_color", host.COLORS.accent)
 	host.causal_message = host.game_screen_controller._text(content, "你送出的消息改变了一个人的判断", false, 27)
 	host.causal_message.add_theme_font_override("font", host.narrative_font)
-	host.causal_message.add_theme_color_override("font_color", Color("ead6a8"))
+	host.causal_message.add_theme_color_override("font_color", host.COLORS.ink_warm)
 	host.causal_message.add_theme_constant_override("line_spacing", 6)
 
 	var timeline = VBoxContainer.new()
@@ -333,11 +333,11 @@ func _render_ending(ending: Dictionary) -> void:
 	var outcome_title = str(outcome_parts[0]).strip_edges() if not outcome_parts.is_empty() else outcome
 	var title = host.game_screen_controller._text(host.ending_box, outcome_title, false, 42)
 	title.add_theme_font_override("font", host.display_font)
-	title.add_theme_color_override("font_color", Color("ead6a8"))
+	title.add_theme_color_override("font_color", host.COLORS.ink_warm)
 	for index in range(1, outcome_parts.size()):
 		var outcome_body = host.game_screen_controller._text(host.ending_box, str(outcome_parts[index]).strip_edges(), false, 19)
 		outcome_body.add_theme_constant_override("line_spacing", 6)
-		outcome_body.add_theme_color_override("font_color", Color("ded4c1"))
+		outcome_body.add_theme_color_override("font_color", host.COLORS.ink_soft)
 	var coda: Array = ending.get("coda", [])
 	if not coda.is_empty():
 		var coda_heading = host.game_screen_controller._text(host.ending_box, host._ui_text("ending_coda_heading"), true, 16)

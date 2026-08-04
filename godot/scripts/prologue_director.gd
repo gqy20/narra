@@ -37,7 +37,7 @@ func _ready() -> void:
 	add_child(background)
 
 	var veil := ColorRect.new()
-	veil.color = Color("080b09a8")
+	veil.color = AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.surface_glass, 0xa8)
 	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(veil)
@@ -45,7 +45,11 @@ func _ready() -> void:
 	var lower_veil := TextureRect.new()
 	var lower_gradient := Gradient.new()
 	lower_gradient.offsets = PackedFloat32Array([0.0, 0.34, 1.0])
-	lower_gradient.colors = PackedColorArray([Color("07090700"), Color("070907b8"), Color("070907f2")])
+	lower_gradient.colors = PackedColorArray([
+		AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.surface_cinematic, 0x00),
+		AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.surface_cinematic, 0xb8),
+		AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.surface_cinematic, 0xf2),
+	])
 	var lower_texture := GradientTexture2D.new()
 	lower_texture.gradient = lower_gradient
 	lower_texture.width = 1
@@ -68,7 +72,7 @@ func _ready() -> void:
 	progress_label.anchor_bottom = 0.12
 	progress_label.add_theme_font_override("font", BodyFont)
 	progress_label.add_theme_font_size_override("font_size", 15)
-	progress_label.add_theme_color_override("font_color", Color("d6ae62"))
+	progress_label.add_theme_color_override("font_color", AppVisualThemeScript.COLORS.accent)
 	progress_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(progress_label)
 
@@ -76,8 +80,8 @@ func _ready() -> void:
 	beat_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	beat_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	beat_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	beat_label.add_theme_color_override("font_color", Color("f2ebdd"))
-	beat_label.add_theme_color_override("font_shadow_color", Color("000000d9"))
+	beat_label.add_theme_color_override("font_color", AppVisualThemeScript.COLORS.ink)
+	beat_label.add_theme_color_override("font_shadow_color", AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.shadow, 0xd9))
 	beat_label.add_theme_constant_override("shadow_offset_x", 2)
 	beat_label.add_theme_constant_override("shadow_offset_y", 3)
 	beat_label.add_theme_constant_override("line_spacing", 11)
@@ -91,16 +95,16 @@ func _ready() -> void:
 	prompt_button.anchor_bottom = 0.96
 	prompt_button.add_theme_font_override("font", BodyFont)
 	prompt_button.add_theme_font_size_override("font_size", 16)
-	prompt_button.add_theme_color_override("font_color", Color("e8ddc8"))
-	prompt_button.add_theme_color_override("font_hover_color", Color("15110a"))
+	prompt_button.add_theme_color_override("font_color", AppVisualThemeScript.COLORS.ink_prompt)
+	prompt_button.add_theme_color_override("font_hover_color", AppVisualThemeScript.COLORS.accent_ink)
 	var prompt_style := StyleBoxFlat.new()
 	prompt_style.bg_color = Color("111713d9")
-	prompt_style.border_color = Color("d6ae6299")
+	prompt_style.border_color = AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.accent, 0x99)
 	prompt_style.set_border_width_all(1)
 	prompt_style.set_corner_radius_all(2)
 	prompt_button.add_theme_stylebox_override("normal", prompt_style)
 	var prompt_hover: StyleBoxFlat = prompt_style.duplicate()
-	prompt_hover.bg_color = Color("d6ae62")
+	prompt_hover.bg_color = AppVisualThemeScript.COLORS.accent
 	prompt_button.add_theme_stylebox_override("hover", prompt_hover)
 	prompt_button.pressed.connect(advance)
 	add_child(prompt_button)
@@ -114,8 +118,8 @@ func _ready() -> void:
 	skip_button.add_theme_font_override("font", BodyFont)
 	skip_button.add_theme_font_size_override("font_size", 15)
 	skip_button.flat = true
-	skip_button.add_theme_color_override("font_color", Color("b8b7ad"))
-	skip_button.add_theme_color_override("font_hover_color", Color("f2ebdd"))
+	skip_button.add_theme_color_override("font_color", AppVisualThemeScript.COLORS.ink_subtle)
+	skip_button.add_theme_color_override("font_hover_color", AppVisualThemeScript.COLORS.ink)
 	skip_button.pressed.connect(skip)
 	add_child(skip_button)
 	hide()

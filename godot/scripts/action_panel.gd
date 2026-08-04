@@ -14,7 +14,7 @@ func _build_confirmation_layer() -> void:
 	host.confirmation_layer.hide()
 	host.add_child(host.confirmation_layer)
 	var shade = ColorRect.new()
-	shade.color = Color("0507069c")
+	shade.color = host.AppVisualThemeScript.alpha8(host.COLORS.overlay, 0x9c)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.confirmation_layer.add_child(shade)
 	var card = PanelContainer.new()
@@ -22,7 +22,7 @@ func _build_confirmation_layer() -> void:
 	card.anchor_right = 0.68
 	card.anchor_top = 0.30
 	card.anchor_bottom = 0.93
-	var confirmation_style = host.game_screen_controller._panel_style(Color("0b100df8"), 0, 2, Color.TRANSPARENT, 34, 26)
+	var confirmation_style = host.game_screen_controller._panel_style(host.AppVisualThemeScript.alpha8(host.COLORS.surface_dock, 0xf8), 0, 2, Color.TRANSPARENT, 34, 26)
 	confirmation_style.border_width_left = 3
 	confirmation_style.border_color = host.COLORS.accent
 	card.add_theme_stylebox_override("panel", confirmation_style)
@@ -108,7 +108,8 @@ func _configure_action_dock_layout(has_action_focus: bool) -> void:
 		return
 	host.action_dock_host.anchor_top = 0.25 if has_action_focus else 0.47
 	host.action_dock_host.anchor_bottom = 0.965
-	var dock_style = host.game_screen_controller._panel_style(Color("0b100df4") if has_action_focus else Color("0b100dec"), 0, 2, Color.TRANSPARENT, 24, 18)
+	var dock_color: Color = host.AppVisualThemeScript.alpha8(host.COLORS.surface_dock, 0xf4 if has_action_focus else 0xec)
+	var dock_style = host.game_screen_controller._panel_style(dock_color, 0, 2, Color.TRANSPARENT, 24, 18)
 	dock_style.border_width_left = 2
 	dock_style.border_color = Color(host.COLORS.accent, 0.72 if has_action_focus else 0.62)
 	host.action_dock.add_theme_stylebox_override("panel", dock_style)

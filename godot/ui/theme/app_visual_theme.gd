@@ -28,12 +28,22 @@ const COLORS := {
 	"bg": Color("090c0a"),
 	"bg_deep": Color("060806"),
 	"bg_lift": Color("101712"),
+	"scrim": Color("030504"),
+	"overlay": Color("050706"),
+	"surface_cinematic": Color("070907"),
+	"surface_glass": Color("080b09"),
+	"surface_toast": Color("09100b"),
+	"surface_dock": Color("0b100d"),
 	"panel": Color("121713"),
 	"panel_alt": Color("1a231d"),
 	"panel_hover": Color("232e26"),
 	"line": Color("344039"),
 	"line_soft": Color("242e28"),
 	"ink": Color("f2ebdd"),
+	"ink_warm": Color("ead6a8"),
+	"ink_soft": Color("ded4c1"),
+	"ink_prompt": Color("e8ddc8"),
+	"ink_subtle": Color("b8b7ad"),
 	"muted": Color("a9b3a6"),
 	"accent": Color("d6ae62"),
 	"accent_hover": Color("e4c079"),
@@ -42,6 +52,7 @@ const COLORS := {
 	"danger": Color("c46352"),
 	"danger_deep": Color("8f352c"),
 	"success": Color("82aa78"),
+	"shadow": Color("000000"),
 }
 
 
@@ -101,3 +112,9 @@ static func tab_style(color: Color, border_color: Color) -> StyleBoxFlat:
 
 static func input_style(color: Color, border_color: Color) -> StyleBoxFlat:
 	return panel_style(color, 1, 6, border_color, 16, 11)
+
+
+static func alpha8(color: Color, alpha_byte: int) -> Color:
+	var resolved := color
+	resolved.a = float(clampi(alpha_byte, 0, 255)) / 255.0
+	return resolved

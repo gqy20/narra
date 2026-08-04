@@ -1,5 +1,6 @@
 extends Control
 
+const AppVisualThemeScript = preload("res://ui/theme/app_visual_theme.gd")
 const HOLD_SECONDS := 2.15
 const REDUCED_MOTION_HOLD_SECONDS := 2.8
 
@@ -34,9 +35,9 @@ func _ready() -> void:
 	var gradient := Gradient.new()
 	gradient.offsets = PackedFloat32Array([0.0, 0.78, 1.0])
 	gradient.colors = PackedColorArray([
-		Color("09100bed"),
-		Color("09100bc7"),
-		Color("09100b00"),
+		AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.surface_toast, 0xed),
+		AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.surface_toast, 0xc7),
+		AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.surface_toast, 0x00),
 	])
 	var wash_texture := GradientTexture2D.new()
 	wash_texture.gradient = gradient
@@ -70,7 +71,7 @@ func _ready() -> void:
 	row.add_child(illustration)
 
 	accent_line = ColorRect.new()
-	accent_line.color = Color("d6ae62dc")
+	accent_line.color = AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.accent, 0xdc)
 	accent_line.custom_minimum_size.x = 2
 	accent_line.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	accent_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -85,8 +86,8 @@ func _ready() -> void:
 	title_label = Label.new()
 	title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title_label.add_theme_font_size_override("font_size", 14)
-	title_label.add_theme_color_override("font_color", Color("d6ae62"))
-	title_label.add_theme_color_override("font_outline_color", Color("050806e8"))
+	title_label.add_theme_color_override("font_color", AppVisualThemeScript.COLORS.accent)
+	title_label.add_theme_color_override("font_outline_color", AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.bg_deep, 0xe8))
 	title_label.add_theme_constant_override("outline_size", 3)
 	text_stack.add_child(title_label)
 
@@ -94,8 +95,8 @@ func _ready() -> void:
 	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	message_label.max_lines_visible = 2
 	message_label.add_theme_font_size_override("font_size", 15)
-	message_label.add_theme_color_override("font_color", Color("f2ebdd"))
-	message_label.add_theme_color_override("font_outline_color", Color("050806ed"))
+	message_label.add_theme_color_override("font_color", AppVisualThemeScript.COLORS.ink)
+	message_label.add_theme_color_override("font_outline_color", AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.bg_deep, 0xed))
 	message_label.add_theme_constant_override("outline_size", 3)
 	text_stack.add_child(message_label)
 

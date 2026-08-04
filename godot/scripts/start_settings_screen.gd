@@ -27,7 +27,7 @@ func _build_start_layer() -> void:
 	host.start_vignette.hide()
 	host.start_layer.add_child(host.start_vignette)
 	var shade = ColorRect.new()
-	shade.color = Color("0305048f")
+	shade.color = host.AppVisualThemeScript.alpha8(host.COLORS.scrim, 0x8f)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	host.start_layer.add_child(shade)
@@ -127,7 +127,7 @@ func _build_settings_layer() -> void:
 	host.settings_layer.hide()
 	host.add_child(host.settings_layer)
 	var shade = ColorRect.new()
-	shade.color = Color("050706dc")
+	shade.color = host.AppVisualThemeScript.alpha8(host.COLORS.overlay, 0xdc)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.settings_layer.add_child(shade)
 	var center = CenterContainer.new()

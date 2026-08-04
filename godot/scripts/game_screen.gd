@@ -146,7 +146,7 @@ func _build_dashboard() -> void:
 
 	host.action_dock = PanelContainer.new()
 	host.action_dock.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var dock_style = host.game_screen_controller._panel_style(Color("0b100dea"), 0, 2, Color.TRANSPARENT, 24, 18)
+	var dock_style = host.game_screen_controller._panel_style(host.AppVisualThemeScript.alpha8(host.COLORS.surface_dock, 0xea), 0, 2, Color.TRANSPARENT, 24, 18)
 	dock_style.border_width_left = 2
 	dock_style.border_color = Color(host.COLORS.accent, 0.68)
 	host.action_dock.add_theme_stylebox_override("panel", dock_style)
@@ -543,9 +543,9 @@ func _ornate_button(text_value: String, callback: Callable) -> Button:
 	button.add_theme_color_override("font_color", Color("e5c47d"))
 	button.add_theme_color_override("font_hover_color", host.COLORS.ink)
 	button.add_theme_color_override("font_pressed_color", host.COLORS.accent_pressed)
-	button.add_theme_stylebox_override("normal", host.game_screen_controller._panel_style(Color("080b09b8"), 0, 0, Color.TRANSPARENT, 20, 14))
+	button.add_theme_stylebox_override("normal", host.game_screen_controller._panel_style(host.AppVisualThemeScript.alpha8(host.COLORS.surface_glass, 0xb8), 0, 0, Color.TRANSPARENT, 20, 14))
 	button.add_theme_stylebox_override("hover", host.game_screen_controller._panel_style(Color("171c16e6"), 0, 0, Color.TRANSPARENT, 20, 14))
-	button.add_theme_stylebox_override("pressed", host.game_screen_controller._panel_style(Color("050706f2"), 0, 0, Color.TRANSPARENT, 20, 15))
+	button.add_theme_stylebox_override("pressed", host.game_screen_controller._panel_style(host.AppVisualThemeScript.alpha8(host.COLORS.overlay, 0xf2), 0, 0, Color.TRANSPARENT, 20, 15))
 	button.add_theme_stylebox_override("focus", host.game_screen_controller._panel_style(Color.TRANSPARENT, 1, 2, host.COLORS.accent_hover, 18, 12))
 	var frame = TextureRect.new()
 	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

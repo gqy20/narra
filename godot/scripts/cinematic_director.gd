@@ -2,6 +2,8 @@ extends Control
 
 signal playback_finished(event_key: String, skipped: bool)
 
+const AppVisualThemeScript = preload("res://ui/theme/app_visual_theme.gd")
+
 var video_player: VideoStreamPlayer
 var skip_button: Button
 var active := false
@@ -48,11 +50,11 @@ func _ready() -> void:
 	skip_button.offset_bottom = 72.0
 	skip_button.focus_mode = Control.FOCUS_ALL
 	skip_button.add_theme_font_size_override("font_size", 16)
-	skip_button.add_theme_color_override("font_color", Color("f2ebdd"))
-	skip_button.add_theme_color_override("font_hover_color", Color("15110a"))
+	skip_button.add_theme_color_override("font_color", AppVisualThemeScript.COLORS.ink)
+	skip_button.add_theme_color_override("font_hover_color", AppVisualThemeScript.COLORS.accent_ink)
 	var skip_normal := StyleBoxFlat.new()
-	skip_normal.bg_color = Color("0b100dd9")
-	skip_normal.border_color = Color("d6ae6299")
+	skip_normal.bg_color = AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.surface_dock, 0xd9)
+	skip_normal.border_color = AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.accent, 0x99)
 	skip_normal.set_border_width_all(1)
 	skip_normal.set_corner_radius_all(2)
 	skip_normal.content_margin_left = 12.0
@@ -61,11 +63,11 @@ func _ready() -> void:
 	skip_normal.content_margin_bottom = 9.0
 	skip_button.add_theme_stylebox_override("normal", skip_normal)
 	var skip_hover: StyleBoxFlat = skip_normal.duplicate()
-	skip_hover.bg_color = Color("d6ae62")
-	skip_hover.border_color = Color("e4c079")
+	skip_hover.bg_color = AppVisualThemeScript.COLORS.accent
+	skip_hover.border_color = AppVisualThemeScript.COLORS.accent_hover
 	skip_button.add_theme_stylebox_override("hover", skip_hover)
 	var skip_focus: StyleBoxFlat = skip_normal.duplicate()
-	skip_focus.border_color = Color("e4c079")
+	skip_focus.border_color = AppVisualThemeScript.COLORS.accent_hover
 	skip_focus.set_border_width_all(2)
 	skip_button.add_theme_stylebox_override("focus", skip_focus)
 	skip_button.pressed.connect(skip)
