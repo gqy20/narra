@@ -51,10 +51,16 @@ jobs:
           $archive = Join-Path $env:RUNNER_TEMP 'godot.zip'
           Invoke-WebRequest -Uri $url -OutFile $archive
           Expand-Archive -LiteralPath $archive -DestinationPath $installDirectory
-          $editor = Get-ChildItem -LiteralPath $installDirectory -Filter 'Godot_v*_win64_console.exe' -File | Select-Object -First 1
-          if ($null -eq $editor) { throw 'Godot editor executable was not found.' }
+          $editor = Get-ChildItem -LiteralPath $installDirectory -Filter 'Godot_v*_win64.exe' -File | Select-Object -First 1
+          $console = Get-ChildItem -LiteralPath $installDirectory -Filter 'Godot_v*_win64_console.exe' -File | Select-Object -First 1
+          if ($null -eq $editor -or $null -eq $console) { throw 'Godot editor executable pair was not found.' }
           Copy-Item -LiteralPath $editor.FullName -Destination (Join-Path $installDirectory 'godot.exe')
-          $installDirectory | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Copy-Item -LiteralPath $console.FullName -Destination (Join-Path $installDirectory 'godot_console.exe')
+          $shimDirectory = Join-Path $env:RUNNER_TEMP 'godot-bin'
+          New-Item -ItemType Directory -Path $shimDirectory -Force | Out-Null
+          $shim = "@echo off`r`n`"$(Join-Path $installDirectory 'godot_console.exe')`" %*"
+          Set-Content -LiteralPath (Join-Path $shimDirectory 'godot.cmd') -Value $shim -Encoding ascii
+          $shimDirectory | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Run deterministic Godot verification
         shell: pwsh
         run: ./tools/verify-godot.ps1 -Mode full
