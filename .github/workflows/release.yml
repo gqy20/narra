@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   GODOT_VERSION: 4.7.1.stable
 
@@ -31,6 +35,10 @@ jobs:
           project_version="$(sed -n 's/^config\/version="\([^"]*\)"/\1/p' godot/project.godot)"
           if [[ -z "$version" || "$version" != "$project_version" ]]; then
             echo "Tag version $version does not match Godot project version $project_version" >&2
+            exit 1
+          fi
+          if ! grep -Eq "^## \\[$version\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md; then
+            echo "CHANGELOG.md has no dated release entry for version $version" >&2
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -127,16 +135,37 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           path: release-assets
           merge-multiple: true
+      - name: Build release notes and checksums
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v heading="## [$version]" '
+            index($0, heading) == 1 { found = 1 }
+            found && index($0, "## [") == 1 && index($0, heading) != 1 { exit }
+            found { print }
+            END { if (!found) exit 1 }
+          ' CHANGELOG.md > release-notes.md
+          if [[ ! -s release-notes.md ]]; then
+            echo "No changelog entry found for version $version" >&2
+            exit 1
+          fi
+          (
+            cd release-assets
+            sha256sum *.zip > checksums.txt
+          )
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
           gh release create "$GITHUB_REF_NAME"
           release-assets/*.zip
+          release-assets/checksums.txt
           --verify-tag
-          --generate-notes
+          --notes-file release-notes.md
+          --repo "$GITHUB_REPOSITORY"
           --title "Narra $GITHUB_REF_NAME"

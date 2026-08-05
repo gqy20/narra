@@ -92,13 +92,13 @@ The repository does not contain an Apple signing identity. Local and GitHub-host
 
 `.github/workflows/build.yml` runs for every push and can also be started manually. Its Windows and macOS jobs have no dependency between them, so GitHub schedules them in parallel. Both jobs build the bundled client and service, run the package smoke test, and upload their ZIP as a seven-day workflow artifact. This provides installable test builds without creating a GitHub Release.
 
-`.github/workflows/release.yml` runs only for semantic version tags. Before tagging, update `config/version` in `godot/project.godot`; the workflow rejects mismatches:
+`.github/workflows/release.yml` runs only for semantic version tags. Before tagging, update `config/version` in `godot/project.godot` and add the matching dated section to the root `CHANGELOG.md`; the workflow rejects version or changelog mismatches:
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-After both platform jobs pass their package smoke tests, the workflow creates one GitHub Release containing the Windows x86_64 ZIP and unsigned macOS Universal ZIP. The release still bundles only the Chinese story 《天启邪抄》 (`data/tianqi`, internal scenario ID `tianqi_t00`); the internal directory and ID remain stable configuration identifiers, not player-facing names.
+After both platform jobs pass their package smoke tests, the workflow extracts the matching `CHANGELOG.md` section as the release notes and creates one GitHub Release containing the Windows x86_64 ZIP, unsigned macOS Universal ZIP, and SHA-256 checksums. The release still bundles only the Chinese story 《天启邪抄》 (`data/tianqi`, internal scenario ID `tianqi_t00`); the internal directory and ID remain stable configuration identifiers, not player-facing names.
 
 CI and release workflows use the current major versions of the official `checkout`, `setup-go`, `upload-artifact`, and `download-artifact` actions. Dependabot checks the `github-actions` ecosystem weekly and opens an update when a newer compatible action is available.
