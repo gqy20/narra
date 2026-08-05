@@ -62,9 +62,7 @@ jobs:
 
   macos:
     name: macOS Universal artifact (unsigned)
-    # Godot 4.7.1 still invokes lipo with the syntax accepted by Xcode 16.
-    # Pin the image so a macos-latest/Xcode 26 rollout cannot break exports.
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
         with:
