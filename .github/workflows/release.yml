@@ -88,7 +88,8 @@ jobs:
   macos:
     name: macOS Universal package (unsigned)
     needs: validate
-    runs-on: macos-latest
+    # Keep the release toolchain aligned with the continuously tested build.
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v7
         with:
