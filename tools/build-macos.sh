@@ -57,7 +57,7 @@ fi
 CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o "$temporary_dir/narra-server-amd64" ./cmd/server
 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags='-s -w' -o "$temporary_dir/narra-server-arm64" ./cmd/server
 lipo -create -output "$temporary_dir/narra-server" "$temporary_dir/narra-server-amd64" "$temporary_dir/narra-server-arm64"
-lipo -verify_arch x86_64 arm64 "$temporary_dir/narra-server"
+lipo "$temporary_dir/narra-server" -verify_arch x86_64 arm64
 
 godot --headless --path "$godot_project" --editor --quit
 godot --headless --path "$godot_project" --export-release "macOS" "$app_path"

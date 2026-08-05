@@ -1,0 +1,11 @@
+minimum_pre_commit_version: "3.6.0"
+
+repos:
+  - repo: local
+    hooks:
+      - id: conventional-commit-message
+        name: conventional commit message
+        entry: python tools/check-commit-message.py --file
+        language: system
+        stages: [commit-msg]
+        always_run: true

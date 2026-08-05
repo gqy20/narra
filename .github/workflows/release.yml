@@ -61,7 +61,7 @@ jobs:
           $archive = Join-Path $env:RUNNER_TEMP 'godot.zip'
           Invoke-WebRequest -Uri $url -OutFile $archive
           Expand-Archive -LiteralPath $archive -DestinationPath $installDirectory
-          $editor = Get-ChildItem -LiteralPath $installDirectory -Filter 'Godot_v*_win64.exe' -File | Select-Object -First 1
+          $editor = Get-ChildItem -LiteralPath $installDirectory -Filter 'Godot_v*_win64_console.exe' -File | Select-Object -First 1
           if ($null -eq $editor) { throw 'Godot editor executable was not found.' }
           Copy-Item -LiteralPath $editor.FullName -Destination (Join-Path $installDirectory 'godot.exe')
           $installDirectory | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append

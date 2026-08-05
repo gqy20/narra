@@ -74,6 +74,9 @@ try {
     $clientPath = Join-Path $packageDir "Narra.exe"
     & $godot.Source --headless --path $godotProject --export-release "Windows Desktop" $clientPath
     if ($LASTEXITCODE -ne 0) { throw "Godot Windows export failed." }
+    if (-not (Test-Path -LiteralPath $clientPath -PathType Leaf)) {
+        throw "Godot reported a successful Windows export but did not create Narra.exe. Use the console Godot executable in non-interactive builds."
+    }
 
     $scenarioSource = Join-Path $projectRoot "data\$releaseScenario"
     if (-not (Test-Path -LiteralPath (Join-Path $scenarioSource "scenario.yml") -PathType Leaf)) {

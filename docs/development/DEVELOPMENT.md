@@ -8,6 +8,27 @@ GNU Make is the single command entry point for local development, validation, an
 
 Run `make` or `make help` to list available commands.
 
+## Commit messages
+
+Commit headers use `type(scope): subject`, with a required lowercase scope. For example:
+
+```text
+feat(ui): 调整地图交互
+fix(packaging): wait for the Windows export
+docs(content): explain custom world validation
+```
+
+Supported types are `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, and `revert`. Standard Git merge and automatic revert headers are accepted.
+
+Install the local `commit-msg` hook after cloning:
+
+```powershell
+python -m pip install pre-commit
+pre-commit install --hook-type commit-msg
+```
+
+`.github/workflows/precommit.yml` applies the same rule to every commit added by a push or pull request, so bypassing the local hook does not bypass repository validation.
+
 ## Environment
 
 The repository stores production images, audio, video, and fonts in Git LFS. Install Git LFS before the first checkout and materialize the assets after cloning:
