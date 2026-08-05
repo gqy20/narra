@@ -23,8 +23,8 @@ runtime_dir="$app_path/Contents/MacOS"
   echo "build-info.json is missing" >&2
   exit 1
 }
-lipo -verify_arch x86_64 arm64 "$client_path"
-lipo -verify_arch x86_64 arm64 "$runtime_dir/narra-server"
+lipo "$client_path" -verify_arch x86_64 arm64
+lipo "$runtime_dir/narra-server" -verify_arch x86_64 arm64
 
 scenario_count="$(find "$runtime_dir/data" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
 [[ "$scenario_count" == "1" ]] || {

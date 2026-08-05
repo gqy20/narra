@@ -17,7 +17,7 @@ if [[ "$version" != "dev" ]]; then
 fi
 archive_path="$dist_root/$archive_name"
 
-for command_name in go godot git lipo ditto shasum grep tee; do
+for command_name in go godot git lipo ditto shasum; do
   command -v "$command_name" >/dev/null || {
     echo "Required command is missing: $command_name" >&2
     exit 1
@@ -60,38 +60,12 @@ lipo -create -output "$temporary_dir/narra-server" "$temporary_dir/narra-server-
 lipo "$temporary_dir/narra-server" -verify_arch x86_64 arm64
 
 godot --headless --path "$godot_project" --editor --quit
-godot_export_log="$temporary_dir/godot-export.log"
-set +e
-godot --headless --path "$godot_project" --export-release "macOS" "$app_path" 2>&1 | tee "$godot_export_log"
-godot_export_status=${PIPESTATUS[0]}
-set -e
-
-if [[ $godot_export_status -ne 0 ]] &&
-  { ! grep -Fq 'unknown architecture specification flag:' "$godot_export_log" ||
-    ! grep -Fq 'in specifying -verify_arch operation' "$godot_export_log"; }; then
-  echo "Godot export failed with status $godot_export_status." >&2
-  exit "$godot_export_status"
-fi
+godot --headless --path "$godot_project" --export-release "macOS" "$app_path"
 
 [[ -d "$runtime_dir" ]] || {
   echo "Godot did not create the expected application bundle: $app_path" >&2
   exit 1
 }
-app_executable="$runtime_dir/Narra"
-[[ -x "$app_executable" ]] || {
-  echo "Godot did not create the expected application executable: $app_executable" >&2
-  exit 1
-}
-
-# Godot 4.7.1 can finish a Universal export and then return 1 because its
-# macOS exporter invokes lipo -verify_arch with the file argument last.
-# Verify the completed executable ourselves with the current lipo syntax;
-# this still rejects incomplete or single-architecture bundles.
-if [[ $godot_export_status -ne 0 ]]; then
-  echo "Godot reported export status $godot_export_status; verifying the completed bundle." >&2
-fi
-lipo "$app_executable" -verify_arch x86_64 arm64
-
 install -m 0755 "$temporary_dir/narra-server" "$runtime_dir/narra-server"
 mkdir -p "$runtime_dir/data"
 cp -R "$project_root/data/$release_scenario" "$runtime_dir/data/$release_scenario"
