@@ -1,0 +1,175 @@
+version: 1
+title: 我用 AI 做了一套可以更换世界的叙事游戏框架
+status: production
+target_duration_seconds: 176
+language: zh-CN
+delivery:
+  tone: 像开发者向朋友展示刚做出来的东西，真诚、克制、有一点兴奋
+  pace: 前十二秒稍快，中段自然，技术段落避免逐字强调术语
+  sentence_audio: separate
+  subtitle_max_lines: 2
+tts:
+  provider: minimax
+  model: speech-2.8-hd
+  voice: Chinese (Mandarin)_Lyrical_Voice
+  speed: 1.2
+  sample_rate: 44100
+  bitrate: 256000
+  channels: 1
+  pronunciation:
+    - AI/A I
+    - Narra/纳拉
+    - NPC/N P C
+    - Godot/戈多
+    - YAML/Y A M L
+    - MIT/M I T
+    - GitHub/Git Hub
+notes:
+  - 每个 segment 单独生成音频，时间轴以最终音频时长为准，不在稿件阶段写死 start。
+  - visual 是镜头意图，不是素材文件路径；素材映射由剪辑配置单独维护。
+  - release_status 段落在正式录音前必须核对 GitHub Release 页面。
+
+segments:
+  - id: n01
+    beat: hook
+    approx_seconds: 4.0
+    visual: 王恭厂爆炸原片满屏冲入，随后切到灾后人物界面
+    text: 我把一个 AI，扔进了明朝最离奇的一场灾变。
+
+  - id: n02
+    beat: hook
+    approx_seconds: 6.0
+    visual: 胡彦清实机对话与两种已知信息状态并列，回答随玩家掌握的证据改变
+    text: 它要扮演这里的人，隐瞒、试探，甚至为了活命临时改口。
+
+  - id: n03
+    beat: premise
+    approx_seconds: 8.0
+    visual: 越界断言被墨迹抹去，天启画面翻页切换到凡途，最后揭示 Narra
+    text: 但 AI 只能临场表演，不能篡改已经发生的事。因为这不是一段剧情，而是一套可以更换故事的游戏框架。
+
+  - id: n04
+    beat: history
+    approx_seconds: 5.5
+    visual: 天启六年五月初六、王恭厂位置与史料页的简洁动画
+    text: 第一个故事，来自一六二六年北京王恭厂那场至今仍有争议的灾变。
+
+  - id: n05
+    beat: history
+    approx_seconds: 5.5
+    visual: 《天变邸抄》、实录与研究资料并列，强调记载彼此冲突
+    text: 《天变邸抄》留下了巨响、死伤和满城传言，也留下了互相冲突的记录。
+
+  - id: n06
+    beat: history
+    approx_seconds: 5.0
+    visual: 从史料页面过渡到游戏中的残页、口供和名册
+    text: 所以我没有替历史宣布一个真相，而是把这些矛盾交给玩家。
+
+  - id: n07
+    beat: gameplay
+    approx_seconds: 5.5
+    visual: 玩家查看交割残页，在保留、交出等行动之间作出选择
+    text: 比如这张交割残页，留下原件能保住经手痕迹，也可能把追查引向自己。
+
+  - id: n08
+    beat: gameplay
+    approx_seconds: 5.0
+    visual: 卷宗、地图和人物状态随行动更新，避免只拍静态界面
+    text: 你保存什么、交给谁、错过什么，都会继续改变后面的卷宗和人物。
+
+  - id: n09
+    beat: gameplay
+    approx_seconds: 4.5
+    visual: 裁定页由此前行动汇总生成，突出前后因果
+    text: 结局不是等在终点的一句话，而是一路选择留下的结果。
+
+  - id: n10
+    beat: ai_runtime
+    approx_seconds: 5.0
+    visual: 切回 AI NPC 对话，展示问题、可见证据与回答的对应关系
+    text: 这时候，AI NPC 才真正有用：它能根据眼前证据，用这个人物的口吻回答。
+
+  - id: n11
+    beat: ai_runtime
+    approx_seconds: 5.5
+    visual: 架构动画显示“可见状态进入模型，权威规则留在游戏内核”
+    text: 模型看得到玩家已经知道的事，却碰不到事实、行动结算和存档。
+
+  - id: n12
+    beat: ai_runtime
+    approx_seconds: 5.0
+    visual: 连续追问，同一人物保留最近语境；状态改变后刷新上下文
+    text: 它记得刚才聊过什么；局势变了，旧对话也不能继续冒充现在。
+
+  - id: n13
+    beat: making
+    approx_seconds: 4.5
+    visual: 从游戏实机拉远，进入代码、配置与内容编辑的制作蒙太奇
+    text: 做这个游戏时，我也把 AI 放进了制作流程。
+
+  - id: n14
+    beat: making
+    approx_seconds: 5.5
+    visual: 资料卡、人物关系、YAML、测试输出依次出现，画面要能看出迭代过程
+    text: 它帮我整理资料、拆人物关系、写配置和测试；我负责判断哪些能用，哪些必须推翻。
+
+  - id: n15
+    beat: tech
+    approx_seconds: 5.5
+    visual: Remotion 架构动画：Godot、Go、YAML、AI 四层依次连接
+    text: Godot 负责界面和演出，Go 负责规则、存档与校验，故事本身放在 YAML 内容包里。
+
+  - id: n16
+    beat: tech
+    approx_seconds: 4.5
+    visual: AI 层只连接 NPC 表达接口，不能越过规则层
+    text: 模型负责有变化的表达，但不接管游戏规则。
+
+  - id: n17
+    beat: content_pack
+    approx_seconds: 5.0
+    visual: 《天变邸抄》内容包淡出，同一客户端加载《凡途》
+    text: 也正因为这样，《天变邸抄》并不是写死在代码里的唯一故事。
+
+  - id: n18
+    beat: fantu
+    approx_seconds: 6.0
+    visual: 《凡途》的地点、人物、机缘与行动实机流程
+    text: 《凡途》来自我对凡人流修仙的喜欢：真正让人紧张的，不只是升级，而是信息、准备和取舍。
+
+  - id: n19
+    beat: fantu
+    approx_seconds: 5.0
+    visual: NPC 抢先行动、地图状态变化，玩家错过某个机会
+    text: 在这里，机缘不会站在原地等主角，其他人也会调查、争夺，甚至抢先一步。
+
+  - id: n20
+    beat: content_pack
+    approx_seconds: 5.5
+    visual: 两个内容包目录并列，再展示人物、地点、规则和表现资源文件
+    text: 两个世界共用同一套框架，却拥有各自的人物、地点、规则、图片和音乐。
+
+  - id: n21
+    beat: open_source
+    approx_seconds: 5.5
+    visual: GitHub 仓库、MIT License 与内容包目录，避免长时间停留在代码页面
+    text: Narra 已经以 MIT 协议开源。你可以复制一套模板，写自己的 YAML，再放入需要的资源。
+
+  - id: n22
+    beat: open_source
+    approx_seconds: 5.0
+    visual: 内容校验通过后启动新世界，用成功状态代替大段命令行
+    text: 人物和地点不必塞进通用代码；内容通过校验，同一个客户端就能把它运行起来。
+
+  - id: n23
+    beat: release_status
+    approx_seconds: 5.0
+    visual: Windows EXE、macOS 应用包与 GitHub Actions 成功状态
+    text: Windows EXE 和 macOS 版本已经打包发布，现在可以直接从 GitHub Release 下载。
+
+  - id: n24
+    beat: ending
+    approx_seconds: 5.5
+    visual: 《天变邸抄》与《凡途》并列，最后落到仓库地址和项目名 Narra
+    text: 这是 Narra 的前两个世界。项目已经开源，也欢迎大家把自己的故事，做成下一个可以运行的世界。

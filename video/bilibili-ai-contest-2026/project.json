@@ -1,0 +1,43 @@
+{
+  "id": "narra-bilibili-ai-contest-2026",
+  "title": "我把AI扔进明朝一场离奇灾变，做成了能换世界的游戏",
+  "narration_file": "video/bilibili-ai-contest-2026/script/narration.yml",
+  "output_directory": "artifacts/contest-video/bilibili-ai-contest-2026",
+  "video": {"width": 3840, "height": 2160, "fps": 30, "crf": 14},
+  "sources": {
+    "tianqi": "artifacts/recordings/tianqi/20260805-101102-tianqi-complete-playthrough-4k/tianqi-complete-playthrough-4k.mp4",
+    "ai_dialogue": "artifacts/recordings/tianqi/20260805-142658-tianqi-ai-dialogue-4k/tianqi-ai-dialogue-4k.mp4",
+    "fantu": "artifacts/recordings/blackwind/20260805-003708-blackwind-framework-showcase-4k/blackwind-framework-showcase-4k.mp4",
+    "opening_motion": "artifacts/contest-video/bilibili-ai-contest-2026/motion/opening-4k.mp4",
+    "motion": "artifacts/contest-video/bilibili-ai-contest-2026/motion/architecture-4k.mp4"
+  },
+  "sections": [
+    {"id": "hook", "narration": ["n01", "n02", "n03"], "source": "opening_motion", "in": 0.0, "out": 20.0},
+    {"id": "history", "narration": ["n04", "n05", "n06"], "source": "tianqi", "in": 0.0, "out": 24.0},
+    {"id": "gameplay", "narration": ["n07", "n08", "n09"], "source": "tianqi", "in": 24.0, "out": 58.0},
+    {"id": "runtime_ai", "narration": ["n10", "n11", "n12"], "source": "ai_dialogue", "in": 42.0, "out": 71.5},
+    {"id": "making", "narration": ["n13", "n14", "n15", "n16"], "source": "motion", "in": 0.0, "out": 25.0},
+    {"id": "content_pack", "narration": ["n17", "n18", "n19", "n20"], "source": "fantu", "in": 0.0, "out": 48.0},
+    {"id": "open_source", "narration": ["n21", "n22", "n23", "n24"], "source": "motion", "in": 25.0, "out": 48.0}
+  ],
+  "audio": {
+    "narration_directory": "narration/lyrical-1.2x",
+    "speech_tempo": 1.0,
+    "gap_seconds": 0.36,
+    "section_gap_seconds": 1.20,
+    "game_gain": 0.16,
+    "narration_gain": 1.0,
+    "section_fade_seconds": 0.35,
+    "fantu_music": "artifacts/contest-video/bilibili-ai-contest-2026/music/fantu-bgm-v2.mp3",
+    "fantu_music_gain": 0.12,
+    "fantu_music_fade_seconds": 0.8
+  },
+  "subtitles": {
+    "font": "Microsoft YaHei",
+    "font_size": 96,
+    "margin_bottom": 112,
+    "max_width_ratio": 0.65,
+    "characters_per_line": 26,
+    "max_lines": 2
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "narra-contest-video-motion",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "render": "npm run render:opening && npm run render:architecture",
+    "prepare:opening": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-opening-media.ps1",
+    "render:opening": "npm run prepare:opening && remotion render src/index.ts NarraOpening ../../../artifacts/contest-video/bilibili-ai-contest-2026/motion/opening-4k.mp4 --browser-executable=\"C:\\\\Program Files (x86)\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\"",
+    "render:architecture": "remotion render src/index.ts NarraArchitecture ../../../artifacts/contest-video/bilibili-ai-contest-2026/motion/architecture-4k.mp4 --browser-executable=\"C:\\\\Program Files (x86)\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\""
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.506",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "remotion": "4.0.506"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "typescript": "^5.9.0"
+  }
+}
