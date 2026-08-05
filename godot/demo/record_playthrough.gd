@@ -254,8 +254,10 @@ func _wait_until_stable(timeout_ms: int, include_cinematic: bool) -> bool:
 
 
 func _hold(seconds: float) -> void:
-	if seconds > 0.0:
-		await create_timer(seconds).timeout
+	var frames_to_hold := ceili(maxf(0.0, seconds) * float(recording_fps))
+	for frame_index in frames_to_hold:
+		await process_frame
+		await RenderingServer.frame_post_draw
 
 
 func _route_path_from_arguments() -> String:
