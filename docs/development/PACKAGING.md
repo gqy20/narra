@@ -37,7 +37,7 @@ For a versioned archive name:
 
 The script runs the Go test suite, builds a stripped Windows rules service, imports and exports the Godot project, copies the release scenario, runs a headless release smoke test, writes SHA-256 checksums, and creates a compressed ZIP archive.
 
-The public Windows package is intentionally a single-story release. It bundles only 《天启邪抄》 (`data/tianqi`, internal scenario ID `tianqi_t00`), and launching `Narra.exe` without arguments starts that story. 《黑风谷》 remains development/prototype content, while 《远星环站》 remains portability-test content; neither is copied into a public package.
+The public Windows package is intentionally a single-story release. It bundles only 《天变邸抄》 (`data/tianqi`, internal scenario ID `tianqi_t00`), and launching `Narra.exe` without arguments starts that story. 《黑风谷》 remains development/prototype content, while 《远星环站》 remains portability-test content; neither is copied into a public package.
 
 `build-info.json` records the version, commit, build time, platform, and `source_dirty` state. A formal release should be built from a clean tree so its source revision is reproducible.
 
@@ -99,6 +99,6 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-After both platform jobs pass their package smoke tests, the workflow extracts the matching `CHANGELOG.md` section as the release notes and creates one GitHub Release containing the Windows x86_64 ZIP, unsigned macOS Universal ZIP, and SHA-256 checksums. The release still bundles only the Chinese story 《天启邪抄》 (`data/tianqi`, internal scenario ID `tianqi_t00`); the internal directory and ID remain stable configuration identifiers, not player-facing names.
+After both platform jobs pass their package smoke tests, the workflow extracts the matching `CHANGELOG.md` section as the release notes and creates one GitHub Release containing the Windows x86_64 ZIP, unsigned macOS Universal ZIP, and SHA-256 checksums. The release still bundles only the Chinese story 《天变邸抄》 (`data/tianqi`, internal scenario ID `tianqi_t00`); the internal directory and ID remain stable configuration identifiers, not player-facing names.
 
 CI and release workflows use the current major versions of the official `checkout`, `setup-go`, `upload-artifact`, and `download-artifact` actions. Dependabot checks the `github-actions` ecosystem weekly and opens an update when a newer compatible action is available.
