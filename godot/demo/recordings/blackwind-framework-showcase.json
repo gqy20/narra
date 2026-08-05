@@ -1,0 +1,22 @@
+{
+  "id": "blackwind-framework-showcase",
+  "scenario": "blackwind",
+  "scenario_id": "blackwind_t00",
+  "player_name": "无名修士",
+  "min_duration_seconds": 32,
+  "requires_ai": false,
+  "steps": [
+    {"type": "hold", "seconds": 1.5},
+    {"type": "new_game", "after": 3.0},
+    {"type": "mode", "value": "location", "after": 3.5},
+    {"type": "mode", "value": "map", "after": 3.0},
+    {"type": "select_location", "id": "L02", "after": 3.5},
+    {"type": "mode", "value": "location", "after": 2.5},
+    {"type": "journal", "tab": 2, "after": 4.0},
+    {"type": "journal", "tab": 3, "after": 4.0},
+    {"type": "close_journal", "after": 1.5},
+    {"type": "action", "id": "verify:F02", "preview": 2.0, "result": 3.0, "causal": 2.5},
+    {"type": "action", "id": "wait:complete", "preview": 1.5, "result": 2.5, "causal": 2.0},
+    {"type": "hold", "seconds": 3.0}
+  ]
+}

@@ -6,6 +6,8 @@ const DEFAULT_ROUTE := "res://demo/recordings/tianqi-evidence-route.json"
 var app
 var route: Dictionary = {}
 var completed_actions := 0
+var recording_fps := 30
+var recording_start_frame := 0
 
 
 func _initialize() -> void:
@@ -13,6 +15,8 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	recording_fps = _recording_fps_from_arguments()
+	recording_start_frame = Engine.get_process_frames()
 	var route_path := _route_path_from_arguments()
 	route = _load_route(route_path)
 	if route.is_empty():
@@ -28,11 +32,24 @@ func _run() -> void:
 	if expected_scenario != "" and str(app.scenario_info.get("id", "")) != expected_scenario:
 		return _fail("recording route expected scenario %s but connected to %s" % [expected_scenario, app.scenario_info.get("id", "unknown")])
 
+	var step_index := 0
 	for raw_step in route.get("steps", []):
 		if not raw_step is Dictionary:
 			return _fail("recording route contains a non-object step")
+		_print_step_marker("START", step_index, raw_step)
 		if not await _run_step(raw_step):
 			return
+		_print_step_marker("END", step_index, raw_step)
+		step_index += 1
+
+	var expected_min_actions := int(route.get("expected_min_actions", 0))
+	if completed_actions < expected_min_actions:
+		return _fail("recording completed only %d actions; expected at least %d" % [completed_actions, expected_min_actions])
+	var expected_min_day := int(route.get("expected_min_day", 0))
+	if int(app.current_view.get("day", 0)) < expected_min_day:
+		return _fail("recording ended on day %d; expected at least day %d" % [int(app.current_view.get("day", 0)), expected_min_day])
+	if bool(route.get("expected_resolved", false)) and not bool(app.current_view.get("resolved", false)):
+		return _fail("recording route expected a resolved ending")
 
 	print("PLAYTHROUGH_RECORDED route=%s day=%d actions=%d resolved=%s" % [
 		route.get("id", "unnamed"),
@@ -86,9 +103,83 @@ func _run_step(step: Dictionary) -> bool:
 		"close_journal":
 			app.journal_panel_controller._close_journal()
 			await _hold(float(step.get("after", 0.8)))
+		"focus_actor":
+			if not await _focus_actor(str(step.get("id", "")), step):
+				return false
+		"dialogue_turn":
+			if not await _dialogue_turn(str(step.get("message", "")), step):
+				return false
+		"clear_focus":
+			app.action_panel_controller._reset_action_focus()
+			app.action_panel_controller._render_actions(app.available_actions_cache)
+			await _hold(float(step.get("after", 0.8)))
 		_:
 			return _step_failure("unknown recording step type: " + kind)
 	return true
+
+
+func _focus_actor(actor_id: String, timing: Dictionary) -> bool:
+	var actor := _find_actor(actor_id)
+	if actor.is_empty():
+		return _step_failure("missing visible actor %s at %s" % [actor_id, str(app.current_view.get("location", {}).get("id", "unknown"))])
+	app.game_screen_controller._focus_actor_from_stage(actor_id, str(actor.get("name", actor_id)))
+	var attempts := maxi(1, int(timing.get("attempts", 1)))
+	for attempt in attempts:
+		await _hold(float(timing.get("loading_hold", 1.2)))
+		if not await _wait_for_dialogue(actor_id, int(timing.get("timeout_ms", 90000))):
+			return _step_failure("NPC dialogue timed out for " + actor_id)
+		if not app.actor_dialogue_error_by_id.has(actor_id):
+			await _hold(float(timing.get("after", 4.0)))
+			return true
+		if attempt + 1 >= attempts:
+			break
+		await _hold(float(timing.get("retry_hold", 2.0)))
+		app.actor_dialogue_error_by_id.erase(actor_id)
+		app.actor_dialogue_loading_id = actor_id
+		app.dialogue_client.request_focus(actor_id)
+		app.action_panel_controller._render_actions(app.available_actions_cache)
+	return _step_failure("NPC dialogue failed for %s after %d attempts: %s" % [actor_id, attempts, app.actor_dialogue_error_by_id.get(actor_id, "unknown error")])
+
+
+func _dialogue_turn(message: String, timing: Dictionary) -> bool:
+	if app.focused_actor_id == "":
+		return _step_failure("dialogue turn requires a focused actor")
+	if message.strip_edges() == "":
+		return _step_failure("dialogue turn message is empty")
+	app.dialogue_panel_controller._submit_actor_dialogue(message)
+	var actor_id: String = app.focused_actor_id
+	var attempts := maxi(1, int(timing.get("attempts", 1)))
+	for attempt in attempts:
+		await _hold(float(timing.get("loading_hold", 1.2)))
+		if not await _wait_for_dialogue(actor_id, int(timing.get("timeout_ms", 90000))):
+			return _step_failure("NPC dialogue turn timed out for " + actor_id)
+		if not app.actor_dialogue_error_by_id.has(actor_id):
+			await _hold(float(timing.get("after", 6.0)))
+			return true
+		if attempt + 1 >= attempts:
+			break
+		await _hold(float(timing.get("retry_hold", 2.0)))
+		app.actor_dialogue_error_by_id.erase(actor_id)
+		app.actor_dialogue_loading_id = actor_id
+		app.dialogue_client.request_turn(actor_id, message)
+		app.action_panel_controller._render_actions(app.available_actions_cache)
+	return _step_failure("NPC dialogue turn failed for %s after %d attempts: %s" % [actor_id, attempts, app.actor_dialogue_error_by_id.get(actor_id, "unknown error")])
+
+
+func _find_actor(actor_id: String) -> Dictionary:
+	for actor in app.current_view.get("known_actors", []):
+		if str(actor.get("id", "")) == actor_id:
+			return actor
+	return {}
+
+
+func _wait_for_dialogue(actor_id: String, timeout_ms: int) -> bool:
+	var deadline := Time.get_ticks_msec() + timeout_ms
+	while Time.get_ticks_msec() < deadline:
+		await process_frame
+		if app.actor_dialogue_loading_id == "" and (app.actor_dialogue_by_id.has(actor_id) or app.actor_dialogue_error_by_id.has(actor_id)):
+			return true
+	return false
 
 
 func _execute_action(action_id: String, timing: Dictionary) -> bool:
@@ -172,6 +263,24 @@ func _route_path_from_arguments() -> String:
 		if argument.begins_with(ROUTE_ARGUMENT_PREFIX):
 			return argument.trim_prefix(ROUTE_ARGUMENT_PREFIX).strip_edges()
 	return DEFAULT_ROUTE
+
+
+func _recording_fps_from_arguments() -> int:
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--recording-fps="):
+			return maxi(1, int(argument.trim_prefix("--recording-fps=")))
+	return 30
+
+
+func _print_step_marker(phase: String, index: int, step: Dictionary) -> void:
+	var frame := maxi(0, Engine.get_process_frames() - recording_start_frame)
+	print("RECORDING_STEP_%s index=%d type=%s frame=%d second=%.3f" % [
+		phase,
+		index,
+		str(step.get("type", "unknown")),
+		frame,
+		float(frame) / float(recording_fps),
+	])
 
 
 func _load_route(path: String) -> Dictionary:

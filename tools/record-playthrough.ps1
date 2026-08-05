@@ -19,6 +19,15 @@ if ([string]::IsNullOrWhiteSpace($routeID)) { throw "Recording route has no id: 
 if ($routeID -cnotmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
     throw "Recording route id must use lowercase kebab-case for stable file names: $routeID"
 }
+$scenarioName = if ([string]::IsNullOrWhiteSpace([string]$routeConfig.scenario)) { "tianqi" } else { [string]$routeConfig.scenario }
+if ($scenarioName -cnotmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
+    throw "Recording scenario must use a safe lowercase slug: $scenarioName"
+}
+$scenarioDirectory = Join-Path $projectRoot ("data\" + $scenarioName)
+if (-not (Test-Path -LiteralPath $scenarioDirectory -PathType Container)) {
+    throw "Recording scenario directory does not exist: $scenarioDirectory"
+}
+$requiresAI = [bool]$routeConfig.requires_ai
 
 $profileConfig = switch ($Profile) {
     "4k" { [pscustomobject]@{ Width = 3840; Height = 2160; Crf = 14; Preset = "slow"; MinimumFreeSpaceGB = 15 } }
@@ -30,7 +39,7 @@ $captureHeight = [int]$profileConfig.Height
 $recordingStartedAt = Get-Date
 $runID = $recordingStartedAt.ToString("yyyyMMdd-HHmmss") + "-" + $routeID + "-" + $Profile
 $recordingRoot = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
-    Join-Path $projectRoot ("artifacts\recordings\tianqi\" + $runID)
+    Join-Path $projectRoot ("artifacts\recordings\" + $scenarioName + "\" + $runID)
 } else {
     [System.IO.Path]::GetFullPath($OutputDirectory)
 }
@@ -99,9 +108,9 @@ try {
     }
 
     $server = Start-Process -FilePath $serverPath -WorkingDirectory $projectRoot -WindowStyle Hidden -ArgumentList @(
-        "-data", (Join-Path $projectRoot "data\tianqi"),
+        "-data", $scenarioDirectory,
         "-saves", $resolvedTemporarySaves,
-        "-ai-enabled=false"
+        ("-ai-enabled=" + $requiresAI.ToString().ToLowerInvariant())
     ) -RedirectStandardOutput $serverLogPath -RedirectStandardError $serverErrorLogPath -PassThru
     Wait-ForServer
 
@@ -140,9 +149,10 @@ movie_writer/video_quality=1.0
         "--disable-vsync",
         "--script", "res://demo/record_playthrough.gd",
         "--",
-        "--scenario=tianqi",
+        "--scenario=$scenarioName",
         "--recording-route=$routeResourcePath",
-        "--recording-output=${captureWidth}x${captureHeight}"
+        "--recording-output=${captureWidth}x${captureHeight}",
+        "--recording-fps=$FramesPerSecond"
     )
     $previousErrorPreference = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
@@ -161,7 +171,7 @@ movie_writer/video_quality=1.0
     if (-not (Test-Path -LiteralPath $sourcePath)) {
         throw "Movie Writer did not produce the expected AVI source: $sourcePath"
     }
-    $sourceProbeText = (& ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of json $sourcePath) -join [Environment]::NewLine
+    $sourceProbeText = (& ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate,avg_frame_rate,nb_frames,duration -of json $sourcePath) -join [Environment]::NewLine
     if ($LASTEXITCODE -ne 0) { throw "Could not inspect the recorded source video." }
     $sourceProbe = $sourceProbeText | ConvertFrom-Json
     $sourceVideo = @($sourceProbe.streams) | Select-Object -First 1
@@ -169,6 +179,18 @@ movie_writer/video_quality=1.0
     $actualCaptureHeight = [int]$sourceVideo.height
     if ($actualCaptureWidth -ne $captureWidth -or $actualCaptureHeight -ne $captureHeight) {
         throw "Movie Writer produced ${actualCaptureWidth}x${actualCaptureHeight}; $Profile requires ${captureWidth}x${captureHeight} native source frames."
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$sourceVideo.nb_frames) -or [string]::IsNullOrWhiteSpace([string]$sourceVideo.duration)) {
+        throw "Movie Writer source is missing frame-count or duration metadata; preserving source for diagnosis: $sourcePath"
+    }
+    $sourceFrameCount = [int64]::Parse([string]$sourceVideo.nb_frames, [Globalization.CultureInfo]::InvariantCulture)
+    $sourceVideoDuration = [double]::Parse([string]$sourceVideo.duration, [Globalization.CultureInfo]::InvariantCulture)
+    $frameDerivedDuration = [double]$sourceFrameCount / [double]$FramesPerSecond
+    if ([math]::Abs($sourceVideoDuration - $frameDerivedDuration) -gt 0.1) {
+        throw "Movie Writer timebase mismatch: metadata=$sourceVideoDuration seconds, frames/fps=$frameDerivedDuration seconds ($sourceFrameCount frames at $FramesPerSecond FPS). Source preserved: $sourcePath"
+    }
+    if ($sourceVideoDuration -lt $minimumDuration) {
+        throw "Movie Writer source is only $sourceVideoDuration seconds; complete route requires at least $minimumDuration seconds. Source preserved: $sourcePath"
     }
 
     & (Join-Path $PSScriptRoot "postprocess-recording.ps1") -SourcePath $sourcePath -OutputPath $videoPath -Width $captureWidth -Height $captureHeight -Crf ([int]$profileConfig.Crf) -Preset ([string]$profileConfig.Preset)
@@ -180,10 +202,12 @@ movie_writer/video_quality=1.0
         route_id = $routeID
         profile = $Profile
         scenario_id = [string]$routeConfig.scenario_id
+        scenario = $scenarioName
+        ai_enabled = $requiresAI
         git_commit = $gitCommit
         recorded_at_utc = [DateTime]::UtcNow.ToString("o")
         recording_name = $runID
-        capture = [ordered]@{ width = $actualCaptureWidth; height = $actualCaptureHeight; requested_width = $captureWidth; requested_height = $captureHeight; fps = $FramesPerSecond; native = $true; source_format = "mjpeg"; source_quality = 1.0 }
+        capture = [ordered]@{ width = $actualCaptureWidth; height = $actualCaptureHeight; requested_width = $captureWidth; requested_height = $captureHeight; fps = $FramesPerSecond; frame_count = $sourceFrameCount; duration_seconds = $sourceVideoDuration; native = $true; source_format = "mjpeg"; source_quality = 1.0 }
         output = [ordered]@{ width = $captureWidth; height = $captureHeight; fit = "contain"; codec = "h264"; audio = "aac"; crf = [int]$profileConfig.Crf; path = [System.IO.Path]::GetFileName($videoPath) }
         route_file = $routePath.Substring([System.IO.Path]::GetFullPath($projectRoot).TrimEnd('\').Length + 1).Replace('\', '/')
         source_preserved = [bool]$KeepSource

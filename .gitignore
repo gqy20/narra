@@ -13,7 +13,10 @@
 coverage.*
 /artifacts/review/
 /artifacts/imagegen/
+/artifacts/recordings/
+/artifacts/contest-video/
 /artifacts/screenshots/tianqi-*.png
+/.tmp-*/
 
 # Godot generated state
 /godot/.godot/

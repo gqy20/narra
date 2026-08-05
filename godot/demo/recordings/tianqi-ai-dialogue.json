@@ -1,0 +1,18 @@
+{
+  "id": "tianqi-ai-dialogue",
+  "scenario": "tianqi",
+  "scenario_id": "tianqi_t00",
+  "player_name": "听风客",
+  "min_duration_seconds": 30,
+  "requires_ai": true,
+  "steps": [
+    {"type": "hold", "seconds": 1.5},
+    {"type": "new_game", "after": 2.5},
+    {"type": "mode", "value": "location", "after": 2.0},
+    {"type": "action", "id": "route:e01:keep-original", "preview": 2.2, "result": 3.0, "causal": 2.5},
+    {"type": "focus_actor", "id": "N10", "loading_hold": 1.5, "retry_hold": 2.0, "after": 5.0, "timeout_ms": 90000, "attempts": 3},
+    {"type": "dialogue_turn", "message": "我刚拿到这页交割残纸。它能证明爆炸是由谁造成的吗？", "loading_hold": 1.5, "retry_hold": 2.0, "after": 8.0, "timeout_ms": 90000, "attempts": 3},
+    {"type": "dialogue_turn", "message": "如果不能定论，你认为我现在最应该核验什么？", "loading_hold": 1.5, "retry_hold": 2.0, "after": 8.0, "timeout_ms": 90000, "attempts": 3},
+    {"type": "hold", "seconds": 3.0}
+  ]
+}
