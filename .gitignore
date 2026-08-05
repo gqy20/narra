@@ -11,11 +11,7 @@
 *.out
 *.prof
 coverage.*
-/artifacts/review/
-/artifacts/imagegen/
-/artifacts/recordings/
-/artifacts/contest-video/
-/artifacts/screenshots/tianqi-*.png
+/artifacts/
 /.tmp-*/
 
 # Godot generated state

@@ -2,6 +2,34 @@
 
 Narra 是一个数据驱动的叙事模拟框架，提供 Go 权威规则内核、Godot 桌面客户端、内容编译工具和可插拔故事包。框架不绑定具体世界观；《凡途》《天变邸抄》《远星环站》都作为内容层存在。
 
+## 获取源码
+
+仓库使用 Git LFS 管理正式图片、音频、影片和字体资源。首次克隆前请安装并启用 [Git LFS](https://git-lfs.com/)：
+
+```powershell
+git lfs install
+git clone https://github.com/gqy20/narra.git
+cd narra
+git lfs pull
+```
+
+录制成片、检查截图、日志、构建目录和转码中间文件属于本地产物，不进入源码历史。
+
+## 创建自己的内容包
+
+新故事以 `data/<world>/` 下的一组 YAML 文件声明场景、玩家、人物、地点、事实、物品、行动、剧情线、世界规则、AI 对话策略和表现映射。可以复制一个官方内容包作为结构参考，然后完全替换世界观、文案与关系；图片、音频、影片和字体是可选表现资源，缺失时使用稳定的通用视觉或声音 fallback。
+
+最低工作流是：
+
+```powershell
+go run ./cmd/narra-content validate data/<world>
+go run ./cmd/narra-content graph data/<world>
+go run ./cmd/narra-content simulate data/<world> --runs 200 --seed 1
+go run ./cmd/play -data data/<world>
+```
+
+符合当前 Schema 的内容包不需要增加故事专属的 Go 或 GDScript 分支。准备把新世界作为仓库内的正式内容包维护时，还应把它加入 Go 与 Godot 的可移植性门禁；字段契约和资源接入细节见 [内容架构](docs/architecture/CONTENT.md) 与 [验证指南](docs/development/VALIDATION.md)。
+
 ## 内容开发
 
 内容包可在不启动客户端的情况下编译、绘图和批量试玩：
@@ -197,7 +225,7 @@ macOS 可在 Mac 或 GitHub Actions 的 macOS Runner 上生成同时支持 Apple
 bash ./tools/build-macos.sh 0.1.0
 ```
 
-推送与 `godot/project.godot` 版本一致的标签（例如 `v0.1.0`）会自动执行 CI，并把 Windows ZIP 与未签名 macOS ZIP 发布到同一个 GitHub Release。完整说明见 [桌面打包与发布说明](docs/development/PACKAGING.md)。
+推送与 `godot/project.godot` 版本一致的标签（例如 `v0.1.0`）会自动执行 CI，并把 Windows ZIP 与未签名 macOS ZIP 发布到同一个 GitHub Release；首次 Release 将在版本确认后创建。完整说明见 [桌面打包与发布说明](docs/development/PACKAGING.md)。
 
 发行版的客户端日志、服务端日志和存档统一写入用户数据目录：Windows 为 `%APPDATA%\Narra`，macOS 为 `~/Library/Application Support/Narra`。日志轮转、故障排查和便携开发模式见 [运行日志说明](docs/development/LOGGING.md)。
 

@@ -44,6 +44,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          lfs: true
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
@@ -83,6 +85,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          lfs: true
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
