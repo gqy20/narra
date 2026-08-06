@@ -38,7 +38,10 @@ func _render_actor_dialogue_line(actor: Dictionary) -> void:
 		var history_line = host.ui_factory.text(history_content, str(exchange.get("text", "")), false, 16)
 		history_line.add_theme_font_override("font", host.narrative_font)
 		screen.actor_focus_message_list.add_child(history_panel)
-	if not history.is_empty() and host.actor_dialogue_loading_id != host.focused_actor_id and not host.actor_dialogue_error_by_id.has(host.focused_actor_id):
+	if host.actor_dialogue_loading_id != host.focused_actor_id and not host.actor_dialogue_error_by_id.has(host.focused_actor_id):
+		if history.is_empty():
+			var invitation = host.ui_factory.text(screen.actor_focus_message_list, "输入一句话开始交谈；回应成功后会推进游戏时间。", true, host.TYPE_SCALE.compact)
+			invitation.add_theme_color_override("font_color", host.COLORS.muted)
 		host.dialogue_panel_controller._render_actor_dialogue_input()
 		host.dialogue_panel_controller._scroll_dialogue_to_latest()
 		return
@@ -51,15 +54,11 @@ func _render_actor_dialogue_line(actor: Dictionary) -> void:
 	content.add_theme_constant_override("separation", 5)
 	panel.add_child(content)
 	var utterance = "等待回应"
-	var quote_line = false
 	if host.actor_dialogue_loading_id == host.focused_actor_id:
 		utterance = "等待回应"
-	elif host.actor_dialogue_by_id.has(host.focused_actor_id):
-		utterance = str(host.actor_dialogue_by_id[host.focused_actor_id].get("utterance", utterance))
-		quote_line = true
 	elif host.actor_dialogue_error_by_id.has(host.focused_actor_id):
 		utterance = "对话生成失败：%s" % str(host.actor_dialogue_error_by_id[host.focused_actor_id])
-	var line = host.ui_factory.text(content, "“%s”" % utterance if quote_line else utterance, false, 17)
+	var line = host.ui_factory.text(content, utterance, false, 17)
 	line.add_theme_font_override("font", host.narrative_font)
 	screen.actor_focus_message_list.add_child(panel)
 	host.dialogue_panel_controller._render_actor_dialogue_input()
@@ -68,6 +67,10 @@ func _render_actor_dialogue_line(actor: Dictionary) -> void:
 
 func _render_actor_dialogue_input() -> void:
 	host.ui_factory.clear(screen.actor_dialogue_input_host)
+	if not host.ai_server_enabled:
+		var disabled_hint = host.ui_factory.text(screen.actor_dialogue_input_host, "大模型未启用；仍可从右侧选择线索并执行交谈。", true, host.TYPE_SCALE.compact)
+		disabled_hint.add_theme_color_override("font_color", host.COLORS.muted)
+		return
 	var rule := HSeparator.new()
 	rule.modulate = Color(host.COLORS.accent, 0.22)
 	screen.actor_dialogue_input_host.add_child(rule)
@@ -75,7 +78,7 @@ func _render_actor_dialogue_input() -> void:
 	row.add_theme_constant_override("separation", 8)
 	var input := TextEdit.new()
 	input.name = "ActorDialogueInput"
-	input.placeholder_text = "输入回复；Enter 发送，Shift+Enter 换行"
+	input.placeholder_text = "输入回复；Enter 发送并推进时间，Shift+Enter 换行"
 	input.custom_minimum_size.y = 72
 	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	input.editable = host.actor_dialogue_loading_id != host.focused_actor_id
@@ -86,7 +89,8 @@ func _render_actor_dialogue_input() -> void:
 	if host.actor_dialogue_loading_id == host.focused_actor_id:
 		row.add_child(host.ui_factory.utility_button("取消", host.dialogue_panel_controller._cancel_actor_dialogue_generation))
 	else:
-		row.add_child(host.ui_factory.utility_button("发送", func(): host.dialogue_panel_controller._submit_actor_dialogue(input.text)))
+		var duration := maxi(1, int(host.scenario_info.get("conversation_duration", 1)))
+		row.add_child(host.ui_factory.utility_button("发送 · %d 日" % duration, func(): host.dialogue_panel_controller._submit_actor_dialogue(input.text)))
 	screen.actor_dialogue_input_host.add_child(row)
 
 
@@ -119,6 +123,16 @@ func _show_older_actor_dialogue(actor_id: String) -> void:
 func _scroll_dialogue_to_latest() -> void:
 	if screen.actor_focus_message_scroll:
 		screen.actor_focus_message_scroll.set_deferred("scroll_vertical", 1000000)
+		var scroll_callback := Callable(host.dialogue_panel_controller, "_apply_latest_dialogue_scroll")
+		if not host.get_tree().is_connected("process_frame", scroll_callback):
+			host.get_tree().connect("process_frame", scroll_callback, CONNECT_ONE_SHOT)
+
+
+func _apply_latest_dialogue_scroll() -> void:
+	if not screen.actor_focus_message_scroll:
+		return
+	var scroll_bar: VScrollBar = screen.actor_focus_message_scroll.get_v_scroll_bar()
+	screen.actor_focus_message_scroll.scroll_vertical = int(scroll_bar.max_value)
 
 
 func _submit_actor_dialogue(message: String) -> void:
@@ -143,14 +157,22 @@ func _cancel_actor_dialogue_generation() -> void:
 	host.action_panel_controller._render_actions(host.available_actions_cache)
 
 
-func _on_ai_dialogue_ready(actor_id: String, dialogue: Dictionary) -> void:
-	host.actor_dialogue_by_id[actor_id] = dialogue
+func _on_ai_dialogue_ready(actor_id: String, dialogue: Dictionary, view: Dictionary) -> void:
 	var history: Array = host.actor_dialogue_history_by_id.get(actor_id, [])
 	history.append({"speaker": "npc", "text": str(dialogue.get("utterance", ""))})
 	host.actor_dialogue_history_by_id[actor_id] = history
 	host.actor_dialogue_error_by_id.erase(actor_id)
 	if host.actor_dialogue_loading_id == actor_id:
 		host.actor_dialogue_loading_id = ""
+	if not view.is_empty():
+		var previous_view: Dictionary = host.current_view
+		host.current_view = host.view_model.accept(view, true)
+		host._apply_scenario_presentation(host.current_view.get("presentation", {}))
+		host.presentation_controller._apply_feedback_actor_state(host.current_view.get("last_turn", {}))
+		screen._render_view()
+		host.presentation_controller._play_action_presentation(previous_view, host.current_view)
+		if host.pending_operation == "":
+			host._request("autosave", HTTPClient.METHOD_POST, "/game/save", {"slot": host.AUTOSAVE_SLOT})
 	if actor_id != host.focused_actor_id:
 		return
 	var emotion = str(dialogue.get("emotion", ""))

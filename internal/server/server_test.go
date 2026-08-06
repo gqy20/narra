@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,6 +38,22 @@ type serverDialogueProvider struct{}
 func (serverDialogueProvider) GenerateDialogue(context.Context, ai.GenerationRequest) (ai.DialogueDraft, ai.GenerationMetadata, error) {
 	return ai.DialogueDraft{
 		Utterance: "先说说你的来意。", Emotion: "alert", DialogueAct: "question", ReferencedFacts: []string{},
+		RecognizedActionIndex: -1,
+	}, ai.GenerationMetadata{Model: "test"}, nil
+}
+
+type serverRecognizedDialogueProvider struct{ serverDialogueProvider }
+
+func (serverRecognizedDialogueProvider) GenerateDialogue(context.Context, ai.GenerationRequest) (ai.DialogueDraft, ai.GenerationMetadata, error) {
+	return ai.DialogueDraft{
+		Utterance: "此事若属实，我会重新核对安排。", Emotion: "troubled", DialogueAct: "acknowledge",
+		ReferencedFacts: []string{}, RecognizedActionIndex: 0,
+	}, ai.GenerationMetadata{Model: "test"}, nil
+}
+
+func (serverDialogueProvider) GenerateWorldDirective(_ context.Context, request ai.WorldDirectiveRequest) (ai.WorldDirectiveDraft, ai.GenerationMetadata, error) {
+	return ai.WorldDirectiveDraft{
+		DirectiveID: request.AllowedDirectiveIDs[0], Reason: "连接正常", FocusSignalIndexes: []int{0},
 	}, ai.GenerationMetadata{Model: "test"}, nil
 }
 
@@ -87,7 +104,7 @@ func TestGameLifecycleAndSlotPersistence(t *testing.T) {
 	}
 }
 
-func TestDialogueEndpointUsesModelWithoutChangingSession(t *testing.T) {
+func TestDialogueEndpointChargesOneConversationActionForPlayerMessage(t *testing.T) {
 	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
@@ -111,12 +128,15 @@ func TestDialogueEndpointUsesModelWithoutChangingSession(t *testing.T) {
 	response, status = request(t, service.URL, http.MethodPost, "/api/v1/game/dialogue", map[string]string{
 		"actor_id": "N04", "player_message": "你准备如何核验？",
 	})
-	if status != http.StatusOK || response.Dialogue == nil {
+	if status != http.StatusOK || response.Dialogue == nil || response.View == nil {
 		t.Fatalf("dialogue follow-up = %d %+v", status, response)
 	}
 	history := gameServer.session.DialogueHistory("N04", gameServer.session.DialogueRevision("N04"), 8)
-	if len(history) != 2 || history[1].PlayerText != "你准备如何核验？" || gameServer.session.View().Day != before.Day {
+	if len(history) != 2 || history[1].PlayerText != "你准备如何核验？" || response.View.Day != before.Day+bundle.Actions[bundle.Rules.Player.Conversation.ActionID].Duration {
 		t.Fatalf("server dialogue history/state = %+v / %+v", history, gameServer.session.View())
+	}
+	if got := gameServer.session.History(); len(got) != 1 || !strings.HasPrefix(got[0], "conversation:") {
+		t.Fatalf("conversation action history = %#v", got)
 	}
 }
 
@@ -132,6 +152,34 @@ func TestDialogueEndpointReportsUnavailableWithoutModel(t *testing.T) {
 	response, status := request(t, service.URL, http.MethodPost, "/api/v1/game/dialogue", map[string]string{"actor_id": "N04"})
 	if status != http.StatusServiceUnavailable || response.Error == nil || response.Error.Code != "ai_unavailable" {
 		t.Fatalf("unavailable dialogue = %d %+v", status, response)
+	}
+}
+
+func TestDialogueRecognizedTellExecutesWithoutSecondConfirmation(t *testing.T) {
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gameServer := NewWithOptions(bundle, t.TempDir(), Options{
+		Dialogue: ai.NewService(serverRecognizedDialogueProvider{}, ai.ServiceOptions{}),
+	})
+	service := httptest.NewServer(gameServer.Handler())
+	defer service.Close()
+	request(t, service.URL, http.MethodPost, "/api/v1/game/new", map[string]string{"player_name": "对话测试"})
+
+	response, status := request(t, service.URL, http.MethodPost, "/api/v1/game/dialogue", map[string]string{
+		"actor_id": "N04", "player_message": "我听说青髓芝会在第24天成熟。",
+	})
+	if status != http.StatusOK || response.Dialogue == nil || response.View == nil || response.View.Day != 1 {
+		t.Fatalf("recognized tell response = %d %+v", status, response)
+	}
+	if got := gameServer.session.History(); len(got) != 1 || got[0] != "tell:N04:F02" {
+		t.Fatalf("recognized tell did not execute authoritative action: %#v", got)
+	}
+	for _, action := range response.View.AvailableActions {
+		if action.ID == "tell:N04:F02" {
+			t.Fatal("delivered fact remained available after conversational tell")
+		}
 	}
 }
 
@@ -154,7 +202,17 @@ func TestAISettingsEndpointReconfiguresDialogueWithoutRestartingGame(t *testing.
 	defer service.Close()
 	request(t, service.URL, http.MethodPost, "/api/v1/game/new", map[string]string{"player_name": "配置测试"})
 
-	response, status := request(t, service.URL, http.MethodPut, "/api/v1/settings/ai", AISettings{
+	response, status := request(t, service.URL, http.MethodPost, "/api/v1/settings/ai/test", AISettings{
+		APIKey: "test-key", Model: "step-3.7-flash", BaseURL: "https://example.com/v1/messages",
+	})
+	if status != http.StatusOK || response.AISettings == nil || !response.AISettings.Enabled || response.AISettings.Mode != "anthropic:step-3.7-flash" {
+		t.Fatalf("test AI settings = %d %+v", status, response)
+	}
+	if !received.Enabled || gameServer.dialogue != nil || gameServer.worldDirector != nil {
+		t.Fatalf("connectivity test mutated runtime service: received=%+v dialogue=%v director=%v", received, gameServer.dialogue, gameServer.worldDirector)
+	}
+
+	response, status = request(t, service.URL, http.MethodPut, "/api/v1/settings/ai", AISettings{
 		Enabled: true, APIKey: "test-key", Model: "step-3.7-flash", BaseURL: "https://example.com/v1/messages",
 	})
 	if status != http.StatusOK || response.Capabilities == nil || !response.Capabilities.AIDialogue || response.AISettings == nil || !response.AISettings.Enabled {
@@ -171,6 +229,48 @@ func TestAISettingsEndpointReconfiguresDialogueWithoutRestartingGame(t *testing.
 	response, status = request(t, service.URL, http.MethodPut, "/api/v1/settings/ai", AISettings{Enabled: false})
 	if status != http.StatusOK || response.Capabilities == nil || response.Capabilities.AIDialogue {
 		t.Fatalf("disable AI = %d %+v", status, response)
+	}
+}
+
+type invalidSignalWorldProvider struct{ serverDialogueProvider }
+
+func (invalidSignalWorldProvider) GenerateWorldDirective(_ context.Context, request ai.WorldDirectiveRequest) (ai.WorldDirectiveDraft, ai.GenerationMetadata, error) {
+	return ai.WorldDirectiveDraft{
+		DirectiveID: request.AllowedDirectiveIDs[0], Reason: "测试非法索引", FocusSignalIndexes: []int{99},
+	}, ai.GenerationMetadata{Model: "test"}, nil
+}
+
+func TestWorldDirectorFailureIsSafeForPlayersAndDetailedForLogs(t *testing.T) {
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reported error
+	gameServer := NewWithOptions(bundle, t.TempDir(), Options{
+		Dialogue:    ai.NewService(invalidSignalWorldProvider{}, ai.ServiceOptions{}),
+		ReportError: func(_ string, err error) { reported = err },
+	})
+	service := httptest.NewServer(gameServer.Handler())
+	defer service.Close()
+	request(t, service.URL, http.MethodPost, "/api/v1/game/new", map[string]string{"player_name": "错误展示测试"})
+	var response Response
+	var status int
+	dayBeforeFailure := 0
+	for attempt := 0; attempt < 5; attempt++ {
+		dayBeforeFailure = gameServer.session.View().Day
+		response, status = request(t, service.URL, http.MethodPost, "/api/v1/game/action", map[string]string{"action_id": "wait:next"})
+		if status != http.StatusOK {
+			break
+		}
+	}
+	if status != http.StatusBadRequest || response.Error == nil || response.Error.Code != "world_director_failed" || response.Error.Message != "世界推演暂时没有完成，本次行动未生效，请重试" {
+		t.Fatalf("world director player error = %d %+v", status, response)
+	}
+	if reported == nil || !strings.Contains(reported.Error(), "index 99") {
+		t.Fatalf("world director diagnostic error = %v", reported)
+	}
+	if gameServer.session.View().Day != dayBeforeFailure {
+		t.Fatalf("failed world director action changed day: before=%d after=%d", dayBeforeFailure, gameServer.session.View().Day)
 	}
 }
 

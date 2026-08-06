@@ -15,7 +15,7 @@ import (
 	"narra/internal/domain"
 )
 
-const CurrentSchemaVersion = 6
+const CurrentSchemaVersion = 7
 
 type manifest struct {
 	SchemaVersion  int    `json:"schema_version"`

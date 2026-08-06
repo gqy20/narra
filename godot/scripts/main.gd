@@ -55,7 +55,7 @@ const DISPLAY_RESOLUTION_PRESETS: Array[Vector2i] = [
 	Vector2i(2560, 1440),
 	Vector2i(3840, 2160),
 ]
-const UI_SCALE_PRESETS: Array[float] = [1.0, 1.25, 1.5, 1.75]
+const UI_SCALE_PRESETS: Array[float] = [1.0, 1.25, 1.5, 1.75, 2.0]
 const MINIMUM_UI_CANVAS := Vector2i(1100, 700)
 const MIN_READABLE_TEXT_SIZE := AppVisualThemeScript.MIN_READABLE_TEXT_SIZE
 const DIAGNOSTIC_FILE_MAX_BYTES := 25 * 1024 * 1024
@@ -84,7 +84,6 @@ var settings_store = SettingsStoreScript.new()
 var game_client
 var view_model = GameViewModelScript.new()
 var diagnostics_exporter = DiagnosticsExporterScript.new()
-var actor_dialogue_by_id := {}
 var actor_dialogue_error_by_id := {}
 var actor_dialogue_history_by_id := {}
 var actor_dialogue_visible_count_by_id := {}
@@ -360,6 +359,7 @@ func _operation_label(operation: String) -> String:
 		"action": "正在推演行动结果",
 		"quit": "正在返回",
 		"ai_settings": "正在应用大模型配置",
+		"ai_test": "正在测试大模型连接",
 	}
 	return str(labels.get(operation, "处理中"))
 
@@ -445,9 +445,12 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 	if not adapted.get("ok", false):
 		queued_followup_action_id = ""
 		var message := str(adapted.get("message", "本地服务无响应，请先运行项目启动脚本。"))
-		if operation == "ai_settings" and ai_status_label:
-			ai_status_label.text = "应用失败：%s" % message
+		if operation in ["ai_settings", "ai_test"] and ai_status_label:
+			ai_status_label.text = ("应用失败：%s" if operation == "ai_settings" else "连接失败：%s") % message
 			ai_status_label.add_theme_color_override("font_color", COLORS.danger)
+			if game_screen_controller.footer_label:
+				game_screen_controller.footer_label.text = ""
+			return
 		_show_error(message)
 		return
 
@@ -470,6 +473,8 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 			game_screen_controller.footer_label.text = ""
 		return
 	if operation == "ai_settings":
+		if game_screen_controller.footer_label:
+			game_screen_controller.footer_label.text = ""
 		var ai_capabilities: Dictionary = parsed.get("capabilities", {})
 		ai_server_enabled = bool(ai_capabilities.get("ai_dialogue", false))
 		var applied_ai_settings: Dictionary = parsed.get("ai_settings", {})
@@ -480,6 +485,15 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 			ai_status_label.add_theme_color_override("font_color", COLORS.danger)
 			return
 		start_settings_screen_controller._refresh_ai_settings_status("配置已保存并立即生效")
+		return
+	if operation == "ai_test":
+		if game_screen_controller.footer_label:
+			game_screen_controller.footer_label.text = ""
+		var tested_ai_settings: Dictionary = parsed.get("ai_settings", {})
+		var tested_mode := str(tested_ai_settings.get("mode", ""))
+		var tested_model := tested_mode.trim_prefix("anthropic:")
+		ai_status_label.text = "连接成功%s；当前输入尚未保存" % (" · %s" % tested_model if tested_model != "" else "")
+		ai_status_label.add_theme_color_override("font_color", COLORS.success)
 		return
 	if operation == "quit":
 		_show_start()

@@ -12,16 +12,14 @@ func dialogueSchemaFor(allowedFactIDs, allowedActionIDs []string) map[string]any
 	} else {
 		factItems["enum"] = append([]string(nil), allowedFactIDs...)
 	}
-	actionItems := map[string]any{"type": "string"}
-	actionList := map[string]any{
-		"type": "array", "maxItems": 3,
-		"description": "Up to three available_actions IDs that fit the utterance; suggestions do not execute actions",
-		"items":       actionItems,
+	actionIndex := map[string]any{
+		"type": "integer", "minimum": -1,
+		"description": "Zero-based available_actions index explicitly performed by player_message; -1 when the message is only conversation or ambiguous",
 	}
 	if len(allowedActionIDs) == 0 {
-		actionList["maxItems"] = 0
+		actionIndex["maximum"] = -1
 	} else {
-		actionItems["enum"] = append([]string(nil), allowedActionIDs...)
+		actionIndex["maximum"] = len(allowedActionIDs) - 1
 	}
 	return map[string]any{
 		"type": "object",
@@ -38,10 +36,10 @@ func dialogueSchemaFor(allowedFactIDs, allowedActionIDs []string) map[string]any
 				"type": "string",
 				"enum": []string{"greet", "invite", "question", "warn", "refuse", "acknowledge"},
 			},
-			"referenced_fact_ids":  factList,
-			"suggested_action_ids": actionList,
+			"referenced_fact_ids":     factList,
+			"recognized_action_index": actionIndex,
 		},
-		"required":             []string{"utterance", "emotion", "dialogue_act", "referenced_fact_ids", "suggested_action_ids"},
+		"required":             []string{"utterance", "emotion", "dialogue_act", "referenced_fact_ids", "recognized_action_index"},
 		"additionalProperties": false,
 	}
 }
@@ -50,11 +48,11 @@ func worldDirectiveSchemaFor(allowedDirectiveIDs []string) map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"directive_id":  map[string]any{"type": "string", "enum": append([]string(nil), allowedDirectiveIDs...)},
-			"reason":        map[string]any{"type": "string", "minLength": 1, "maxLength": 300},
-			"focus_signals": map[string]any{"type": "array", "maxItems": 5, "items": map[string]any{"type": "string"}},
+			"directive_id":         map[string]any{"type": "string", "enum": append([]string(nil), allowedDirectiveIDs...)},
+			"reason":               map[string]any{"type": "string", "minLength": 1, "maxLength": 300},
+			"focus_signal_indexes": map[string]any{"type": "array", "maxItems": 5, "items": map[string]any{"type": "integer", "minimum": 0}},
 		},
-		"required":             []string{"directive_id", "reason", "focus_signals"},
+		"required":             []string{"directive_id", "reason", "focus_signal_indexes"},
 		"additionalProperties": false,
 	}
 }

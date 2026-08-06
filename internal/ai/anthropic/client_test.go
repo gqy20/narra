@@ -44,6 +44,14 @@ func TestDialogueSchemaRestrictsFactReferences(t *testing.T) {
 	}
 }
 
+func TestDialogueSchemaRestrictsRecognizedActionIndex(t *testing.T) {
+	properties := dialogueSchemaFor(nil, []string{"first", "second"})["properties"].(map[string]any)
+	index := properties["recognized_action_index"].(map[string]any)
+	if index["minimum"] != -1 || index["maximum"] != 1 {
+		t.Fatalf("recognized action index schema = %#v", index)
+	}
+}
+
 func TestWorldDirectiveSchemaRestrictsSelectionToCandidates(t *testing.T) {
 	schema := worldDirectiveSchemaFor([]string{"open", "wait"})
 	if schema["additionalProperties"] != false {
@@ -53,6 +61,11 @@ func TestWorldDirectiveSchemaRestrictsSelectionToCandidates(t *testing.T) {
 	ids := properties["directive_id"].(map[string]any)["enum"].([]string)
 	if len(ids) != 2 || ids[0] != "open" || ids[1] != "wait" {
 		t.Fatalf("directive enum = %#v", ids)
+	}
+	indexes := properties["focus_signal_indexes"].(map[string]any)
+	items := indexes["items"].(map[string]any)
+	if items["type"] != "integer" || items["minimum"] != 0 {
+		t.Fatalf("focus signal index schema = %#v", indexes)
 	}
 }
 
@@ -66,7 +79,7 @@ func TestGenerateDialogueUsesStructuredOutputAndDecodesResponse(t *testing.T) {
 			t.Errorf("decode request: %v", err)
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		_, _ = writer.Write([]byte(`{"id":"msg_test","type":"message","role":"assistant","model":"test-model","content":[{"type":"text","text":"{\"utterance\":\"先说说你的来意。\",\"emotion\":\"alert\",\"dialogue_act\":\"question\",\"referenced_fact_ids\":[],\"suggested_action_ids\":[]}"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":12,"output_tokens":8}}`))
+		_, _ = writer.Write([]byte(`{"id":"msg_test","type":"message","role":"assistant","model":"test-model","content":[{"type":"text","text":"{\"utterance\":\"先说说你的来意。\",\"emotion\":\"alert\",\"dialogue_act\":\"question\",\"referenced_fact_ids\":[],\"recognized_action_index\":-1}"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":12,"output_tokens":8}}`))
 	}))
 	defer server.Close()
 

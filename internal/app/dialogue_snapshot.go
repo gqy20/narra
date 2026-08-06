@@ -77,8 +77,12 @@ type DialogueEvent struct {
 }
 
 type DialogueAction struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID          string `json:"-"`
+	Kind        string `json:"kind"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Claim       string `json:"claim,omitempty"`
+	Duration    int    `json:"duration"`
 }
 
 // DialogueRevision returns the revision used to reject an AI response after
@@ -139,7 +143,8 @@ func (s *Session) DialogueSnapshotFor(actorID, situation string) (DialogueSnapsh
 	for _, option := range s.actionCatalog(state) {
 		if option.TargetID == actorID && option.Kind != "advance" {
 			snapshot.AvailableActions = append(snapshot.AvailableActions, DialogueAction{
-				ID: option.ID, Name: option.Name,
+				ID: option.ID, Kind: option.Kind, Name: option.Name, Description: option.Description,
+				Claim: option.FactClaim, Duration: option.Duration,
 			})
 		}
 	}

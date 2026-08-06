@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"path/filepath"
 	"reflect"
@@ -13,6 +14,36 @@ import (
 	"narra/internal/scenario"
 	"narra/internal/testsupport"
 )
+
+func TestConversationUsesContentDurationAndAdvancesOnce(t *testing.T) {
+	session := testSession(t)
+	before := session.View()
+	if session.ConversationDuration() != 1 {
+		t.Fatalf("conversation duration = %d", session.ConversationDuration())
+	}
+	after, err := session.ExecuteConversationContext(context.Background(), "N04")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Day != before.Day+session.ConversationDuration() {
+		t.Fatalf("conversation day = %d, before = %d", after.Day, before.Day)
+	}
+	if history := session.History(); len(history) != 1 || history[0] != "conversation:N04" {
+		t.Fatalf("conversation history = %#v", history)
+	}
+}
+
+func TestConversationRejectsUnavailableActorWithoutAdvancing(t *testing.T) {
+	session := testSession(t)
+	before := session.View()
+	if _, err := session.ExecuteConversationContext(context.Background(), "N03"); err == nil {
+		t.Fatal("conversation accepted an actor at another location")
+	}
+	after := session.View()
+	if after.Day != before.Day || len(session.History()) != 0 {
+		t.Fatalf("rejected conversation changed session: before=%d after=%d history=%#v", before.Day, after.Day, session.History())
+	}
+}
 
 func testSession(t *testing.T) *Session {
 	t.Helper()

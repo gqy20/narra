@@ -48,8 +48,8 @@ go run ./cmd/narra-content simulate data/tianqi --runs 200 --seed 1
 
 Godot 只读取这些字段，不再识别 `qinglan` 等故事专属场景键。
 
-## 内容 Schema v6
+## 内容 Schema v7
 
-Schema v6 要求完整的对话语言策略，以及 UI 契约登记的全部玩家可见术语和模板。
+Schema v7 在完整的对话语言策略与 UI 术语契约之外，要求 `rules.yml` 为玩家声明 `conversation` 能力。该能力引用一个内容包行动，其时长就是一次成功自然语言交谈消耗的世界时间；通用代码不硬编码“拜访”“交谈”等题材文案，也不自行猜测时长。
 
-加载器只接受 Schema v6，不提供旧内容自动迁移。旧内容必须由作者在仓库外显式升级并补齐 `dialogue.yml` 与 `presentation.ui`，再通过 `narra-content validate` 验证；运行时不会推断或补写故事语义。
+加载器只接受 Schema v7，不提供旧内容自动迁移。旧内容必须由作者在仓库外显式升级并补齐 `dialogue.yml`、`presentation.ui` 与 `rules.player.conversation`，再通过 `narra-content validate` 验证；运行时不会推断或补写故事语义。

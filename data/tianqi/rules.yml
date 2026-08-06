@@ -19,6 +19,7 @@ player:
   market_purchase: {enabled: false}
   movement: {enabled: true, action_id: explore}
   share_information: {enabled: true, action_id: spread}
+  conversation: {enabled: true, action_id: visit}
   actions: []
   resource_warnings:
   - resource: exposure

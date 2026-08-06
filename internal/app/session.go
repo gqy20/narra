@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"narra/internal/director"
 	"narra/internal/domain"
@@ -112,16 +113,23 @@ func (s *Session) executeContext(ctx context.Context, actionID string, allowAfte
 	}
 	options := s.actionOptions(state)
 	option, ok := options[actionID]
+	if actorID, found := strings.CutPrefix(actionID, "conversation:"); found {
+		option, ok = s.conversationOption(state, actorID)
+	}
 	if actionID == "wait" {
 		option, ok = waitOption("观察局势并推进一天"), true
 	}
 	if !ok {
 		return s.View(), fmt.Errorf("action %q is not currently available", actionID)
 	}
+	return s.executeOptionContext(ctx, state, actionID, option)
+}
+
+func (s *Session) executeOptionContext(ctx context.Context, state *domain.WorldState, actionID string, option actionOption) (PlayerView, error) {
 	checkpoint := s.engine.Checkpoint()
 	previousNextID := s.nextID
 	previousLastTurn := cloneTurnFeedback(s.lastTurn)
-	s.recordCatalogSize(len(options))
+	s.recordCatalogSize(len(s.actionOptions(state)))
 	var err error
 	actionName := option.view.Name
 	var after *domain.WorldState
@@ -148,6 +156,59 @@ func (s *Session) executeContext(ctx context.Context, actionID string, allowAfte
 	}
 	s.recordMetrics(actionID, state, after, s.lastTurn)
 	return s.View(), nil
+}
+
+// ConversationDuration exposes the content-authored duration of a successful
+// player-to-NPC exchange without adding a synthetic action to PlayerView.
+func (s *Session) ConversationDuration() int {
+	rule := s.bundle.Rules.Player.Conversation
+	if !rule.Enabled {
+		return 0
+	}
+	return s.bundle.Actions[rule.ActionID].Duration
+}
+
+// ExecuteConversationContext advances one content-authored social action when
+// the player's message does not perform another available action.
+func (s *Session) ExecuteConversationContext(ctx context.Context, actorID string) (PlayerView, error) {
+	state := s.engine.State()
+	if state.Day >= s.bundle.Scenario.Duration {
+		return s.View(), fmt.Errorf("scenario already ended on day %d", state.Day)
+	}
+	if state.Outcome != "" {
+		return s.View(), fmt.Errorf("core situation already resolved on day %d", state.Day)
+	}
+	actionID := "conversation:" + actorID
+	option, ok := s.conversationOption(state, actorID)
+	if !ok {
+		return s.View(), fmt.Errorf("conversation target is not available at the current location")
+	}
+	return s.executeOptionContext(ctx, state, actionID, option)
+}
+
+func (s *Session) conversationOption(state *domain.WorldState, actorID string) (actionOption, bool) {
+	npc, ok := state.NPCs[actorID]
+	if !ok || npc.Location != state.Player.Location {
+		return actionOption{}, false
+	}
+	rule := s.bundle.Rules.Player.Conversation
+	action, ok := s.bundle.Actions[rule.ActionID]
+	if !rule.Enabled || !ok || !fitsHorizon(state.Day, action.Duration, s.bundle.Scenario.Duration) {
+		return actionOption{}, false
+	}
+	option := actionOption{
+		view: AvailableAction{
+			ID: "conversation:" + actorID, Kind: "conversation", Category: "social", Name: action.Name,
+			Description: action.Name + "：" + npc.Name, Duration: action.Duration,
+			TargetID: actorID, TargetName: npc.Name,
+		},
+		command: &domain.PlayerCommand{
+			ActionID: action.ID, Duration: action.Duration, TargetID: actorID,
+			Description: action.Name + "：" + npc.Name,
+			Conditions:  []domain.Condition{{Type: "location", Value: state.Player.Location}},
+		},
+	}
+	return option, true
 }
 
 func (s *Session) History() []string {

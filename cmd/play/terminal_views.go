@@ -61,7 +61,6 @@ type terminalDialogueAttempt struct {
 	actor      app.VisibleActor
 	snapshot   app.DialogueSnapshot
 	playerText string
-	opening    bool
 }
 
 type terminalDialogueResult struct {
@@ -99,8 +98,8 @@ func prepareDialogueStart(output io.Writer, game *terminalGame, dialogueService 
 		return nil, nil
 	}
 	conversation := &terminalDialogueSession{actor: actor, revision: snapshot.Revision}
-	attempt := &terminalDialogueAttempt{actor: actor, snapshot: snapshot, opening: true}
-	return conversation, attempt
+	fmt.Fprintf(output, "已选中%s。直接输入要说的话；每次成功回应会推进 %d 日。\n", actor.Name, game.session.ConversationDuration())
+	return conversation, nil
 }
 
 func prepareDialogueTurn(output io.Writer, game *terminalGame, conversation *terminalDialogueSession, playerText string) *terminalDialogueAttempt {
@@ -113,11 +112,7 @@ func prepareDialogueTurn(output io.Writer, game *terminalGame, conversation *ter
 }
 
 func beginDialogueRequest(output io.Writer, session *app.Session, dialogueService *ai.Service, attempt terminalDialogueAttempt, requestID uint64) *terminalDialogueRequest {
-	if attempt.opening {
-		fmt.Fprintf(output, "\n%s正在生成开场回应；不会推进游戏时间。输入 cancel 可取消。\n", attempt.actor.Name)
-	} else {
-		fmt.Fprintf(output, "%s正在回应；不会推进游戏时间。输入 cancel 可取消。\n", attempt.actor.Name)
-	}
+	fmt.Fprintf(output, "%s正在回应；成功后会推进游戏时间。输入 cancel 可取消。\n", attempt.actor.Name)
 	requestContext, cancel := context.WithCancel(context.Background())
 	result := make(chan terminalDialogueResult, 1)
 	go func() {
@@ -139,20 +134,32 @@ func stopDialogueRequest(request *terminalDialogueRequest) {
 	request.ticker.Stop()
 }
 
-func recordDialogueTurn(game *terminalGame, snapshot app.DialogueSnapshot, playerText string, line ai.Dialogue) error {
-	if err := game.session.RecordDialogue(app.DialogueExchange{
+func applyDialogueTurn(game *terminalGame, snapshot app.DialogueSnapshot, playerText string, line ai.Dialogue) (app.PlayerView, error) {
+	var (
+		view app.PlayerView
+		err  error
+	)
+	if line.RecognizedActionID != "" {
+		view, err = game.session.ExecuteContext(context.Background(), line.RecognizedActionID)
+	} else {
+		view, err = game.session.ExecuteConversationContext(context.Background(), snapshot.Actor.ID)
+	}
+	if err != nil {
+		return game.session.View(), err
+	}
+	if err := game.session.RecordDialogueAfterAction(app.DialogueExchange{
 		ActorID: snapshot.Actor.ID, Revision: snapshot.Revision, PlayerText: playerText,
 		NPCText: line.Utterance, Emotion: line.Emotion, DialogueAct: line.DialogueAct,
-		ReferencedFacts: line.ReferencedFacts, SuggestedActions: line.SuggestedActions,
+		ReferencedFacts: line.ReferencedFacts,
 	}); err != nil {
-		return err
+		return view, err
 	}
 	if game.autosave && game.saves != nil {
 		if err := game.saves.save(autosaveSlot, game.session); err != nil {
-			return fmt.Errorf("autosave dialogue: %w", err)
+			return view, fmt.Errorf("autosave dialogue: %w", err)
 		}
 	}
-	return nil
+	return view, nil
 }
 
 func renderDialogueReply(output io.Writer, actor app.VisibleActor, snapshot app.DialogueSnapshot, line ai.Dialogue, debug bool) {
@@ -244,10 +251,6 @@ func resolveActor(selector string, actors []app.VisibleActor, debug bool) (app.V
 }
 
 func renderActorActions(output io.Writer, actions []app.AvailableAction, actorID string) []app.AvailableAction {
-	return renderActorActionsSuggested(output, actions, actorID, nil)
-}
-
-func renderActorActionsSuggested(output io.Writer, actions []app.AvailableAction, actorID string, suggestions []string) []app.AvailableAction {
 	actorActions := make([]app.AvailableAction, 0)
 	for _, action := range terminalSelectableActions(actions) {
 		if action.TargetID == actorID {
@@ -255,20 +258,12 @@ func renderActorActionsSuggested(output io.Writer, actions []app.AvailableAction
 		}
 	}
 	found := false
-	suggested := make(map[string]bool, len(suggestions))
-	for _, actionID := range suggestions {
-		suggested[actionID] = true
-	}
 	for index, action := range actorActions {
 		if !found {
 			fmt.Fprintln(output, "可选交涉：")
 			found = true
 		}
-		marker := ""
-		if suggested[action.ID] {
-			marker = " [模型建议]"
-		}
-		fmt.Fprintf(output, "  %d. %s%s — %s\n", index+1, action.Name, marker, action.Description)
+		fmt.Fprintf(output, "  %d. %s — %s\n", index+1, action.Name, action.Description)
 	}
 	if !found {
 		fmt.Fprintln(output, "当前没有需要通过规则结算的交涉选项。")

@@ -5,22 +5,22 @@ package ai
 import "context"
 
 type Dialogue struct {
-	ActorID          string   `json:"actor_id"`
-	Revision         string   `json:"state_revision"`
-	Utterance        string   `json:"utterance"`
-	Emotion          string   `json:"emotion"`
-	DialogueAct      string   `json:"dialogue_act"`
-	ReferencedFacts  []string `json:"referenced_fact_ids"`
-	SuggestedActions []string `json:"suggested_action_ids"`
-	Source           string   `json:"source"`
+	ActorID            string   `json:"actor_id"`
+	Revision           string   `json:"state_revision"`
+	Utterance          string   `json:"utterance"`
+	Emotion            string   `json:"emotion"`
+	DialogueAct        string   `json:"dialogue_act"`
+	ReferencedFacts    []string `json:"referenced_fact_ids"`
+	RecognizedActionID string   `json:"-"`
+	Source             string   `json:"source"`
 }
 
 type DialogueDraft struct {
-	Utterance        string   `json:"utterance"`
-	Emotion          string   `json:"emotion"`
-	DialogueAct      string   `json:"dialogue_act"`
-	ReferencedFacts  []string `json:"referenced_fact_ids"`
-	SuggestedActions []string `json:"suggested_action_ids"`
+	Utterance             string   `json:"utterance"`
+	Emotion               string   `json:"emotion"`
+	DialogueAct           string   `json:"dialogue_act"`
+	ReferencedFacts       []string `json:"referenced_fact_ids"`
+	RecognizedActionIndex int      `json:"recognized_action_index"`
 }
 
 type GenerationRequest struct {
@@ -42,9 +42,9 @@ type Provider interface {
 }
 
 type WorldDirectiveDraft struct {
-	DirectiveID  string   `json:"directive_id"`
-	Reason       string   `json:"reason"`
-	FocusSignals []string `json:"focus_signals"`
+	DirectiveID        string `json:"directive_id"`
+	Reason             string `json:"reason"`
+	FocusSignalIndexes []int  `json:"focus_signal_indexes"`
 }
 
 type WorldDirectiveRequest struct {

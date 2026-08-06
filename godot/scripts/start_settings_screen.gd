@@ -231,6 +231,10 @@ func _build_settings_layer() -> void:
 	var apply_ai_button = host.ui_factory.button("保存并立即应用", host.start_settings_screen_controller._apply_ai_settings, false)
 	apply_ai_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ai_actions.add_child(apply_ai_button)
+	var test_ai_button = host.ui_factory.button("测试连通性", host.start_settings_screen_controller._test_ai_settings, true)
+	test_ai_button.name = "AIConnectivityTestButton"
+	test_ai_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ai_actions.add_child(test_ai_button)
 	var clear_ai_button = host.ui_factory.button("清除密钥并关闭", host.start_settings_screen_controller._clear_ai_settings, true)
 	clear_ai_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ai_actions.add_child(clear_ai_button)
@@ -331,6 +335,32 @@ func _apply_ai_settings() -> void:
 		"api_key": host.ai_api_key,
 		"model": host.ai_model,
 		"base_url": host.ai_base_url,
+	})
+
+
+func _test_ai_settings() -> void:
+	var model: String = host.ai_model_input.text.strip_edges()
+	var base_url: String = host.ai_base_url_input.text.strip_edges()
+	var api_key: String = host.ai_api_key_input.text.strip_edges()
+	if model == "":
+		host.ai_status_label.text = "测试前请填写模型名称"
+		host.ai_status_label.add_theme_color_override("font_color", host.COLORS.danger)
+		return
+	if api_key == "":
+		host.ai_status_label.text = "测试前请填写 API Key"
+		host.ai_status_label.add_theme_color_override("font_color", host.COLORS.danger)
+		return
+	if base_url != "" and not (base_url.begins_with("https://") or base_url.begins_with("http://")):
+		host.ai_status_label.text = "接口地址必须以 https:// 或 http:// 开头"
+		host.ai_status_label.add_theme_color_override("font_color", host.COLORS.danger)
+		return
+	host.ai_status_label.text = "正在测试模型连接…"
+	host.ai_status_label.add_theme_color_override("font_color", host.COLORS.accent)
+	host._request("ai_test", HTTPClient.METHOD_POST, "/settings/ai/test", {
+		"enabled": true,
+		"api_key": api_key,
+		"model": model,
+		"base_url": base_url,
 	})
 
 

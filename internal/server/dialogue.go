@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"narra/internal/app"
 )
@@ -61,22 +62,40 @@ func (s *GameServer) generateDialogue(writer http.ResponseWriter, request *http.
 	// A dedicated AI request may finish after the player acts or changes scene.
 	// Never attach that stale presentation to the new authoritative revision.
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	stale := s.session == nil || s.session.DialogueRevision(input.ActorID) != snapshot.Revision
-	if !stale {
-		err = s.session.RecordDialogue(app.DialogueExchange{
-			ActorID: input.ActorID, Revision: snapshot.Revision, PlayerText: input.PlayerMessage,
-			NPCText: dialogue.Utterance, Emotion: dialogue.Emotion, DialogueAct: dialogue.DialogueAct,
-			ReferencedFacts: dialogue.ReferencedFacts, SuggestedActions: dialogue.SuggestedActions,
-		})
-	}
-	s.mu.Unlock()
 	if stale {
 		writeError(writer, http.StatusConflict, "stale_dialogue", "局势已经变化，本次人物回应已失效")
 		return
 	}
+	exchange := app.DialogueExchange{
+		ActorID: input.ActorID, Revision: snapshot.Revision, PlayerText: input.PlayerMessage,
+		NPCText: dialogue.Utterance, Emotion: dialogue.Emotion, DialogueAct: dialogue.DialogueAct,
+		ReferencedFacts: dialogue.ReferencedFacts,
+	}
+	var view app.PlayerView
+	if strings.TrimSpace(input.PlayerMessage) == "" {
+		err = s.session.RecordDialogue(exchange)
+		view = s.session.View()
+	} else {
+		if dialogue.RecognizedActionID != "" {
+			view, err = s.session.ExecuteContext(request.Context(), dialogue.RecognizedActionID)
+		} else {
+			view, err = s.session.ExecuteConversationContext(request.Context(), input.ActorID)
+		}
+		if err == nil {
+			dialogue.Revision = s.session.DialogueRevision(input.ActorID)
+			err = s.session.RecordDialogueAfterAction(exchange)
+		}
+	}
 	if err != nil {
-		writeError(writer, http.StatusConflict, "dialogue_record_failed", err.Error())
+		s.reportInternalError("dialogue_action", err)
+		if strings.Contains(err.Error(), "world director") {
+			writeError(writer, http.StatusBadRequest, "world_director_failed", "世界推演暂时没有完成，本次交谈未生效，请重试")
+			return
+		}
+		writeError(writer, http.StatusConflict, "dialogue_action_rejected", "本次交谈没有生效，请核对当前人物与行动")
 		return
 	}
-	writeJSON(writer, http.StatusOK, Response{APIVersion: APIVersion, Dialogue: &dialogue})
+	writeJSON(writer, http.StatusOK, Response{APIVersion: APIVersion, Dialogue: &dialogue, View: &view})
 }

@@ -70,6 +70,7 @@ player:
   market_purchase: {enabled: true, action_id: requisition}
   movement: {enabled: true, action_id: navigate}
   share_information: {enabled: true, action_id: broadcast}
+  conversation: {enabled: true, action_id: dock}
   actions:
   - id: repair
     action_id: repair

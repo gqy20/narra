@@ -123,22 +123,8 @@ func _focus_actor(actor_id: String, timing: Dictionary) -> bool:
 	if actor.is_empty():
 		return _step_failure("missing visible actor %s at %s" % [actor_id, str(app.current_view.get("location", {}).get("id", "unknown"))])
 	app.game_screen_controller._focus_actor_from_stage(actor_id, str(actor.get("name", actor_id)))
-	var attempts := maxi(1, int(timing.get("attempts", 1)))
-	for attempt in attempts:
-		await _hold(float(timing.get("loading_hold", 1.2)))
-		if not await _wait_for_dialogue(actor_id, int(timing.get("timeout_ms", 90000))):
-			return _step_failure("NPC dialogue timed out for " + actor_id)
-		if not app.actor_dialogue_error_by_id.has(actor_id):
-			await _hold(float(timing.get("after", 4.0)))
-			return true
-		if attempt + 1 >= attempts:
-			break
-		await _hold(float(timing.get("retry_hold", 2.0)))
-		app.actor_dialogue_error_by_id.erase(actor_id)
-		app.actor_dialogue_loading_id = actor_id
-		app.dialogue_client.request_focus(actor_id)
-		app.action_panel_controller._render_actions(app.available_actions_cache)
-	return _step_failure("NPC dialogue failed for %s after %d attempts: %s" % [actor_id, attempts, app.actor_dialogue_error_by_id.get(actor_id, "unknown error")])
+	await _hold(float(timing.get("after", 1.2)))
+	return true
 
 
 func _dialogue_turn(message: String, timing: Dictionary) -> bool:
@@ -177,7 +163,7 @@ func _wait_for_dialogue(actor_id: String, timeout_ms: int) -> bool:
 	var deadline := Time.get_ticks_msec() + timeout_ms
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
-		if app.actor_dialogue_loading_id == "" and (app.actor_dialogue_by_id.has(actor_id) or app.actor_dialogue_error_by_id.has(actor_id)):
+		if app.actor_dialogue_loading_id == "" and (app.actor_dialogue_history_by_id.has(actor_id) or app.actor_dialogue_error_by_id.has(actor_id)):
 			return true
 	return false
 

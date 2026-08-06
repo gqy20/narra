@@ -75,7 +75,7 @@ func (p *terminalDialogueProvider) generate(request ai.GenerationRequest) (ai.Di
 	return ai.DialogueDraft{
 		Utterance: "消息可以谈，但我得先知道它从何而来。",
 		Emotion:   "alert", DialogueAct: "question", ReferencedFacts: []string{},
-		SuggestedActions: []string{},
+		RecognizedActionIndex: -1,
 	}, ai.GenerationMetadata{Model: "test"}, nil
 }
 
@@ -249,7 +249,7 @@ func TestDefaultViewLocalizesStatusAndInvestigationSource(t *testing.T) {
 	}
 }
 
-func TestTerminalNavigationAndDialogueDoNotAdvanceWorld(t *testing.T) {
+func TestTerminalNavigationAndSelectingDialogueDoNotAdvanceWorld(t *testing.T) {
 	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
@@ -261,17 +261,17 @@ func TestTerminalNavigationAndDialogueDoNotAdvanceWorld(t *testing.T) {
 	provider := &terminalDialogueProvider{}
 	dialogue := ai.NewService(provider, ai.ServiceOptions{Timeout: time.Second, CacheSize: 4})
 	var output bytes.Buffer
-	commands := "look\npeople\ntalk 2\nawait\nmap\njournal\nquit\n"
+	commands := "look\npeople\ntalk 2\nmap\njournal\nquit\n"
 	if err := runGame(bytes.NewBufferString(commands), &output, testTerminalGame(session), dialogue, false); err != nil {
 		t.Fatal(err)
 	}
 	text := output.String()
-	for _, want := range []string{"【白石坊市】", "【白石坊市 · 同地人物】", "魏无咎：", "【黑风谷山川】", "【卷宗】"} {
+	for _, want := range []string{"【白石坊市】", "【白石坊市 · 同地人物】", "已选中魏无咎", "【黑风谷山川】", "【卷宗】"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("terminal output does not contain %q:\n%s", want, text)
 		}
 	}
-	if provider.calls != 1 || session.View().Day != 0 || session.View().Metrics.DecisionInputs != 0 {
+	if provider.calls != 0 || session.View().Day != 0 || session.View().Metrics.DecisionInputs != 0 {
 		t.Fatalf("presentation changed world state: calls=%d view=%+v", provider.calls, session.View())
 	}
 }
@@ -321,18 +321,18 @@ func TestTerminalSupportsPersistentMultiTurnNPCDialogue(t *testing.T) {
 	dialogue := ai.NewService(provider, ai.ServiceOptions{Timeout: time.Second, CacheSize: 4})
 	game := &terminalGame{session: session, saves: store, autosave: true}
 	var output bytes.Buffer
-	commands := "talk 2\nawait\n这条消息若是真的，你准备如何核验？\nawait\ncontext\nleave\nquit\n"
+	commands := "talk 2\n你怎么看这条消息？\nawait\n这条消息若是真的，你准备如何核验？\nawait\ncontext\nleave\nquit\n"
 	if err := runGame(bytes.NewBufferString(commands), &output, game, dialogue, false); err != nil {
 		t.Fatal(err)
 	}
 	if provider.calls != 2 || len(provider.requests) != 2 {
-		t.Fatalf("provider calls = %d, requests=%d", provider.calls, len(provider.requests))
+		t.Fatalf("provider calls = %d, requests=%d\n%s", provider.calls, len(provider.requests), output.String())
 	}
 	if !strings.Contains(provider.requests[1].Input, "这条消息若是真的") || !strings.Contains(provider.requests[1].Input, "history") {
 		t.Fatalf("second turn omitted player text or history: %s", provider.requests[1].Input)
 	}
 	history := session.DialogueHistory("N04", session.DialogueRevision("N04"), 8)
-	if len(history) != 2 || history[1].PlayerText == "" || session.View().Day != 0 || session.View().Metrics.DecisionInputs != 0 {
+	if len(history) != 2 || history[1].PlayerText == "" || session.View().Day != 2 || session.View().Metrics.DecisionInputs != 2 {
 		t.Fatalf("dialogue history/state = %+v / %+v", history, session.View())
 	}
 	restored, err := store.load(autosaveSlot)
@@ -342,7 +342,7 @@ func TestTerminalSupportsPersistentMultiTurnNPCDialogue(t *testing.T) {
 	if got := restored.DialogueHistory("N04", restored.DialogueRevision("N04"), 8); len(got) != 2 {
 		t.Fatalf("restored dialogue history = %+v", got)
 	}
-	for _, want := range []string{"已进入对话", "最近 2 轮对话", "这条消息若是真的", "你结束了与魏无咎的对话"} {
+	for _, want := range []string{"已选中魏无咎", "最近 2 轮对话", "这条消息若是真的", "你结束了与魏无咎的对话"} {
 		if !strings.Contains(output.String(), want) {
 			t.Errorf("output missing %q:\n%s", want, output.String())
 		}
@@ -364,7 +364,7 @@ func TestTerminalReportsModelFailureWithoutInventingDialogue(t *testing.T) {
 				t.Fatal(err)
 			}
 			var output bytes.Buffer
-			if err := runGame(bytes.NewBufferString("talk 2\nawait\nquit\n"), &output, testTerminalGame(session), dialogue, false); err != nil {
+			if err := runGame(bytes.NewBufferString("talk 2\n说说眼前的局势。\nawait\nquit\n"), &output, testTerminalGame(session), dialogue, false); err != nil {
 				t.Fatal(err)
 			}
 			text := output.String()
@@ -397,6 +397,9 @@ func TestTerminalCanInspectCancelAndRetryDialogueGeneration(t *testing.T) {
 	}()
 
 	if _, err := fmt.Fprintln(writer, "talk 2"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fmt.Fprintln(writer, "说说眼前的局势。"); err != nil {
 		t.Fatal(err)
 	}
 	if call := <-provider.started; call != 1 {

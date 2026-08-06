@@ -48,19 +48,8 @@ func validateDialogue(snapshot app.DialogueSnapshot, draft *DialogueDraft) error
 			return fmt.Errorf("dialogue states rumored fact %q without uncertainty", factID)
 		}
 	}
-	allowedActions := make(map[string]bool, len(snapshot.AvailableActions))
-	for _, action := range snapshot.AvailableActions {
-		allowedActions[action.ID] = true
-	}
-	seenActions := make(map[string]bool, len(draft.SuggestedActions))
-	for _, actionID := range draft.SuggestedActions {
-		if !allowedActions[actionID] {
-			return fmt.Errorf("dialogue suggests unavailable action %q", actionID)
-		}
-		if seenActions[actionID] {
-			return fmt.Errorf("dialogue suggests action %q more than once", actionID)
-		}
-		seenActions[actionID] = true
+	if draft.RecognizedActionIndex < -1 || draft.RecognizedActionIndex >= len(snapshot.AvailableActions) {
+		return fmt.Errorf("dialogue recognized unavailable action index %d", draft.RecognizedActionIndex)
 	}
 	lower := strings.ToLower(draft.Utterance)
 	for _, forbidden := range []string{"world_flags", "actor_flags", "strategy_id", "score", "提示词", "系统字段"} {

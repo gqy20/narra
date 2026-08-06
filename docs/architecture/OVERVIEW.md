@@ -112,7 +112,7 @@ Godot 控件 ──动作 ID──> /api/v1 ──> app.Session ──> engine
 Godot 地图/场景/行动视图 <── PlayerView <─────────┘
 ```
 
-可选 AI 对话是这条权威链路旁边的非权威表现支路：`internal/app` 先从当前 Session 构造不可变的 `DialogueSnapshot`，仅包含同地人物的公开资料、玩家已经获知或亲自告知的说法、抽象化动机、公开事件与当前可见交涉；`internal/ai` 再通过 Anthropic 官方 Go SDK 请求受 JSON Schema 约束的多轮回应。每次最多注入同一局势 revision 下最近 8 轮历史，模型只能建议当前公开行动，不能执行行动。对话记录随存档保存，但不参与世界回放和规则结算。服务不会把 `WorldState`、事实真值、秘密认知、策略评分或内部标记交给模型。模型调用不持有 Session 锁，返回时若局势 revision 已变化则丢弃旧结果；取消、超时、网络错误、越权事实或行动引用、空响应及格式错误都会作为失败返回，不生成替代台词。
+可选 AI 对话通过受限意图接入权威行动链路：`internal/app` 先从当前 Session 构造不可变的 `DialogueSnapshot`，仅包含同地人物的公开资料、玩家已经获知或亲自告知的说法、抽象化动机、公开事件与当前可见交涉；`internal/ai` 再通过 Anthropic 官方 Go SDK 请求受 JSON Schema 约束的多轮回应。模型只能返回台词和一个 `recognized_action_index`：明确说出当前可用交涉时，服务端把索引映射回权威行动并直接执行；普通问题或含糊表达使用 `-1`，执行内容包声明的普通交谈行动。模型不能返回内部行动 ID、编造 Effect 或自行修改状态。每次成功发言只推进一次行动，回复与更新后的 `PlayerView` 同时返回；失败、取消、越界索引和过期 revision 都不推进时间。对话文本作为表现历史随存档保存，世界变化仍只由行动历史确定性回放。服务不会把 `WorldState`、事实真值、秘密认知、策略评分或内部标记交给模型。
 
 题材语言、置信度措辞、称谓、性格指导、关系语言和人物声音全部由内容包 `dialogue.yml` 声明；系统 Prompt 不固定中文或仙侠词表。应用和 Godot 的行动、反馈、准备、旅行、终局及线索术语统一读取 `presentation.yml` 的 `ui` 模板。完整必需键和占位符签名登记在 `internal/scenario/presentation_ui_contract.yml`，场景加载与源码契约测试共同阻止内容包和调用端发生漂移。地点程序背景和环境音 fallback 读取地点表现参数，不按故事场景 ID 分支。详见 [内容语言与表现配置](CONTENT.md)。
 
@@ -120,13 +120,13 @@ Godot 地图/场景/行动视图 <── PlayerView <─────────
 
 CLI 将终端读取和模型生成拆为两个并发事件源。当模型请求处于 pending 状态时，主循环同时处理返回结果、等待进度和玩家命令：`context` 只读取语境，`cancel` 取消 context 并清空尚未执行的排队输入，`retry` 在 revision 未变时重提原快照，`await` 暂停读取后续管道命令。取消后到达的旧结果没有可写入路径，不会记录为对话或触发自动存档。
 
-Godot 的模型设置写入用户运行目录中的独立 `ai-settings.json`；密钥不会进入进程参数或日志，该配置文件也不会被纳入诊断包。打包服务启动时读取该文件，运行期间则通过回环地址上的 `PUT /api/v1/settings/ai` 原子替换对话服务，因此切换或关闭模型不会销毁 Session。响应只返回启用状态和模式，不回传密钥。
+Godot 的模型设置写入用户运行目录中的独立 `ai-settings.json`；密钥不会进入进程参数或日志，该配置文件也不会被纳入诊断包。打包服务启动时读取该文件，运行期间则通过回环地址上的 `PUT /api/v1/settings/ai` 原子替换对话服务，因此切换或关闭模型不会销毁 Session。`POST /api/v1/settings/ai/test` 使用当前输入临时创建客户端，依次验证人物对话与世界导演的结构化输出，不保存设置、不替换运行中服务，也不改变 Session。响应只返回启用状态和模式，不回传密钥。
 
 ```text
 app.Session ──脱敏快照 + 会话历史──> internal/ai ──> Anthropic Messages API
      │                                  │
-     ├──权威规则与行动回放               └──结构化 Dialogue + 受限行动建议──> CLI / Godot
-     └──持久化非权威对话记录
+     ├──权威规则与行动回放 <──受限索引───┤
+     └──表现对话历史 + 更新后的 PlayerView ───────────────> CLI / Godot
 ```
 
 结构化输出使用官方 SDK 的稳定 `OutputConfig` 和 JSON Schema，响应解码使用 Go 标准库 `encoding/json`，并在应用侧再次校验枚举、长度和 `referenced_fact_ids` 白名单。Godot 为对话使用独立 `HTTPRequest`，不会占用动作、存档和读取视图的请求通道。

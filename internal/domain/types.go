@@ -42,6 +42,7 @@ type PlayerRules struct {
 	MarketPurchase   PlayerCapabilityRule  `json:"market_purchase" yaml:"market_purchase"`
 	Movement         PlayerCapabilityRule  `json:"movement" yaml:"movement"`
 	ShareInformation PlayerCapabilityRule  `json:"share_information" yaml:"share_information"`
+	Conversation     PlayerCapabilityRule  `json:"conversation" yaml:"conversation"`
 	Actions          []PlayerActionRule    `json:"actions,omitempty" yaml:"actions,omitempty"`
 	ResourceWarnings []ResourceWarningRule `json:"resource_warnings,omitempty" yaml:"resource_warnings,omitempty"`
 }

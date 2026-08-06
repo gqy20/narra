@@ -2,6 +2,7 @@
 package server
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"sync"
 
 	"narra/internal/ai"
@@ -33,6 +35,7 @@ type GameServer struct {
 	worldDirector *ai.Service
 	dialogueMode  string
 	configureAI   func(AISettings) (*ai.Service, string, error)
+	reportError   func(string, error)
 }
 
 // Options configures process-level capabilities that are disabled in tests and embedded uses by default.
@@ -42,6 +45,7 @@ type Options struct {
 	Dialogue      *ai.Service
 	DialogueMode  string
 	ConfigureAI   func(AISettings) (*ai.Service, string, error)
+	ReportError   func(string, error)
 }
 
 type Response struct {
@@ -55,9 +59,10 @@ type Response struct {
 }
 
 type ScenarioInfo struct {
-	ID           string                      `json:"id"`
-	Title        string                      `json:"title"`
-	Presentation domain.ScenarioPresentation `json:"presentation"`
+	ID                   string                      `json:"id"`
+	Title                string                      `json:"title"`
+	ConversationDuration int                         `json:"conversation_duration"`
+	Presentation         domain.ScenarioPresentation `json:"presentation"`
 }
 
 type Capabilities struct {
@@ -97,6 +102,14 @@ type dialogueRequest struct {
 	PlayerMessage string `json:"player_message,omitempty"`
 }
 
+func conversationDuration(bundle domain.Bundle) int {
+	rule := bundle.Rules.Player.Conversation
+	if !rule.Enabled {
+		return 0
+	}
+	return bundle.Actions[rule.ActionID].Duration
+}
+
 type slotRequest struct {
 	Slot string `json:"slot"`
 }
@@ -120,6 +133,7 @@ func NewWithOptions(bundle domain.Bundle, saveDir string, options Options) *Game
 		worldDirector: options.Dialogue,
 		dialogueMode:  options.DialogueMode,
 		configureAI:   options.ConfigureAI,
+		reportError:   options.ReportError,
 	}
 }
 
@@ -131,6 +145,7 @@ func (s *GameServer) Handler() http.Handler {
 	mux.HandleFunc("/api/v1/game/action", s.action)
 	mux.HandleFunc("/api/v1/game/dialogue", s.generateDialogue)
 	mux.HandleFunc("/api/v1/settings/ai", s.configureAISettings)
+	mux.HandleFunc("/api/v1/settings/ai/test", s.testAISettings)
 	mux.HandleFunc("/api/v1/game/save", s.save)
 	mux.HandleFunc("/api/v1/game/load", s.load)
 	mux.HandleFunc("/api/v1/game/quit", s.quit)
@@ -169,7 +184,7 @@ func (s *GameServer) health(writer http.ResponseWriter, request *http.Request) {
 	configurable := s.configureAI != nil
 	s.mu.Unlock()
 	writeJSON(writer, http.StatusOK, Response{APIVersion: APIVersion,
-		Scenario:     &ScenarioInfo{ID: s.bundle.Scenario.ID, Title: s.bundle.Scenario.Title, Presentation: s.bundle.Presentation},
+		Scenario:     &ScenarioInfo{ID: s.bundle.Scenario.ID, Title: s.bundle.Scenario.Title, ConversationDuration: conversationDuration(s.bundle), Presentation: s.bundle.Presentation},
 		Capabilities: &Capabilities{AIDialogue: enabled, AIWorldDirector: enabled, AIConfiguration: configurable},
 		AISettings:   &AISettingsView{Enabled: enabled, Mode: mode},
 	})
@@ -211,6 +226,65 @@ func (s *GameServer) configureAISettings(writer http.ResponseWriter, request *ht
 		Capabilities: &Capabilities{AIDialogue: enabled, AIWorldDirector: enabled, AIConfiguration: true},
 		AISettings:   &AISettingsView{Enabled: enabled, Mode: mode},
 	})
+}
+
+func (s *GameServer) testAISettings(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodPost {
+		writeError(writer, http.StatusMethodNotAllowed, "method_not_allowed", "仅支持 POST")
+		return
+	}
+	if s.configureAI == nil {
+		writeError(writer, http.StatusNotImplemented, "ai_configuration_unavailable", "当前服务不支持测试大模型配置")
+		return
+	}
+	var input AISettings
+	if err := decodeJSON(request, &input); err != nil {
+		writeError(writer, http.StatusBadRequest, "invalid_request", "测试配置格式无效")
+		return
+	}
+	input.Enabled = true
+	service, mode, err := s.configureAI(input)
+	if err != nil {
+		s.reportInternalError("ai_connectivity_configuration", err)
+		writeError(writer, http.StatusBadRequest, "invalid_ai_configuration", "模型配置不完整，请检查模型、接口地址和 API Key")
+		return
+	}
+	if service == nil {
+		err = errors.New("AI configurator returned no service")
+		s.reportInternalError("ai_connectivity_configuration", err)
+		writeError(writer, http.StatusBadRequest, "invalid_ai_configuration", "无法根据当前设置创建模型连接")
+		return
+	}
+	if err := service.TestConnectivity(request.Context()); err != nil {
+		s.reportInternalError("ai_connectivity_test", err)
+		code, message := aiConnectivityError(err)
+		writeError(writer, http.StatusBadGateway, code, message)
+		return
+	}
+	writeJSON(writer, http.StatusOK, Response{APIVersion: APIVersion, AISettings: &AISettingsView{Enabled: true, Mode: mode}})
+}
+
+func (s *GameServer) reportInternalError(operation string, err error) {
+	if s.reportError != nil && err != nil {
+		s.reportError(operation, err)
+	}
+}
+
+func aiConnectivityError(err error) (string, string) {
+	message := strings.ToLower(err.Error())
+	if errors.Is(err, context.DeadlineExceeded) || strings.Contains(message, "timeout") || strings.Contains(message, "timed out") {
+		return "ai_connection_timeout", "连接模型超时，请检查网络、接口地址或稍后重试"
+	}
+	if strings.Contains(message, "401") || strings.Contains(message, "403") || strings.Contains(message, "unauthorized") || strings.Contains(message, "authentication") || strings.Contains(message, "api key") {
+		return "ai_authentication_failed", "认证失败，请检查 API Key 是否正确并具有模型访问权限"
+	}
+	if strings.Contains(message, "no text block") || strings.Contains(message, "empty") {
+		return "ai_empty_response", "接口已响应，但模型没有返回可用内容"
+	}
+	if strings.Contains(message, "decode") || strings.Contains(message, "json") || strings.Contains(message, "structured") || strings.Contains(message, "required structured") {
+		return "ai_structured_output_failed", "接口可以访问，但当前模型不兼容所需的结构化输出"
+	}
+	return "ai_connection_failed", "无法使用当前模型配置，请检查接口地址、模型名称和网络状态"
 }
 
 func (s *GameServer) game(writer http.ResponseWriter, request *http.Request) {
@@ -274,6 +348,11 @@ func (s *GameServer) action(writer http.ResponseWriter, request *http.Request) {
 	}
 	view, err := s.session.Execute(input.ActionID)
 	if err != nil {
+		s.reportInternalError("action", err)
+		if strings.Contains(err.Error(), "world director") {
+			writeError(writer, http.StatusBadRequest, "world_director_failed", "世界推演暂时没有完成，本次行动未生效，请重试")
+			return
+		}
 		writeError(writer, http.StatusBadRequest, "action_rejected", err.Error())
 		return
 	}

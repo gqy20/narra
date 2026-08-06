@@ -12,6 +12,7 @@ import (
 
 	"narra/internal/app"
 	"narra/internal/director"
+	"narra/internal/domain"
 )
 
 type Service struct {
@@ -40,6 +41,43 @@ func NewService(provider Provider, options ServiceOptions) *Service {
 
 func (s *Service) Enabled() bool { return s != nil && s.provider != nil }
 
+// TestConnectivity performs one non-authoritative structured request without
+// changing runtime configuration or game state.
+func (s *Service) TestConnectivity(ctx context.Context) error {
+	if s == nil || s.provider == nil {
+		return ErrUnavailable
+	}
+	callCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	draft, _, err := s.provider.GenerateDialogue(callCtx, GenerationRequest{
+		System: "This is a connectivity test. Return one short acknowledgement using the required JSON schema. Do not reference facts or actions. Set recognized_action_index to -1.",
+		Input:  `{"purpose":"connectivity_test","locale":"zh-CN"}`,
+	})
+	if err != nil {
+		return fmt.Errorf("connectivity request: %w", err)
+	}
+	if strings.TrimSpace(draft.Utterance) == "" {
+		return errors.New("connectivity response contains an empty utterance")
+	}
+	if draft.Emotion == "" || draft.DialogueAct == "" {
+		return errors.New("connectivity response is missing required structured fields")
+	}
+	if draft.RecognizedActionIndex != -1 {
+		return errors.New("connectivity response recognized an unavailable action")
+	}
+	_, err = s.SelectWorldDirective(callCtx, director.SelectionRequest{
+		ScenarioID: "connectivity-test", Day: 1, Phase: "probe",
+		Candidates: []director.Candidate{{
+			DirectiveID: "connectivity-probe", Description: "Connectivity probe",
+			Signals: []domain.WorldSignal{{Type: "probe", SubjectID: "service", Value: 1, Description: "连接测试信号"}},
+		}},
+	})
+	if err != nil {
+		return fmt.Errorf("world director connectivity request: %w", err)
+	}
+	return nil
+}
+
 // SelectWorldDirective asks the model to choose exactly one engine-provided
 // candidate. It cannot author effects, and any missing or invalid output is an
 // error so Engine.Step can roll back the complete day.
@@ -65,7 +103,7 @@ func (s *Service) SelectWorldDirective(ctx context.Context, request director.Sel
 	callCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 	draft, _, err := provider.GenerateWorldDirective(callCtx, WorldDirectiveRequest{
-		System: "You are a bounded game world director. Choose exactly one directive_id from candidates. Never invent effects or IDs. Explain the pacing reason briefly and list only signal descriptions present in the snapshot.",
+		System: "You are a bounded game world director. Choose exactly one directive_id from candidates. Never invent effects or IDs. Explain the pacing reason briefly. Return focus_signal_indexes as zero-based indexes into the selected candidate's signals array; never repeat or rewrite signal descriptions.",
 		Input:  string(input), AllowedDirectiveIDs: allowed,
 	})
 	if err != nil {
@@ -86,24 +124,30 @@ func (s *Service) SelectWorldDirective(ctx context.Context, request director.Sel
 	if !valid {
 		return director.Selection{}, fmt.Errorf("world director returned unavailable directive_id %q", draft.DirectiveID)
 	}
-	if len(draft.FocusSignals) > 5 {
+	if len(draft.FocusSignalIndexes) > 5 {
 		return director.Selection{}, fmt.Errorf("world director returned too many focus signals")
 	}
-	allowedSignals := make(map[string]bool)
+	var selectedSignals []domain.WorldSignal
 	for _, candidate := range request.Candidates {
 		if candidate.DirectiveID != draft.DirectiveID {
 			continue
 		}
-		for _, signal := range candidate.Signals {
-			allowedSignals[signal.Description] = true
-		}
+		selectedSignals = candidate.Signals
+		break
 	}
-	for _, signal := range draft.FocusSignals {
-		if !allowedSignals[signal] {
-			return director.Selection{}, fmt.Errorf("world director returned unknown focus signal %q", signal)
+	focusSignals := make([]string, 0, len(draft.FocusSignalIndexes))
+	seenSignalIndexes := make(map[int]bool)
+	for _, index := range draft.FocusSignalIndexes {
+		if index < 0 || index >= len(selectedSignals) {
+			return director.Selection{}, fmt.Errorf("world director returned unavailable focus signal index %d", index)
 		}
+		if seenSignalIndexes[index] {
+			continue
+		}
+		seenSignalIndexes[index] = true
+		focusSignals = append(focusSignals, selectedSignals[index].Description)
 	}
-	return director.Selection{DirectiveID: draft.DirectiveID, Reason: draft.Reason, FocusSignals: append([]string(nil), draft.FocusSignals...), Source: "anthropic"}, nil
+	return director.Selection{DirectiveID: draft.DirectiveID, Reason: draft.Reason, FocusSignals: focusSignals, Source: "anthropic"}, nil
 }
 
 // GenerateConversationTurn returns one validated NPC reply using only the
@@ -167,8 +211,10 @@ func (s *Service) GenerateConversationTurn(ctx context.Context, snapshot app.Dia
 	result := Dialogue{
 		ActorID: snapshot.Actor.ID, Revision: snapshot.Revision,
 		Utterance: draft.Utterance, Emotion: draft.Emotion, DialogueAct: draft.DialogueAct,
-		ReferencedFacts:  append([]string{}, draft.ReferencedFacts...),
-		SuggestedActions: append([]string{}, draft.SuggestedActions...), Source: "anthropic",
+		ReferencedFacts: append([]string{}, draft.ReferencedFacts...), Source: "anthropic",
+	}
+	if draft.RecognizedActionIndex >= 0 {
+		result.RecognizedActionID = snapshot.AvailableActions[draft.RecognizedActionIndex].ID
 	}
 	s.cache.put(key, result)
 	return result, nil
@@ -184,7 +230,7 @@ func validateConversationHistory(snapshot app.DialogueSnapshot, history []app.Di
 		}
 		draft := DialogueDraft{
 			Utterance: exchange.NPCText, Emotion: exchange.Emotion, DialogueAct: exchange.DialogueAct,
-			ReferencedFacts: exchange.ReferencedFacts, SuggestedActions: exchange.SuggestedActions,
+			ReferencedFacts: exchange.ReferencedFacts, RecognizedActionIndex: -1,
 		}
 		if err := validateDialogue(snapshot, &draft); err != nil {
 			return fmt.Errorf("exchange %d: %w", index+1, err)

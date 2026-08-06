@@ -1,7 +1,7 @@
 class_name AIDialogueClient
 extends Node
 
-signal dialogue_ready(actor_id: String, dialogue: Dictionary)
+signal dialogue_ready(actor_id: String, dialogue: Dictionary, view: Dictionary)
 signal dialogue_failed(actor_id: String, message: String)
 
 var api_base := "http://127.0.0.1:8787/api/v1"
@@ -12,10 +12,6 @@ var request_generation := 0
 
 func _ready() -> void:
 	pass
-
-
-func request_focus(actor_id: String) -> void:
-	_request_dialogue(actor_id, "")
 
 
 func request_turn(actor_id: String, player_message: String) -> void:
@@ -81,4 +77,5 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 	if str(dialogue.get("actor_id", "")) != actor_id:
 		dialogue_failed.emit(actor_id, "人物回应与当前交谈对象不一致")
 		return
-	dialogue_ready.emit(actor_id, dialogue)
+	var view: Dictionary = parsed.get("view", {}) if parsed.get("view", {}) is Dictionary else {}
+	dialogue_ready.emit(actor_id, dialogue, view)

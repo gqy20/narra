@@ -304,6 +304,7 @@ func validatePlayerRules(bundle domain.Bundle) error {
 		{"market_purchase", bundle.Rules.Player.MarketPurchase},
 		{"movement", bundle.Rules.Player.Movement},
 		{"share_information", bundle.Rules.Player.ShareInformation},
+		{"conversation", bundle.Rules.Player.Conversation},
 	}
 	for _, capability := range capabilities {
 		if !capability.rule.Enabled {

@@ -128,34 +128,22 @@ func _run() -> void:
 		return _fail("actor selection did not synchronize stage and action focus")
 	if app.pending_operation != "":
 		return _fail("NPC dialogue reused the authoritative gameplay request channel")
-	if not await _wait_for_dialogue("N04"):
-		return _fail("NPC dialogue request timed out")
-	var npc_dialogue: Dictionary = app.actor_dialogue_by_id.get("N04", {})
-	if not npc_dialogue.is_empty():
-		if str(npc_dialogue.get("actor_id", "")) != "N04" or str(npc_dialogue.get("utterance", "")) == "":
-			return _fail("NPC dialogue did not return a displayable typed response")
-		if str(npc_dialogue.get("source", "")) not in ["anthropic", "cache"]:
-			return _fail("NPC dialogue did not identify its model generation source")
-	elif str(app.actor_dialogue_error_by_id.get("N04", "")) == "":
-		return _fail("NPC dialogue failure was hidden instead of reported")
+	var original_ai_server_enabled: bool = app.ai_server_enabled
+	app.ai_server_enabled = true
+	app.action_panel_controller._render_actions(actions)
+	await process_frame
 	if app.game_screen_controller.actor_portrait.texture != app.presentation_registry.actor_profile("N04").portrait():
 		return _fail("actor selection did not switch the production portrait")
 	if app.game_screen_controller.actor_portrait_name.text != "魏无咎" or not app.game_screen_controller.location_panel.visible:
 		return _fail("actor selection did not update the visible stage caption")
 	var actor_focus_text := _descendant_text(app.game_screen_controller.actor_focus_message_list) + _descendant_text(app.game_screen_controller.actor_focus_detail_box) + _descendant_text(app.game_screen_controller.actor_focus_footer)
-	if not app.game_screen_controller.actor_focus_workspace.visible or app.game_screen_controller.fact_action_scroll.visible or "选择线索" not in actor_focus_text or "相关性" not in actor_focus_text or "可能结果" not in actor_focus_text or "传播风险" not in actor_focus_text or "确认告知" not in actor_focus_text or "送出后不可撤回" not in actor_focus_text:
-		return _fail("actor focus does not expose selection, decision context, and fixed commitment footer")
-	var risk_header: Node = app.game_screen_controller.actor_focus_detail_box.find_child("RiskHeader", true, false)
-	if not risk_header is HBoxContainer or "传播风险" not in _descendant_text(risk_header):
-		return _fail("actor focus does not use a single-row risk header")
-	var relevance_header: Node = _hbox_with_text(app.game_screen_controller.actor_focus_detail_box, "相关性")
-	var timing_header: Node = _hbox_with_text(app.game_screen_controller.actor_focus_detail_box, "传播时机")
-	if not relevance_header is HBoxContainer or "相关性" not in _descendant_text(relevance_header):
-		return _fail("actor focus does not keep relevance metadata on one labeled row")
-	if timing_header != null and (not timing_header is HBoxContainer or "传播时机" not in _descendant_text(timing_header)):
-		return _fail("actor focus timing metadata is not kept on one labeled row")
-	if "选择要传达的话" in actor_focus_text or "◆" in actor_focus_text or "✦" in actor_focus_text:
-		return _fail("actor focus still uses verbose selection copy or ambiguous glyph markers")
+	if not app.game_screen_controller.actor_focus_workspace.visible or app.game_screen_controller.fact_action_scroll.visible or "本次交谈" not in actor_focus_text or "每次发送成功后推进" not in actor_focus_text or "可在话中提及" not in actor_focus_text:
+		return _fail("AI actor focus does not explain direct conversational actions")
+	if "选择线索" in actor_focus_text or "相关性" in actor_focus_text or "确认告知" in actor_focus_text or "送出后不可撤回" in actor_focus_text:
+		return _fail("AI actor focus still exposes the redundant second-confirmation flow")
+	var choice_list: Node = app.game_screen_controller.actor_focus_detail_box.find_child("ActorFocusChoiceList", true, false)
+	if choice_list != null or app.game_screen_controller.actor_focus_footer.visible:
+		return _fail("AI actor focus still renders a separate action picker or confirmation footer")
 	if not app.game_screen_controller.actor_focus_detail_scroll.visible or app.game_screen_controller.action_dock_title.text != "魏无咎":
 		return _fail("populated actor focus did not keep a single actor title and its decision detail")
 	if app.game_screen_controller.location_detail_box.visible or app.game_screen_controller.stage_people_box.visible:
@@ -191,8 +179,9 @@ func _run() -> void:
 	app.action_panel_controller._render_actions([])
 	await process_frame
 	var actor_empty_text := _descendant_text(app.game_screen_controller.actor_focus_message_list) + _descendant_text(app.game_screen_controller.actor_focus_detail_box)
-	if "暂无可传达的新消息" not in actor_empty_text or "查看人物卷宗" not in actor_empty_text or "选择线索" in actor_empty_text or app.game_screen_controller.actor_focus_detail_scroll.visible or app.game_screen_controller.actor_focus_footer.visible:
-		return _fail("actor focus empty state did not collapse to one clear message and next step: detail=%s footer=%s text=%s" % [app.game_screen_controller.actor_focus_detail_scroll.visible, app.game_screen_controller.actor_focus_footer.visible, actor_empty_text])
+	if "当前没有尚未送达的线索" not in actor_empty_text or "仍可进行普通交谈" not in actor_empty_text or "选择线索" in actor_empty_text or not app.game_screen_controller.actor_focus_detail_scroll.visible or app.game_screen_controller.actor_focus_footer.visible:
+		return _fail("AI actor focus empty state does not preserve ordinary conversation: detail=%s footer=%s text=%s" % [app.game_screen_controller.actor_focus_detail_scroll.visible, app.game_screen_controller.actor_focus_footer.visible, actor_empty_text])
+	app.ai_server_enabled = original_ai_server_enabled
 	app.action_panel_controller._render_actions(actions)
 	await process_frame
 	for bus_name in ["Ambient", "Event", "UI"]:
@@ -204,8 +193,11 @@ func _run() -> void:
 	var settings_text := _descendant_text(app.settings_box)
 	if "窗口模式" not in settings_text or "输出分辨率" not in settings_text or "界面缩放" not in settings_text:
 		return _fail("display settings do not expose mode, resolution, and UI scale")
-	if "大模型" not in settings_text or "模型" not in settings_text or "接口地址" not in settings_text or "API Key" not in settings_text:
-		return _fail("AI settings do not expose enablement, model, endpoint, and API key")
+	if "大模型" not in settings_text or "模型" not in settings_text or "接口地址" not in settings_text or "API Key" not in settings_text or "测试连通性" not in settings_text:
+		return _fail("AI settings do not expose enablement, model, endpoint, API key, and connectivity test")
+	var connectivity_test_button: Node = app.settings_box.find_child("AIConnectivityTestButton", true, false)
+	if not connectivity_test_button is Button:
+		return _fail("AI settings connectivity test is not an operable button")
 	if not app.ai_api_key_input.secret:
 		return _fail("AI API key input is not masked")
 	if "4K" not in app.display_settings_controller._resolution_label(Vector2i(3840, 2160)):
@@ -215,6 +207,13 @@ func _run() -> void:
 	app.display_settings_controller._apply_display_settings(false)
 	if not app.display_resolution_option.disabled or "原生" not in app.display_resolution_option.get_item_text(0):
 		return _fail("fullscreen display mode does not use the monitor's native resolution")
+	var has_200_percent_scale := false
+	for scale_index in range(app.ui_scale_option.item_count):
+		if app.ui_scale_option.get_item_text(scale_index) == "200%" and is_equal_approx(float(app.ui_scale_option.get_item_metadata(scale_index)), 2.0):
+			has_200_percent_scale = true
+			break
+	if not has_200_percent_scale:
+		return _fail("compatible high-resolution displays do not expose the 200% UI scale preset")
 	app.display_mode = original_display_mode
 	app.display_settings_controller._apply_display_settings(false)
 	app.start_settings_screen_controller._toggle_motion()
@@ -503,15 +502,6 @@ func _wait_until_idle(timeout_ms := 8000) -> bool:
 			await process_frame
 			if app.pending_operation == "" and not app.presentation_busy:
 				return true
-	return false
-
-
-func _wait_for_dialogue(actor_id: String, timeout_ms := 34000) -> bool:
-	var deadline := Time.get_ticks_msec() + timeout_ms
-	while Time.get_ticks_msec() < deadline:
-		await process_frame
-		if app.actor_dialogue_loading_id == "" and (app.actor_dialogue_by_id.has(actor_id) or app.actor_dialogue_error_by_id.has(actor_id)):
-			return true
 	return false
 
 

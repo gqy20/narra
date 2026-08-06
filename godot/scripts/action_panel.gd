@@ -66,7 +66,7 @@ func _render_actions(actions: Array) -> void:
 	if screen.action_dock_status_box:
 		screen.action_dock_status_box.visible = not has_action_focus
 	screen.actor_focus_workspace.visible = host.focused_actor_id != ""
-	screen.actor_focus_footer.visible = host.focused_actor_id != "" and not focused_actions.is_empty()
+	screen.actor_focus_footer.visible = host.focused_actor_id != "" and not focused_actions.is_empty() and not host.ai_server_enabled
 	screen.fact_action_scroll.visible = host.focused_fact_id != ""
 	if host.focused_actor_id != "":
 		screen.action_dock_title.text = host.focused_actor_name
@@ -152,13 +152,16 @@ func _add_overview_choice(action: Dictionary, _index: int) -> void:
 func _render_actor_focus_workspace(focused_actions: Array) -> void:
 	var back = host.ui_factory.utility_button("‹  返回当前地点", host.action_panel_controller._clear_action_focus)
 	back.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	screen.actor_focus_message_list.add_child(back)
+	screen.actor_focus_detail_box.add_child(back)
 	var actor = screen._actor_by_id(host.current_view.get("known_actors", []), host.focused_actor_id)
 	var state_names = {"neutral": "平静", "alert": "正在留意你", "troubled": "正在权衡消息", "decisive": "已经形成决断"}
 	var expression = str(host.actor_expression_by_id.get(host.focused_actor_id, "alert"))
 	screen.objective_label.text = "%s · %s" % [actor.get("public_role", "可交谈人物"), state_names.get(expression, expression)]
 	host.dialogue_panel_controller._render_actor_dialogue_line(actor)
-	screen.actor_focus_detail_scroll.visible = not focused_actions.is_empty()
+	screen.actor_focus_detail_scroll.visible = true
+	if host.ai_server_enabled:
+		host.action_panel_controller._render_ai_conversation_context(focused_actions)
+		return
 	var has_terms = false
 	var has_route_response = false
 	for action in focused_actions:
@@ -173,7 +176,7 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 		empty_style.border_width_left = 2
 		empty_style.border_color = Color(host.COLORS.accent, 0.62)
 		empty_card.add_theme_stylebox_override("panel", empty_style)
-		screen.actor_focus_message_list.add_child(empty_card)
+		screen.actor_focus_detail_box.add_child(empty_card)
 		var empty_content := VBoxContainer.new()
 		empty_content.add_theme_constant_override("separation", 8)
 		empty_card.add_child(empty_content)
@@ -185,30 +188,53 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 		empty_content.add_child(journal_button)
 		return
 	var workspace_heading = "回应路线考验" if has_route_response else ("选择交换条件" if has_terms else "选择线索")
-	var heading = host.ui_factory.text(screen.actor_focus_message_list, workspace_heading, true, host.TYPE_SCALE.meta)
+	var heading = host.ui_factory.text(screen.actor_focus_detail_box, workspace_heading, true, host.TYPE_SCALE.meta)
 	heading.add_theme_color_override("font_color", host.COLORS.accent)
 	var focused_choice = host.action_panel_controller._resolve_focused_actor_action(focused_actions)
-	var suggested_action_ids: Array = []
-	var raw_suggested_action_ids = host.actor_dialogue_by_id.get(host.focused_actor_id, {}).get("suggested_action_ids", [])
-	if raw_suggested_action_ids is Array:
-		suggested_action_ids = raw_suggested_action_ids
+	var choice_list := VBoxContainer.new()
+	choice_list.name = "ActorFocusChoiceList"
+	choice_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	choice_list.add_theme_constant_override("separation", 6)
+	screen.actor_focus_detail_box.add_child(choice_list)
 	for action in focused_actions:
 		var action_id = str(action.get("id", ""))
 		var claim: String = host.action_panel_controller._focused_action_label(action, true)
 		var selected = action_id == str(focused_choice.get("id", ""))
-		var suggested = action_id in suggested_action_ids
-		var choice_label = "已选　%s" % claim if selected else ("建议　%s" % claim if suggested else claim)
-		var button = host.ui_factory.action_button(choice_label, host.action_panel_controller._select_focused_actor_action.bind(action_id))
-		if suggested:
-			button.tooltip_text = "模型建议；仍需由你确认执行"
+		var button = host.ui_factory.action_button(claim, host.action_panel_controller._select_focused_actor_action.bind(action_id))
 		button.custom_minimum_size.y = 46
 		if selected:
+			button.name = "SelectedActorFocusChoice"
 			var selected_style = host.ui_factory.panel_style(Color(host.COLORS.panel_hover, 0.72), 0, 2, Color.TRANSPARENT, 12, 8)
 			selected_style.border_width_left = 2
 			selected_style.border_color = host.COLORS.accent
 			button.add_theme_stylebox_override("normal", selected_style)
-		screen.actor_focus_message_list.add_child(button)
+		choice_list.add_child(button)
 	host.action_panel_controller._render_actor_focus_detail(focused_choice)
+
+
+func _render_ai_conversation_context(focused_actions: Array) -> void:
+	var duration := maxi(1, int(host.scenario_info.get("conversation_duration", 1)))
+	var heading = host.ui_factory.text(screen.actor_focus_detail_box, "本次交谈", true, host.TYPE_SCALE.meta)
+	heading.add_theme_color_override("font_color", host.COLORS.accent)
+	host.ui_factory.text(screen.actor_focus_detail_box, "每次发送成功后推进 %d 日；若话中明确告知线索，会在同一次交谈中直接送达。" % duration, true, host.TYPE_SCALE.compact)
+	var claims: Array[String] = []
+	for action in focused_actions:
+		if str(action.get("kind", "")) != "tell":
+			continue
+		var claim := str(action.get("fact_claim", "")).strip_edges()
+		if claim != "" and claim not in claims:
+			claims.append(claim)
+	if claims.is_empty():
+		host.ui_factory.text(screen.actor_focus_detail_box, "当前没有尚未送达的线索，仍可进行普通交谈。", true, host.TYPE_SCALE.compact)
+		return
+	var clue_heading = host.ui_factory.text(screen.actor_focus_detail_box, "可在话中提及", true, host.TYPE_SCALE.meta)
+	clue_heading.add_theme_color_override("font_color", host.COLORS.muted)
+	var clue_tags := HFlowContainer.new()
+	clue_tags.add_theme_constant_override("h_separation", 6)
+	clue_tags.add_theme_constant_override("v_separation", 6)
+	screen.actor_focus_detail_box.add_child(clue_tags)
+	for claim in claims:
+		host.action_panel_controller._action_tag(clue_tags, claim, host.COLORS.accent)
 
 
 func _open_focused_actor_journal() -> void:
@@ -518,12 +544,8 @@ func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
 	host.stage_actor_id = actor_id
 	host.stage_actor_name = actor_name
 	screen._focus_portrait(actor_id)
-	host.actor_dialogue_by_id.erase(actor_id)
 	host.actor_dialogue_error_by_id.erase(actor_id)
-	host.actor_dialogue_history_by_id[actor_id] = []
-	host.actor_dialogue_visible_count_by_id.erase(actor_id)
-	host.actor_dialogue_loading_id = actor_id
-	host.dialogue_client.request_focus(actor_id)
+	host.actor_dialogue_loading_id = ""
 	screen._render_stage_people(host.current_view.get("known_actors", []), host.available_actions_cache)
 	host.action_panel_controller._render_actions(host.available_actions_cache)
 

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -31,7 +32,7 @@ func TestDialogueSnapshotRedactsPrivateBeliefsAndWorldInternals(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(encoded)
-	for _, forbidden := range []string{"world_flags", "actor_flags", "strategy_id", "F10", "青髓芝将在第24天成熟"} {
+	for _, forbidden := range []string{"world_flags", "actor_flags", "strategy_id", "F10", "tell:N01:F02"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("dialogue snapshot leaked %q: %s", forbidden, text)
 		}
@@ -56,5 +57,24 @@ func TestDialogueSnapshotRequiresVisibleActorAndStableRevision(t *testing.T) {
 	}
 	if before.Revision == after.Revision {
 		t.Fatalf("dialogue revision did not change after action: %q", before.Revision)
+	}
+}
+
+func TestDialogueHistoryContinuesAcrossAuthoritativeTurns(t *testing.T) {
+	session := testSession(t)
+	revision := session.DialogueRevision("N04")
+	if err := session.RecordDialogue(DialogueExchange{
+		ActorID: "N04", Revision: revision, PlayerText: "先说说此地。", NPCText: "此地消息很多。",
+		Emotion: "neutral", DialogueAct: "acknowledge",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := session.ExecuteConversationContext(context.Background(), "N04"); err != nil {
+		t.Fatal(err)
+	}
+	currentRevision := session.DialogueRevision("N04")
+	history := session.DialogueHistory("N04", currentRevision, 8)
+	if len(history) != 1 || history[0].Revision != currentRevision || history[0].PlayerText != "先说说此地。" {
+		t.Fatalf("cross-turn dialogue history = %+v", history)
 	}
 }

@@ -98,6 +98,9 @@ func main() {
 		ConfigureAI: func(settings gameserver.AISettings) (*ai.Service, string, error) {
 			return buildRuntimeDialogueService(aiConfig, settings)
 		},
+		ReportError: func(operation string, err error) {
+			logger.Event(diagnosticlog.Error, operation+"_failed", "request failed", "error", err)
+		},
 		Shutdown: func() {
 			requestShutdown("client_request")
 		},

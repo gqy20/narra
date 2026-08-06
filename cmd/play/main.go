@@ -222,18 +222,24 @@ func runGame(input io.Reader, output io.Writer, game *terminalGame, dialogue *ai
 					conversation = nil
 					continue
 				}
-				if err := recordDialogueTurn(game, request.attempt.snapshot, request.attempt.playerText, generated.line); err != nil {
-					fmt.Fprintf(output, "保存对话失败：%v\n", err)
+				updatedView, err := applyDialogueTurn(game, request.attempt.snapshot, request.attempt.playerText, generated.line)
+				if err != nil {
+					fmt.Fprintf(output, "交谈未生效：%v\n", err)
 					attempt := request.attempt
 					retryDialogue = &attempt
 					continue
 				}
+				view = updatedView
 				renderDialogueReply(output, request.attempt.actor, request.attempt.snapshot, generated.line, debug)
-				displayedActions = renderActorActionsSuggested(output, game.session.View().AvailableActions, request.attempt.actor.ID, generated.line.SuggestedActions)
-				actionMenuCurrent = len(displayedActions) > 0
+				fmt.Fprintf(output, "交谈已推进到第 %d 天。\n", view.Day)
+				actionMenuCurrent = false
+				displayedActions = nil
 				retryDialogue = nil
-				if request.attempt.opening {
-					fmt.Fprintln(output, "已进入对话：直接输入回复；context 查看语境；actions 查看交涉；cancel 取消生成；leave 离开。")
+				if _, snapshotErr := game.session.DialogueSnapshotFor(request.attempt.actor.ID, "focus"); snapshotErr != nil {
+					fmt.Fprintln(output, "局势变化后对方已不在此地，本次对话结束。")
+					conversation = nil
+				} else if conversation != nil {
+					conversation.revision = game.session.DialogueRevision(request.attempt.actor.ID)
 				}
 				continue
 			case <-pendingDialogue.ticker.C:

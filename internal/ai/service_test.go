@@ -28,11 +28,16 @@ func (p *fakeWorldProvider) GenerateWorldDirective(context.Context, WorldDirecti
 
 func TestWorldDirectorRequiresValidStructuredSelectionWithoutFallback(t *testing.T) {
 	request := director.SelectionRequest{ScenarioID: "test", Day: 1, Phase: "opening", Candidates: []director.Candidate{{DirectiveID: "open", Description: "Open", Signals: []domain.WorldSignal{{Description: "阶段变化"}}}}}
-	provider := &fakeWorldProvider{draft: WorldDirectiveDraft{DirectiveID: "open", Reason: "节奏需要", FocusSignals: []string{"阶段变化"}}}
+	provider := &fakeWorldProvider{draft: WorldDirectiveDraft{DirectiveID: "open", Reason: "节奏需要", FocusSignalIndexes: []int{0}}}
 	selection, err := NewService(provider, ServiceOptions{}).SelectWorldDirective(context.Background(), request)
-	if err != nil || selection.DirectiveID != "open" || selection.Source != "anthropic" {
+	if err != nil || selection.DirectiveID != "open" || selection.Source != "anthropic" || len(selection.FocusSignals) != 1 || selection.FocusSignals[0] != "阶段变化" {
 		t.Fatalf("selection=%+v err=%v", selection, err)
 	}
+	provider.draft.FocusSignalIndexes = []int{1}
+	if _, err := NewService(provider, ServiceOptions{}).SelectWorldDirective(context.Background(), request); err == nil || !strings.Contains(err.Error(), "index 1") {
+		t.Fatalf("accepted unavailable signal index: %v", err)
+	}
+	provider.draft.FocusSignalIndexes = []int{0}
 	provider.draft.DirectiveID = "invented"
 	if _, err := NewService(provider, ServiceOptions{}).SelectWorldDirective(context.Background(), request); err == nil {
 		t.Fatal("accepted invented directive ID")
@@ -40,6 +45,17 @@ func TestWorldDirectorRequiresValidStructuredSelectionWithoutFallback(t *testing
 	provider.err = errors.New("empty model response")
 	if _, err := NewService(provider, ServiceOptions{}).SelectWorldDirective(context.Background(), request); err == nil || !strings.Contains(err.Error(), "empty model response") {
 		t.Fatalf("provider error = %v", err)
+	}
+}
+
+func TestConnectivityRequiresUsableStructuredResponse(t *testing.T) {
+	provider := &fakeWorldProvider{}
+	if err := NewService(provider, ServiceOptions{}).TestConnectivity(context.Background()); err == nil || !strings.Contains(err.Error(), "empty utterance") {
+		t.Fatalf("empty probe response = %v", err)
+	}
+	service := NewService(&fakeProvider{draft: aiTestDraft{value: DialogueDraft{Utterance: "连接正常", Emotion: "neutral", DialogueAct: "acknowledge", RecognizedActionIndex: -1}}}, ServiceOptions{})
+	if err := service.TestConnectivity(context.Background()); err != nil {
+		t.Fatalf("connectivity probe = %v", err)
 	}
 }
 
@@ -65,6 +81,12 @@ func (p *fakeProvider) GenerateDialogue(ctx context.Context, request GenerationR
 	return p.draft.value, GenerationMetadata{Model: "fake"}, p.draft.err
 }
 
+func (p *fakeProvider) GenerateWorldDirective(_ context.Context, request WorldDirectiveRequest) (WorldDirectiveDraft, GenerationMetadata, error) {
+	return WorldDirectiveDraft{
+		DirectiveID: request.AllowedDirectiveIDs[0], Reason: "连接正常", FocusSignalIndexes: []int{0},
+	}, GenerationMetadata{Model: "fake"}, nil
+}
+
 func dialogueTestSnapshot() app.DialogueSnapshot {
 	return app.DialogueSnapshot{
 		Revision: "blackwind:0:0:N01", ScenarioID: "blackwind", Situation: "focus",
@@ -77,13 +99,14 @@ func dialogueTestSnapshot() app.DialogueSnapshot {
 		Actor:            app.DialogueActor{ID: "N01", Name: "李玄", SpeechGuidance: []string{"保持克制"}},
 		Player:           app.DialoguePlayer{ID: "P00", Name: "测试玩家"},
 		AllowedClaims:    []app.DialogueClaim{{FactID: "F02", Claim: "一条传闻", Confidence: "只是听说"}},
-		AvailableActions: []app.DialogueAction{{ID: "tell:N01:F02", Name: "告知线索"}},
+		AvailableActions: []app.DialogueAction{{ID: "tell:N01:F02", Kind: "tell", Name: "告知线索", Claim: "一条传闻", Duration: 1}},
 	}
 }
 
 func TestConversationPromptUsesScenarioDialogueContext(t *testing.T) {
 	provider := &fakeProvider{draft: aiTestDraft{value: DialogueDraft{
 		Utterance: "这份记录还需核对。", Emotion: "neutral", DialogueAct: "acknowledge",
+		RecognizedActionIndex: -1,
 	}}}
 	_, err := NewService(provider, ServiceOptions{}).GenerateConversationTurn(context.Background(), dialogueTestSnapshot(), nil, "")
 	if err != nil {
@@ -100,12 +123,12 @@ func TestConversationPromptUsesScenarioDialogueContext(t *testing.T) {
 func TestConversationTurnIncludesHistoryAndPlayerMessage(t *testing.T) {
 	provider := &fakeProvider{draft: aiTestDraft{value: DialogueDraft{
 		Utterance: "我会先核验来源。", Emotion: "decisive", DialogueAct: "acknowledge",
-		ReferencedFacts: []string{}, SuggestedActions: []string{"tell:N01:F02"},
+		ReferencedFacts: []string{}, RecognizedActionIndex: 0,
 	}}}
 	service := NewService(provider, ServiceOptions{Timeout: time.Second})
 	history := []app.DialogueExchange{{ActorID: "N01", Revision: "blackwind:0:0:N01", NPCText: "先说来意。", Emotion: "neutral", DialogueAct: "invite"}}
 	result, err := service.GenerateConversationTurn(context.Background(), dialogueTestSnapshot(), history, "你会如何核验？")
-	if err != nil || len(result.SuggestedActions) != 1 {
+	if err != nil || result.RecognizedActionID != "tell:N01:F02" {
 		t.Fatalf("conversation result=%+v err=%v", result, err)
 	}
 	if !strings.Contains(provider.lastRequest.Input, "你会如何核验") || !strings.Contains(provider.lastRequest.Input, "先说来意") {
@@ -116,10 +139,10 @@ func TestConversationTurnIncludesHistoryAndPlayerMessage(t *testing.T) {
 	}
 }
 
-func TestConversationRejectsUnavailableSuggestedAction(t *testing.T) {
+func TestConversationRejectsUnavailableRecognizedAction(t *testing.T) {
 	provider := &fakeProvider{draft: aiTestDraft{value: DialogueDraft{
 		Utterance: "你可以把东西交给我。", Emotion: "neutral", DialogueAct: "invite",
-		ReferencedFacts: []string{}, SuggestedActions: []string{"grant-secret-reward"},
+		ReferencedFacts: []string{}, RecognizedActionIndex: 3,
 	}}}
 	result, err := NewService(provider, ServiceOptions{}).GenerateConversationTurn(context.Background(), dialogueTestSnapshot(), nil, "有什么办法？")
 	if err == nil || result.Utterance != "" {
@@ -130,7 +153,7 @@ func TestConversationRejectsUnavailableSuggestedAction(t *testing.T) {
 func TestConversationResumeIsDistinctFromFreshOpening(t *testing.T) {
 	provider := &fakeProvider{draft: aiTestDraft{value: DialogueDraft{
 		Utterance: "方才说到那条消息，我们接着谈。", Emotion: "neutral", DialogueAct: "acknowledge",
-		ReferencedFacts: []string{}, SuggestedActions: []string{},
+		ReferencedFacts: []string{}, RecognizedActionIndex: -1,
 	}}}
 	history := []app.DialogueExchange{{
 		ActorID: "N01", Revision: "blackwind:0:0:N01", PlayerText: "先记下此事。",
@@ -148,14 +171,14 @@ func TestDialogueRequiresUncertaintyForRumoredFacts(t *testing.T) {
 	snapshot := dialogueTestSnapshot()
 	definite := DialogueDraft{
 		Utterance: "青髓芝会在那一日成熟。", Emotion: "neutral", DialogueAct: "acknowledge",
-		ReferencedFacts: []string{"F02"}, SuggestedActions: []string{},
+		ReferencedFacts: []string{"F02"}, RecognizedActionIndex: -1,
 	}
 	if err := validateDialogue(snapshot, &definite); err == nil {
 		t.Fatal("rumored fact was stated as certain")
 	}
 	qualified := DialogueDraft{
 		Utterance: "传闻说青髓芝会在那一日成熟，真假仍需核验。", Emotion: "neutral", DialogueAct: "acknowledge",
-		ReferencedFacts: []string{"F02"}, SuggestedActions: []string{},
+		ReferencedFacts: []string{"F02"}, RecognizedActionIndex: -1,
 	}
 	if err := validateDialogue(snapshot, &qualified); err != nil {
 		t.Fatalf("qualified rumor was rejected: %v", err)
@@ -165,7 +188,7 @@ func TestDialogueRequiresUncertaintyForRumoredFacts(t *testing.T) {
 func TestDialogueRejectsUnsupportedSelfAddress(t *testing.T) {
 	draft := DialogueDraft{
 		Utterance: "小老儿这里自有办法。", Emotion: "neutral", DialogueAct: "acknowledge",
-		ReferencedFacts: []string{}, SuggestedActions: []string{},
+		ReferencedFacts: []string{}, RecognizedActionIndex: -1,
 	}
 	if err := validateDialogue(dialogueTestSnapshot(), &draft); err == nil {
 		t.Fatal("unsupported self-address was accepted")
@@ -177,7 +200,7 @@ func TestDialogueUsesScenarioUncertaintyVocabulary(t *testing.T) {
 	snapshot.Scenario.RumoredConfidence = "仅是传言"
 	snapshot.Scenario.UncertaintyMarkers = []string{"尚待核验"}
 	snapshot.AllowedClaims[0].Confidence = "仅是传言"
-	invalid := DialogueDraft{Utterance: "这份记录完全可信。", Emotion: "neutral", DialogueAct: "acknowledge", ReferencedFacts: []string{"F02"}}
+	invalid := DialogueDraft{Utterance: "这份记录完全可信。", Emotion: "neutral", DialogueAct: "acknowledge", ReferencedFacts: []string{"F02"}, RecognizedActionIndex: -1}
 	if err := validateDialogue(snapshot, &invalid); err == nil {
 		t.Fatal("dialogue accepted a rumored claim without the scenario marker")
 	}
@@ -191,7 +214,7 @@ func TestDialogueUsesScenarioUncertaintyVocabulary(t *testing.T) {
 func TestServiceValidatesAndCachesProviderDialogue(t *testing.T) {
 	provider := &fakeProvider{draft: aiTestDraft{value: DialogueDraft{
 		Utterance: "听说的这条消息，你是从哪里得来的？", Emotion: "alert", DialogueAct: "question",
-		ReferencedFacts: []string{"F02"},
+		ReferencedFacts: []string{"F02"}, RecognizedActionIndex: -1,
 	}}}
 	service := NewService(provider, ServiceOptions{Timeout: time.Second, CacheSize: 4})
 	first, firstErr := service.GenerateConversationTurn(context.Background(), dialogueTestSnapshot(), nil, "")
@@ -203,7 +226,7 @@ func TestServiceValidatesAndCachesProviderDialogue(t *testing.T) {
 
 func TestServiceCacheSeparatesSnapshotsWithSameRevision(t *testing.T) {
 	provider := &fakeProvider{draft: aiTestDraft{value: DialogueDraft{
-		Utterance: "请讲。", Emotion: "neutral", DialogueAct: "invite", ReferencedFacts: []string{},
+		Utterance: "请讲。", Emotion: "neutral", DialogueAct: "invite", ReferencedFacts: []string{}, RecognizedActionIndex: -1,
 	}}}
 	service := NewService(provider, ServiceOptions{Timeout: time.Second, CacheSize: 4})
 	first := dialogueTestSnapshot()
@@ -223,7 +246,7 @@ func TestServiceCacheSeparatesSnapshotsWithSameRevision(t *testing.T) {
 func TestServiceRejectsUnauthorizedFact(t *testing.T) {
 	provider := &fakeProvider{draft: aiTestDraft{value: DialogueDraft{
 		Utterance: "我知道那个秘密。", Emotion: "alert", DialogueAct: "warn",
-		ReferencedFacts: []string{"F99"},
+		ReferencedFacts: []string{"F99"}, RecognizedActionIndex: -1,
 	}}}
 	result, err := NewService(provider, ServiceOptions{}).GenerateConversationTurn(context.Background(), dialogueTestSnapshot(), nil, "")
 	if result.Source != "" || result.Utterance != "" || err == nil {
