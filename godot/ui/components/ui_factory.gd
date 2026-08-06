@@ -142,6 +142,25 @@ func utility_button(text_value: String, callback: Callable) -> Button:
 	return control
 
 
+func foldable_section(parent: Container, title_text: String, initially_folded := true, tone: Variant = null) -> Dictionary:
+	var foldable := FoldableContainer.new()
+	foldable.title = title_text
+	foldable.folded = initially_folded
+	foldable.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	foldable.focus_mode = Control.FOCUS_ALL
+	foldable.accessibility_name = title_text
+	foldable.theme_type_variation = "NarraFoldable"
+	if tone != null:
+		foldable.add_theme_color_override("hover_font_color", tone)
+	parent.add_child(foldable)
+	var content := VBoxContainer.new()
+	content.name = "Content"
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 8)
+	foldable.add_child(content)
+	return {"container": foldable, "content": content}
+
+
 func mode_button(text_value: String, callback: Callable) -> Button:
 	var control := utility_button(text_value, callback)
 	control.add_theme_font_size_override("font_size", type_scale.compact)
@@ -152,7 +171,10 @@ func mode_button(text_value: String, callback: Callable) -> Button:
 func style_mode_state(control: Button, active: bool) -> void:
 	control.add_theme_color_override("font_color", colors.accent if active else colors.muted)
 	control.add_theme_color_override("font_hover_color", colors.ink)
-	var normal := panel_style(Color(colors.bg_lift, 0.92) if active else Color.TRANSPARENT, 1 if active else 0, 4, Color(colors.accent, 0.62), 11, 6)
+	var normal := panel_style(Color(colors.bg_lift, 0.54) if active else Color.TRANSPARENT, 0, 2, Color.TRANSPARENT, 11, 6)
+	if active:
+		normal.border_width_bottom = 2
+		normal.border_color = Color(colors.accent, 0.88)
 	control.add_theme_stylebox_override("normal", normal)
 
 

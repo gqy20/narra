@@ -18,8 +18,8 @@ func build(root: Control, parent: VBoxContainer, factory, dependencies: Dictiona
 	var action_dock_host := Control.new()
 	action_dock_host.anchor_left = 0.025
 	action_dock_host.anchor_right = 0.60
-	action_dock_host.anchor_top = 0.52
-	action_dock_host.anchor_bottom = 0.965
+	action_dock_host.anchor_top = 0.32
+	action_dock_host.anchor_bottom = 0.94
 	action_dock_host.clip_contents = true
 	var action_canvas := CanvasLayer.new()
 	action_canvas.layer = 1
@@ -89,10 +89,27 @@ func build(root: Control, parent: VBoxContainer, factory, dependencies: Dictiona
 	message_panel.size_flags_stretch_ratio = 0.38
 	message_panel.add_theme_stylebox_override("panel", factory.panel_style(Color(colors.panel_alt, 0.24), 0, 1, Color.TRANSPARENT, 8, 8))
 	actor_focus_workspace.add_child(message_panel)
+	var actor_focus_message_column := VBoxContainer.new()
+	actor_focus_message_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actor_focus_message_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	actor_focus_message_column.add_theme_constant_override("separation", 8)
+	message_panel.add_child(actor_focus_message_column)
+	var actor_focus_message_scroll := ScrollContainer.new()
+	actor_focus_message_scroll.name = "ActorDialogueHistoryScroll"
+	actor_focus_message_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actor_focus_message_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	actor_focus_message_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	actor_focus_message_scroll.follow_focus = true
+	actor_focus_message_column.add_child(actor_focus_message_scroll)
 	var actor_focus_message_list := VBoxContainer.new()
 	actor_focus_message_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	actor_focus_message_list.add_theme_constant_override("separation", 6)
-	message_panel.add_child(actor_focus_message_list)
+	actor_focus_message_scroll.add_child(actor_focus_message_list)
+	var actor_dialogue_input_host := VBoxContainer.new()
+	actor_dialogue_input_host.name = "ActorDialogueInputHost"
+	actor_dialogue_input_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actor_dialogue_input_host.add_theme_constant_override("separation", 6)
+	actor_focus_message_column.add_child(actor_dialogue_input_host)
 	var actor_focus_detail_scroll := ScrollContainer.new()
 	actor_focus_detail_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	actor_focus_detail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -127,7 +144,9 @@ func build(root: Control, parent: VBoxContainer, factory, dependencies: Dictiona
 		"objective_label": objective_label, "location_detail_box": location_detail_box,
 		"stage_people_box": stage_people_box, "overview_actions_box": overview_actions_box,
 		"actor_focus_workspace": actor_focus_workspace,
+		"actor_focus_message_scroll": actor_focus_message_scroll,
 		"actor_focus_message_list": actor_focus_message_list,
+		"actor_dialogue_input_host": actor_dialogue_input_host,
 		"actor_focus_detail_scroll": actor_focus_detail_scroll,
 		"actor_focus_detail_box": actor_focus_detail_box,
 		"fact_action_scroll": fact_action_scroll, "actions_box": actions_box,

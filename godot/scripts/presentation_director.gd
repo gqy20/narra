@@ -92,8 +92,9 @@ func _ready() -> void:
 	text_stack.add_child(title_label)
 
 	message_label = Label.new()
-	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	message_label.max_lines_visible = 2
+	message_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	message_label.max_lines_visible = 1
+	message_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	message_label.add_theme_font_size_override("font_size", 15)
 	message_label.add_theme_color_override("font_color", AppVisualThemeScript.COLORS.ink)
 	message_label.add_theme_color_override("font_outline_color", AppVisualThemeScript.alpha8(AppVisualThemeScript.COLORS.bg_deep, 0xed))
@@ -275,7 +276,7 @@ func _configure_placement(placement: String, has_illustration := false) -> void:
 		card.offset_bottom = -192
 	else:
 		card.offset_left = 48
-		card.offset_right = 530 if has_illustration else 378
+		card.offset_right = 820 if has_illustration else 760
 		card.offset_top = 145
 		card.offset_bottom = 251 if has_illustration else 223
 

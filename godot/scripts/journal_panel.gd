@@ -729,9 +729,9 @@ func _render_clues(clues: Array, actions: Array) -> void:
 func _journal_info_card(parent: Container, title_text: String, tone: Color) -> VBoxContainer:
 	var frame := PanelContainer.new()
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var style: StyleBoxFlat = host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.34), 1, 3, Color(host.COLORS.line, 0.56), 14, 11)
-	style.border_width_left = 3
-	style.border_color = Color(tone, 0.72)
+	var style: StyleBoxFlat = host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.22), 0, 2, Color.TRANSPARENT, 14, 11)
+	style.border_width_left = 2
+	style.border_color = Color(tone, 0.62)
 	frame.add_theme_stylebox_override("panel", style)
 	parent.add_child(frame)
 	var content := VBoxContainer.new()
@@ -869,22 +869,15 @@ func _render_feedback_summary(parent: VBoxContainer, feedback: Dictionary) -> vo
 		journal_heading.add_theme_color_override("font_color", host.COLORS.accent)
 		for entry in journal:
 			host.ui_factory.text(parent, "· %s" % entry, false, 14)
-	host.journal_feedback_details_button = host.ui_factory.utility_button("收起推演过程" if host.journal_feedback_details_visible else "查看推演过程", host.journal_panel_controller._toggle_journal_feedback_details)
-	host.journal_feedback_details_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	parent.add_child(host.journal_feedback_details_button)
-	host.journal_feedback_details_box = VBoxContainer.new()
-	host.journal_feedback_details_box.add_theme_constant_override("separation", 6)
-	host.journal_feedback_details_box.visible = host.journal_feedback_details_visible
-	parent.add_child(host.journal_feedback_details_box)
+	var disclosure: Dictionary = host.ui_factory.foldable_section(parent, "推演过程", not host.journal_feedback_details_visible)
+	host.journal_feedback_details_fold = disclosure.container
+	host.journal_feedback_details_box = disclosure.content
+	host.journal_feedback_details_fold.folding_changed.connect(host.journal_panel_controller._on_journal_feedback_folded)
 	host.presentation_controller._render_feedback_evidence_into(host.journal_feedback_details_box, feedback)
 
 
-func _toggle_journal_feedback_details() -> void:
-	host.journal_feedback_details_visible = not host.journal_feedback_details_visible
-	if host.journal_feedback_details_box:
-		host.journal_feedback_details_box.visible = host.journal_feedback_details_visible
-	if host.journal_feedback_details_button:
-		host.journal_feedback_details_button.text = "收起推演过程" if host.journal_feedback_details_visible else "查看推演过程"
+func _on_journal_feedback_folded(is_folded: bool) -> void:
+	host.journal_feedback_details_visible = not is_folded
 
 
 func _feedback_signature(feedback) -> String:
@@ -965,16 +958,12 @@ func _render_travel_readiness(travel, preparation = {}) -> void:
 	if timing != "":
 		var timing_line = host.ui_factory.text(host.travel_box, timing, false, host.TYPE_SCALE.meta)
 		timing_line.add_theme_color_override("font_color", host.COLORS.danger if timing.contains("来不及") else host.COLORS.accent)
-	host.journal_travel_details_button = host.ui_factory.button("收起路线与依据" if host.journal_travel_details_visible else "查看路线与依据", host.journal_panel_controller._toggle_journal_travel_details, true)
-	host.journal_travel_details_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	host.journal_travel_details_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	host.journal_travel_details_button.custom_minimum_size = Vector2(180, 38)
-	host.travel_box.add_child(host.journal_travel_details_button)
-	host.journal_travel_details_box = VBoxContainer.new()
+	var disclosure: Dictionary = host.ui_factory.foldable_section(host.travel_box, "路线与依据", not host.journal_travel_details_visible)
+	host.journal_travel_details_fold = disclosure.container
+	host.journal_travel_details_box = disclosure.content
 	host.journal_travel_details_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	host.journal_travel_details_box.add_theme_constant_override("separation", 9)
-	host.journal_travel_details_box.visible = host.journal_travel_details_visible
-	host.travel_box.add_child(host.journal_travel_details_box)
+	host.journal_travel_details_fold.folding_changed.connect(host.journal_panel_controller._on_journal_travel_folded)
 	var ready_texts: Array[String] = []
 	for check in ready_checks:
 		ready_texts.append(host.journal_panel_controller._travel_ready_text(str(check.get("label", "路线条件"))))
@@ -1070,12 +1059,8 @@ func _render_route_progresses(parent: VBoxContainer, route_progresses, compact: 
 			host.ui_factory.text(parent, "另有 %d 条路线，详见卷宗。" % (route_progresses.size() - visible_count), true, 12)
 
 
-func _toggle_journal_travel_details() -> void:
-	host.journal_travel_details_visible = not host.journal_travel_details_visible
-	if host.journal_travel_details_box:
-		host.journal_travel_details_box.visible = host.journal_travel_details_visible
-	if host.journal_travel_details_button:
-		host.journal_travel_details_button.text = "收起路线与依据" if host.journal_travel_details_visible else "查看路线与依据"
+func _on_journal_travel_folded(is_folded: bool) -> void:
+	host.journal_travel_details_visible = not is_folded
 
 
 func _travel_resolution_action(actions: Array, check_label: String) -> Dictionary:

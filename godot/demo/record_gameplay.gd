@@ -60,7 +60,7 @@ func _run() -> void:
 	await _hold(1.4)
 	app.journal_panel_controller._select_journal_tab(3)
 	await _hold(2.0)
-	app.journal_panel_controller._toggle_journal_travel_details()
+	app.journal_travel_details_fold.expand()
 	await _hold(1.7)
 	app.journal_panel_controller._close_journal()
 

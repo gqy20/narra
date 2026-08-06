@@ -90,11 +90,11 @@ func _run() -> void:
 			if not await _capture("ui-journal-%s-%s.png" % [tab_capture[1], capture_label]):
 				return
 			if int(tab_capture[0]) == 3:
-				app.journal_panel_controller._toggle_journal_travel_details()
+				app.journal_travel_details_fold.expand()
 				await _settle_layout()
 				if not await _capture("ui-journal-travel-expanded-%s.png" % capture_label):
 					return
-				app.journal_panel_controller._toggle_journal_travel_details()
+				app.journal_travel_details_fold.fold()
 	app.journal_panel_controller._select_journal_tab(4)
 	await _settle_layout()
 	if not await _capture("ui-knowledge-graph-%s.png" % capture_label):
@@ -147,7 +147,7 @@ func _run() -> void:
 	await _settle_layout()
 	if not await _capture("ui-confirmation-%s.png" % capture_label):
 		return
-	app.action_panel_controller._toggle_confirmation_details()
+	app.confirmation_details_fold.expand()
 	await _settle_layout()
 	if not await _capture("ui-confirmation-expanded-%s.png" % capture_label):
 		return

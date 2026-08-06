@@ -52,6 +52,7 @@ func _render_actions(actions: Array) -> void:
 	host.ui_factory.clear(screen.actions_box)
 	host.ui_factory.clear(screen.overview_actions_box)
 	host.ui_factory.clear(screen.actor_focus_message_list)
+	host.ui_factory.clear(screen.actor_dialogue_input_host)
 	host.ui_factory.clear(screen.actor_focus_detail_box)
 	host.ui_factory.clear(screen.actor_focus_footer)
 	var focused_actions = host.action_panel_controller._focused_information_actions(actions)
@@ -110,8 +111,8 @@ func _render_actions(actions: Array) -> void:
 func _configure_action_dock_layout(has_action_focus: bool) -> void:
 	if not screen.action_dock or not screen.action_dock_host:
 		return
-	screen.action_dock_host.anchor_top = 0.25 if has_action_focus else 0.47
-	screen.action_dock_host.anchor_bottom = 0.965
+	screen.action_dock_host.anchor_top = 0.25 if has_action_focus else 0.32
+	screen.action_dock_host.anchor_bottom = 0.94
 	var dock_color: Color = host.AppVisualThemeScript.alpha8(host.COLORS.surface_dock, 0xf4 if has_action_focus else 0xec)
 	var dock_style = host.ui_factory.panel_style(dock_color, 0, 2, Color.TRANSPARENT, 24, 18)
 	dock_style.border_width_left = 2
@@ -298,7 +299,7 @@ func _focused_action_label(action: Dictionary, for_choice := false) -> String:
 func _action_info_card(parent: Container, label_text: String, tone: Color) -> VBoxContainer:
 	var frame := PanelContainer.new()
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var style = host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.30), 1, 2, Color(host.COLORS.line, 0.58), 12, 9)
+	var style = host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.24), 0, 2, Color.TRANSPARENT, 12, 9)
 	style.border_width_left = 2
 	style.border_color = Color(tone, 0.70)
 	frame.add_theme_stylebox_override("panel", style)
@@ -332,7 +333,7 @@ func _action_header_row(parent: Container, label_text: String, tone: Color, valu
 func _action_tag(parent: Container, value: String, tone: Color) -> PanelContainer:
 	var tag := PanelContainer.new()
 	tag.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	tag.add_theme_stylebox_override("panel", host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.42), 1, 2, Color(tone, 0.48), 9, 5))
+	tag.add_theme_stylebox_override("panel", host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.46), 0, 2, Color.TRANSPARENT, 9, 5))
 	parent.add_child(tag)
 	var label = host.ui_factory.text(tag, value, true, host.TYPE_SCALE.meta)
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -425,21 +426,19 @@ func _render_focused_actor_summary(focused_actions: Array) -> void:
 	var expression = str(host.actor_expression_by_id.get(host.focused_actor_id, "alert"))
 	var state_line = host.ui_factory.text(content, host._ui_text("dialogue_available_clues") % [state_names.get(expression, expression), focused_actions.size()], false, 13)
 	state_line.add_theme_color_override("font_color", host.COLORS.success if expression == "decisive" else host.COLORS.muted)
-	var details = VBoxContainer.new()
-	details.add_theme_constant_override("separation", 5)
-	content.add_child(details)
+	var disclosure: Dictionary = host.ui_factory.foldable_section(content, "判断依据", not host.focused_actor_details_visible)
+	var details: VBoxContainer = disclosure.content
+	var details_fold: FoldableContainer = disclosure.container
+	details_fold.folding_changed.connect(host.action_panel_controller._on_focused_actor_details_folded)
 	var focus: Array = actor.get("public_focus", [])
 	if not focus.is_empty():
-		host.ui_factory.text(details, "关注 · %s" % "、".join(focus), true, 13)
-	host.ui_factory.text(details, "传播风险 · %s" % actor.get("public_risk", "尚不了解"), true, 13)
-	details.visible = host.focused_actor_details_visible
-	content.add_child(host.ui_factory.utility_button("收起判断依据" if host.focused_actor_details_visible else "查看判断依据", host.action_panel_controller._toggle_focused_actor_details))
+		host.action_panel_controller._action_header_row(details, "关注", host.COLORS.accent, focus, "ActorFocusHeader")
+	host.action_panel_controller._action_header_row(details, "传播风险", host.COLORS.danger, [actor.get("public_risk", "尚不了解")], "ActorRiskHeader")
 	screen.actions_box.add_child(panel)
 
 
-func _toggle_focused_actor_details() -> void:
-	host.focused_actor_details_visible = not host.focused_actor_details_visible
-	host.action_panel_controller._render_actions(host.available_actions_cache)
+func _on_focused_actor_details_folded(is_folded: bool) -> void:
+	host.focused_actor_details_visible = not is_folded
 
 
 func _set_action_category(category: String) -> void:
@@ -522,6 +521,7 @@ func _focus_actor_actions(actor_id: String, actor_name: String) -> void:
 	host.actor_dialogue_by_id.erase(actor_id)
 	host.actor_dialogue_error_by_id.erase(actor_id)
 	host.actor_dialogue_history_by_id[actor_id] = []
+	host.actor_dialogue_visible_count_by_id.erase(actor_id)
 	host.actor_dialogue_loading_id = actor_id
 	host.dialogue_client.request_focus(actor_id)
 	screen._render_stage_people(host.current_view.get("known_actors", []), host.available_actions_cache)
@@ -685,9 +685,9 @@ func _confirmation_card(parent: Container, label_text: String, tone: Color, mini
 	var frame := PanelContainer.new()
 	frame.custom_minimum_size.y = minimum_height
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var frame_style = host.ui_factory.panel_style(Color("111813e8"), 1, 3, Color(host.COLORS.line, 0.68), 13, 10)
+	var frame_style = host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.24), 0, 2, Color.TRANSPARENT, 13, 10)
 	frame_style.border_width_left = 2
-	frame_style.border_color = Color(tone, 0.76)
+	frame_style.border_color = Color(tone, 0.68)
 	frame.add_theme_stylebox_override("panel", frame_style)
 	parent.add_child(frame)
 	var content := VBoxContainer.new()
@@ -769,13 +769,10 @@ func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 		summary_secondary.hide()
 	if summary_primary.get_child_count() == 0 and summary_secondary.get_child_count() == 0:
 		summary_row.hide()
-	host.confirmation_details_button = host.ui_factory.utility_button("展开盘算", host.action_panel_controller._toggle_confirmation_details)
-	host.confirmation_details_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	host.confirmation_box.add_child(host.confirmation_details_button)
-	host.confirmation_details_box = VBoxContainer.new()
+	var disclosure: Dictionary = host.ui_factory.foldable_section(host.confirmation_box, "盘算详情", true)
+	host.confirmation_details_fold = disclosure.container
+	host.confirmation_details_box = disclosure.content
 	host.confirmation_details_box.add_theme_constant_override("separation", 10)
-	host.confirmation_details_box.hide()
-	host.confirmation_box.add_child(host.confirmation_details_box)
 	host.action_panel_controller._render_confirmation_details(host.confirmation_details_box, action)
 	var cancel_button = host.ui_factory.button("暂且不动", host.action_panel_controller._cancel_confirmation, true)
 	cancel_button.custom_minimum_size = Vector2(150, 44)
@@ -836,7 +833,7 @@ func _render_confirmation_details(parent: VBoxContainer, action: Dictionary) -> 
 func _confirmation_detail_group(parent: Container, label_text: String) -> VBoxContainer:
 	var frame := PanelContainer.new()
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	frame.add_theme_stylebox_override("panel", host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.28), 1, 2, Color(host.COLORS.line, 0.54), 13, 10))
+	frame.add_theme_stylebox_override("panel", host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.18), 0, 2, Color.TRANSPARENT, 13, 10))
 	parent.add_child(frame)
 	var content := VBoxContainer.new()
 	content.add_theme_constant_override("separation", 7)
@@ -877,13 +874,6 @@ func _action_needs_confirmation(action: Dictionary) -> bool:
 	var has_warnings: bool = warnings is Array and not warnings.is_empty()
 	var kind = str(action.get("kind", ""))
 	return not action.get("costs", {}).is_empty() or bool(action.get("irreversible", false)) or has_warnings or kind in ["move", "tell", "recover", "escort", "route"] or action.get("id", "") == "wait:next"
-
-
-func _toggle_confirmation_details() -> void:
-	if not host.confirmation_details_box or not host.confirmation_details_button:
-		return
-	host.confirmation_details_box.visible = not host.confirmation_details_box.visible
-	host.confirmation_details_button.text = "收起盘算" if host.confirmation_details_box.visible else "展开盘算"
 
 
 func _commitment_label(action: Dictionary) -> String:

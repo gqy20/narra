@@ -23,7 +23,9 @@ var location_detail_box: VBoxContainer
 var stage_people_box: HFlowContainer
 var overview_actions_box: VBoxContainer
 var actor_focus_workspace: HBoxContainer
+var actor_focus_message_scroll: ScrollContainer
 var actor_focus_message_list: VBoxContainer
+var actor_dialogue_input_host: VBoxContainer
 var actor_focus_detail_scroll: ScrollContainer
 var actor_focus_detail_box: VBoxContainer
 var fact_action_scroll: ScrollContainer
@@ -118,7 +120,9 @@ func _build_interface() -> void:
 	stage_people_box = dashboard_refs.stage_people_box
 	overview_actions_box = dashboard_refs.overview_actions_box
 	actor_focus_workspace = dashboard_refs.actor_focus_workspace
+	actor_focus_message_scroll = dashboard_refs.actor_focus_message_scroll
 	actor_focus_message_list = dashboard_refs.actor_focus_message_list
+	actor_dialogue_input_host = dashboard_refs.actor_dialogue_input_host
 	actor_focus_detail_scroll = dashboard_refs.actor_focus_detail_scroll
 	actor_focus_detail_box = dashboard_refs.actor_focus_detail_box
 	fact_action_scroll = dashboard_refs.fact_action_scroll

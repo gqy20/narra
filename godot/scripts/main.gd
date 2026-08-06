@@ -87,6 +87,7 @@ var diagnostics_exporter = DiagnosticsExporterScript.new()
 var actor_dialogue_by_id := {}
 var actor_dialogue_error_by_id := {}
 var actor_dialogue_history_by_id := {}
+var actor_dialogue_visible_count_by_id := {}
 var actor_dialogue_loading_id := ""
 var pending_operation := ""
 var autosave_after_action := false
@@ -191,9 +192,9 @@ var knowledge_graph_scroll: ScrollContainer
 var knowledge_graph_detail_box: VBoxContainer
 var knowledge_graph_filter_buttons: Dictionary = {}
 var journal_feedback_details_box: VBoxContainer
-var journal_feedback_details_button: Button
+var journal_feedback_details_fold: FoldableContainer
 var journal_travel_details_box: VBoxContainer
-var journal_travel_details_button: Button
+var journal_travel_details_fold: FoldableContainer
 var journal_layer: Control
 var journal_panel: PanelContainer
 var journal_paper: TextureRect
@@ -216,7 +217,7 @@ var confirmation_layer: Control
 var confirmation_box: VBoxContainer
 var confirmation_actions_box: HBoxContainer
 var confirmation_details_box: VBoxContainer
-var confirmation_details_button: Button
+var confirmation_details_fold: FoldableContainer
 var presentation_director: Control
 var audio_director: Node
 var cinematic_director: Control
@@ -363,6 +364,17 @@ func _operation_label(operation: String) -> String:
 	return str(labels.get(operation, "处理中"))
 
 
+func _show_operation_status(operation: String) -> void:
+	var label := _operation_label(operation) + "…"
+	var shown_in_action_dock: bool = game_screen_controller.action_dock != null and game_screen_controller.action_dock.visible
+	if shown_in_action_dock:
+		game_screen_controller.action_dock_title.text = label
+	if game_screen_controller.footer_label:
+		game_screen_controller.footer_label.text = "" if shown_in_action_dock else "◆  " + label
+		if not shown_in_action_dock:
+			game_screen_controller.footer_label.add_theme_color_override("font_color", COLORS.accent)
+
+
 func _request(operation: String, method: HTTPClient.Method, path: String, payload := {}) -> void:
 	if pending_operation != "" or operation == "action" and presentation_busy:
 		return
@@ -376,11 +388,7 @@ func _request(operation: String, method: HTTPClient.Method, path: String, payloa
 		"path": path,
 	})
 	ui_factory.set_buttons_disabled(self, true)
-	if game_screen_controller.action_dock and game_screen_controller.action_dock.visible:
-		game_screen_controller.action_dock_title.text = _operation_label(operation) + "…"
-	if game_screen_controller.footer_label:
-		game_screen_controller.footer_label.text = "◆  " + _operation_label(operation) + "…"
-		game_screen_controller.footer_label.add_theme_color_override("font_color", COLORS.accent)
+	_show_operation_status(operation)
 	if start_layer and start_layer.visible and connection_label:
 		connection_label.text = "正在确认旅途入口…"
 	var error: Error = game_client.send(method, path, payload)

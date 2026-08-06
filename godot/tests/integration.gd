@@ -160,6 +160,34 @@ func _run() -> void:
 		return _fail("populated actor focus did not keep a single actor title and its decision detail")
 	if app.game_screen_controller.location_detail_box.visible or app.game_screen_controller.stage_people_box.visible:
 		return _fail("actor focus keeps unrelated location chrome above the dialogue action")
+	var original_dialogue_history: Array = app.actor_dialogue_history_by_id.get("N04", [])
+	var long_dialogue_history: Array = []
+	for dialogue_index in range(20):
+		long_dialogue_history.append({
+			"speaker": "player" if dialogue_index % 2 == 0 else "npc",
+			"text": "用于验证长对话滚动与固定输入区的第 %d 条消息。" % (dialogue_index + 1),
+		})
+	app.actor_dialogue_history_by_id["N04"] = long_dialogue_history
+	app.actor_dialogue_visible_count_by_id.erase("N04")
+	app.action_panel_controller._render_actions(actions)
+	await process_frame
+	await process_frame
+	var dialogue_input: Node = app.game_screen_controller.actor_dialogue_input_host.find_child("ActorDialogueInput", true, false)
+	var history_scroll: ScrollContainer = app.game_screen_controller.actor_focus_message_scroll
+	var history_scroll_bar := history_scroll.get_v_scroll_bar()
+	if not dialogue_input is TextEdit:
+		return _fail("long actor dialogue does not use a multi-line input")
+	var dialogue_text_edit := dialogue_input as TextEdit
+	if not dialogue_text_edit.is_visible_in_tree() or dialogue_text_edit.custom_minimum_size.y < 72:
+		return _fail("long actor dialogue does not keep a visible multi-line input at the bottom")
+	if "查看更早对话 · 12 条" not in _descendant_text(app.game_screen_controller.actor_focus_message_list):
+		return _fail("long actor dialogue does not collapse older messages behind a clear progressive disclosure control")
+	if history_scroll_bar.max_value <= history_scroll_bar.page or history_scroll.scroll_vertical <= 0:
+		return _fail("long actor dialogue history is not independently scrollable or did not open at the latest message")
+	app.actor_dialogue_history_by_id["N04"] = original_dialogue_history
+	app.actor_dialogue_visible_count_by_id.erase("N04")
+	app.action_panel_controller._render_actions(actions)
+	await process_frame
 	app.action_panel_controller._render_actions([])
 	await process_frame
 	var actor_empty_text := _descendant_text(app.game_screen_controller.actor_focus_message_list) + _descendant_text(app.game_screen_controller.actor_focus_detail_box)
@@ -207,6 +235,12 @@ func _run() -> void:
 	app.game_screen_controller._set_visual_mode("location")
 	if not app.game_screen_controller.location_panel.visible or app.game_screen_controller.map_panel.visible or not app.game_screen_controller.action_dock.visible:
 		return _fail("location scene mode did not replace the map")
+	if app.game_screen_controller.action_dock_host.anchor_top > 0.33 or not is_equal_approx(app.game_screen_controller.action_dock_host.anchor_bottom, 0.94):
+		return _fail("location action dock does not preserve its top room and footer safe area")
+	app._show_operation_status("action")
+	if app.game_screen_controller.action_dock_title.text != "正在推演行动结果…" or app.game_screen_controller.footer_label.text != "":
+		return _fail("visible action dock repeats its pending state in the global footer")
+	app.action_panel_controller._render_actions(app.available_actions_cache)
 	app.game_screen_controller._set_visual_mode("map")
 	if app.game_screen_controller.action_dock.visible:
 		return _fail("map mode keeps the narrative action dock open")
@@ -259,7 +293,7 @@ func _run() -> void:
 	if app.player_summary_label.get_parent() != app.player_resources_box.get_parent() or not app.player_summary_label.get_parent() is HBoxContainer:
 		return _fail("gear section does not keep player identity and resources on one row")
 	var travel_text := _descendant_text(app.travel_box)
-	if app.journal_tabs.current_tab != 3 or app.journal_travel_button.text != "行装" or "尚缺 2 项" not in travel_text or "缺少 · 解瘴丹" not in travel_text or "购买解瘴丹 · 灵石 20" not in travel_text or "入口尚未开放" not in travel_text or "准备度" not in travel_text or "查看路线与依据" not in travel_text:
+	if app.journal_tabs.current_tab != 3 or app.journal_travel_button.text != "行装" or "尚缺 2 项" not in travel_text or "缺少 · 解瘴丹" not in travel_text or "购买解瘴丹 · 灵石 20" not in travel_text or "入口尚未开放" not in travel_text or "准备度" not in travel_text or not app.journal_travel_details_fold is FoldableContainer or app.journal_travel_details_fold.title != "路线与依据" or app.journal_travel_details_fold.focus_mode != Control.FOCUS_ALL:
 		return _fail("gear section does not prioritize blocking preparation: " + travel_text)
 	var preparation_header: Node = _hbox_with_text(app.travel_box, "准备度")
 	if not preparation_header is HBoxContainer or "准备度" not in _descendant_text(preparation_header) or "2 / 6" not in _descendant_text(preparation_header) or "明显不足" not in _descendant_text(preparation_header):
@@ -270,10 +304,12 @@ func _run() -> void:
 		return _fail("gear blockers or readiness still use nested information cards")
 	if "仍缺 2 项才能成行" in travel_text or "你的争夺准备" in travel_text or "综合准备" in travel_text:
 		return _fail("gear section still uses repetitive or system-like preparation copy: " + travel_text)
-	if app.journal_travel_details_box.visible:
+	if not app.journal_travel_details_fold.folded:
 		return _fail("gear section exposes completed checks before the player asks")
-	app.journal_panel_controller._toggle_journal_travel_details()
-	if not app.journal_travel_details_box.visible or "路线已发现" not in travel_text:
+	app.journal_travel_details_fold.expand()
+	await process_frame
+	var expanded_travel_text := _descendant_text(app.journal_travel_details_box)
+	if app.journal_travel_details_fold.folded or not app.journal_travel_details_box.is_visible_in_tree() or "路线已发现" not in expanded_travel_text:
 		return _fail("gear section cannot reveal completed checks on demand")
 	var route_header: Node = _hbox_with_text(app.journal_travel_details_box, "路线已发现")
 	if not route_header is HBoxContainer or "路线已发现" not in _descendant_text(route_header):
@@ -353,10 +389,11 @@ func _run() -> void:
 			app.action_panel_controller._consider_action(action)
 			if not app.confirmation_layer.visible:
 				return _fail("multi-day advance has no confirmation")
-			if app.confirmation_details_box.visible:
+			if not app.confirmation_details_fold is FoldableContainer or app.confirmation_details_fold.title != "盘算详情" or app.confirmation_details_fold.focus_mode != Control.FOCUS_ALL or not app.confirmation_details_fold.folded:
 				return _fail("confirmation reveals secondary reasoning before the player asks")
-			app.action_panel_controller._toggle_confirmation_details()
-			if not app.confirmation_details_box.visible:
+			app.confirmation_details_fold.expand()
+			await process_frame
+			if app.confirmation_details_fold.folded or not app.confirmation_details_box.is_visible_in_tree():
 				return _fail("confirmation reasoning disclosure cannot be opened")
 			var reasoning_text := _descendant_text(app.confirmation_details_box)
 			if "执行判断" not in reasoning_text or "仍未知" not in reasoning_text:
@@ -405,7 +442,8 @@ func _run() -> void:
 	var tell_confirmation_text := _descendant_text(app.confirmation_box)
 	if "人物与线索" in tell_confirmation_text or "传闻口径" not in tell_confirmation_text or "预计 2 日后抵达" not in tell_confirmation_text:
 		return _fail("tell confirmation does not expose a compact person, clue, and timing summary")
-	app.action_panel_controller._toggle_confirmation_details()
+	app.confirmation_details_fold.expand()
+	await process_frame
 	var tell_reasoning_text := _descendant_text(app.confirmation_details_box)
 	if "执行判断" not in tell_reasoning_text or "对方情况" not in tell_reasoning_text or "相关性" not in tell_reasoning_text or tell_reasoning_text.count("直接相关") != 1:
 		return _fail("tell reasoning does not use the two-column hierarchy or repeats relevance labels")
@@ -425,7 +463,7 @@ func _run() -> void:
 	var presentation: Dictionary = app.current_view.get("last_turn", {}).get("presentation", {})
 	if presentation.get("kind", "") != "focus":
 		return _fail("verification start has no semantic presentation cue")
-	if app.presentation_director.card.anchor_left != 0.0 or app.presentation_director.message_label.text == "":
+	if app.presentation_director.card.anchor_left != 0.0 or app.presentation_director.message_label.text == "" or app.presentation_director.message_label.autowrap_mode != TextServer.AUTOWRAP_OFF or app.presentation_director.message_label.max_lines_visible != 1 or app.presentation_director.card.offset_right - app.presentation_director.card.offset_left < 680:
 		return _fail("verification feedback did not use the peripheral echo layer")
 	app.presentation_director.present({
 		"day": 4,
@@ -440,13 +478,14 @@ func _run() -> void:
 	if app.presentation_director.card.anchor_left != 1.0 or "后续局势" in app.presentation_director.message_label.text:
 		return _fail("actor feedback did not move beside the actor or still leaks system explanation")
 	app.presentation_director.cancel()
-	if app.journal_echo_button.text != "回响 · 新" or app.journal_feedback_details_box.visible:
+	if app.journal_echo_button.text != "回响 · 新" or not app.journal_feedback_details_fold.folded:
 		return _fail("new echo is not marked or reveals its evidence by default")
 	app.journal_panel_controller._open_journal()
-	if "查看推演过程" not in _descendant_text(app.scene_box):
+	if not app.journal_feedback_details_fold is FoldableContainer or app.journal_feedback_details_fold.title != "推演过程" or app.journal_feedback_details_fold.focus_mode != Control.FOCUS_ALL:
 		return _fail("echo summary does not offer progressive disclosure")
-	app.journal_panel_controller._toggle_journal_feedback_details()
-	if not app.journal_feedback_details_box.visible:
+	app.journal_feedback_details_fold.expand()
+	await process_frame
+	if app.journal_feedback_details_fold.folded or not app.journal_feedback_details_box.is_visible_in_tree():
 		return _fail("echo evidence cannot be expanded")
 	app.journal_panel_controller._close_journal()
 	if app.journal_echo_button.text != "回响":
