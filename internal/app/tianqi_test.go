@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"narra/internal/scenario"
+	"narra/internal/testsupport"
 )
 
 func loadTianqiSession(t *testing.T) *Session {
@@ -13,10 +13,7 @@ func loadTianqiSession(t *testing.T) *Session {
 
 func loadTianqiSessionWithExposure(t *testing.T, exposure int) *Session {
 	t.Helper()
-	bundle, err := scenario.Load("../../data/tianqi")
-	if err != nil {
-		t.Fatalf("load tianqi scenario: %v", err)
-	}
+	bundle := testsupport.LoadOfficialWorld(t, "tianqi")
 	player := DefaultPlayer(bundle, "无名抄手")
 	player.Resources["exposure"] = exposure
 	session, err := NewSession(bundle, player)
@@ -26,22 +23,46 @@ func loadTianqiSessionWithExposure(t *testing.T, exposure int) *Session {
 	return session
 }
 
+func advanceTianqiUntil(t *testing.T, session *Session, description string, ready func() bool) {
+	t.Helper()
+	for !ready() {
+		view := session.View()
+		if view.Resolved || view.Day >= view.Duration {
+			t.Fatalf("%s was not reached before the scenario ended: day=%d actions=%v", description, view.Day, actionIDs(view.AvailableActions))
+		}
+		previousDay := view.Day
+		if _, err := session.Execute("wait:next"); err != nil {
+			t.Fatalf("advance until %s: %v", description, err)
+		}
+		if session.View().Day <= previousDay && !ready() {
+			t.Fatalf("advance until %s stopped at another decision on day %d: actions=%v", description, session.View().Day, actionIDs(session.View().AvailableActions))
+		}
+	}
+}
+
+func advanceTianqiUntilAction(t *testing.T, session *Session, actionID string) {
+	t.Helper()
+	advanceTianqiUntil(t, session, "action "+actionID, func() bool {
+		return actionWithID(session.View().AvailableActions, actionID) != nil
+	})
+}
+
+func advanceTianqiUntilFlag(t *testing.T, session *Session, flag string) {
+	t.Helper()
+	advanceTianqiUntil(t, session, "flag "+flag, func() bool {
+		return session.engine.State().WorldFlag(flag)
+	})
+}
+
 func TestTianqiPlayerCanProtectE10BeforeGreyNetworkInterception(t *testing.T) {
 	session := loadTianqiSession(t)
 	if _, err := session.Execute("move:L03"); err != nil {
 		t.Fatalf("move to inquiry office: %v", err)
 	}
-	for session.View().Day < 11 {
-		if _, err := session.Execute("wait:next"); err != nil {
-			t.Fatalf("advance to E10 window: %v", err)
-		}
-	}
 	if _, err := session.Execute("move:L06"); err != nil {
 		t.Fatalf("move to study: %v", err)
 	}
-	if actionWithID(session.View().AvailableActions, "route:e10:protect-original") == nil {
-		t.Fatalf("E10 protection action is unavailable on day %d", session.View().Day)
-	}
+	advanceTianqiUntilAction(t, session, "route:e10:protect-original")
 	view, err := session.Execute("route:e10:protect-original")
 	if err != nil {
 		t.Fatalf("protect E10: %v", err)
@@ -60,15 +81,7 @@ func TestTianqiPlayerCanPublishBoundedFinalRecord(t *testing.T) {
 	if _, err := session.Execute("move:L04"); err != nil {
 		t.Fatalf("move to news shop: %v", err)
 	}
-	for actionWithID(session.View().AvailableActions, "route:record:bounded") == nil && session.View().Day < 12 {
-		if _, err := session.Execute("wait:next"); err != nil {
-			t.Fatalf("advance to writing window: %v", err)
-		}
-	}
-	if actionWithID(session.View().AvailableActions, "route:record:bounded") == nil {
-		state := session.engine.State()
-		t.Fatalf("bounded record action is unavailable on day %d: N07=%s arc=%s actions=%v", session.View().Day, state.NPCs["N07"].Location, state.StoryStates["final_record"], actionIDs(session.View().AvailableActions))
-	}
+	advanceTianqiUntilAction(t, session, "route:record:bounded")
 	view, err := session.Execute("route:record:bounded")
 	if err != nil {
 		t.Fatalf("publish bounded record: %v", err)
@@ -217,12 +230,8 @@ func TestTianqiUnredactedRegisterTriggersSourcePressure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("publish unredacted register: %v", err)
 	}
-	for session.View().Day < 4 && !session.engine.State().WorldFlag("witness_pressured") {
-		view, err = session.Execute("wait:next")
-		if err != nil {
-			t.Fatalf("advance to source tracing response: %v", err)
-		}
-	}
+	advanceTianqiUntilFlag(t, session, "witness_pressured")
+	view = session.View()
 	state := session.engine.State()
 	if !state.WorldFlag("witness_identity_exposed") || !state.WorldFlag("witness_pressured") || state.WorldFlag("protected_register_network") {
 		t.Fatalf("unredacted register state = protected:%v exposed:%v pressured:%v", state.WorldFlag("protected_register_network"), state.WorldFlag("witness_identity_exposed"), state.WorldFlag("witness_pressured"))
@@ -243,11 +252,7 @@ func TestTianqiOriginalLedgerChainCanExposeAndCorrelateForgery(t *testing.T) {
 			t.Fatalf("execute %s: %v", actionID, err)
 		}
 	}
-	for session.View().Day < 3 {
-		if _, err := session.Execute("wait:next"); err != nil {
-			t.Fatalf("advance to official delivery: %v", err)
-		}
-	}
+	advanceTianqiUntilAction(t, session, "route:e01:official")
 	for _, actionID := range []string{"route:e01:official", "move:L06"} {
 		if actionWithID(session.View().AvailableActions, actionID) == nil {
 			t.Fatalf("ledger action %s unavailable on day %d at %s: %v", actionID, session.View().Day, session.View().Location.ID, actionIDs(session.View().AvailableActions))
@@ -256,22 +261,11 @@ func TestTianqiOriginalLedgerChainCanExposeAndCorrelateForgery(t *testing.T) {
 			t.Fatalf("execute %s: %v", actionID, err)
 		}
 	}
-	for session.View().Day < 8 {
-		if _, err := session.Execute("wait:next"); err != nil {
-			t.Fatalf("advance to format check: %v", err)
-		}
-	}
+	advanceTianqiUntilAction(t, session, "route:e09:format-check")
 	if _, err := session.Execute("route:e09:format-check"); err != nil {
 		t.Fatalf("verify E09 format: %v", err)
 	}
-	for session.View().Day < 12 {
-		if _, err := session.Execute("wait:next"); err != nil {
-			t.Fatalf("advance to ledger correlation: %v", err)
-		}
-	}
-	if actionWithID(session.View().AvailableActions, "route:e10:correlate-and-protect") == nil {
-		t.Fatalf("ledger correlation route unavailable on day %d: %v", session.View().Day, actionIDs(session.View().AvailableActions))
-	}
+	advanceTianqiUntilAction(t, session, "route:e10:correlate-and-protect")
 	view, err := session.Execute("route:e10:correlate-and-protect")
 	if err != nil {
 		t.Fatalf("correlate and protect E10: %v", err)
@@ -298,35 +292,20 @@ func TestTianqiE01FormatCheckUnlocksOfficialForgeryExposure(t *testing.T) {
 			t.Fatalf("execute %s: %v", actionID, err)
 		}
 	}
-	for session.View().Day < 3 {
-		if _, err := session.Execute("wait:next"); err != nil {
-			t.Fatalf("advance to official delivery: %v", err)
-		}
-	}
+	advanceTianqiUntilAction(t, session, "route:e01:official")
 	for _, actionID := range []string{"route:e01:official", "move:L06"} {
 		if _, err := session.Execute(actionID); err != nil {
 			t.Fatalf("execute %s: %v", actionID, err)
 		}
 	}
-	for session.View().Day < 8 {
-		if _, err := session.Execute("wait:next"); err != nil {
-			t.Fatalf("advance to format check: %v", err)
-		}
-	}
+	advanceTianqiUntilAction(t, session, "route:e09:format-check")
 	if _, err := session.Execute("route:e09:format-check"); err != nil {
 		t.Fatalf("verify E09 format: %v", err)
 	}
 	if _, err := session.Execute("move:L03"); err != nil {
 		t.Fatalf("return to inquiry office: %v", err)
 	}
-	for session.View().Day < 11 {
-		if _, err := session.Execute("wait:next"); err != nil {
-			t.Fatalf("advance to official exposure: %v", err)
-		}
-	}
-	if actionWithID(session.View().AvailableActions, "route:final:expose-forgery") == nil {
-		t.Fatalf("official forgery exposure unavailable: %v", actionIDs(session.View().AvailableActions))
-	}
+	advanceTianqiUntilAction(t, session, "route:final:expose-forgery")
 	if _, err := session.Execute("route:final:expose-forgery"); err != nil {
 		t.Fatalf("expose forged ledger: %v", err)
 	}
@@ -337,22 +316,14 @@ func TestTianqiE01FormatCheckUnlocksOfficialForgeryExposure(t *testing.T) {
 
 func TestTianqiExposurePressureOpensWitnessResponse(t *testing.T) {
 	lowSession := loadTianqiSessionWithExposure(t, 2)
-	for lowSession.View().Day < 2 && !lowSession.engine.State().WorldFlag("exposure_watched") {
-		if _, err := lowSession.Execute("wait:next"); err != nil {
-			t.Fatalf("trigger exposure watch: %v", err)
-		}
-	}
+	advanceTianqiUntilFlag(t, lowSession, "exposure_watched")
 	state := lowSession.engine.State()
 	if !state.WorldFlag("exposure_watched") || state.WorldFlag("source_inquiry_open") {
 		t.Fatalf("low exposure flags = %v", state.WorldFlags)
 	}
 
 	session := loadTianqiSessionWithExposure(t, 4)
-	for session.View().Day < 3 && !session.engine.State().WorldFlag("source_inquiry_open") {
-		if _, err := session.Execute("wait:next"); err != nil {
-			t.Fatalf("trigger source inquiry: %v", err)
-		}
-	}
+	advanceTianqiUntilFlag(t, session, "source_inquiry_open")
 	state = session.engine.State()
 	if !state.WorldFlag("source_inquiry_open") || state.Opportunities["answer_source_inquiry"] == "" || state.Opportunities["relocate_witness"] == "" {
 		t.Fatalf("medium exposure state: flags=%v opportunities=%v", state.WorldFlags, state.Opportunities)
@@ -381,11 +352,7 @@ func TestTianqiHighExposureBlocksFormalPublication(t *testing.T) {
 	if _, err := session.Execute("move:L04"); err != nil {
 		t.Fatalf("move to news shop: %v", err)
 	}
-	for session.View().Day < 9 || !session.engine.State().WorldFlag("publication_blocked") {
-		if _, err := session.Execute("wait:next"); err != nil {
-			t.Fatalf("advance to high exposure publication window: %v", err)
-		}
-	}
+	advanceTianqiUntilAction(t, session, "route:record:anonymous")
 	actions := session.View().AvailableActions
 	if actionWithID(actions, "route:record:bounded") != nil || actionWithID(actions, "route:record:accusatory") != nil {
 		t.Fatalf("formal publication remained available under high exposure: %v", actionIDs(actions))

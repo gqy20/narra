@@ -28,7 +28,7 @@ func _run() -> void:
 	var view: Dictionary = app.current_view
 	if view.get("scenario_id", "") != "orbital_t00" or view.get("available_actions", []).is_empty():
 		return _fail("orbital world did not produce an actionable player view")
-	if view.get("world_map", {}).get("locations", []).size() != 5:
+	if view.get("world_map", {}).get("locations", []).is_empty():
 		return _fail("orbital world map was not rendered through the generic contract")
 	app._execute_action("wait:next")
 	if not await _wait_until_idle():

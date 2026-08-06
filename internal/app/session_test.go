@@ -11,22 +11,13 @@ import (
 
 	"narra/internal/domain"
 	"narra/internal/scenario"
+	"narra/internal/testsupport"
 )
 
 func testSession(t *testing.T) *Session {
 	t.Helper()
-	bundle, err := scenario.Load("../../data/blackwind")
-	if err != nil {
-		t.Fatal(err)
-	}
-	session, err := NewSession(bundle, domain.PlayerConfig{
-		ID: "P00", Name: "测试玩家", Location: "L01",
-		Resources: map[string]int{"combat": 2, "support": 0, "spirit_stones": 100, "credit": 3},
-		Items:     []string{"healing_pill"},
-		Beliefs: []domain.Belief{{
-			FactID: "F02", Claim: "青髓芝将在第24天成熟", Confidence: 1, Source: "坊市传言",
-		}},
-	})
+	bundle := testsupport.LoadOfficialWorld(t, "blackwind")
+	session, err := NewSession(bundle, DefaultPlayer(bundle, "测试玩家"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,14 +25,14 @@ func testSession(t *testing.T) *Session {
 }
 
 func TestDefaultPlayerComesFromContentAndIsCloned(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
-	if err != nil {
-		t.Fatal(err)
-	}
+	bundle := testsupport.LoadOfficialWorld(t, "blackwind")
+	originalName := bundle.DefaultPlayer.Name
+	originalCombat := bundle.DefaultPlayer.Resources["combat"]
+	originalItem := bundle.DefaultPlayer.Items[0]
 	player := DefaultPlayer(bundle, "自定义姓名")
 	player.Resources["combat"] = 99
 	player.Items[0] = "changed"
-	if player.Name != "自定义姓名" || bundle.DefaultPlayer.Name != "无名散修" || bundle.DefaultPlayer.Resources["combat"] != 2 || bundle.DefaultPlayer.Items[0] != "healing_pill" {
+	if player.Name != "自定义姓名" || bundle.DefaultPlayer.Name != originalName || bundle.DefaultPlayer.Resources["combat"] != originalCombat || bundle.DefaultPlayer.Items[0] != originalItem {
 		t.Fatalf("default player was not independently cloned: player=%+v template=%+v", player, bundle.DefaultPlayer)
 	}
 }
@@ -536,7 +527,7 @@ func TestAtomicSaveFileCanReplaceAndReload(t *testing.T) {
 	if err := session.SaveFile(path); err != nil {
 		t.Fatal(err)
 	}
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -808,7 +799,7 @@ func TestSaveLoadsByDeterministicReplay(t *testing.T) {
 		t.Fatalf("save serialized engine internals: %s", data.String())
 	}
 
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -833,7 +824,7 @@ func TestSaveReplayPreservesPostResolutionHistory(t *testing.T) {
 	if err := session.Save(&data); err != nil {
 		t.Fatal(err)
 	}
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -855,7 +846,7 @@ func TestSaveReplayPreservesMacroAdvance(t *testing.T) {
 	if err := session.Save(&data); err != nil {
 		t.Fatal(err)
 	}
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}

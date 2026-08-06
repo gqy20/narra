@@ -1,22 +1,18 @@
 package engine
 
 import (
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"narra/internal/domain"
 	"narra/internal/scenario"
+	"narra/internal/testsupport"
 )
 
 func loadBlackwind(t testing.TB) domain.Bundle {
 	t.Helper()
-	bundle, err := scenario.Load(filepath.Join("..", "..", "data", "blackwind"))
-	if err != nil {
-		t.Fatalf("load blackwind: %v", err)
-	}
-	return bundle
+	return testsupport.LoadOfficialWorld(t, "blackwind")
 }
 
 func TestT00ProducesExpectedBaseline(t *testing.T) {
@@ -72,7 +68,7 @@ func TestEngineLoadsInitialDirectionalRelations(t *testing.T) {
 
 func TestPlannedCommandUsesFallbackWhenConditionsFail(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T06_betray_li.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T06_betray_li.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T06: %v", err)
 	}
@@ -103,7 +99,7 @@ func TestPlannedCommandUsesFallbackWhenConditionsFail(t *testing.T) {
 
 func TestPlannedCommandCanSkipFailedConditions(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T06_betray_li.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T06_betray_li.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T06: %v", err)
 	}
@@ -151,7 +147,7 @@ func TestUniqueItemInvariantRejectsDuplicateInventory(t *testing.T) {
 
 func TestT01PlayerIntelChangesOutcome(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T01_sell_intel.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T01_sell_intel.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T01 plan: %v", err)
 	}
@@ -185,7 +181,7 @@ func TestT01PlayerIntelChangesOutcome(t *testing.T) {
 
 func TestT02TransplantAvoidsMatureContest(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T02_transplant.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T02_transplant.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T02 plan: %v", err)
 	}
@@ -219,7 +215,7 @@ func TestT02TransplantAvoidsMatureContest(t *testing.T) {
 
 func TestT03PublicInjuryCreatesAlliance(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T03_reveal_injury.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T03_reveal_injury.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T03 plan: %v", err)
 	}
@@ -252,7 +248,7 @@ func TestT03PublicInjuryCreatesAlliance(t *testing.T) {
 
 func TestT04StrongFalseDateDelaysCompetitorAndCostsCredit(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T04_false_date.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T04_false_date.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T04 plan: %v", err)
 	}
@@ -313,7 +309,7 @@ func TestMergeBeliefPreservesConflictingEvidenceAndUsesStrength(t *testing.T) {
 
 func TestT05EvidencePreventsAmbushAndChangesSuccession(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T05_expose_betrayal.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T05_expose_betrayal.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T05 plan: %v", err)
 	}
@@ -355,7 +351,7 @@ func TestT05EvidencePreventsAmbushAndChangesSuccession(t *testing.T) {
 
 func TestT06BetrayalCreatesRevengeAfterPlayerWins(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T06_betray_li.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T06_betray_li.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T06 plan: %v", err)
 	}
@@ -399,7 +395,7 @@ func TestT06BetrayalCreatesRevengeAfterPlayerWins(t *testing.T) {
 
 func TestT07FailureCreatesRecoveryAndFollowUpOptions(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T07_failed_ambush.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T07_failed_ambush.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T07 plan: %v", err)
 	}
@@ -450,7 +446,7 @@ func TestT07FailureCreatesRecoveryAndFollowUpOptions(t *testing.T) {
 
 func TestStepAcceptsRuntimeCommandsAndExposesSnapshot(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T01_sell_intel.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T01_sell_intel.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T01 plan: %v", err)
 	}
@@ -492,7 +488,7 @@ func TestStepAcceptsRuntimeCommandsAndExposesSnapshot(t *testing.T) {
 
 func TestStepRejectsCommandForWrongDay(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T01_sell_intel.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T01_sell_intel.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T01 plan: %v", err)
 	}
@@ -508,7 +504,7 @@ func TestStepRejectsCommandForWrongDay(t *testing.T) {
 
 func TestMultiDayActionDelaysEffectsAndBlocksNewCommand(t *testing.T) {
 	bundle := loadBlackwind(t)
-	plan, err := scenario.LoadPlan(filepath.Join("..", "..", "testdata", "T07_failed_ambush.json"), bundle)
+	plan, err := scenario.LoadPlan(testsupport.TestdataPath(t, "T07_failed_ambush.json"), bundle)
 	if err != nil {
 		t.Fatalf("load T07 plan: %v", err)
 	}

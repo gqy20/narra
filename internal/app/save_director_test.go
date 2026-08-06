@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"narra/internal/director"
-	"narra/internal/scenario"
+	"narra/internal/testsupport"
 )
 
 type saveWorldSelector struct{ calls int }
@@ -20,10 +19,7 @@ func (s *saveWorldSelector) SelectWorldDirective(_ context.Context, request dire
 }
 
 func TestSavePersistsAndReplaysAuthoritativeWorldDirectorChoices(t *testing.T) {
-	bundle, err := scenario.Load(filepath.Join("..", "..", "data", "blackwind"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	bundle := testsupport.LoadOfficialWorld(t, "blackwind")
 	session, err := NewSession(bundle, DefaultPlayer(bundle, "导演存档测试"))
 	if err != nil {
 		t.Fatal(err)
@@ -54,10 +50,7 @@ func TestSavePersistsAndReplaysAuthoritativeWorldDirectorChoices(t *testing.T) {
 }
 
 func TestLoadRejectsIncompleteOrStrippedDirectorReplay(t *testing.T) {
-	bundle, err := scenario.Load(filepath.Join("..", "..", "data", "blackwind"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	bundle := testsupport.LoadOfficialWorld(t, "blackwind")
 	session, err := NewSession(bundle, DefaultPlayer(bundle, "导演契约测试"))
 	if err != nil {
 		t.Fatal(err)

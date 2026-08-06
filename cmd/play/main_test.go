@@ -17,6 +17,7 @@ import (
 	"narra/internal/director"
 	"narra/internal/domain"
 	"narra/internal/scenario"
+	"narra/internal/testsupport"
 )
 
 type terminalDialogueProvider struct {
@@ -79,7 +80,7 @@ func (p *terminalDialogueProvider) generate(request ai.GenerationRequest) (ai.Di
 }
 
 func TestRunUsesExplicitActionsAndDoCommands(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +101,7 @@ func TestRunUsesExplicitActionsAndDoCommands(t *testing.T) {
 }
 
 func TestRunAcceptsPowerShellBOM(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +129,7 @@ func TestResolveActionNumberRejectsIDsAndValidatesNumber(t *testing.T) {
 }
 
 func TestDefaultViewLocalizesTermsAndHidesStableIDs(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +173,7 @@ func TestTerminalUsesScenarioAuthoredHeaderAndClueTerm(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.world, func(t *testing.T) {
-			bundle, err := scenario.Load(filepath.Join("../../data", test.world))
+			bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, test.world))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -192,7 +193,7 @@ func TestTerminalUsesScenarioAuthoredHeaderAndClueTerm(t *testing.T) {
 }
 
 func TestTerminalShowsTianqiPrologueAndVisibleEndingCoda(t *testing.T) {
-	bundle, err := scenario.Load("../../data/tianqi")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "tianqi"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +223,7 @@ func TestTerminalShowsTianqiPrologueAndVisibleEndingCoda(t *testing.T) {
 }
 
 func TestDefaultViewLocalizesStatusAndInvestigationSource(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +250,7 @@ func TestDefaultViewLocalizesStatusAndInvestigationSource(t *testing.T) {
 }
 
 func TestTerminalNavigationAndDialogueDoNotAdvanceWorld(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +277,7 @@ func TestTerminalNavigationAndDialogueDoNotAdvanceWorld(t *testing.T) {
 }
 
 func TestTerminalCanFindAndUseWorldDirectorOpportunity(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +305,7 @@ func TestTerminalCanFindAndUseWorldDirectorOpportunity(t *testing.T) {
 }
 
 func TestTerminalSupportsPersistentMultiTurnNPCDialogue(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +350,7 @@ func TestTerminalSupportsPersistentMultiTurnNPCDialogue(t *testing.T) {
 }
 
 func TestTerminalReportsModelFailureWithoutInventingDialogue(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,7 +379,7 @@ func TestTerminalReportsModelFailureWithoutInventingDialogue(t *testing.T) {
 }
 
 func TestTerminalCanInspectCancelAndRetryDialogueGeneration(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +434,7 @@ func TestTerminalCanInspectCancelAndRetryDialogueGeneration(t *testing.T) {
 }
 
 func TestTerminalCanCancelRetryAndAuditWorldDirector(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -526,7 +527,7 @@ func TestDirectorAuditHidesInternalIDsOutsideDebugMode(t *testing.T) {
 }
 
 func TestTerminalCanCompleteAndReplayAFullJourney(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -570,7 +571,7 @@ func TestTerminalCanCompleteAndReplayAFullJourney(t *testing.T) {
 
 func TestTerminalTravelUsesMapNumberOrPublicName(t *testing.T) {
 	for _, command := range []string{"go 2\nquit\n", "go 青岚门驻地\nquit\n"} {
-		bundle, err := scenario.Load("../../data/blackwind")
+		bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -589,7 +590,7 @@ func TestTerminalTravelUsesMapNumberOrPublicName(t *testing.T) {
 }
 
 func TestBareNumbersAndInternalActionIDsAreNotCommands(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -607,7 +608,7 @@ func TestBareNumbersAndInternalActionIDsAreNotCommands(t *testing.T) {
 }
 
 func TestWaitAdvancesOneDayAndWaitNextIsExplicit(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -630,7 +631,7 @@ func TestWaitAdvancesOneDayAndWaitNextIsExplicit(t *testing.T) {
 }
 
 func TestTerminalPresentationExplainsPreparationAndLoss(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -656,7 +657,7 @@ func TestTerminalPresentationExplainsPreparationAndLoss(t *testing.T) {
 }
 
 func TestActionCategoriesUseScopedDoNumbersAndHideTimeActions(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -680,7 +681,7 @@ func TestActionCategoriesUseScopedDoNumbersAndHideTimeActions(t *testing.T) {
 }
 
 func TestDoRequiresFreshActionMenu(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -698,7 +699,7 @@ func TestDoRequiresFreshActionMenu(t *testing.T) {
 }
 
 func TestNamedSaveSlotsCanSaveListAndLoadInGame(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -733,7 +734,7 @@ func TestNamedSaveSlotsCanSaveListAndLoadInGame(t *testing.T) {
 }
 
 func TestLoadRequiresConfirmationWhenAutosaveIsOff(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -759,7 +760,7 @@ func TestLoadRequiresConfirmationWhenAutosaveIsOff(t *testing.T) {
 }
 
 func TestActionQuerySupportsSearchAndPagination(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -780,7 +781,7 @@ func TestActionQuerySupportsSearchAndPagination(t *testing.T) {
 }
 
 func TestWaitNextOnlyAdvancesAfterConfirmation(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"narra/internal/scenario"
+	"narra/internal/testsupport"
 )
 
 func TestKnowledgeGraphOnlyProjectsVisiblePlayerInformation(t *testing.T) {
@@ -53,10 +53,7 @@ func TestKnowledgeGraphOnlyProjectsVisiblePlayerInformation(t *testing.T) {
 func TestKnowledgeGraphWorksAcrossOfficialContentPacks(t *testing.T) {
 	for _, world := range []string{"blackwind", "tianqi"} {
 		t.Run(world, func(t *testing.T) {
-			bundle, err := scenario.Load("../../data/" + world)
-			if err != nil {
-				t.Fatal(err)
-			}
+			bundle := testsupport.LoadOfficialWorld(t, world)
 			session, err := NewSession(bundle, DefaultPlayer(bundle, "图谱测试者"))
 			if err != nil {
 				t.Fatal(err)

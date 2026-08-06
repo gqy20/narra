@@ -61,6 +61,9 @@ jobs:
           $shim = "@echo off`r`n`"$(Join-Path $installDirectory 'godot_console.exe')`" %*"
           Set-Content -LiteralPath (Join-Path $shimDirectory 'godot.cmd') -Value $shim -Encoding ascii
           $shimDirectory | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Verify server process diagnostics
+        shell: pwsh
+        run: ./tools/verify-server-diagnostics.ps1
       - name: Run deterministic Godot verification
         shell: pwsh
         run: ./tools/verify-godot.ps1 -Mode full

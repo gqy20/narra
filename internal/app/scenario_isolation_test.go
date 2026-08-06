@@ -5,14 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"narra/internal/scenario"
+	"narra/internal/testsupport"
 )
 
 func TestTianqiPlayerViewDoesNotLeakBlackwindLanguage(t *testing.T) {
-	bundle, err := scenario.Load("../../data/tianqi")
-	if err != nil {
-		t.Fatal(err)
-	}
+	bundle := testsupport.LoadOfficialWorld(t, "tianqi")
 	session, err := NewSession(bundle, DefaultPlayer(bundle, "切换测试抄手"))
 	if err != nil {
 		t.Fatal(err)

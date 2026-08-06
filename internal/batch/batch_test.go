@@ -2,18 +2,18 @@ package batch
 
 import (
 	"bytes"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"narra/internal/domain"
 	"narra/internal/scenario"
+	"narra/internal/testsupport"
 )
 
 func loadInputs(t *testing.T) (string, string) {
 	t.Helper()
-	return filepath.Join("..", "..", "data", "blackwind"), filepath.Join("..", "..", "testdata")
+	return testsupport.OfficialWorldPath(t, "blackwind"), testsupport.TestdataPath(t)
 }
 
 func TestInvestigationEfficacyRequiresLaterTriggeredAction(t *testing.T) {

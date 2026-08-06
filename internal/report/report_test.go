@@ -2,19 +2,15 @@ package report
 
 import (
 	"bytes"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"narra/internal/engine"
-	"narra/internal/scenario"
+	"narra/internal/testsupport"
 )
 
 func TestMarkdownIncludesWorldDirectorAudit(t *testing.T) {
-	bundle, err := scenario.Load(filepath.Join("..", "..", "data", "blackwind"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	bundle := testsupport.LoadOfficialWorld(t, "blackwind")
 	state, err := engine.New(bundle).RunUntil(3)
 	if err != nil {
 		t.Fatal(err)

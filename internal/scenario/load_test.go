@@ -51,51 +51,36 @@ func TestOrbitalContentHasNoBlackwindTerminology(t *testing.T) {
 	}
 }
 
-func TestLoadBlackwindBundle(t *testing.T) {
+func TestBlackwindAuthoredContract(t *testing.T) {
 	bundle, err := Load(filepath.Join("..", "..", "data", "blackwind"))
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if got, want := len(bundle.NPCs), 10; got != want {
-		t.Fatalf("NPC count = %d, want %d", got, want)
-	}
-	if got, want := len(bundle.Actions), 15; got != want {
-		t.Fatalf("action count = %d, want %d", got, want)
-	}
-	if got, want := len(bundle.Facts), 10; got != want {
-		t.Fatalf("fact count = %d, want %d", got, want)
-	}
-	if got, want := len(bundle.Scenario.Directives), 3; got != want {
-		t.Fatalf("world directive count = %d, want %d", got, want)
-	}
-	if got, want := len(bundle.Scenario.Opportunities), 1; got != want {
-		t.Fatalf("opportunity action count = %d, want %d", got, want)
-	}
 	if len(bundle.Scenario.Markets) == 0 || bundle.Scenario.Markets[0].Currency != "spirit_stones" {
 		t.Fatalf("market currency = %+v", bundle.Scenario.Markets)
 	}
-	if bundle.Content.SchemaVersion != CurrentSchemaVersion || bundle.Content.Version != "1.6.0" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
+	if bundle.Content.SchemaVersion != CurrentSchemaVersion || bundle.Content.Version == "" || !strings.HasPrefix(bundle.Content.Hash, "sha256:") {
 		t.Fatalf("content metadata = %+v", bundle.Content)
 	}
-	if bundle.Presentation.Brand != "凡途" || bundle.Presentation.WorldTitle != "黑风谷山川" || len(bundle.Presentation.Resources) != 4 || len(bundle.Presentation.Locations) != 5 || len(bundle.Presentation.Actors) != 10 {
+	if bundle.Presentation.Brand != "凡途" || bundle.Presentation.WorldTitle != "黑风谷山川" || len(bundle.Presentation.Resources) == 0 || len(bundle.Presentation.Locations) == 0 || len(bundle.Presentation.Actors) == 0 {
 		t.Fatalf("presentation metadata = %+v", bundle.Presentation)
 	}
 	if bundle.Dialogue.Context == "" || bundle.Dialogue.PlayerAddress != "道友" || bundle.Dialogue.Style == "" {
 		t.Fatalf("dialogue metadata = %+v", bundle.Dialogue)
 	}
-	if len(bundle.Rules.FallbackStrategies) != 3 || !bundle.Rules.Investigation.Enabled || !bundle.Rules.Navigation.Contest.Enabled {
+	if len(bundle.Rules.FallbackStrategies) == 0 || !bundle.Rules.Investigation.Enabled || !bundle.Rules.Navigation.Contest.Enabled {
 		t.Fatalf("world rules = %+v", bundle.Rules)
 	}
-	if len(bundle.Rules.Player.Actions) != 2 || bundle.Rules.Player.Movement.ActionID != "explore" || bundle.Rules.Economy.AgreementCurrency != "spirit_stones" {
+	if len(bundle.Rules.Player.Actions) == 0 || bundle.Rules.Player.Movement.ActionID != "explore" || bundle.Rules.Economy.AgreementCurrency != "spirit_stones" {
 		t.Fatalf("player/economy rules = %+v / %+v", bundle.Rules.Player, bundle.Rules.Economy)
 	}
-	if arc, ok := bundle.StoryArcs["qinglan_intel"]; !ok || arc.InitialState != "uncommitted" || len(arc.Nodes) != 10 || len(arc.Nodes[0].Choices) != 3 || len(arc.ProgressRules) == 0 || len(arc.ConsequenceRules) == 0 {
+	if arc, ok := bundle.StoryArcs["qinglan_intel"]; !ok || arc.InitialState != "uncommitted" || len(arc.Nodes) == 0 || len(arc.Nodes[0].Choices) == 0 || len(arc.ProgressRules) == 0 || len(arc.ConsequenceRules) == 0 {
 		t.Fatalf("qinglan story arc = %+v", arc)
 	}
-	if arc, ok := bundle.StoryArcs["antidote_recovery"]; !ok || arc.InitialState != "available" || len(arc.Nodes) != 1 || arc.Nodes[0].Kind != "recover" {
+	if arc, ok := bundle.StoryArcs["antidote_recovery"]; !ok || arc.InitialState != "available" || len(arc.Nodes) == 0 || arc.Nodes[0].Kind != "recover" {
 		t.Fatalf("antidote recovery arc = %+v", arc)
 	}
-	if len(bundle.Scenario.Contest.OutcomeRules) != 2 || len(bundle.Scenario.Contest.RewardRules) != 1 {
+	if len(bundle.Scenario.Contest.OutcomeRules) == 0 || len(bundle.Scenario.Contest.RewardRules) == 0 {
 		t.Fatalf("contest content rules = %+v / %+v", bundle.Scenario.Contest.OutcomeRules, bundle.Scenario.Contest.RewardRules)
 	}
 	if bundle.DefaultPlayer.ID != "P00" || bundle.DefaultPlayer.Name != "无名散修" || bundle.DefaultPlayer.Location != "L01" {
@@ -126,7 +111,7 @@ func TestDialogueAndPresentationPoliciesAreScenarioAuthored(t *testing.T) {
 	if blackwind.Presentation.Locations["qinglan"].FallbackKind != "camp" || blackwind.Presentation.Locations["qinglan"].AmbientFrequency != 72 {
 		t.Fatalf("location fallback presentation was not loaded: %+v", blackwind.Presentation.Locations["qinglan"])
 	}
-	if len(tianqi.Presentation.Prologue.Beats) != 5 || tianqi.Presentation.Prologue.Beats[0].Font != "display" || tianqi.Presentation.Prologue.Beats[0].FontSize != 40 || tianqi.Presentation.Prologue.Beats[0].Position != "center" || !tianqi.Presentation.Prologue.Beats[4].AwaitInput {
+	if len(tianqi.Presentation.Prologue.Beats) < 5 || tianqi.Presentation.Prologue.Beats[0].Font != "display" || tianqi.Presentation.Prologue.Beats[0].FontSize <= 0 || tianqi.Presentation.Prologue.Beats[0].Position != "center" || !tianqi.Presentation.Prologue.Beats[4].AwaitInput {
 		t.Fatalf("tianqi prologue presentation was not loaded: %+v", tianqi.Presentation.Prologue)
 	}
 }

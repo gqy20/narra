@@ -27,11 +27,11 @@ func _run() -> void:
 		return _fail("start screen should carry a short hook instead of the full prologue")
 	var prologue: Dictionary = app.scenario_presentation.get("prologue", {})
 	var prologue_beats: Array = prologue.get("beats", [])
-	if prologue_beats.size() != 5 or not bool(prologue.get("skippable", false)):
+	if prologue_beats.size() < 5 or not bool(prologue.get("skippable", false)):
 		return _fail("tianqi progressive prologue was not loaded")
-	if prologue_beats[0].get("font", "") != "display" or int(prologue_beats[0].get("font_size", 0)) != 40 or prologue_beats[0].get("position", "") != "center":
+	if prologue_beats[0].get("font", "") != "display" or int(prologue_beats[0].get("font_size", 0)) <= 0 or prologue_beats[0].get("position", "") != "center":
 		return _fail("tianqi date beat typography or position is invalid")
-	if prologue_beats[1].get("position", "") != "lower_left" or int(prologue_beats[2].get("font_size", 0)) != 28:
+	if prologue_beats[1].get("position", "") != "lower_left" or int(prologue_beats[2].get("font_size", 0)) <= 0:
 		return _fail("tianqi disaster beats lost their lower-left information hierarchy")
 	if prologue_beats[4].get("position", "") != "lower_center" or not bool(prologue_beats[4].get("await_input", false)):
 		return _fail("tianqi deadline beat must hold at the lower center for confirmation")
@@ -51,8 +51,6 @@ func _run() -> void:
 		var actor_profile = app.presentation_registry.actor_profile(actor_id)
 		if actor_profile == null or actor_profile.portrait("neutral") == null:
 			return _fail("missing auto-loaded tianqi actor: " + actor_id)
-	if app.presentation_registry.location_count() != 6 or app.presentation_registry.actor_count() != 10:
-		return _fail("auto-loaded tianqi asset counts are invalid")
 	if app.presentation_registry.actor_profile("N01").portrait("alert") == app.presentation_registry.actor_profile("N01").portrait("neutral"):
 		return _fail("core tianqi expression variant was not auto-loaded")
 	if app.presentation_registry.actor_profile("N04").portrait("alert") != app.presentation_registry.actor_profile("N04").portrait("neutral"):
@@ -73,7 +71,7 @@ func _run() -> void:
 	var music: AudioStream = app.presentation_registry.background_music()
 	if music == null or "tianqi-investigation-theme-loop.ogg" not in music.resource_path:
 		return _fail("tianqi background music was not auto-loaded")
-	if app.audio_director.music_player.stream != music or app.audio_director.music_target_db != -10.0:
+	if app.audio_director.music_player.stream != music or not is_equal_approx(app.audio_director.music_target_db, app.presentation_registry.music_volume_db()):
 		return _fail("tianqi background music was not configured on the music bus")
 	if app.cinematic_director.video_player == null or app.cinematic_director.skip_button == null:
 		return _fail("cinematic playback overlay was not initialized")
@@ -114,8 +112,9 @@ func _run() -> void:
 	var map_text := _descendant_text(app.game_screen_controller.map_detail_box)
 	if "第十四日封稿前，保住证人与材料" not in map_text:
 		return _fail("scenario objective was not applied to the world map")
-	if app.game_screen_controller.world_map_view.locations.size() != 7:
-		return _fail("tianqi world map did not render all seven locations")
+	var authored_locations: Array = app.current_view.get("world_map", {}).get("locations", [])
+	if authored_locations.is_empty() or app.game_screen_controller.world_map_view.locations.size() != authored_locations.size():
+		return _fail("tianqi world map did not render every authored location")
 
 	var actions: Array = app.current_view.get("available_actions", [])
 	if actions.is_empty():

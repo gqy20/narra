@@ -15,6 +15,7 @@ import (
 	"narra/internal/ai"
 	"narra/internal/app"
 	"narra/internal/scenario"
+	"narra/internal/testsupport"
 )
 
 func TestCommittedAPIContractMatchesResponseTypes(t *testing.T) {
@@ -40,7 +41,7 @@ func (serverDialogueProvider) GenerateDialogue(context.Context, ai.GenerationReq
 }
 
 func TestGameLifecycleAndSlotPersistence(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +88,7 @@ func TestGameLifecycleAndSlotPersistence(t *testing.T) {
 }
 
 func TestDialogueEndpointUsesModelWithoutChangingSession(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +121,7 @@ func TestDialogueEndpointUsesModelWithoutChangingSession(t *testing.T) {
 }
 
 func TestDialogueEndpointReportsUnavailableWithoutModel(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +136,7 @@ func TestDialogueEndpointReportsUnavailableWithoutModel(t *testing.T) {
 }
 
 func TestAISettingsEndpointReconfiguresDialogueWithoutRestartingGame(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +175,7 @@ func TestAISettingsEndpointReconfiguresDialogueWithoutRestartingGame(t *testing.
 }
 
 func TestSaveSlotsRejectPaths(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +189,7 @@ func TestSaveSlotsRejectPaths(t *testing.T) {
 }
 
 func TestShutdownRequiresTokenAndSignalsOnceAuthorized(t *testing.T) {
-	bundle, err := scenario.Load("../../data/blackwind")
+	bundle, err := scenario.Load(testsupport.OfficialWorldPath(t, "blackwind"))
 	if err != nil {
 		t.Fatal(err)
 	}
