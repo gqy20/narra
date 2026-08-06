@@ -1,7 +1,8 @@
 param(
     [string]$DataDirectory = "",
     [string]$OutputDirectory = "",
-    [string[]]$Resolutions = @("2048x1152")
+    [string[]]$Resolutions = @("2048x1152"),
+    [switch]$KnowledgeGraphOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -56,7 +57,9 @@ try {
             }
         }
         foreach ($resolution in $Resolutions) {
-            & $godot.Source --path $godotProject --disable-vsync --script res://demo/capture_ui_states.gd -- "--capture-output-dir=$screenshotDirectory" "--capture-label=$resolution"
+            $captureArguments = @("--capture-output-dir=$screenshotDirectory", "--capture-label=$resolution")
+            if ($KnowledgeGraphOnly) { $captureArguments += "--capture-stop-after=knowledge-graph" }
+            & $godot.Source --path $godotProject --disable-vsync --script res://demo/capture_ui_states.gd -- $captureArguments
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }

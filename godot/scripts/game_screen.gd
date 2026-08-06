@@ -17,6 +17,7 @@ var action_canvas: CanvasLayer
 var action_dock_host: Control
 var action_dock: PanelContainer
 var action_dock_title: Label
+var action_dock_status_box: HBoxContainer
 var objective_label: Label
 var location_detail_box: VBoxContainer
 var stage_people_box: HFlowContainer
@@ -111,6 +112,7 @@ func _build_interface() -> void:
 	action_dock_host = dashboard_refs.action_dock_host
 	action_dock = dashboard_refs.action_dock
 	action_dock_title = dashboard_refs.action_dock_title
+	action_dock_status_box = dashboard_refs.action_dock_status_box
 	objective_label = dashboard_refs.objective_label
 	location_detail_box = dashboard_refs.location_detail_box
 	stage_people_box = dashboard_refs.stage_people_box
@@ -180,6 +182,7 @@ func _render_view() -> void:
 	host.journal_panel_controller._render_scene(host.current_view.get("recent_events", []), guidance.slice(1), travel, host.current_view.get("last_turn", null), host.current_view.get("causal_threads", []), str(player.get("name", "旅人")))
 	host.journal_panel_controller._render_people(known_actors, host.available_actions_cache)
 	host.journal_panel_controller._render_travel_readiness(travel, host.current_view.get("preparation", {}))
+	host.journal_panel_controller._render_knowledge_graph(host.current_view.get("knowledge_graph", {}), host.available_actions_cache)
 	host.journal_panel_controller._render_journal_tab_states(known_facts, known_actors, travel, host.current_view.get("last_turn", null), host.available_actions_cache)
 	host.action_panel_controller._render_actions(host.available_actions_cache)
 	host.game_screen_controller._render_world_map(host.current_view.get("world_map", {}), location, host.available_actions_cache)
@@ -360,14 +363,13 @@ func _render_location_stage(location: Dictionary, actors: Array, actions: Array)
 	host.audio_director.set_scene(str(location.get("scene_key", "")))
 	host.game_screen_controller._render_actor_portrait(actors)
 	host.ui_factory.clear(location_detail_box)
+	host.ui_factory.clear(action_dock_status_box)
 	var phase_marker: String = str(host.presentation_registry.location_stage_label(str(location.get("scene_key", ""))))
-	var place_title = "%s" % ["安稳" if bool(location.get("safe", false)) else "险地"]
+	host.action_panel_controller._action_tag(action_dock_status_box, "安稳" if bool(location.get("safe", false)) else "险地", host.COLORS.accent if bool(location.get("safe", false)) else host.COLORS.danger)
 	if phase_marker != "":
-		place_title += " · %s" % phase_marker
+		host.action_panel_controller._action_tag(action_dock_status_box, phase_marker, host.COLORS.accent)
 	if not actors.is_empty():
-		place_title += " · 在场 %d 人" % actors.size()
-	var place_line = host.ui_factory.text(location_detail_box, place_title, false, 13)
-	place_line.add_theme_color_override("font_color", host.COLORS.accent)
+		host.action_panel_controller._action_tag(action_dock_status_box, "在场 %d 人" % actors.size(), host.COLORS.accent)
 	host.ui_factory.text(location_detail_box, str(location.get("atmosphere", location.get("description", ""))), true, 13)
 	host.game_screen_controller._render_stage_people(actors, actions)
 

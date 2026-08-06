@@ -86,6 +86,7 @@ func (s *Session) View() PlayerView {
 	view.Metrics = s.metricsView(state)
 	view.Preparation = s.preparationSummary(state)
 	view.RouteProgresses = s.routeProgresses(state)
+	view.KnowledgeGraph = knowledgeGraph(view)
 	return view
 }
 

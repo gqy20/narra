@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"strings"
 	"testing"
 
 	"narra/internal/domain"
@@ -30,7 +31,12 @@ func TestGenericInvestigationProducesAuditableKnowledge(t *testing.T) {
 		Interests: []string{"qingsuizhi"},
 		Beliefs:   []domain.Belief{{FactID: "F02", Claim: "青髓芝将在第24天成熟", Confidence: 1, Source: "坊市传言"}},
 	}
-	state, err := New(plannerBundle(t, npc, 2)).Run()
+	simulation := New(plannerBundle(t, npc, 2))
+	strategies := simulation.genericInvestigationStrategies(simulation.state.NPCs[npc.ID])
+	if len(strategies) != 1 || !strings.Contains(strategies[0].Description, "青髓芝将在第24天成熟") || strings.Contains(strategies[0].Description, "F02") {
+		t.Fatalf("investigation description leaks an internal fact id or loses the public claim: %+v", strategies)
+	}
+	state, err := simulation.Run()
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -49,6 +55,18 @@ func TestGenericInvestigationProducesAuditableKnowledge(t *testing.T) {
 		t.Fatalf("F02 was not corrected to verified truth: %#v", beliefs["F02"])
 	}
 	assertGeneratedAction(t, state, "verify")
+}
+
+func TestGenericInvestigationSkipsBeliefWithoutPublicClaim(t *testing.T) {
+	npc := domain.NPCConfig{
+		ID: "N01", Name: "调查者", Location: "L01", Resources: map[string]int{"combat": 5},
+		Interests: []string{"qingsuizhi"},
+		Beliefs:   []domain.Belief{{FactID: "F02", Confidence: 1, Source: "坊市传言"}},
+	}
+	simulation := New(plannerBundle(t, npc, 2))
+	if got := simulation.genericInvestigationStrategies(simulation.state.NPCs[npc.ID]); len(got) != 0 {
+		t.Fatalf("investigation without a public claim generated player-facing output: %+v", got)
+	}
 }
 
 func TestGenericInvestigationRespectsDiscoverableFlag(t *testing.T) {

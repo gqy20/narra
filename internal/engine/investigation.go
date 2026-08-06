@@ -21,7 +21,8 @@ func (e *Engine) genericInvestigationStrategies(npc *domain.NPCState) []domain.S
 	for _, factID := range factIDs {
 		belief := npc.Beliefs[factID]
 		fact, ok := e.bundle.Facts[factID]
-		if !ok || !fact.Discoverable || belief.Confidence < 1 || belief.Confidence >= 3 || !sharesTopic(npc.Interests, fact.Topics) {
+		publicClaim := strings.TrimSpace(belief.Claim)
+		if !ok || !fact.Discoverable || publicClaim == "" || belief.Confidence < 1 || belief.Confidence >= 3 || !sharesTopic(npc.Interests, fact.Topics) {
 			continue
 		}
 		strategyID := "generic-verify-" + factID
@@ -34,7 +35,7 @@ func (e *Engine) genericInvestigationStrategies(npc *domain.NPCState) []domain.S
 			effects = append(effects, domain.Effect{Type: "set_belief", FactID: lead.FactID, Confidence: lead.Confidence, Source: source})
 		}
 		strategies = append(strategies, domain.Strategy{
-			ID: strategyID, ActionID: rule.ActionID, Description: strings.NewReplacer("{actor}", npc.Name, "{fact}", factID).Replace(rule.Description),
+			ID: strategyID, ActionID: rule.ActionID, Description: strings.NewReplacer("{actor}", npc.Name, "{fact}", publicClaim).Replace(rule.Description),
 			Once: true, Generated: true, GoalTypes: append([]string(nil), rule.GoalTypes...),
 			Conditions: []domain.Condition{{Type: "belief", Key: factID, MinConfidence: 1}, {Type: "belief_max", Key: factID, MaxConfidence: 2}},
 			Score:      rule.Score,

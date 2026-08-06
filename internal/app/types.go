@@ -27,6 +27,35 @@ type PlayerView struct {
 	Travel           *TravelGuidance             `json:"travel,omitempty"`
 	Preparation      PreparationSummary          `json:"preparation"`
 	RouteProgresses  []RouteProgress             `json:"route_progresses,omitempty"`
+	KnowledgeGraph   KnowledgeGraph              `json:"knowledge_graph"`
+}
+
+type KnowledgeGraph struct {
+	Nodes []KnowledgeNode `json:"nodes"`
+	Edges []KnowledgeEdge `json:"edges"`
+}
+
+type KnowledgeNode struct {
+	ID        string            `json:"id"`
+	Kind      string            `json:"kind"`
+	Label     string            `json:"label"`
+	State     string            `json:"state,omitempty"`
+	Summary   string            `json:"summary,omitempty"`
+	Details   []KnowledgeDetail `json:"details,omitempty"`
+	ActionIDs []string          `json:"action_ids,omitempty"`
+}
+
+type KnowledgeDetail struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
+}
+
+type KnowledgeEdge struct {
+	SourceID string `json:"source_id"`
+	TargetID string `json:"target_id"`
+	Kind     string `json:"kind"`
+	Label    string `json:"label,omitempty"`
+	Status   string `json:"status,omitempty"`
 }
 
 type TurnFeedback struct {

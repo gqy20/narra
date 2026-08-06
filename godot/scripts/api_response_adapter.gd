@@ -41,7 +41,7 @@ func _validate_view(view: Dictionary) -> String:
 	for key in ["known_actors", "known_facts", "recent_events", "available_actions"]:
 		if not view.has(key) or not view[key] is Array:
 			return key
-	for key in ["player", "location", "world_map", "metrics", "preparation", "presentation"]:
+	for key in ["player", "location", "world_map", "metrics", "preparation", "presentation", "knowledge_graph"]:
 		if not view.has(key) or not view[key] is Dictionary:
 			return key
 	for key in ["causal_threads", "guidance", "route_progresses"]:

@@ -41,12 +41,10 @@ func _render_actor_dialogue_line(actor: Dictionary) -> void:
 	var content = VBoxContainer.new()
 	content.add_theme_constant_override("separation", 5)
 	panel.add_child(content)
-	var speaker = host.ui_factory.text(content, str(actor.get("name", host.focused_actor_name)), true, 13)
-	speaker.add_theme_color_override("font_color", host.COLORS.accent)
-	var utterance = "正在等待人物回应……"
+	var utterance = "等待回应"
 	var quote_line = false
 	if host.actor_dialogue_loading_id == host.focused_actor_id:
-		utterance = "正在等待人物回应……"
+		utterance = "等待回应"
 	elif host.actor_dialogue_by_id.has(host.focused_actor_id):
 		utterance = str(host.actor_dialogue_by_id[host.focused_actor_id].get("utterance", utterance))
 		quote_line = true

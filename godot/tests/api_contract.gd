@@ -9,13 +9,13 @@ func _initialize() -> void:
 			"scenario_id": "sample", "title": "Sample", "phase": "opening", "day": 1, "duration": 30,
 			"ended": false, "resolved": false, "known_actors": [], "known_facts": [], "recent_events": [],
 			"available_actions": [], "player": {}, "location": {}, "world_map": {}, "metrics": {},
-			"preparation": {}, "presentation": {},
+			"preparation": {}, "presentation": {}, "knowledge_graph": {"nodes": [], "edges": []},
 		},
 	}).to_utf8_buffer())
 	if not valid.get("ok", false):
 		return _fail("valid response was rejected")
 	var view: Dictionary = valid.get("payload", {}).get("view", {})
-	if view.get("scenario_id", "") != "sample" or not view.get("known_actors", null) is Array or not view.get("player", null) is Dictionary:
+	if view.get("scenario_id", "") != "sample" or not view.get("known_actors", null) is Array or not view.get("player", null) is Dictionary or not view.get("knowledge_graph", null) is Dictionary:
 		return _fail("valid player view changed during decoding")
 
 	var incomplete: Dictionary = adapter.decode(200, JSON.stringify({

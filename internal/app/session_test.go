@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -1067,6 +1068,49 @@ func TestDemoMessengerJourneyRecordsDeliveredInfluence(t *testing.T) {
 	}
 	if view.Metrics.VisibleDecisionChanges < 1 || view.Metrics.CoreResultDay != 21 || view.Metrics.DecisionInputs != 13 || view.Metrics.AutoAdvancedDays != 16 {
 		t.Fatalf("messenger metrics = %+v", view.Metrics)
+	}
+	assertNoInternalFactIDsInPlayerText(t, view)
+}
+
+func assertNoInternalFactIDsInPlayerText(t *testing.T, view PlayerView) {
+	t.Helper()
+	texts := []string{view.Outcome}
+	texts = append(texts, view.Guidance...)
+	for _, event := range view.RecentEvents {
+		texts = append(texts, event.Description)
+	}
+	for _, actor := range view.WorldMap.Actors {
+		texts = append(texts, actor.Plan, actor.Reason, actor.PreviousPlan)
+	}
+	appendInfluence := func(influences []VisibleInfluence) {
+		for _, influence := range influences {
+			texts = append(texts, influence.Summary)
+			for _, change := range influence.Changes {
+				texts = append(texts, change.WithoutInformation, change.WithInformation)
+			}
+		}
+	}
+	appendInfluence(view.CausalThreads)
+	if view.LastTurn != nil {
+		texts = append(texts, view.LastTurn.Action, view.LastTurn.StopReason)
+		texts = append(texts, view.LastTurn.Messages...)
+		texts = append(texts, view.LastTurn.Journal...)
+		appendInfluence(view.LastTurn.Influence)
+	}
+	if view.Ending != nil {
+		texts = append(texts, view.Ending.Outcome)
+		texts = append(texts, view.Ending.Coda...)
+		texts = append(texts, view.Ending.PlayerConsequences...)
+		texts = append(texts, view.Ending.Review...)
+		texts = append(texts, view.Ending.Highlights...)
+		texts = append(texts, view.Ending.ActorPlanChanges...)
+		appendInfluence(view.Ending.Influence)
+	}
+	internalFactID := regexp.MustCompile(`\bF\d{2,}\b`)
+	for _, text := range texts {
+		if internalFactID.MatchString(text) {
+			t.Fatalf("player-facing text leaked an internal fact id: %q", text)
+		}
 	}
 }
 

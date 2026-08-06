@@ -5,6 +5,7 @@ const DisplaySettingsScript = preload("res://scripts/display_settings.gd")
 const StartSettingsScreenScript = preload("res://scripts/start_settings_screen.gd")
 const GameScreenScript = preload("res://scripts/game_screen.gd")
 const JournalPanelScript = preload("res://scripts/journal_panel.gd")
+const KnowledgeGraphViewScript = preload("res://scripts/knowledge_graph_view.gd")
 const ActionPanelScript = preload("res://scripts/action_panel.gd")
 const DialoguePanelScript = preload("res://scripts/dialogue_panel.gd")
 const PresentationControllerScript = preload("res://scripts/presentation_controller.gd")
@@ -136,8 +137,8 @@ var journal_feedback_details_visible := false
 var journal_travel_details_visible := false
 var journal_seen_feedback_signature := ""
 var journal_current_feedback_signature := ""
-var journal_tab_labels: Array[String] = ["回响", "线索", "人物", "行装"]
-var journal_tab_colors: Array[Color] = [COLORS.muted, COLORS.muted, COLORS.muted, COLORS.muted]
+var journal_tab_labels: Array[String] = ["回响", "线索", "人物", "行装", "图谱"]
+var journal_tab_colors: Array[Color] = [COLORS.muted, COLORS.muted, COLORS.muted, COLORS.muted, COLORS.muted]
 var runtime_root := ""
 var logs_dir := ""
 var archived_logs_dir := ""
@@ -180,10 +181,15 @@ var journal_echo_button: Button
 var journal_clues_button: Button
 var journal_people_button: Button
 var journal_travel_button: Button
+var journal_graph_button: Button
 var clues_box: VBoxContainer
 var scene_box: VBoxContainer
 var people_box: VBoxContainer
 var travel_box: VBoxContainer
+var knowledge_graph_view: Control
+var knowledge_graph_scroll: ScrollContainer
+var knowledge_graph_detail_box: VBoxContainer
+var knowledge_graph_filter_buttons: Dictionary = {}
 var journal_feedback_details_box: VBoxContainer
 var journal_feedback_details_button: Button
 var journal_travel_details_box: VBoxContainer

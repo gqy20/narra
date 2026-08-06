@@ -134,7 +134,7 @@ func _run() -> void:
 		return _fail("route response workspace preselected an irreversible response")
 	app.action_panel_controller._select_focused_actor_action("route:trust:vouch")
 	route_text = _descendant_text(app.game_screen_controller.actor_focus_message_list) + _descendant_text(app.game_screen_controller.actor_focus_detail_box) + _descendant_text(app.game_screen_controller.actor_focus_footer)
-	if "你的回应" not in route_text or "为情报来源担保 · 确认" not in route_text:
+	if "你的回应" not in route_text or "为情报来源担保" not in route_text or "确认行动" not in route_text:
 		return _fail("route response workspace lacks the trust test and its stakes")
 	app.action_panel_controller._clear_action_focus()
 	if not await _execute("route:trust:vouch"):

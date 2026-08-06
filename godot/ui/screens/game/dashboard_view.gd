@@ -52,6 +52,10 @@ func build(root: Control, parent: VBoxContainer, factory, dependencies: Dictiona
 	action_dock_title.add_theme_color_override("font_color", colors.accent)
 	action_dock_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(action_dock_title)
+	var action_dock_status_box := HBoxContainer.new()
+	action_dock_status_box.name = "LocationStatusHeader"
+	action_dock_status_box.add_theme_constant_override("separation", 6)
+	title_row.add_child(action_dock_status_box)
 	var objective_label := Label.new()
 	objective_label.text = "风声未定，先看清眼前的人和路。"
 	objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -119,6 +123,7 @@ func build(root: Control, parent: VBoxContainer, factory, dependencies: Dictiona
 	refs.merge({
 		"action_canvas": action_canvas, "action_dock_host": action_dock_host,
 		"action_dock": action_dock, "action_dock_title": action_dock_title,
+		"action_dock_status_box": action_dock_status_box,
 		"objective_label": objective_label, "location_detail_box": location_detail_box,
 		"stage_people_box": stage_people_box, "overview_actions_box": overview_actions_box,
 		"actor_focus_workspace": actor_focus_workspace,

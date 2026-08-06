@@ -277,15 +277,16 @@ func set_buttons_disabled(node: Node, disabled: bool) -> void:
 
 
 func status_chip(parent: Container, value: String, color: Color) -> void:
-	var panel := PanelContainer.new()
-	var style := panel_style(Color(colors.panel_alt, 0.46), 0, 2, Color.TRANSPARENT, 9, 5)
-	style.border_width_left = 2
-	style.border_color = Color(color, 0.72)
-	panel.add_theme_stylebox_override("panel", style)
-	parent.add_child(panel)
+	if parent.get_child_count() > 0:
+		var separator := Label.new()
+		separator.text = "·"
+		separator.add_theme_font_override("font", body_font)
+		separator.add_theme_font_size_override("font_size", type_scale.meta)
+		separator.add_theme_color_override("font_color", Color(colors.muted, 0.58))
+		parent.add_child(separator)
 	var label := Label.new()
 	label.text = value
-	label.add_theme_font_override("font", medium_font)
+	label.add_theme_font_override("font", body_font)
 	label.add_theme_font_size_override("font_size", type_scale.meta)
-	label.add_theme_color_override("font_color", color)
-	panel.add_child(label)
+	label.add_theme_color_override("font_color", Color(color, 0.92))
+	parent.add_child(label)

@@ -281,6 +281,108 @@
         "highlights"
       ]
     },
+    "KnowledgeDetail": {
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "label",
+        "value"
+      ]
+    },
+    "KnowledgeEdge": {
+      "properties": {
+        "source_id": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "source_id",
+        "target_id",
+        "kind"
+      ]
+    },
+    "KnowledgeGraph": {
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/KnowledgeNode"
+          },
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/KnowledgeEdge"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "nodes",
+        "edges"
+      ]
+    },
+    "KnowledgeNode": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "details": {
+          "items": {
+            "$ref": "#/$defs/KnowledgeDetail"
+          },
+          "type": "array"
+        },
+        "action_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "label"
+      ]
+    },
     "LocationPresentation": {
       "properties": {
         "profile": {
@@ -465,6 +567,9 @@
             "$ref": "#/$defs/RouteProgress"
           },
           "type": "array"
+        },
+        "knowledge_graph": {
+          "$ref": "#/$defs/KnowledgeGraph"
         }
       },
       "additionalProperties": false,
@@ -486,7 +591,8 @@
         "recent_events",
         "available_actions",
         "metrics",
-        "preparation"
+        "preparation",
+        "knowledge_graph"
       ]
     },
     "PreparationFactor": {

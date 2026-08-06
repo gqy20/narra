@@ -91,8 +91,14 @@ func _run() -> void:
 	app.game_screen_controller._set_visual_mode("location")
 	var action_text := _descendant_text(app.game_screen_controller.overview_actions_box)
 	var contextual_actions: Array = app.action_panel_controller._location_context_actions(actions)
-	if contextual_actions.is_empty() or str(contextual_actions[0].get("name", "")) not in action_text or "01 · " not in action_text or "日" not in action_text or "起手可选" in action_text or "查证与探索" in action_text or app.active_action_category != "":
+	if contextual_actions.is_empty() or str(contextual_actions[0].get("name", "")) not in action_text or "耗时" not in action_text or "01 · " in action_text or "起手可选" in action_text or "查证与探索" in action_text or app.active_action_category != "":
 		return _fail("contextual action cards did not preserve the reduced title, timing, and outcome hierarchy")
+	var overview_action_header: Node = _hbox_with_text(app.game_screen_controller.overview_actions_box, "耗时")
+	if not overview_action_header is HBoxContainer:
+		return _fail("contextual action title and duration are not kept on one row")
+	var location_status_text := _descendant_text(app.game_screen_controller.action_dock_status_box)
+	if not app.game_screen_controller.action_dock_status_box.visible or "安稳" not in location_status_text or "在场 4 人" not in location_status_text:
+		return _fail("location title does not own its safety and attendance status")
 	if not app.game_screen_controller.overview_actions_box.visible or app.game_screen_controller.fact_action_scroll.visible or app.game_screen_controller.actor_focus_workspace.visible:
 		return _fail("default location state is not the compact non-scrolling overview")
 	if str(app.game_screen_controller.location_stage.location.get("scene_key", "")) != "market":
@@ -137,8 +143,19 @@ func _run() -> void:
 	if app.game_screen_controller.actor_portrait_name.text != "魏无咎" or not app.game_screen_controller.location_panel.visible:
 		return _fail("actor selection did not update the visible stage caption")
 	var actor_focus_text := _descendant_text(app.game_screen_controller.actor_focus_message_list) + _descendant_text(app.game_screen_controller.actor_focus_detail_box) + _descendant_text(app.game_screen_controller.actor_focus_footer)
-	if not app.game_screen_controller.actor_focus_workspace.visible or app.game_screen_controller.fact_action_scroll.visible or "选择要传达的话" not in actor_focus_text or "传播风险" not in actor_focus_text or "送出后不可撤回" not in actor_focus_text:
+	if not app.game_screen_controller.actor_focus_workspace.visible or app.game_screen_controller.fact_action_scroll.visible or "选择线索" not in actor_focus_text or "相关性" not in actor_focus_text or "可能结果" not in actor_focus_text or "传播风险" not in actor_focus_text or "确认告知" not in actor_focus_text or "送出后不可撤回" not in actor_focus_text:
 		return _fail("actor focus does not expose selection, decision context, and fixed commitment footer")
+	var risk_header: Node = app.game_screen_controller.actor_focus_detail_box.find_child("RiskHeader", true, false)
+	if not risk_header is HBoxContainer or "传播风险" not in _descendant_text(risk_header):
+		return _fail("actor focus does not use a single-row risk header")
+	var relevance_header: Node = _hbox_with_text(app.game_screen_controller.actor_focus_detail_box, "相关性")
+	var timing_header: Node = _hbox_with_text(app.game_screen_controller.actor_focus_detail_box, "传播时机")
+	if not relevance_header is HBoxContainer or "相关性" not in _descendant_text(relevance_header):
+		return _fail("actor focus does not keep relevance metadata on one labeled row")
+	if timing_header != null and (not timing_header is HBoxContainer or "传播时机" not in _descendant_text(timing_header)):
+		return _fail("actor focus timing metadata is not kept on one labeled row")
+	if "选择要传达的话" in actor_focus_text or "◆" in actor_focus_text or "✦" in actor_focus_text:
+		return _fail("actor focus still uses verbose selection copy or ambiguous glyph markers")
 	if not app.game_screen_controller.actor_focus_detail_scroll.visible or app.game_screen_controller.action_dock_title.text != "魏无咎":
 		return _fail("populated actor focus did not keep a single actor title and its decision detail")
 	if app.game_screen_controller.location_detail_box.visible or app.game_screen_controller.stage_people_box.visible:
@@ -146,7 +163,7 @@ func _run() -> void:
 	app.action_panel_controller._render_actions([])
 	await process_frame
 	var actor_empty_text := _descendant_text(app.game_screen_controller.actor_focus_message_list) + _descendant_text(app.game_screen_controller.actor_focus_detail_box)
-	if "暂无可传达的新消息" not in actor_empty_text or "查看人物卷宗" not in actor_empty_text or "选择要传达的话" in actor_empty_text or app.game_screen_controller.actor_focus_detail_scroll.visible or app.game_screen_controller.actor_focus_footer.visible:
+	if "暂无可传达的新消息" not in actor_empty_text or "查看人物卷宗" not in actor_empty_text or "选择线索" in actor_empty_text or app.game_screen_controller.actor_focus_detail_scroll.visible or app.game_screen_controller.actor_focus_footer.visible:
 		return _fail("actor focus empty state did not collapse to one clear message and next step: detail=%s footer=%s text=%s" % [app.game_screen_controller.actor_focus_detail_scroll.visible, app.game_screen_controller.actor_focus_footer.visible, actor_empty_text])
 	app.action_panel_controller._render_actions(actions)
 	await process_frame
@@ -204,30 +221,112 @@ func _run() -> void:
 	app.journal_panel_controller._open_journal()
 	if not app.journal_layer.visible or app.game_screen_controller.action_canvas.visible or app.player_summary_label.visible or app.player_resources_box.visible:
 		return _fail("journal overview repeats the player summary outside the gear section")
-	if app.journal_tabs.get_tab_count() != 4 or app.journal_travel_button.text != "行装 !2":
-		return _fail("travel dossier does not expose four layered sections with blocking gear status")
+	if app.journal_tabs.get_tab_count() != 5 or app.journal_travel_button.text != "行装 · 缺 2" or app.journal_graph_button.text != "图谱":
+		return _fail("travel dossier does not expose its layered sections and knowledge graph")
+	for tab_index in app.journal_tabs.get_tab_count():
+		app.journal_panel_controller._select_journal_tab(tab_index)
+		await process_frame
+		if app.journal_panel.anchor_left > 0.051 or app.journal_panel.anchor_right < 0.991:
+			return _fail("journal sibling tabs do not share the same near-fullscreen frame")
 	app.journal_panel_controller._select_journal_tab(1)
 	var clue_text := _descendant_text(app.clues_box)
 	if "待核验" not in clue_text or "条已知" in clue_text:
 		return _fail("material summary repeats the tab total instead of prioritizing unresolved work")
+	var clue_header: Node = _hbox_with_text(app.clues_box, "待核验")
+	if not clue_header is HBoxContainer or "待核验" not in _descendant_text(clue_header):
+		return _fail("clue claim, confidence, and source are not kept on one row")
 	app.journal_panel_controller._select_journal_tab(2)
 	var people_text := _descendant_text(app.people_box)
-	if "局势追踪" not in people_text or "核心人物 3" not in people_text or "目标" not in people_text or "计划" not in people_text or "缘由" not in people_text:
-		return _fail("people dossier does not explain autonomous actor goals and plans")
+	if "局势人物" not in people_text or "青岚门驻地 · 3 人观望" not in people_text or "观察各方动向" not in people_text or "此地人物" not in people_text or "可交谈 4" not in people_text:
+		return _fail("people dossier does not separate shared world plans from local conversation choices: " + people_text)
+	var local_people_header: Node = app.people_box.find_child("LocalPeopleHeader", true, false)
+	if not local_people_header is HBoxContainer or "此地人物" not in _descendant_text(local_people_header) or "在场 4" not in _descendant_text(local_people_header) or "可交谈 4" not in _descendant_text(local_people_header):
+		return _fail("people dossier does not keep the local title and availability counts on one row")
+	var situation_header: Node = _hbox_with_text(app.people_box, "观察各方动向")
+	var actor_summary_header: Node = _hbox_with_text(app.people_box, "关注")
+	if not situation_header is HBoxContainer or "观察各方动向" not in _descendant_text(situation_header) or not actor_summary_header is HBoxContainer or "关注" not in _descendant_text(actor_summary_header):
+		return _fail("people dossier still separates summary titles from their status tags")
+	if people_text.count("观察各方动向") != 1 or people_text.count("尚未掌握足以改变公开安排的可靠消息") != 1 or "目标 ·" in people_text or "计划 ·" in people_text or "缘由 ·" in people_text:
+		return _fail("people dossier still repeats shared plan fields or exposes flat field labels: " + people_text)
 	if app.player_summary_label.visible or app.player_resources_box.visible:
 		return _fail("people dossier still competes with the player gear summary")
 	app.journal_panel_controller._select_journal_tab(3)
 	var player_metrics := _descendant_text(app.player_resources_box)
 	if not app.player_summary_label.visible or not app.player_resources_box.visible or "战力 2" not in player_metrics or "灵石 100" not in player_metrics or "助力 0" in player_metrics or "伤势 0" in player_metrics:
 		return _fail("gear section did not own the compact player summary")
+	if _descendant_type_count(app.player_resources_box, "PanelContainer") > 0 or player_metrics.count("·") < 3:
+		return _fail("gear resources still use boxed chips or unexplained accent bars")
+	if app.player_summary_label.get_parent() != app.player_resources_box.get_parent() or not app.player_summary_label.get_parent() is HBoxContainer:
+		return _fail("gear section does not keep player identity and resources on one row")
 	var travel_text := _descendant_text(app.travel_box)
-	if app.journal_tabs.current_tab != 3 or "仍缺 2 项才能成行" not in travel_text or "缺少 · 解瘴丹" not in travel_text or "购买解瘴丹 · 灵石 20" not in travel_text or "入口尚未开放" not in travel_text or "你的争夺准备" not in travel_text or "助力 0 · 当前尚未建立" not in travel_text:
+	if app.journal_tabs.current_tab != 3 or app.journal_travel_button.text != "行装" or "尚缺 2 项" not in travel_text or "缺少 · 解瘴丹" not in travel_text or "购买解瘴丹 · 灵石 20" not in travel_text or "入口尚未开放" not in travel_text or "准备度" not in travel_text or "查看路线与依据" not in travel_text:
 		return _fail("gear section does not prioritize blocking preparation: " + travel_text)
+	var preparation_header: Node = _hbox_with_text(app.travel_box, "准备度")
+	if not preparation_header is HBoxContainer or "准备度" not in _descendant_text(preparation_header) or "2 / 6" not in _descendant_text(preparation_header) or "明显不足" not in _descendant_text(preparation_header):
+		return _fail("gear readiness title, score, and rating are not kept on one row")
+	var blocker_list: Node = app.travel_box.find_child("TravelBlockerList", true, false)
+	var preparation_section: Node = app.travel_box.find_child("PreparationSection", true, false)
+	if not blocker_list is VBoxContainer or _descendant_type_count(blocker_list, "PanelContainer") > 0 or not preparation_section is VBoxContainer or _descendant_type_count(preparation_section, "PanelContainer") > 0:
+		return _fail("gear blockers or readiness still use nested information cards")
+	if "仍缺 2 项才能成行" in travel_text or "你的争夺准备" in travel_text or "综合准备" in travel_text:
+		return _fail("gear section still uses repetitive or system-like preparation copy: " + travel_text)
 	if app.journal_travel_details_box.visible:
 		return _fail("gear section exposes completed checks before the player asks")
 	app.journal_panel_controller._toggle_journal_travel_details()
 	if not app.journal_travel_details_box.visible or "路线已发现" not in travel_text:
 		return _fail("gear section cannot reveal completed checks on demand")
+	var route_header: Node = _hbox_with_text(app.journal_travel_details_box, "路线已发现")
+	if not route_header is HBoxContainer or "路线已发现" not in _descendant_text(route_header):
+		return _fail("expanded route title and readiness state are not kept on one row")
+	app.journal_panel_controller._select_journal_tab(4)
+	await process_frame
+	var graph_text := _descendant_text(app.knowledge_graph_detail_box)
+	if app.journal_tabs.current_tab != 4 or app.journal_panel.anchor_left > 0.051 or app.knowledge_graph_view.visible_node_count() == 0:
+		return _fail("knowledge graph did not open as a wide, populated dossier view")
+	if "待核验" not in graph_text or "第1日获知" not in graph_text or "F02" in graph_text:
+		return _fail("knowledge graph detail either lacks player-facing context or leaks an internal fact id: " + graph_text)
+	if graph_text.begins_with("说法\n") or "这是玩家当前掌握的说法" in graph_text or "来源\n" in graph_text or "获知时间\n" in graph_text or "可以继续" in graph_text:
+		return _fail("knowledge graph detail still exposes redundant field labels or system explanation: " + graph_text)
+	if "第1日获知" not in graph_text or "相关人物" not in graph_text or "下一步" not in graph_text or "告知对象" not in graph_text or "核验这条线索" not in graph_text:
+		return _fail("knowledge graph detail does not follow conclusion, provenance, relations, action hierarchy: " + graph_text)
+	if "相关说法" in graph_text or "核验这条说法" in graph_text or "告知人物" in graph_text:
+		return _fail("knowledge graph still mixes player-facing clue terminology with internal claim terminology: " + graph_text)
+	if "可告知" in graph_text:
+		return _fail("knowledge graph detail repeats actionable relation labels instead of grouping actions: " + graph_text)
+	var selected_claim_id := str(app.knowledge_graph_view.selected_node().get("id", ""))
+	app.journal_panel_controller._select_graph_filter("claim")
+	await process_frame
+	var relation_button: Button = _knowledge_relation_button(app.knowledge_graph_detail_box)
+	if not relation_button:
+		return _fail("knowledge graph relation did not render as a focusable navigation control")
+	if relation_button.text.begins_with("人　") or relation_button.text.begins_with("说　") or relation_button.text.begins_with("事　") or relation_button.text.begins_with("地　"):
+		return _fail("knowledge graph relation repeats the type already expressed by its section heading")
+	var relation_id := str(relation_button.get_meta("knowledge_relation_id", ""))
+	relation_button.pressed.emit()
+	await process_frame
+	if relation_id == "" or str(app.knowledge_graph_view.selected_node().get("id", "")) != relation_id or app.knowledge_graph_view.active_filter != "all":
+		return _fail("knowledge graph relation control did not switch focus and reveal the related node")
+	app.journal_panel_controller._focus_knowledge_node(selected_claim_id)
+	await process_frame
+	var checked_edge_path := false
+	for edge in app.knowledge_graph_view.edges:
+		var source_id := str(edge.get("source_id", ""))
+		var target_id := str(edge.get("target_id", ""))
+		if not app.knowledge_graph_view.node_rects.has(source_id) or not app.knowledge_graph_view.node_rects.has(target_id):
+			continue
+		var source_rect: Rect2 = app.knowledge_graph_view.node_rects[source_id]
+		var target_rect: Rect2 = app.knowledge_graph_view.node_rects[target_id]
+		var edge_path: PackedVector2Array = app.knowledge_graph_view._edge_path(source_rect, target_rect)
+		if edge_path.size() != 25 or source_rect.has_point(edge_path[0]) or target_rect.has_point(edge_path[edge_path.size() - 1]):
+			return _fail("knowledge graph edge path does not terminate outside node cards")
+		checked_edge_path = true
+		break
+	if not checked_edge_path:
+		return _fail("knowledge graph did not expose a visible edge path for layout regression")
+	app.journal_panel_controller._select_graph_filter("actor")
+	if app.knowledge_graph_view.active_filter != "actor" or app.knowledge_graph_view.visible_node_count() != app.current_view.get("known_actors", []).size():
+		return _fail("knowledge graph actor filter does not match visible actors")
+	app.journal_panel_controller._select_graph_filter("all")
 	app.journal_panel_controller._select_journal_tab(0)
 	app.journal_panel_controller._close_journal()
 	if app.journal_layer.visible or app.game_screen_controller.action_canvas.visible != (app.visual_mode == "location"):
@@ -259,7 +358,8 @@ func _run() -> void:
 			app.action_panel_controller._toggle_confirmation_details()
 			if not app.confirmation_details_box.visible:
 				return _fail("confirmation reasoning disclosure cannot be opened")
-			if "仍未知" not in _descendant_text(app.confirmation_details_box):
+			var reasoning_text := _descendant_text(app.confirmation_details_box)
+			if "执行判断" not in reasoning_text or "仍未知" not in reasoning_text:
 				return _fail("confirmation does not expose uncertainty separately")
 			app.action_panel_controller._cancel_confirmation()
 			break
@@ -280,6 +380,37 @@ func _run() -> void:
 	var confirmation_text := _descendant_text(app.confirmation_box) + _descendant_text(app.confirmation_actions_box)
 	if "时机与消耗" not in confirmation_text or "风险与承诺" not in confirmation_text or "时机与代价" in confirmation_text or "按约赴会" not in _descendant_text(app.confirmation_actions_box):
 		return _fail("confirmation hierarchy does not separate neutral context from actual risk")
+	var confirmation_context_header: Node = _hbox_with_text(app.confirmation_box, "时机与消耗")
+	if not confirmation_context_header is HBoxContainer or "明日抵达" not in _descendant_text(confirmation_context_header) or "灵石 5" not in _descendant_text(confirmation_context_header):
+		return _fail("confirmation timing and costs are not kept in the context title row")
+	app.action_panel_controller._cancel_confirmation()
+	var tell_probe := {
+		"id": "test:tell-hierarchy",
+		"name": "告知某人一条线索",
+		"kind": "tell",
+		"target_name": "某人",
+		"target_role": "知情者",
+		"fact_claim": "一条待核验的线索",
+		"relevance": "直接相关 · 对方公开关注：线索去向",
+		"risk": "未经核验，可能改变对方行动。",
+		"timing": "时机 · 传闻口径 · 行动后预留 2 日抵达",
+		"expected_outcomes": ["对方获得这条线索"],
+		"known_conditions": ["对方就在此地", "你持有这条线索"],
+		"unknowns": ["对方是否采用消息"],
+		"completion_day": 1,
+		"warnings": ["线索尚未核实"],
+		"irreversible": true,
+	}
+	app.action_panel_controller._consider_action(tell_probe)
+	var tell_confirmation_text := _descendant_text(app.confirmation_box)
+	if "人物与线索" in tell_confirmation_text or "传闻口径" not in tell_confirmation_text or "预计 2 日后抵达" not in tell_confirmation_text:
+		return _fail("tell confirmation does not expose a compact person, clue, and timing summary")
+	app.action_panel_controller._toggle_confirmation_details()
+	var tell_reasoning_text := _descendant_text(app.confirmation_details_box)
+	if "执行判断" not in tell_reasoning_text or "对方情况" not in tell_reasoning_text or "相关性" not in tell_reasoning_text or tell_reasoning_text.count("直接相关") != 1:
+		return _fail("tell reasoning does not use the two-column hierarchy or repeats relevance labels")
+	if tell_confirmation_text.count("对方获得这条线索") != 1 or tell_confirmation_text.count("预计 2 日后抵达") != 1 or "人物\n某人" in tell_reasoning_text:
+		return _fail("tell confirmation repeats its result, timing, or person field label")
 	app.action_panel_controller._cancel_confirmation()
 
 	app.action_panel_controller._consider_action(actions[0])
@@ -352,6 +483,33 @@ func _descendant_text(node: Node) -> String:
 	for child in node.get_children():
 		result += _descendant_text(child)
 	return result
+
+
+func _hbox_with_text(node: Node, expected_text: String) -> HBoxContainer:
+	for child in node.get_children():
+		var found := _hbox_with_text(child, expected_text)
+		if found:
+			return found
+	if node is HBoxContainer and expected_text in _descendant_text(node):
+		return node
+	return null
+
+
+func _descendant_type_count(node: Node, class_type: String) -> int:
+	var count := 1 if node.is_class(class_type) else 0
+	for child in node.get_children():
+		count += _descendant_type_count(child, class_type)
+	return count
+
+
+func _knowledge_relation_button(node: Node) -> Button:
+	if node is Button and node.has_meta("knowledge_relation_id"):
+		return node
+	for child in node.get_children():
+		var found := _knowledge_relation_button(child)
+		if found:
+			return found
+	return null
 
 
 func _fail(message: String) -> void:

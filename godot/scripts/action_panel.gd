@@ -20,17 +20,17 @@ func _build_confirmation_layer() -> void:
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.confirmation_layer.add_child(shade)
 	var card = PanelContainer.new()
-	card.anchor_left = 0.10
-	card.anchor_right = 0.68
-	card.anchor_top = 0.30
-	card.anchor_bottom = 0.93
-	var confirmation_style = host.ui_factory.panel_style(host.AppVisualThemeScript.alpha8(host.COLORS.surface_dock, 0xf8), 0, 2, Color.TRANSPARENT, 34, 26)
+	card.anchor_left = 0.08
+	card.anchor_right = 0.92
+	card.anchor_top = 0.08
+	card.anchor_bottom = 0.96
+	var confirmation_style = host.ui_factory.panel_style(host.AppVisualThemeScript.alpha8(host.COLORS.surface_dock, 0xf8), 0, 2, Color.TRANSPARENT, 26, 20)
 	confirmation_style.border_width_left = 3
 	confirmation_style.border_color = host.COLORS.accent
 	card.add_theme_stylebox_override("panel", confirmation_style)
 	host.confirmation_layer.add_child(card)
 	var card_content = VBoxContainer.new()
-	card_content.add_theme_constant_override("separation", 12)
+	card_content.add_theme_constant_override("separation", 10)
 	card.add_child(card_content)
 	var confirmation_scroll = ScrollContainer.new()
 	confirmation_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -38,7 +38,7 @@ func _build_confirmation_layer() -> void:
 	card_content.add_child(confirmation_scroll)
 	host.confirmation_box = VBoxContainer.new()
 	host.confirmation_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	host.confirmation_box.add_theme_constant_override("separation", 12)
+	host.confirmation_box.add_theme_constant_override("separation", 10)
 	confirmation_scroll.add_child(host.confirmation_box)
 	var action_rule = HSeparator.new()
 	action_rule.modulate = Color(host.COLORS.accent, 0.26)
@@ -62,6 +62,8 @@ func _render_actions(actions: Array) -> void:
 	if screen.stage_people_box:
 		screen.stage_people_box.visible = not has_action_focus
 	screen.overview_actions_box.visible = not has_action_focus
+	if screen.action_dock_status_box:
+		screen.action_dock_status_box.visible = not has_action_focus
 	screen.actor_focus_workspace.visible = host.focused_actor_id != ""
 	screen.actor_focus_footer.visible = host.focused_actor_id != "" and not focused_actions.is_empty()
 	screen.fact_action_scroll.visible = host.focused_fact_id != ""
@@ -117,7 +119,7 @@ func _configure_action_dock_layout(has_action_focus: bool) -> void:
 	screen.action_dock.add_theme_stylebox_override("panel", dock_style)
 
 
-func _add_overview_choice(action: Dictionary, index: int) -> void:
+func _add_overview_choice(action: Dictionary, _index: int) -> void:
 	var label = str(action.get("name", "做一件事"))
 	var card := PanelContainer.new()
 	var card_style = host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.28), 0, 2, Color.TRANSPARENT, 10, 7)
@@ -128,14 +130,19 @@ func _add_overview_choice(action: Dictionary, index: int) -> void:
 	var content := VBoxContainer.new()
 	content.add_theme_constant_override("separation", 3)
 	card.add_child(content)
-	var meta = host.ui_factory.text(content, "%02d · %d日" % [index + 1, int(action.get("duration", 1))], true, host.TYPE_SCALE.meta)
-	meta.add_theme_color_override("font_color", host.COLORS.accent)
 	var outcomes = host.action_panel_controller._joined_action_values(action.get("expected_outcomes", []))
 	var callback = host.action_panel_controller._consider_action.bind(action, "wait:complete") if action.get("kind", "") == "cultivate" else host.action_panel_controller._consider_action.bind(action)
+	var action_header := HBoxContainer.new()
+	action_header.name = "OverviewActionHeader"
+	action_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_header.add_theme_constant_override("separation", 8)
+	content.add_child(action_header)
 	var button = host.ui_factory.action_button(label, callback)
 	button.custom_minimum_size.y = 44
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.tooltip_text = "%s\n%s" % [action.get("description", ""), action.get("timing", "")]
-	content.add_child(button)
+	action_header.add_child(button)
+	host.action_panel_controller._action_tag(action_header, "耗时 %d 日" % int(action.get("duration", 1)), host.COLORS.accent)
 	if outcomes != "":
 		var outcome = host.ui_factory.text(content, outcomes, true, host.TYPE_SCALE.compact)
 		outcome.add_theme_color_override("font_color", host.COLORS.muted)
@@ -176,7 +183,7 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 		journal_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		empty_content.add_child(journal_button)
 		return
-	var workspace_heading = "回应路线考验" if has_route_response else ("选择交换条件" if has_terms else "选择要传达的话")
+	var workspace_heading = "回应路线考验" if has_route_response else ("选择交换条件" if has_terms else "选择线索")
 	var heading = host.ui_factory.text(screen.actor_focus_message_list, workspace_heading, true, host.TYPE_SCALE.meta)
 	heading.add_theme_color_override("font_color", host.COLORS.accent)
 	var focused_choice = host.action_panel_controller._resolve_focused_actor_action(focused_actions)
@@ -186,13 +193,11 @@ func _render_actor_focus_workspace(focused_actions: Array) -> void:
 		suggested_action_ids = raw_suggested_action_ids
 	for action in focused_actions:
 		var action_id = str(action.get("id", ""))
-		var claim = str(action.get("term_label", ""))
-		if claim == "":
-			claim = str(action.get("fact_claim", action.get("name", "一条消息")))
+		var claim: String = host.action_panel_controller._focused_action_label(action, true)
 		var selected = action_id == str(focused_choice.get("id", ""))
 		var suggested = action_id in suggested_action_ids
-		var prefix = "◆  " if selected else ("✦  " if suggested else "　")
-		var button = host.ui_factory.action_button(prefix + claim, host.action_panel_controller._select_focused_actor_action.bind(action_id))
+		var choice_label = "已选　%s" % claim if selected else ("建议　%s" % claim if suggested else claim)
+		var button = host.ui_factory.action_button(choice_label, host.action_panel_controller._select_focused_actor_action.bind(action_id))
 		if suggested:
 			button.tooltip_text = "模型建议；仍需由你确认执行"
 		button.custom_minimum_size.y = 46
@@ -231,49 +236,145 @@ func _select_focused_actor_action(action_id: String) -> void:
 
 func _render_actor_focus_detail(action: Dictionary) -> void:
 	if action.is_empty():
-		var prompt = host.ui_factory.text(screen.actor_focus_detail_box, "先选择一种回应", false, 22)
+		var prompt = host.ui_factory.text(screen.actor_focus_detail_box, "先选择一种回应", false, host.TYPE_SCALE.headline)
 		prompt.add_theme_color_override("font_color", host.COLORS.accent)
-		host.ui_factory.text(screen.actor_focus_detail_box, "这些选择会改变路线与人物关系。系统不会替你预选不可撤回的决定。", true, 15)
+		host.ui_factory.text(screen.actor_focus_detail_box, "这些选择会改变路线与人物关系。系统不会替你预选不可撤回的决定。", true, host.TYPE_SCALE.compact)
 		return
-	var claim = str(action.get("fact_claim", action.get("name", "一条消息")))
-	if action.get("kind", "") == "route":
-		claim = str(action.get("name", "回应眼前局势"))
-	var title = host.ui_factory.text(screen.actor_focus_detail_box, claim, false, 19)
+	var claim: String = host.action_panel_controller._focused_action_label(action)
+	var title = host.ui_factory.text(screen.actor_focus_detail_box, claim, false, host.TYPE_SCALE.section)
 	title.add_theme_color_override("font_color", host.COLORS.accent)
 	var term_label = str(action.get("term_label", ""))
 	if term_label != "":
 		var term_prefix = "你的回应" if action.get("kind", "") == "route" else "你提出的条件"
-		var term_heading = host.ui_factory.text(screen.actor_focus_detail_box, "%s · %s" % [term_prefix, term_label], true, host.TYPE_SCALE.meta)
-		term_heading.add_theme_color_override("font_color", host.COLORS.accent)
-		host.ui_factory.text(screen.actor_focus_detail_box, str(action.get("personal_outcome", action.get("description", ""))), false, 15)
+		host.action_panel_controller._render_action_tag_row(screen.actor_focus_detail_box, [term_prefix, term_label], host.COLORS.accent)
+		host.ui_factory.text(screen.actor_focus_detail_box, str(action.get("personal_outcome", action.get("description", ""))), false, host.TYPE_SCALE.compact)
 	var relevance = str(action.get("relevance", "尚不了解这条消息会在对方心里留下什么"))
-	var impact_heading = host.ui_factory.text(screen.actor_focus_detail_box, "他为何在意", true, host.TYPE_SCALE.meta)
-	impact_heading.add_theme_color_override("font_color", host.COLORS.accent)
-	host.ui_factory.text(screen.actor_focus_detail_box, relevance, false, 15)
+	host.action_panel_controller._action_header_row(screen.actor_focus_detail_box, "相关性", host.COLORS.accent, host.action_panel_controller._action_detail_tags(relevance), "RelevanceHeader")
 	var outcomes = host.action_panel_controller._joined_action_values(action.get("expected_outcomes", []))
-	var outcome_heading = host.ui_factory.text(screen.actor_focus_detail_box, "可能影响", true, host.TYPE_SCALE.meta)
-	outcome_heading.add_theme_color_override("font_color", host.COLORS.accent)
-	host.ui_factory.text(screen.actor_focus_detail_box, outcomes if outcomes != "" else str(action.get("description", "影响仍待局势验证")), false, 15)
-	var risk_heading = host.ui_factory.text(screen.actor_focus_detail_box, "传播风险", true, host.TYPE_SCALE.meta)
-	risk_heading.add_theme_color_override("font_color", host.COLORS.accent)
-	host.ui_factory.text(screen.actor_focus_detail_box, str(action.get("risk", "尚未发现明确风险")), false, 15)
+	var outcome_card = host.action_panel_controller._action_info_card(screen.actor_focus_detail_box, "可能结果", host.COLORS.success)
+	var outcome_line = host.ui_factory.text(outcome_card, outcomes if outcomes != "" else str(action.get("description", "影响仍待局势验证")), false, host.TYPE_SCALE.compact)
+	outcome_line.add_theme_color_override("font_color", host.COLORS.success)
+	var risk = str(action.get("risk", "尚未发现明确风险"))
+	var risk_card = host.action_panel_controller._action_info_card(screen.actor_focus_detail_box, "", host.COLORS.danger)
+	var risk_header := HBoxContainer.new()
+	risk_header.name = "RiskHeader"
+	risk_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	risk_header.add_theme_constant_override("separation", 8)
+	risk_card.add_child(risk_header)
+	var risk_heading = host.ui_factory.text(risk_header, "传播风险", true, host.TYPE_SCALE.meta)
+	risk_heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	risk_heading.add_theme_color_override("font_color", Color(host.COLORS.danger, 0.92))
+	if risk.contains("未经核实") or risk.contains("未经核验"):
+		host.action_panel_controller._action_tag(risk_header, "未经核验", host.COLORS.danger)
+	host.ui_factory.text(risk_card, risk, false, host.TYPE_SCALE.compact)
 	var timing = str(action.get("timing", ""))
 	if timing != "":
-		host.ui_factory.text(screen.actor_focus_detail_box, "时机 · %s" % timing, true, 14)
+		host.action_panel_controller._action_header_row(screen.actor_focus_detail_box, "传播时机", host.COLORS.muted, host.action_panel_controller._action_timing_tags(timing), "TimingHeader")
 
-	var primary_label = "%s · 确认" % action.get("name", "确认行动")
-	var primary = host.ui_factory.ornate_button(primary_label, host.action_panel_controller._consider_action.bind(action))
-	primary.custom_minimum_size = Vector2(300, 54)
+	var primary_label = "确认告知" if str(action.get("kind", "")) == "tell" else "确认行动"
+	var primary = host.ui_factory.button(primary_label, host.action_panel_controller._consider_action.bind(action), false)
+	primary.custom_minimum_size = Vector2(210, 46)
 	screen.actor_focus_footer.add_child(primary)
-	var duration = host.ui_factory.text(screen.actor_focus_footer, "耗时 · %d 日" % int(action.get("duration", 1)), false, 15)
-	duration.autowrap_mode = TextServer.AUTOWRAP_OFF
-	duration.custom_minimum_size.x = 110
-	duration.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	host.action_panel_controller._action_tag(screen.actor_focus_footer, "耗时 %d 日" % int(action.get("duration", 1)), host.COLORS.accent)
 	var warning = host.ui_factory.text(screen.actor_focus_footer, "送出后不可撤回", false, 14)
 	warning.autowrap_mode = TextServer.AUTOWRAP_OFF
 	warning.custom_minimum_size.x = 150
 	warning.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	warning.add_theme_color_override("font_color", host.COLORS.danger)
+
+
+func _focused_action_label(action: Dictionary, for_choice := false) -> String:
+	var kind := str(action.get("kind", ""))
+	var term_label := str(action.get("term_label", ""))
+	if kind == "route" and for_choice and term_label != "":
+		return term_label
+	if kind in ["recover", "escort", "route"]:
+		return str(action.get("name", "回应眼前局势"))
+	if term_label != "":
+		return term_label
+	return str(action.get("fact_claim", action.get("name", "一条消息")))
+
+
+func _action_info_card(parent: Container, label_text: String, tone: Color) -> VBoxContainer:
+	var frame := PanelContainer.new()
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var style = host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.30), 1, 2, Color(host.COLORS.line, 0.58), 12, 9)
+	style.border_width_left = 2
+	style.border_color = Color(tone, 0.70)
+	frame.add_theme_stylebox_override("panel", style)
+	parent.add_child(frame)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 6)
+	frame.add_child(content)
+	if label_text != "":
+		var heading = host.ui_factory.text(content, label_text, true, host.TYPE_SCALE.meta)
+		heading.add_theme_color_override("font_color", Color(tone, 0.92))
+	return content
+
+
+func _action_header_row(parent: Container, label_text: String, tone: Color, values: Array, node_name := "") -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 8)
+	parent.add_child(row)
+	if node_name != "":
+		row.name = node_name
+	var label = host.ui_factory.text(row, label_text, true, host.TYPE_SCALE.meta)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.add_theme_color_override("font_color", Color(tone, 0.92))
+	for value in values:
+		var text_value := str(value).strip_edges()
+		if text_value != "":
+			host.action_panel_controller._action_tag(row, text_value, tone)
+	return row
+
+
+func _action_tag(parent: Container, value: String, tone: Color) -> PanelContainer:
+	var tag := PanelContainer.new()
+	tag.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	tag.add_theme_stylebox_override("panel", host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.42), 1, 2, Color(tone, 0.48), 9, 5))
+	parent.add_child(tag)
+	var label = host.ui_factory.text(tag, value, true, host.TYPE_SCALE.meta)
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.add_theme_color_override("font_color", Color(tone, 0.96))
+	return tag
+
+
+func _render_action_tag_row(parent: Container, values: Array, tone: Color) -> HFlowContainer:
+	var row := HFlowContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
+	parent.add_child(row)
+	for value in values:
+		var text_value := str(value).strip_edges()
+		if text_value != "":
+			host.action_panel_controller._action_tag(row, text_value, tone)
+	return row
+
+
+func _action_detail_tags(value: String) -> Array[String]:
+	var result: Array[String] = []
+	var normalized := value.replace("：", " · ").replace(":", " · ")
+	for raw_part in normalized.split(" · "):
+		var part := str(raw_part).strip_edges()
+		if part.begins_with("对方"):
+			part = part.trim_prefix("对方").strip_edges()
+		if part != "" and part not in result:
+			result.append(part)
+	return result if not result.is_empty() else [value]
+
+
+func _action_timing_tags(value: String) -> Array[String]:
+	var result: Array[String] = []
+	for raw_part in value.split(" · "):
+		var part := str(raw_part).strip_edges()
+		if part == "" or part == "时机":
+			continue
+		if part.begins_with("行动后预留 ") and part.ends_with(" 日抵达"):
+			part = "预计 %s 日后抵达" % part.trim_prefix("行动后预留 ").trim_suffix(" 日抵达")
+		result.append(part)
+	return result if not result.is_empty() else [value]
 
 
 func _location_context_actions(actions: Array) -> Array:
@@ -580,20 +681,21 @@ func _on_tell_fact_selected(index: int, facts: Array) -> void:
 		host.action_panel_controller._consider_action(facts[index])
 
 
-func _confirmation_card(parent: VBoxContainer, label_text: String, tone: Color, minimum_height := 0.0) -> VBoxContainer:
+func _confirmation_card(parent: Container, label_text: String, tone: Color, minimum_height := 0.0) -> VBoxContainer:
 	var frame := PanelContainer.new()
 	frame.custom_minimum_size.y = minimum_height
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var frame_style = host.ui_factory.panel_style(Color("111813e8"), 1, 3, Color(host.COLORS.line, 0.68), 16, 13)
+	var frame_style = host.ui_factory.panel_style(Color("111813e8"), 1, 3, Color(host.COLORS.line, 0.68), 13, 10)
 	frame_style.border_width_left = 2
 	frame_style.border_color = Color(tone, 0.76)
 	frame.add_theme_stylebox_override("panel", frame_style)
 	parent.add_child(frame)
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 8)
+	content.add_theme_constant_override("separation", 6)
 	frame.add_child(content)
-	var label = host.ui_factory.text(content, label_text, true, host.TYPE_SCALE.meta)
-	label.add_theme_color_override("font_color", Color(tone, 0.92))
+	if label_text != "":
+		var label = host.ui_factory.text(content, label_text, true, host.TYPE_SCALE.meta)
+		label.add_theme_color_override("font_color", Color(tone, 0.92))
 	return content
 
 
@@ -607,69 +709,167 @@ func _consider_action(action: Dictionary, followup_action_id := "") -> void:
 	host.selected_followup_action_id = followup_action_id
 	host.ui_factory.clear(host.confirmation_box)
 	host.ui_factory.clear(host.confirmation_actions_box)
-	var decision_card: VBoxContainer = host.action_panel_controller._confirmation_card(host.confirmation_box, "一念将定", host.COLORS.accent, 118.0)
-	var decision_title = host.ui_factory.text(decision_card, str(action.get("name", "行动")), false, 27)
+	var decision_card: VBoxContainer = host.action_panel_controller._confirmation_card(host.confirmation_box, "", host.COLORS.accent, 78.0)
+	var decision_title_text := "告知%s" % str(action.get("target_name", "对方")) if kind == "tell" else str(action.get("name", "行动"))
+	var decision_title = host.ui_factory.text(decision_card, decision_title_text, false, host.TYPE_SCALE.headline)
 	decision_title.add_theme_font_override("font", host.display_font)
 	if action.get("id", "") == "wait:next":
 		var warning = host.ui_factory.text(decision_card, "你会放下手边的事，直到新的风声找上门来。", false, host.TYPE_SCALE.compact)
 		warning.add_theme_color_override("font_color", host.COLORS.accent)
+	elif kind == "tell":
+		host.ui_factory.text(decision_card, "线索 · %s" % str(action.get("fact_claim", action.get("description", "一条消息"))), true, host.TYPE_SCALE.compact)
 	else:
 		host.ui_factory.text(decision_card, str(action.get("description", "")), true, host.TYPE_SCALE.compact)
+	var summary_row := HBoxContainer.new()
+	summary_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary_row.add_theme_constant_override("separation", 10)
+	host.confirmation_box.add_child(summary_row)
+	var summary_primary := VBoxContainer.new()
+	summary_primary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary_primary.size_flags_stretch_ratio = 1.08
+	summary_primary.add_theme_constant_override("separation", 10)
+	summary_row.add_child(summary_primary)
+	var summary_secondary := VBoxContainer.new()
+	summary_secondary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary_secondary.size_flags_stretch_ratio = 0.92
+	summary_secondary.add_theme_constant_override("separation", 10)
+	summary_row.add_child(summary_secondary)
 	var outcomes = host.action_panel_controller._joined_action_values(action.get("expected_outcomes", []))
 	if outcomes != "":
-		var outcome_card: VBoxContainer = host.action_panel_controller._confirmation_card(host.confirmation_box, "可能结果", host.COLORS.success, 92.0)
-		var outcome_line = host.ui_factory.text(outcome_card, outcomes, false, host.TYPE_SCALE.body)
+		var outcome_card: VBoxContainer = host.action_panel_controller._confirmation_card(summary_primary, "可能结果", host.COLORS.success)
+		var outcome_line = host.ui_factory.text(outcome_card, outcomes, false, host.TYPE_SCALE.compact)
 		outcome_line.add_theme_color_override("font_color", host.COLORS.success)
 	var timing = str(action.get("timing", ""))
 	var has_warnings: bool = warnings is Array and not warnings.is_empty()
 	var costs: Dictionary = action.get("costs", {})
 	var context_card: VBoxContainer
 	if timing != "" or not costs.is_empty():
-		context_card = host.action_panel_controller._confirmation_card(host.confirmation_box, "时机与消耗", host.COLORS.accent, 88.0)
-	if timing != "":
-		host.ui_factory.text(context_card, timing, false, host.TYPE_SCALE.body)
-	if not costs.is_empty():
-		var cost_parts: Array[String] = []
-		for key in costs:
-			cost_parts.append("%s %s" % [screen._resource_label(str(key)), costs[key]])
-		var cost_line = host.ui_factory.text(context_card, "消耗 · " + "、".join(cost_parts), false, host.TYPE_SCALE.compact)
-		cost_line.add_theme_color_override("font_color", host.COLORS.accent)
+		var context_label := "时机与消耗" if timing != "" and not costs.is_empty() else ("时机" if timing != "" else "消耗")
+		context_card = host.action_panel_controller._confirmation_card(summary_secondary if outcomes != "" else summary_primary, "", host.COLORS.accent)
+		var context_tags: Array[String] = []
+		if timing != "":
+			context_tags.append_array(host.action_panel_controller._action_timing_tags(timing))
+		if not costs.is_empty():
+			for key in costs:
+				context_tags.append("%s %s" % [screen._resource_label(str(key)), costs[key]])
+		host.action_panel_controller._action_header_row(context_card, context_label, host.COLORS.accent, context_tags, "ConfirmationContextHeader")
 	var consequence_card: VBoxContainer
 	if has_warnings or bool(action.get("irreversible", false)):
-		consequence_card = host.action_panel_controller._confirmation_card(host.confirmation_box, "风险与承诺", host.COLORS.danger, 92.0)
+		consequence_card = host.action_panel_controller._confirmation_card(summary_secondary if outcomes != "" or timing != "" or not costs.is_empty() else summary_primary, "风险与承诺", host.COLORS.danger)
 	if warnings is Array:
 		for warning_text in warnings:
-			var warning_line = host.ui_factory.text(consequence_card, "风险 · %s" % warning_text, false, host.TYPE_SCALE.compact)
+			var warning_line = host.ui_factory.text(consequence_card, str(warning_text), false, host.TYPE_SCALE.compact)
 			warning_line.add_theme_color_override("font_color", host.COLORS.danger)
 	if bool(action.get("irreversible", false)):
-		var irreversible_line = host.ui_factory.text(consequence_card, "不可撤回 · 行动产生的公开信息与交换结果会保留", false, host.TYPE_SCALE.compact)
+		var irreversible_line = host.ui_factory.text(consequence_card, "不可撤回 · 公开信息与交换结果会保留", false, host.TYPE_SCALE.compact)
 		irreversible_line.add_theme_color_override("font_color", host.COLORS.danger)
+	if summary_primary.get_child_count() == 0:
+		summary_primary.hide()
+	if summary_secondary.get_child_count() == 0:
+		summary_secondary.hide()
+	if summary_primary.get_child_count() == 0 and summary_secondary.get_child_count() == 0:
+		summary_row.hide()
 	host.confirmation_details_button = host.ui_factory.utility_button("展开盘算", host.action_panel_controller._toggle_confirmation_details)
 	host.confirmation_details_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	host.confirmation_box.add_child(host.confirmation_details_button)
 	host.confirmation_details_box = VBoxContainer.new()
-	host.confirmation_details_box.add_theme_constant_override("separation", 6)
+	host.confirmation_details_box.add_theme_constant_override("separation", 10)
 	host.confirmation_details_box.hide()
 	host.confirmation_box.add_child(host.confirmation_details_box)
-	host.action_panel_controller._add_action_decision_context(host.confirmation_details_box, action)
-	if kind == "tell":
-		host.ui_factory.text(host.confirmation_details_box, "%s · %s" % [action.get("target_name", "某人"), action.get("target_role", "可交谈人物")], false, 15)
-		var relevance_line = host.ui_factory.text(host.confirmation_details_box, str(action.get("relevance", "关联尚不明确")), false, 14)
-		relevance_line.add_theme_color_override("font_color", host.COLORS.accent)
-		host.ui_factory.text(host.confirmation_details_box, "使用倾向 · %s" % action.get("risk", "尚不了解"), true, 14)
-	var cancel_button = host.ui_factory.utility_button("暂且不动", host.action_panel_controller._cancel_confirmation)
-	cancel_button.custom_minimum_size = Vector2(150, 46)
+	host.action_panel_controller._render_confirmation_details(host.confirmation_details_box, action)
+	var cancel_button = host.ui_factory.button("暂且不动", host.action_panel_controller._cancel_confirmation, true)
+	cancel_button.custom_minimum_size = Vector2(150, 44)
 	host.confirmation_actions_box.add_child(cancel_button)
 	var button_spacer = Control.new()
 	button_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	host.confirmation_actions_box.add_child(button_spacer)
 	var confirm_button = host.ui_factory.button(host.action_panel_controller._commitment_label(action), host.action_panel_controller._confirm_selected_action, false)
-	confirm_button.custom_minimum_size = Vector2(320, 48)
+	confirm_button.custom_minimum_size = Vector2(240, 44)
 	host.confirmation_actions_box.add_child(confirm_button)
 	if screen.action_dock:
 		screen.action_dock.hide()
 	host.confirmation_layer.show()
 	screen._sync_action_canvas_visibility()
+
+
+func _render_confirmation_details(parent: VBoxContainer, action: Dictionary) -> void:
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	parent.add_child(grid)
+	var execution = host.action_panel_controller._confirmation_detail_group(grid, "执行判断")
+	if int(action.get("completion_day", 0)) > 0:
+		host.action_panel_controller._confirmation_detail_line(execution, "完成", "第 %d 日结束时" % int(action.get("completion_day", 0)), host.COLORS.ink)
+	var resolves = host.action_panel_controller._joined_action_values(action.get("resolves", []))
+	if resolves != "":
+		host.action_panel_controller._confirmation_detail_line(execution, "解决", resolves, host.COLORS.ink)
+	var known_conditions = host.action_panel_controller._joined_action_values(action.get("known_conditions", []))
+	if known_conditions != "":
+		host.action_panel_controller._confirmation_detail_line(execution, "已满足", known_conditions, host.COLORS.success)
+	var unknowns = host.action_panel_controller._joined_action_values(action.get("unknowns", []))
+	if unknowns != "":
+		host.action_panel_controller._confirmation_detail_line(execution, "仍未知", unknowns, host.COLORS.accent)
+	if execution.get_child_count() == 1:
+		host.ui_factory.text(execution, "当前没有更多可公开判断。", true, host.TYPE_SCALE.compact)
+	var kind := str(action.get("kind", ""))
+	var situation_label := "对方情况" if kind == "tell" else "条件与风险"
+	var situation = host.action_panel_controller._confirmation_detail_group(grid, situation_label)
+	if kind == "tell":
+		var person = host.ui_factory.text(situation, "%s · %s" % [action.get("target_name", "某人"), action.get("target_role", "可交谈人物")], false, host.TYPE_SCALE.compact)
+		person.add_theme_color_override("font_color", host.COLORS.ink)
+		host.action_panel_controller._confirmation_detail_tag_line(situation, "相关性", host.action_panel_controller._action_detail_tags(str(action.get("relevance", "关联尚不明确"))), host.COLORS.accent)
+		host.action_panel_controller._confirmation_detail_line(situation, "倾向", str(action.get("risk", "尚不了解")), host.COLORS.muted)
+	else:
+		var timing := str(action.get("timing", ""))
+		if timing != "":
+			host.action_panel_controller._confirmation_detail_line(situation, "时机", timing, host.COLORS.accent)
+		var warnings = action.get("warnings", [])
+		if warnings is Array:
+			for warning_text in warnings:
+				host.action_panel_controller._confirmation_detail_line(situation, "风险", str(warning_text), host.COLORS.danger)
+	if situation.get_child_count() == 1:
+		host.ui_factory.text(situation, "当前没有额外条件或风险。", true, host.TYPE_SCALE.compact)
+
+
+func _confirmation_detail_group(parent: Container, label_text: String) -> VBoxContainer:
+	var frame := PanelContainer.new()
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.add_theme_stylebox_override("panel", host.ui_factory.panel_style(Color(host.COLORS.panel_alt, 0.28), 1, 2, Color(host.COLORS.line, 0.54), 13, 10))
+	parent.add_child(frame)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 7)
+	frame.add_child(content)
+	var heading = host.ui_factory.text(content, label_text, true, host.TYPE_SCALE.meta)
+	heading.add_theme_color_override("font_color", host.COLORS.accent)
+	return content
+
+
+func _confirmation_detail_line(parent: VBoxContainer, label_text: String, value: String, tone: Color) -> void:
+	if value.strip_edges() == "":
+		return
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 9)
+	parent.add_child(row)
+	var label = host.ui_factory.text(row, label_text, true, host.TYPE_SCALE.meta)
+	label.custom_minimum_size.x = 62
+	label.add_theme_color_override("font_color", host.COLORS.muted)
+	var detail = host.ui_factory.text(row, value, true, host.TYPE_SCALE.compact)
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail.add_theme_color_override("font_color", tone)
+
+
+func _confirmation_detail_tag_line(parent: VBoxContainer, label_text: String, values: Array, tone: Color) -> void:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 9)
+	parent.add_child(row)
+	var label = host.ui_factory.text(row, label_text, true, host.TYPE_SCALE.meta)
+	label.custom_minimum_size.x = 62
+	label.add_theme_color_override("font_color", host.COLORS.muted)
+	host.action_panel_controller._render_action_tag_row(row, values, tone)
 
 
 func _action_needs_confirmation(action: Dictionary) -> bool:

@@ -103,6 +103,8 @@ M1 应用层位于 `internal/app`，负责 Session、玩家可见视图、动态
 
 Godot 本地服务由 `cmd/server` 和 `internal/server` 提供，协议固定在 `/api/v1`。服务仅监听回环地址，通过互斥锁串行修改单个 Session；Godot 只渲染 `PlayerView` 并提交服务端给出的动作 ID，不复制行动合法性、视图过滤或结算规则。`api/v1-response.schema.json` 由服务端 Go 响应类型生成；契约测试会阻止未同步 Schema 的字段变更，Godot 应只在响应适配层读取原始 JSON 字典。
 
+`PlayerView.knowledge_graph` 是应用层从同一份玩家可见视图派生的只读关系投影。当前节点覆盖公开人物、说法、事件和相关地点，关系覆盖来源、涉及人物、影响、公开路线和现有可执行行动。投影不会再次读取世界真值，也不会暴露未获知事实、NPC 私有认知或隐藏计划；Godot 只使用服务端给出的节点、边和行动 ID，不从文案或颜色推断关系与合法性。
+
 Godot 客户端按如下单向数据流工作：
 
 ```text
@@ -135,10 +137,11 @@ app.Session ──脱敏快照 + 会话历史──> internal/ai ──> Anthrop
 
 `PlayerView.causal_threads` 是玩家已经送出情报的持续公开记录。应用层只把线程推进到“已送达”或“已改变公开行动”，并附带能够由反事实审计证明的变化；没有公开变化时明确显示等待，不泄露 NPC 的私有思考和策略评分。
 
-2D 表现层由三个可替换组件组成：
+2D 表现层由四个可替换组件组成：
 
 - `world_map.gd` 只绘制 `PlayerView.world_map` 中的公开地点、路线和当前可走状态；
 - `location_stage.gd` 根据地点的 `scene_key` 绘制当前地点舞台，人物交互仍来自 `KnownActors`；
+- `knowledge_graph_view.gd` 在卷宗内绘制 `PlayerView.knowledge_graph`，使用稳定分栏、类别筛选和单焦点详情呈现公开关系，不自行补充故事语义；
 - `presentation_director.gd` 将 `LastTurn` 中已经公开的结果按人物、查证、获得、伤势和时间归类，并压缩成一次场景内回响；人物回应贴近人物区，其余普通反馈停靠在场景边缘，完整证据仍由卷宗保存。它不读取或推演世界状态，也不会把后端的解释性消息逐条做成弹窗。
 
 正式表现资源通过 `LocationVisualProfile`、`ActorVisualProfile` 和 `presentation_registry.gd` 注册。已注册地点使用位图背景，未注册地点继续使用 `location_stage.gd` 的程序化 fallback。`audio_director.gd` 建立 Music、Ambient、Event、UI 总线，地点环境声按 `scene_key` 交叉淡入。
