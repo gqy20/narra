@@ -51,13 +51,13 @@ func start(config: Dictionary) -> int:
 
 
 func supports_bundled_server(platform: String) -> bool:
-	return platform in ["Windows", "macOS"]
+	return platform in ["Windows", "macOS", "Linux"]
 
 
 func server_name_for_platform(platform: String) -> String:
 	if platform == "Windows":
 		return "narra-server.exe"
-	if platform == "macOS":
+	if platform in ["macOS", "Linux"]:
 		return "narra-server"
 	return ""
 

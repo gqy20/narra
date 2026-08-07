@@ -15,7 +15,9 @@ func _initialize() -> void:
 		return _fail("Windows bundled server naming is invalid")
 	if not process.supports_bundled_server("macOS") or process.server_name_for_platform("macOS") != "narra-server":
 		return _fail("macOS bundled server naming is invalid")
-	if process.supports_bundled_server("Linux") or process.server_name_for_platform("Linux") != "":
+	if not process.supports_bundled_server("Linux") or process.server_name_for_platform("Linux") != "narra-server":
+		return _fail("Linux bundled server naming is invalid")
+	if process.supports_bundled_server("Web") or process.server_name_for_platform("Web") != "":
 		return _fail("unsupported platforms should not select a bundled server")
 	process.free()
 	quit(0)

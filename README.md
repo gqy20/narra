@@ -228,9 +228,15 @@ macOS 可在 Mac 或 GitHub Actions 的 macOS Runner 上生成同时支持 Apple
 bash ./tools/build-macos.sh 0.1.0
 ```
 
-推送与 `godot/project.godot` 版本一致的标签（例如 `v0.1.0`）会自动执行 CI，并把 Windows ZIP 与未签名 macOS ZIP 发布到同一个 GitHub Release；首次 Release 将在版本确认后创建。完整说明见 [桌面打包与发布说明](docs/development/PACKAGING.md)。
+Linux x86_64 包需要在 Linux 或 GitHub Actions 的 Ubuntu Runner 上完成运行烟测：
 
-发行版的客户端日志、服务端日志和存档统一写入用户数据目录：Windows 为 `%APPDATA%\Narra`，macOS 为 `~/Library/Application Support/Narra`。日志轮转、故障排查和便携开发模式见 [运行日志说明](docs/development/LOGGING.md)。
+```bash
+bash ./tools/build-linux.sh 0.1.0
+```
+
+推送与 `godot/project.godot` 版本一致的标签（例如 `v0.1.0`）会自动执行 CI，并把 Windows ZIP、未签名 macOS ZIP 与 Linux x86_64 tarball 发布到同一个 GitHub Release；首次 Release 将在版本确认后创建。完整说明见 [桌面打包与发布说明](docs/development/PACKAGING.md)。
+
+发行版的客户端日志、服务端日志和存档统一写入用户数据目录：Windows 为 `%APPDATA%\Narra`，macOS 为 `~/Library/Application Support/Narra`，Linux 默认为 `~/.local/share/Narra`。日志轮转、故障排查和便携开发模式见 [运行日志说明](docs/development/LOGGING.md)。
 
 ## 运行 T00
 

@@ -28,6 +28,7 @@ WINDOWS_TEMPLATE_FILES = (
 PLATFORM_TEMPLATE_FILES = {
     "windows": WINDOWS_TEMPLATE_FILES,
     "macos": ("macos.zip",),
+    "linux": ("linux_debug.x86_64", "linux_release.x86_64"),
 }
 
 

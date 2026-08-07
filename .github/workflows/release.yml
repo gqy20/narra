@@ -128,9 +128,47 @@ jobs:
           path: dist/narra-macos-universal-${{ needs.validate.outputs.version }}-unsigned.zip
           if-no-files-found: error
 
+  linux:
+    name: Linux x86_64 package
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          lfs: true
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install Godot editor
+        shell: bash
+        run: |
+          tag="${GODOT_VERSION/.stable/-stable}"
+          archive_version="${GODOT_VERSION/.stable/-stable}"
+          url="https://github.com/godotengine/godot-builds/releases/download/$tag/Godot_v${archive_version}_linux.x86_64.zip"
+          curl --fail --location --retry 3 "$url" --output "$RUNNER_TEMP/godot.zip"
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP/godot"
+          mkdir -p "$RUNNER_TEMP/bin"
+          editor="$(find "$RUNNER_TEMP/godot" -maxdepth 1 -type f -name 'Godot_v*_linux.x86_64' -print -quit)"
+          test -n "$editor"
+          chmod +x "$editor"
+          ln -s "$editor" "$RUNNER_TEMP/bin/godot"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Install Linux export templates
+        run: python3 tools/install-godot-templates.py --platform linux --version "$GODOT_VERSION"
+      - name: Build and smoke-test package
+        env:
+          SKIP_TESTS: "1"
+        run: bash tools/build-linux.sh "${{ needs.validate.outputs.version }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: narra-linux-x86_64
+          path: dist/narra-linux-x86_64-${{ needs.validate.outputs.version }}.tar.gz
+          if-no-files-found: error
+
   release:
     name: Publish GitHub Release
-    needs: [validate, windows, macos]
+    needs: [validate, windows, macos, linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -156,7 +194,7 @@ jobs:
           fi
           (
             cd release-assets
-            sha256sum *.zip > checksums.txt
+            sha256sum *.zip *.tar.gz > checksums.txt
           )
       - name: Create release
         env:
@@ -164,6 +202,7 @@ jobs:
         run: >-
           gh release create "$GITHUB_REF_NAME"
           release-assets/*.zip
+          release-assets/*.tar.gz
           release-assets/checksums.txt
           --verify-tag
           --notes-file release-notes.md

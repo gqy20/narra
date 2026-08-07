@@ -6,6 +6,7 @@
 
 POWERSHELL ?= powershell.exe
 PYTHON ?= py
+PYTHON3 ?= python3
 GO ?= go
 GODOT ?= godot
 BASH ?= bash
@@ -18,8 +19,8 @@ VERSION_ARG := $(if $(strip $(VERSION)),-Version "$(VERSION)",)
 
 .PHONY: help doctor fmt test test-go test-godot test-logging vet verify \
 	run-cli run-server run-godot record-gameplay \
-	build build-server templates-windows templates-macos package-windows package-windows-fast \
-	package-macos package-macos-fast release-windows smoke-windows clean clean-package clean-server
+	build build-server templates-windows templates-macos templates-linux package-windows package-windows-fast \
+	package-macos package-macos-fast package-linux package-linux-fast release-windows smoke-windows clean clean-package clean-server
 
 help:
 	@echo Narra development commands
@@ -41,10 +42,13 @@ help:
 	@echo   make build-server           Build bin/narra-server.exe
 	@echo   make templates-windows      Install matching Windows export templates
 	@echo   make templates-macos        Install matching macOS export template
+	@echo   make templates-linux        Install matching Linux x86_64 export templates
 	@echo   make package-windows        Test and create the Windows portable ZIP
 	@echo   make package-windows-fast   Package without rerunning Go tests
 	@echo   make package-macos          On macOS, test and create an unsigned Universal ZIP
 	@echo   make package-macos-fast     On macOS, package without rerunning Go tests
+	@echo   make package-linux          On Linux, test and create an x86_64 tarball
+	@echo   make package-linux-fast     On Linux, package without rerunning Go tests
 	@echo   make release-windows        Run all checks and create the release ZIP
 	@echo   make smoke-windows          Smoke-test an existing Windows package
 	@echo.
@@ -104,6 +108,9 @@ templates-windows:
 templates-macos:
 	$(PYTHON) tools/install-godot-templates.py --platform macos --version $(GODOT_VERSION)
 
+templates-linux:
+	$(PYTHON3) tools/install-godot-templates.py --platform linux --version $(GODOT_VERSION)
+
 package-windows:
 	$(PS_FILE) tools/build-windows.ps1 $(VERSION_ARG)
 
@@ -115,6 +122,12 @@ package-macos:
 
 package-macos-fast:
 	SKIP_TESTS=1 $(BASH) tools/build-macos.sh "$(if $(strip $(VERSION)),$(VERSION),dev)"
+
+package-linux:
+	$(BASH) tools/build-linux.sh "$(if $(strip $(VERSION)),$(VERSION),dev)"
+
+package-linux-fast:
+	SKIP_TESTS=1 $(BASH) tools/build-linux.sh "$(if $(strip $(VERSION)),$(VERSION),dev)"
 
 release-windows:
 	$(MAKE) verify
