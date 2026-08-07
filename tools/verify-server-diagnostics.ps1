@@ -19,6 +19,9 @@ try {
             $ErrorActionPreference = "Continue"
             $output = & $serverPath @Arguments 2>&1 | Out-String
             $exitCode = $LASTEXITCODE
+            # Expected native failures must not leak into the GitHub Actions
+            # PowerShell wrapper after their exit code has been captured.
+            $global:LASTEXITCODE = 0
         }
         finally {
             $ErrorActionPreference = $previousErrorActionPreference
